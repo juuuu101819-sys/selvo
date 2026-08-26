@@ -64,15 +64,46 @@ export class UnsupportedCurrencyError extends AppError {
   }
 }
 
+export interface UnsupportedCorridorContext {
+  /** Human-readable send amount, e.g. `"1.00 USD"`. */
+  readonly amount?: string;
+  readonly rails?: readonly string[] | null;
+}
+
+/**
+ * No registered provider was eligible for the request.
+ *
+ * Corridor coverage is only one reason a provider declines — a notional below its minimum and a
+ * rail filter are just as common. The message names the reasons that actually apply, because
+ * telling a customer their corridor is unsupported when the real problem is a wholesale minimum
+ * sends them looking in the wrong place.
+ */
 export class UnsupportedCorridorError extends AppError {
   readonly code = ErrorCode.UNSUPPORTED_CORRIDOR;
   readonly httpStatus = 422;
 
-  constructor(sourceCurrency: string, targetCurrency: string) {
-    super(`No provider prices the ${sourceCurrency} to ${targetCurrency} corridor in this mode.`, {
-      sourceCurrency,
-      targetCurrency,
-    });
+  constructor(
+    sourceCurrency: string,
+    targetCurrency: string,
+    context: UnsupportedCorridorContext = {},
+  ) {
+    const corridor = `${sourceCurrency} to ${targetCurrency}`;
+    const forAmount = context.amount === undefined ? '' : ` for ${context.amount}`;
+    const railFiltered = context.rails != null && context.rails.length > 0;
+
+    super(
+      railFiltered
+        ? `No provider on the selected rail${context.rails?.length === 1 ? '' : 's'} will price ` +
+            `${corridor}${forAmount}. Try removing the rail filter.`
+        : `No provider will price ${corridor}${forAmount}. Either the corridor is not covered, ` +
+            'or the amount is outside every provider\u2019s limits.',
+      {
+        sourceCurrency,
+        targetCurrency,
+        rails: context.rails ?? null,
+        ...(context.amount === undefined ? {} : { amount: context.amount }),
+      },
+    );
   }
 }
 

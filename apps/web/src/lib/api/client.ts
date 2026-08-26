@@ -39,7 +39,9 @@ async function request<TData>(options: RequestOptions): Promise<ApiResult<TData>
     response = await fetch(url, {
       method: options.method,
       headers: {
-        'content-type': 'application/json',
+        // Only declared when there is something to describe: several endpoints take no body, and
+        // announcing a JSON payload that is not there is simply untrue.
+        ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
         'x-meridian-actor': options.actor ?? 'web-app',
       },
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),

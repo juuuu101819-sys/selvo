@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import cors from '@fastify/cors';
-import type { Clock } from '@meridian/core';
+import { ValidationError, type Clock } from '@meridian/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { AppConfig } from './config/env.js';
 import { createContainer, type AppContainer } from './container.js';
@@ -66,6 +66,8 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
     done();
   });
 
+  registerJsonBodyParser(app);
+
   registerErrorHandling(app);
   registerSystemRoutes(app, container);
   registerComparisonRoutes(app, container);
@@ -76,4 +78,35 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
   });
 
   return { app, container };
+}
+
+/**
+ * Accepts an empty body on a JSON request.
+ *
+ * `POST /v1/comparisons/:id/replay` and `POST /v1/executions` take no body, but virtually every
+ * HTTP client sets `content-type: application/json` on a POST regardless. Fastify's default parser
+ * rejects that combination outright, which made those endpoints unusable from a normal client for
+ * no good reason. An absent body is simply treated as `{}`.
+ */
+function registerJsonBodyParser(app: FastifyInstance): void {
+  app.removeContentTypeParser('application/json');
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_request, body: string, done) => {
+      if (body.trim() === '') {
+        done(null, {});
+        return;
+      }
+      try {
+        done(null, JSON.parse(body));
+      } catch (error) {
+        done(
+          new ValidationError('Request body is not valid JSON.', {
+            reason: error instanceof Error ? error.message : 'parse error',
+          }),
+        );
+      }
+    },
+  );
 }

@@ -332,6 +332,37 @@ describe('POST /v1/comparisons', () => {
       expect(response.json<ApiError>().error.code).toBe('UNSUPPORTED_CORRIDOR');
     });
 
+    it('does not blame the corridor when the amount is below every provider minimum', async () => {
+      const response = await harness.app.inject({
+        method: 'POST',
+        url: '/v1/comparisons',
+        payload: { ...USD_100K_TO_KRW, amount: '1.00' },
+      });
+
+      expect(response.statusCode).toBe(422);
+      const body = response.json<ApiError>();
+      expect(body.error.code).toBe('UNSUPPORTED_CORRIDOR');
+      expect(body.error.message).toContain('1.00 USD');
+      expect(body.error.message).toMatch(/outside every provider/);
+      expect(body.error.details).toMatchObject({ sourceCurrency: 'USD', targetCurrency: 'KRW' });
+    });
+
+    it('points at the rail filter when that is what excluded every provider', async () => {
+      const response = await harness.app.inject({
+        method: 'POST',
+        url: '/v1/comparisons',
+        payload: {
+          sourceCurrency: 'CLP',
+          targetCurrency: 'USD',
+          amount: '95000000',
+          rails: ['stablecoin_settlement'],
+        },
+      });
+
+      expect(response.statusCode).toBe(422);
+      expect(response.json<ApiError>().error.message).toMatch(/removing the rail filter/);
+    });
+
     it('still prices a corridor the wholesale rails decline, using the rails that cover it', async () => {
       const response = await harness.app.inject({
         method: 'POST',
@@ -430,6 +461,20 @@ describe('POST /v1/comparisons/:comparisonId/replay', () => {
     expect(replay.comparison.routes.map((route) => route.totalCost.minorUnits)).toEqual(
       created.payload.data.routes.map((route) => route.totalCost.minorUnits),
     );
+  });
+
+  it('accepts a bodyless replay that still declares a JSON content type', async () => {
+    // Most HTTP clients set this header on any POST. Fastify's default parser rejects an empty
+    // body outright, which made this endpoint unusable from a normal client.
+    const created = await createComparison();
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: `/v1/comparisons/${created.payload.data.comparisonId}/replay`,
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json<ApiEnvelope<ReplayResultDto>>().data.reproducible).toBe(true);
   });
 
   it('returns 404 when replaying an unknown comparison', async () => {

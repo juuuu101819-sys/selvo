@@ -35,6 +35,17 @@ describe('POST /v1/executions', () => {
     });
   });
 
+  it('refuses a bodyless request that declares a JSON content type', async () => {
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: '/v1/executions',
+      headers: { 'content-type': 'application/json' },
+    });
+
+    expect(response.statusCode).toBe(501);
+    expect(response.json<ApiError>().error.code).toBe('EXECUTION_NOT_IMPLEMENTED');
+  });
+
   it('refuses regardless of what the caller sends', async () => {
     const response = await harness.app.inject({
       method: 'POST',

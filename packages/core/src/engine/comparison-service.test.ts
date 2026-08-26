@@ -239,6 +239,22 @@ describe('RouteComparisonService', () => {
 
       await expect(service.compare(input())).rejects.toThrow(UnsupportedCorridorError);
     });
+
+    it('names the amount and rail filter in an ineligibility error, not just the corridor', async () => {
+      const declining = new StubRouteProvider(
+        { id: 'declines', rail: 'bank_fx' },
+        { kind: 'quote', quote: buildProviderQuote() },
+        false,
+      );
+      const { service } = buildService([declining]);
+
+      await expect(service.compare(input({ rails: ['bank_fx'] }))).rejects.toThrowError(
+        /removing the rail filter/,
+      );
+      await expect(service.compare(input())).rejects.toThrowError(
+        /100000.00 USD.*outside every provider/s,
+      );
+    });
   });
 
   describe('insights', () => {

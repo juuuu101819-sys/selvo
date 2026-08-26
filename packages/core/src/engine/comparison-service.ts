@@ -141,9 +141,15 @@ export class RouteComparisonService {
         requestId: input.requestId,
         comparisonId,
         providerId: null,
-        payload: { reason: 'no eligible provider for corridor' },
+        payload: {
+          reason: 'no eligible provider',
+          registeredProviderCount: registry.all().length,
+        },
       });
-      throw new UnsupportedCorridorError(input.sourceCurrency, input.targetCurrency);
+      throw new UnsupportedCorridorError(input.sourceCurrency, input.targetCurrency, {
+        amount: Money.ofMinorUnits(input.sourceCurrency, input.amountMinorUnits).toString(),
+        rails: request.rails,
+      });
     }
 
     const outcomes = await Promise.all(
