@@ -1,0 +1,12 @@
+{
+  // The end-to-end suite runs code inside the browser via `page.evaluate`, so unlike the rest of
+  // the backend it needs the DOM lib.
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
+  },
+  "include": ["e2e/**/*.ts"]
+}

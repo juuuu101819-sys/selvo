@@ -1,10 +1,11 @@
 {
-  // Root-level config files only. Each workspace owns its own tsconfig.json.
+  // Root-level configuration files. Each workspace owns its own tsconfig.json, and the end-to-end
+  // suite has tests/tsconfig.json because it needs the DOM lib.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
     "composite": false,
     "types": ["node"]
   },
-  "include": ["vitest.config.ts"]
+  "include": ["vitest.config.ts", "playwright.config.ts", "prisma.config.ts"]
 }
