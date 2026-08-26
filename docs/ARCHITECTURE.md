@@ -36,6 +36,11 @@ packages/
                   In-memory driver + PostgreSQL driver behind one interface.
 ```
 
+The web app reaches the API through Next.js server actions rather than from the browser, so the
+API's address stays server-side and no CORS grant is needed for the app's own traffic. It declares
+its own copy of the wire contract instead of importing `core`, because it is a separate deployable
+that should depend on the published API shape, not on the server's internals.
+
 The dependency graph is strictly acyclic and points inward:
 
 ```
