@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import type { FeeComponent, PricedRoute } from '../domain/index.js';
 import { InvalidAmountError, InvalidProviderQuoteError } from '../errors/index.js';
 import { Money } from '../money/index.js';
-import { buildProviderDescriptor, buildProviderQuote, buildQuoteRequest } from '../testing/index.js';
+import {
+  buildProviderDescriptor,
+  buildProviderQuote,
+  buildQuoteRequest,
+} from '../testing/index.js';
 import { RouteCostEngine } from './cost-engine.js';
 
 const engine = new RouteCostEngine();
@@ -68,7 +72,11 @@ describe('RouteCostEngine', () => {
           rateBps: '20',
         },
       ];
-      const route = price({ midMarketRate: '1300', offeredRate: '1300', fees: { components: fees } });
+      const route = price({
+        midMarketRate: '1300',
+        offeredRate: '1300',
+        fees: { components: fees },
+      });
 
       // USD 225.00 of fees on a USD 100,000 transfer is 22.5 bps all-in.
       expect(route.deliveredAmount.toJSON().minorUnits).toBe('129707500');
@@ -263,10 +271,7 @@ describe('RouteCostEngine', () => {
     });
 
     it('selects the first tier for a small notional', () => {
-      const route = price(
-        { slippage: tiered },
-        { amountMinorUnits: '1000000' },
-      );
+      const route = price({ slippage: tiered }, { amountMinorUnits: '1000000' });
       expect(route.slippageBps.toFixed()).toBe('5');
     });
 
@@ -379,11 +384,19 @@ describe('RouteCostEngine', () => {
 
     it('prices a zero-exponent source currency into a two-exponent target', () => {
       const route = price(
-        { sourceCurrency: 'KRW', targetCurrency: 'USD', midMarketRate: '0.00074', offeredRate: '0.00073' },
+        {
+          sourceCurrency: 'KRW',
+          targetCurrency: 'USD',
+          midMarketRate: '0.00074',
+          offeredRate: '0.00073',
+        },
         { sourceCurrency: 'KRW', targetCurrency: 'USD', amountMinorUnits: '130000000' },
       );
 
-      expect(route.benchmarkAmount.toJSON()).toMatchObject({ currency: 'USD', minorUnits: '9620000' });
+      expect(route.benchmarkAmount.toJSON()).toMatchObject({
+        currency: 'USD',
+        minorUnits: '9620000',
+      });
       expect(route.deliveredAmount.toJSON().minorUnits).toBe('9490000');
       expectBreakdownToReconcile(route);
     });
@@ -391,7 +404,12 @@ describe('RouteCostEngine', () => {
     it('rejects an amount too small to produce a non-zero benchmark', () => {
       expect(() =>
         price(
-          { sourceCurrency: 'KRW', targetCurrency: 'USD', midMarketRate: '0.00074', offeredRate: '0.00073' },
+          {
+            sourceCurrency: 'KRW',
+            targetCurrency: 'USD',
+            midMarketRate: '0.00074',
+            offeredRate: '0.00073',
+          },
           { sourceCurrency: 'KRW', targetCurrency: 'USD', amountMinorUnits: '1' },
         ),
       ).toThrow(InvalidAmountError);

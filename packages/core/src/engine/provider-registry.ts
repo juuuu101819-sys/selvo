@@ -1,4 +1,9 @@
-import type { PlatformMode, ProviderDescriptor, ProviderId, QuoteRequest } from '../domain/index.js';
+import type {
+  PlatformMode,
+  ProviderDescriptor,
+  ProviderId,
+  QuoteRequest,
+} from '../domain/index.js';
 import { ConfigurationError } from '../errors/index.js';
 import type { RouteProvider } from '../ports/index.js';
 
@@ -73,7 +78,10 @@ export class ProviderRegistry {
       );
     }
 
-    if (mode === 'production' && !admitted.some((p) => p.descriptor.licensing === 'licensed_partner')) {
+    if (
+      mode === 'production' &&
+      !admitted.some((p) => p.descriptor.licensing === 'licensed_partner')
+    ) {
       throw new ConfigurationError(
         'Production mode requires at least one licensed partner adapter. Refusing to start with ' +
           'modelled pricing only.',

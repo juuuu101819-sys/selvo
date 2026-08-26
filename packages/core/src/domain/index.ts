@@ -30,7 +30,13 @@ export type {
   SlippageModel,
   TieredSlippageModel,
 } from './quote.js';
-export { RAIL_REGISTRY, RAIL_TYPES, isRailType, type RailDefinition, type RailType } from './rail.js';
+export {
+  RAIL_REGISTRY,
+  RAIL_TYPES,
+  isRailType,
+  type RailDefinition,
+  type RailType,
+} from './rail.js';
 export type {
   AppliedFee,
   CostBreakdown,

@@ -133,8 +133,7 @@ function serializeInsights(insights: ComparisonInsights): ComparisonInsightsDto 
     mostExpensiveRouteId: insights.mostExpensiveRouteId,
     savingsVsMostExpensive: insights.savingsVsMostExpensive.toJSON(),
     savingsVsMostExpensiveBps: fixed(insights.savingsVsMostExpensiveBps, BPS_DECIMAL_PLACES),
-    savingsVsBankFx:
-      insights.savingsVsBankFx === null ? null : insights.savingsVsBankFx.toJSON(),
+    savingsVsBankFx: insights.savingsVsBankFx === null ? null : insights.savingsVsBankFx.toJSON(),
   };
 }
 

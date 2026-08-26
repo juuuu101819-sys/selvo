@@ -1,0 +1,28 @@
+{
+  "name": "@meridian/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Meridian HTTP API: validated route comparison endpoints",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "./dist/server.js",
+  "scripts": {
+    "build": "tsc --build tsconfig.build.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "@meridian/adapters": "*",
+    "@meridian/core": "*",
+    "@meridian/persistence": "*",
+    "fastify": "^5.6.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.1.1",
+    "tsx": "^4.20.6"
+  }
+}

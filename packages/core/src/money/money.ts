@@ -110,20 +110,20 @@ export class Money {
 
   /** Clamps the amount into `[min, max]`. Either bound may be omitted. */
   clamp(min: Money | null, max: Money | null): Money {
-    let result: Money = this;
+    let minorUnits = this.minorUnits;
     if (min !== null) {
       this.assertSameCurrency(min, 'clamp');
-      if (result.lessThan(min)) {
-        result = min;
+      if (minorUnits < min.minorUnits) {
+        minorUnits = min.minorUnits;
       }
     }
     if (max !== null) {
       this.assertSameCurrency(max, 'clamp');
-      if (result.greaterThan(max)) {
-        result = max;
+      if (minorUnits > max.minorUnits) {
+        minorUnits = max.minorUnits;
       }
     }
-    return result;
+    return new Money(this.currency, minorUnits);
   }
 
   isZero(): boolean {

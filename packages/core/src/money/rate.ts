@@ -85,11 +85,7 @@ export class Rate {
         currency: sent.currency,
       });
     }
-    return Rate.of(
-      sent.currency,
-      received.currency,
-      received.toDecimal().div(sent.toDecimal()),
-    );
+    return Rate.of(sent.currency, received.currency, received.toDecimal().div(sent.toDecimal()));
   }
 
   isSamePair(other: Rate): boolean {

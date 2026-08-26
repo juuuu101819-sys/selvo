@@ -80,8 +80,12 @@ describe('Money', () => {
       // 12.5 bps of 100,000.00 = 125.00 exactly.
       expect(amount.multiplyByRatio('0.00125').minorUnits).toBe(12_500n);
       // 1 bps of 0.05 = 0.000005, which is half a minor unit at the boundary.
-      expect(Money.ofMinorUnits('USD', 5n).multiplyByRatio('0.1', Rounding.HALF_UP).minorUnits).toBe(1n);
-      expect(Money.ofMinorUnits('USD', 5n).multiplyByRatio('0.1', Rounding.DOWN).minorUnits).toBe(0n);
+      expect(
+        Money.ofMinorUnits('USD', 5n).multiplyByRatio('0.1', Rounding.HALF_UP).minorUnits,
+      ).toBe(1n);
+      expect(Money.ofMinorUnits('USD', 5n).multiplyByRatio('0.1', Rounding.DOWN).minorUnits).toBe(
+        0n,
+      );
     });
   });
 

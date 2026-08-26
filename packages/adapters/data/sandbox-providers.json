@@ -1,0 +1,473 @@
+{
+  "version": "sandbox-pricing-2026.02",
+  "generatedAt": "2026-02-01T00:00:00.000Z",
+  "disclaimer": "Synthetic pricing profiles for demonstration and testing. These are not real provider prices, are not executable, and must never be presented to a customer as a firm quote.",
+  "currencyGroups": {
+    "majors": ["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD", "SGD", "HKD"],
+    "nearMajors": ["KRW", "CNY", "MXN", "ZAR", "INR", "AED", "THB"],
+    "frontier": ["BRL", "IDR", "PHP", "VND", "NGN", "KES", "TRY", "CLP", "KWD"]
+  },
+  "providers": [
+    {
+      "id": "sandbox-northgate-bank",
+      "name": "Northgate Bank",
+      "rail": "bank_fx",
+      "licensing": "unlicensed_sandbox",
+      "jurisdictions": ["*"],
+      "description": "Tier-one correspondent bank quoting as FX principal and settling over SWIFT.",
+      "reliabilityScore": "0.995",
+      "quoteTtlSeconds": 900,
+      "intermediaryAsset": null,
+      "corridors": { "source": "*", "target": "*" },
+      "notionalLimitsUsd": { "min": "1000.00", "max": "50000000.00" },
+      "profiles": [
+        {
+          "label": "Frontier corridor",
+          "match": { "source": "*", "target": { "group": "frontier" } },
+          "spread": { "kind": "flat", "bps": "145" },
+          "fees": [
+            {
+              "kind": "fixed",
+              "code": "swift_wire",
+              "label": "SWIFT outbound wire",
+              "side": "source",
+              "amountUsd": "30.00"
+            },
+            {
+              "kind": "fixed",
+              "code": "correspondent_charge",
+              "label": "Correspondent bank charge",
+              "side": "destination",
+              "amountUsd": "12.00"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 172800,
+            "p95Seconds": 432000,
+            "businessDaysOnly": true,
+            "cutoffUtc": "14:00",
+            "notes": "Two to five business days. Local clearing may add a day."
+          },
+          "slippage": { "kind": "none" }
+        },
+        {
+          "label": "Near-major corridor",
+          "match": { "source": "*", "target": { "group": "nearMajors" } },
+          "spread": { "kind": "flat", "bps": "69" },
+          "fees": [
+            {
+              "kind": "fixed",
+              "code": "swift_wire",
+              "label": "SWIFT outbound wire",
+              "side": "source",
+              "amountUsd": "25.00"
+            },
+            {
+              "kind": "fixed",
+              "code": "beneficiary_credit",
+              "label": "Beneficiary credit fee",
+              "side": "destination",
+              "amountUsd": "3.61"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 86400,
+            "p95Seconds": 259200,
+            "businessDaysOnly": true,
+            "cutoffUtc": "16:00",
+            "notes": "Next business day value, subject to the 16:00 UTC cut-off."
+          },
+          "slippage": { "kind": "none" }
+        },
+        {
+          "label": "Major corridor",
+          "match": { "source": "*", "target": "*" },
+          "spread": { "kind": "flat", "bps": "52" },
+          "fees": [
+            {
+              "kind": "fixed",
+              "code": "swift_wire",
+              "label": "SWIFT outbound wire",
+              "side": "source",
+              "amountUsd": "20.00"
+            },
+            {
+              "kind": "fixed",
+              "code": "beneficiary_credit",
+              "label": "Beneficiary credit fee",
+              "side": "destination",
+              "amountUsd": "2.50"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 86400,
+            "p95Seconds": 172800,
+            "businessDaysOnly": true,
+            "cutoffUtc": "16:00",
+            "notes": "Next business day value, subject to the 16:00 UTC cut-off."
+          },
+          "slippage": { "kind": "none" }
+        }
+      ]
+    },
+    {
+      "id": "sandbox-veridian-payments",
+      "name": "Veridian Payments",
+      "rail": "payment_institution",
+      "licensing": "unlicensed_sandbox",
+      "jurisdictions": ["*"],
+      "description": "Licensed payment institution settling over local rails with an in-house FX desk.",
+      "reliabilityScore": "0.991",
+      "quoteTtlSeconds": 600,
+      "intermediaryAsset": null,
+      "corridors": { "source": "*", "target": "*" },
+      "notionalLimitsUsd": { "min": "100.00", "max": "5000000.00" },
+      "profiles": [
+        {
+          "label": "Frontier corridor",
+          "match": { "source": "*", "target": { "group": "frontier" } },
+          "spread": { "kind": "flat", "bps": "95" },
+          "fees": [
+            {
+              "kind": "fixed",
+              "code": "payout_fee",
+              "label": "Local payout fee",
+              "side": "source",
+              "amountUsd": "12.00"
+            },
+            {
+              "kind": "proportional",
+              "code": "fx_commission",
+              "label": "FX commission",
+              "side": "source",
+              "rateBps": "18",
+              "minAmountUsd": "8.00",
+              "maxAmountUsd": "900.00"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 28800,
+            "p95Seconds": 115200,
+            "businessDaysOnly": true,
+            "cutoffUtc": "18:00",
+            "notes": "Same or next business day depending on local clearing windows."
+          },
+          "slippage": { "kind": "none" }
+        },
+        {
+          "label": "Near-major corridor",
+          "match": { "source": "*", "target": { "group": "nearMajors" } },
+          "spread": { "kind": "flat", "bps": "35" },
+          "fees": [
+            {
+              "kind": "fixed",
+              "code": "payout_fee",
+              "label": "Local payout fee",
+              "side": "source",
+              "amountUsd": "8.00"
+            },
+            {
+              "kind": "proportional",
+              "code": "fx_commission",
+              "label": "FX commission",
+              "side": "source",
+              "rateBps": "12",
+              "minAmountUsd": "5.00",
+              "maxAmountUsd": "250.00"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 7200,
+            "p95Seconds": 28800,
+            "businessDaysOnly": false,
+            "cutoffUtc": "21:00",
+            "notes": "Local rails payout, typically within two hours."
+          },
+          "slippage": { "kind": "none" }
+        },
+        {
+          "label": "Major corridor",
+          "match": { "source": "*", "target": "*" },
+          "spread": { "kind": "flat", "bps": "22" },
+          "fees": [
+            {
+              "kind": "fixed",
+              "code": "payout_fee",
+              "label": "Local payout fee",
+              "side": "source",
+              "amountUsd": "6.00"
+            },
+            {
+              "kind": "proportional",
+              "code": "fx_commission",
+              "label": "FX commission",
+              "side": "source",
+              "rateBps": "9",
+              "minAmountUsd": "4.00",
+              "maxAmountUsd": "180.00"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 3600,
+            "p95Seconds": 14400,
+            "businessDaysOnly": false,
+            "cutoffUtc": null,
+            "notes": "Instant local rails where available."
+          },
+          "slippage": { "kind": "none" }
+        }
+      ]
+    },
+    {
+      "id": "sandbox-solstice-settlement",
+      "name": "Solstice Settlement",
+      "rail": "stablecoin_settlement",
+      "licensing": "unlicensed_sandbox",
+      "jurisdictions": ["*"],
+      "description": "Licensed on-ramp and off-ramp partners settling the middle leg in a regulated stablecoin. Meridian never holds the asset.",
+      "reliabilityScore": "0.985",
+      "quoteTtlSeconds": 60,
+      "intermediaryAsset": "USDC",
+      "corridors": {
+        "source": {
+          "currencies": ["USD", "EUR", "GBP", "SGD", "HKD", "JPY", "AED", "CHF", "AUD", "CAD"]
+        },
+        "target": {
+          "currencies": [
+            "USD",
+            "EUR",
+            "GBP",
+            "SGD",
+            "HKD",
+            "JPY",
+            "KRW",
+            "MXN",
+            "BRL",
+            "PHP",
+            "NGN",
+            "ZAR",
+            "AED",
+            "INR",
+            "IDR",
+            "VND",
+            "THB"
+          ]
+        }
+      },
+      "notionalLimitsUsd": { "min": "1000.00", "max": "10000000.00" },
+      "profiles": [
+        {
+          "label": "Frontier off-ramp",
+          "match": { "source": "*", "target": { "group": "frontier" } },
+          "spread": { "kind": "flat", "bps": "28" },
+          "fees": [
+            {
+              "kind": "proportional",
+              "code": "onramp_fee",
+              "label": "Regulated on-ramp fee",
+              "side": "source",
+              "rateBps": "10"
+            },
+            {
+              "kind": "proportional",
+              "code": "offramp_fee",
+              "label": "Local off-ramp fee",
+              "side": "destination",
+              "rateBps": "25"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 1800,
+            "p95Seconds": 10800,
+            "businessDaysOnly": false,
+            "cutoffUtc": null,
+            "notes": "Off-ramp partner settles to local rails within business hours."
+          },
+          "slippage": {
+            "kind": "tiered",
+            "notionalCurrency": "USD",
+            "tiers": [
+              { "upToAmount": "250000.00", "bps": "6" },
+              { "upToAmount": "1000000.00", "bps": "14" },
+              { "upToAmount": null, "bps": "32" }
+            ]
+          }
+        },
+        {
+          "label": "Near-major off-ramp",
+          "match": { "source": "*", "target": { "group": "nearMajors" } },
+          "spread": { "kind": "flat", "bps": "10" },
+          "fees": [
+            {
+              "kind": "proportional",
+              "code": "onramp_fee",
+              "label": "Regulated on-ramp fee",
+              "side": "source",
+              "rateBps": "8"
+            },
+            {
+              "kind": "proportional",
+              "code": "offramp_fee",
+              "label": "Local off-ramp fee",
+              "side": "destination",
+              "rateBps": "12"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 300,
+            "p95Seconds": 1800,
+            "businessDaysOnly": false,
+            "cutoffUtc": null,
+            "notes": "Off-ramp partner settles to local rails around the clock."
+          },
+          "slippage": {
+            "kind": "tiered",
+            "notionalCurrency": "USD",
+            "tiers": [
+              { "upToAmount": "50000.00", "bps": "2" },
+              { "upToAmount": "250000.00", "bps": "4" },
+              { "upToAmount": "1000000.00", "bps": "9" },
+              { "upToAmount": null, "bps": "22" }
+            ]
+          }
+        },
+        {
+          "label": "Major off-ramp",
+          "match": { "source": "*", "target": "*" },
+          "spread": { "kind": "flat", "bps": "6" },
+          "fees": [
+            {
+              "kind": "proportional",
+              "code": "onramp_fee",
+              "label": "Regulated on-ramp fee",
+              "side": "source",
+              "rateBps": "6"
+            },
+            {
+              "kind": "proportional",
+              "code": "offramp_fee",
+              "label": "Local off-ramp fee",
+              "side": "destination",
+              "rateBps": "8"
+            }
+          ],
+          "settlement": {
+            "p50Seconds": 240,
+            "p95Seconds": 1200,
+            "businessDaysOnly": false,
+            "cutoffUtc": null,
+            "notes": "Off-ramp partner settles to local rails around the clock."
+          },
+          "slippage": {
+            "kind": "tiered",
+            "notionalCurrency": "USD",
+            "tiers": [
+              { "upToAmount": "50000.00", "bps": "2" },
+              { "upToAmount": "250000.00", "bps": "4" },
+              { "upToAmount": "1000000.00", "bps": "9" },
+              { "upToAmount": null, "bps": "22" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "sandbox-meridian-liquidity",
+      "name": "Aperture Liquidity",
+      "rail": "liquidity_provider",
+      "licensing": "unlicensed_sandbox",
+      "jurisdictions": ["*"],
+      "description": "Wholesale non-bank liquidity provider quoting a principal price, priced better at size.",
+      "reliabilityScore": "0.978",
+      "quoteTtlSeconds": 30,
+      "intermediaryAsset": null,
+      "corridors": {
+        "source": {
+          "currencies": ["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD", "SGD", "HKD"]
+        },
+        "target": {
+          "currencies": [
+            "USD",
+            "EUR",
+            "GBP",
+            "JPY",
+            "CHF",
+            "AUD",
+            "CAD",
+            "SGD",
+            "HKD",
+            "KRW",
+            "CNY",
+            "MXN",
+            "ZAR"
+          ]
+        }
+      },
+      "notionalLimitsUsd": { "min": "25000.00", "max": "100000000.00" },
+      "profiles": [
+        {
+          "label": "Near-major principal price",
+          "match": { "source": "*", "target": { "group": "nearMajors" } },
+          "spread": {
+            "kind": "tiered",
+            "notionalCurrency": "USD",
+            "tiers": [
+              { "upToAmount": "50000.00", "bps": "62" },
+              { "upToAmount": "250000.00", "bps": "36" },
+              { "upToAmount": "5000000.00", "bps": "21" },
+              { "upToAmount": null, "bps": "16" }
+            ]
+          },
+          "fees": [],
+          "settlement": {
+            "p50Seconds": 1800,
+            "p95Seconds": 14400,
+            "businessDaysOnly": true,
+            "cutoffUtc": "20:00",
+            "notes": "Same-day settlement against a confirmed principal price."
+          },
+          "slippage": {
+            "kind": "tiered",
+            "notionalCurrency": "USD",
+            "tiers": [
+              { "upToAmount": "250000.00", "bps": "2" },
+              { "upToAmount": "1000000.00", "bps": "7" },
+              { "upToAmount": null, "bps": "18" }
+            ]
+          }
+        },
+        {
+          "label": "Major principal price",
+          "match": { "source": "*", "target": "*" },
+          "spread": {
+            "kind": "tiered",
+            "notionalCurrency": "USD",
+            "tiers": [
+              { "upToAmount": "50000.00", "bps": "40" },
+              { "upToAmount": "250000.00", "bps": "19" },
+              { "upToAmount": "5000000.00", "bps": "12" },
+              { "upToAmount": null, "bps": "9" }
+            ]
+          },
+          "fees": [],
+          "settlement": {
+            "p50Seconds": 900,
+            "p95Seconds": 7200,
+            "businessDaysOnly": true,
+            "cutoffUtc": "20:00",
+            "notes": "Same-day settlement against a confirmed principal price."
+          },
+          "slippage": {
+            "kind": "tiered",
+            "notionalCurrency": "USD",
+            "tiers": [
+              { "upToAmount": "250000.00", "bps": "2" },
+              { "upToAmount": "1000000.00", "bps": "7" },
+              { "upToAmount": null, "bps": "18" }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

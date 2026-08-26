@@ -5,12 +5,12 @@ requirements, and each one is backed by something in the code rather than by goo
 
 ## Hard boundaries
 
-| Boundary | Enforcement in code |
-| --- | --- |
-| **No custody of customer funds** | No wallet, account, balance, ledger or key-management code exists in the repository. There is no data model capable of representing a customer balance. |
-| **No execution of real financial transactions** | There is no outbound payment-initiation call anywhere in the codebase. `POST /v1/executions` returns `501 EXECUTION_NOT_IMPLEMENTED`, and the refusal is audit-logged and covered by an integration test. |
-| **No holding of crypto assets** | No private keys, no signing, no RPC/on-chain client dependency. Stablecoin rails are priced as *quote data only*. |
-| **No stablecoin issuance** | No minting, burning, reserve or attestation logic. |
+| Boundary                                                       | Enforcement in code                                                                                                                                                                                                                    |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No custody of customer funds**                               | No wallet, account, balance, ledger or key-management code exists in the repository. There is no data model capable of representing a customer balance.                                                                                |
+| **No execution of real financial transactions**                | There is no outbound payment-initiation call anywhere in the codebase. `POST /v1/executions` returns `501 EXECUTION_NOT_IMPLEMENTED`, and the refusal is audit-logged and covered by an integration test.                              |
+| **No holding of crypto assets**                                | No private keys, no signing, no RPC/on-chain client dependency. Stablecoin rails are priced as _quote data only_.                                                                                                                      |
+| **No stablecoin issuance**                                     | No minting, burning, reserve or attestation logic.                                                                                                                                                                                     |
 | **No regulated financial services without a licensed partner** | Every provider descriptor declares a `licensing` posture. Adapters are `unlicensed_sandbox` in Phase 1 and only register in `sandbox` mode. Booting in `production` mode with no licensed adapter configured is a fatal startup error. |
 
 ## Quote status

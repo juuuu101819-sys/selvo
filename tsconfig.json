@@ -1,0 +1,10 @@
+{
+  // Root-level config files only. Each workspace owns its own tsconfig.json.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "types": ["node"]
+  },
+  "include": ["vitest.config.ts"]
+}

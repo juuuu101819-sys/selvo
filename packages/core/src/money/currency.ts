@@ -49,7 +49,9 @@ export const SUPPORTED_CURRENCIES: readonly CurrencyCode[] = (
 ).sort();
 
 export function isCurrencyCode(value: unknown): value is CurrencyCode {
-  return typeof value === 'string' && Object.prototype.hasOwnProperty.call(CURRENCY_REGISTRY, value);
+  return (
+    typeof value === 'string' && Object.prototype.hasOwnProperty.call(CURRENCY_REGISTRY, value)
+  );
 }
 
 export function assertCurrencyCode(value: unknown): CurrencyCode {

@@ -108,7 +108,9 @@ function assertValidSlippageModel(
 
   let previousThreshold: bigint | null = null;
   model.tiers.forEach((tier, index) => {
-    const bps = toDecimalOrFail(tier.bps, () => fail('slippage tier bps is not a decimal', { index }));
+    const bps = toDecimalOrFail(tier.bps, () =>
+      fail('slippage tier bps is not a decimal', { index }),
+    );
     if (bps.isNegative()) {
       fail('slippage tier bps must not be negative', { index });
     }

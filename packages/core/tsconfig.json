@@ -1,9 +1,11 @@
 {
+  // Editor and lint view: covers tests and local config alongside src. The emit graph lives in
+  // tsconfig.build.json, which excludes tests so they never reach dist.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "noEmit": true,
+    "composite": false,
+    "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/**/*.test.ts"]
+  "include": ["src/**/*.ts", "vitest.config.ts"]
 }

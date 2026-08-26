@@ -33,7 +33,7 @@ import type {
 } from '../ports/index.js';
 import { fingerprint } from '../reproducibility/index.js';
 import { serializeComparison } from '../serialization/index.js';
-import { RouteCostEngine } from './cost-engine.js';
+import type { RouteCostEngine } from './cost-engine.js';
 import {
   ENGINE_VERSION,
   type ScoringWeights,
@@ -90,7 +90,8 @@ export class RouteComparisonService {
     const { clock, registry, auditLogger, comparisons, logger } = this.deps;
 
     this.assertValidCorridor(input);
-    const weights = input.weights === null ? this.deps.defaultWeights : parseScoringWeights(input.weights);
+    const weights =
+      input.weights === null ? this.deps.defaultWeights : parseScoringWeights(input.weights);
 
     if (input.idempotencyKey !== null) {
       const existing = await comparisons.findByIdempotencyKey(input.idempotencyKey);
@@ -169,7 +170,10 @@ export class RouteComparisonService {
         requestId: input.requestId,
         comparisonId,
         providerId: null,
-        payload: { reason: 'every provider failed to quote', failures: failures.map(toJsonFailure) },
+        payload: {
+          reason: 'every provider failed to quote',
+          failures: failures.map(toJsonFailure),
+        },
       });
       throw new NoRoutesAvailableError(
         'No provider returned a usable quote for this transaction.',
@@ -357,10 +361,7 @@ export class RouteComparisonService {
     }
 
     const cheapest = pickBy(routes, (a, b) => a.totalCost.lessThan(b.totalCost));
-    const fastest = pickBy(
-      routes,
-      (a, b) => a.settlement.p50Seconds < b.settlement.p50Seconds,
-    );
+    const fastest = pickBy(routes, (a, b) => a.settlement.p50Seconds < b.settlement.p50Seconds);
     const mostExpensive = pickBy(routes, (a, b) => a.totalCost.greaterThan(b.totalCost));
 
     const savings = mostExpensive.totalCost.subtract(recommended.totalCost);
@@ -485,7 +486,10 @@ function sortById<T>(items: readonly T[], key: (item: T) => string): readonly T[
   return [...items].sort((left, right) => key(left).localeCompare(key(right), 'en'));
 }
 
-function pickBy<T>(items: readonly [T, ...T[]] | readonly T[], isBetter: (a: T, b: T) => boolean): T {
+function pickBy<T>(
+  items: readonly [T, ...T[]] | readonly T[],
+  isBetter: (a: T, b: T) => boolean,
+): T {
   const [first, ...rest] = items;
   if (first === undefined) {
     throw new NoRoutesAvailableError('Cannot select from an empty route set.');

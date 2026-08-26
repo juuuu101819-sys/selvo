@@ -69,10 +69,10 @@ export class UnsupportedCorridorError extends AppError {
   readonly httpStatus = 422;
 
   constructor(sourceCurrency: string, targetCurrency: string) {
-    super(
-      `No provider prices the ${sourceCurrency} to ${targetCurrency} corridor in this mode.`,
-      { sourceCurrency, targetCurrency },
-    );
+    super(`No provider prices the ${sourceCurrency} to ${targetCurrency} corridor in this mode.`, {
+      sourceCurrency,
+      targetCurrency,
+    });
   }
 }
 

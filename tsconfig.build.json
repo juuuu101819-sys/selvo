@@ -1,9 +1,9 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/core" },
-    { "path": "./packages/adapters" },
-    { "path": "./packages/persistence" },
-    { "path": "./apps/api" }
+    { "path": "./packages/core/tsconfig.build.json" },
+    { "path": "./packages/adapters/tsconfig.build.json" },
+    { "path": "./packages/persistence/tsconfig.build.json" },
+    { "path": "./apps/api/tsconfig.build.json" }
   ]
 }

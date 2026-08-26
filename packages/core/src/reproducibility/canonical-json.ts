@@ -46,7 +46,8 @@ function stringify(value: unknown, path: readonly string[]): string {
       throw new ValidationError('Cannot canonicalise `undefined`.', { path: path.join('.') });
     case 'object':
       break;
-    default:
+    case 'symbol':
+    case 'function':
       throw new ValidationError(`Cannot canonicalise a value of type ${typeof value}.`, {
         path: path.join('.'),
       });

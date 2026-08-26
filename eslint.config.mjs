@@ -51,11 +51,31 @@ export default tseslint.config(
       ],
       'no-restricted-properties': [
         'error',
-        { object: 'Math', property: 'round', message: 'Use Decimal rounding with an explicit mode.' },
-        { object: 'Math', property: 'floor', message: 'Use Decimal rounding with an explicit mode.' },
-        { object: 'Math', property: 'ceil', message: 'Use Decimal rounding with an explicit mode.' },
-        { object: 'Math', property: 'random', message: 'Non-deterministic. Financial calculations must be reproducible.' },
-        { object: 'Number', property: 'parseFloat', message: 'Float parsing is unsafe on the money path.' },
+        {
+          object: 'Math',
+          property: 'round',
+          message: 'Use Decimal rounding with an explicit mode.',
+        },
+        {
+          object: 'Math',
+          property: 'floor',
+          message: 'Use Decimal rounding with an explicit mode.',
+        },
+        {
+          object: 'Math',
+          property: 'ceil',
+          message: 'Use Decimal rounding with an explicit mode.',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message: 'Non-deterministic. Financial calculations must be reproducible.',
+        },
+        {
+          object: 'Number',
+          property: 'parseFloat',
+          message: 'Float parsing is unsafe on the money path.',
+        },
       ],
       'no-restricted-syntax': [
         'error',
@@ -68,6 +88,13 @@ export default tseslint.config(
           message: 'Inject the Clock port instead of reading the wall clock directly.',
         },
       ],
+    },
+  },
+  {
+    // The Clock port is the single place the wall clock may be read; everything else injects it.
+    files: ['packages/core/src/ports/clock.ts'],
+    rules: {
+      'no-restricted-syntax': 'off',
     },
   },
   {

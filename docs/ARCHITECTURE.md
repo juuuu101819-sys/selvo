@@ -12,14 +12,14 @@ boundaries that the code enforces.
 
 ## 1. Design goals
 
-| Goal | How the architecture delivers it |
-| --- | --- |
-| Providers are replaceable | Every liquidity source sits behind the `RouteProvider` port. The engine never imports a concrete provider. |
-| No hardcoded quotes in business logic | Providers return *quote primitives* (raw rates, fee schedules, slippage model parameters). Pricing data lives in versioned data files / external APIs, never in engine code. |
-| Decimal-safe arithmetic | Monetary amounts are `bigint` minor units. Rates and ratios are `decimal.js` values with an explicit precision and rounding mode. No `number` arithmetic anywhere on the money path. |
-| Reproducible calculations | Every comparison persists its full input snapshot (request + raw provider quotes + engine config) and a SHA-256 `fingerprint`. Replaying the snapshot must produce the same fingerprint. |
-| Auditable | Financially meaningful events are written to an append-only audit log through the `AuditLogger` port. |
-| Sandbox / production separation | `PLATFORM_MODE` is a first-class, validated config value. Provider registration, response envelopes and the UI all branch on it. |
+| Goal                                  | How the architecture delivers it                                                                                                                                                         |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Providers are replaceable             | Every liquidity source sits behind the `RouteProvider` port. The engine never imports a concrete provider.                                                                               |
+| No hardcoded quotes in business logic | Providers return _quote primitives_ (raw rates, fee schedules, slippage model parameters). Pricing data lives in versioned data files / external APIs, never in engine code.             |
+| Decimal-safe arithmetic               | Monetary amounts are `bigint` minor units. Rates and ratios are `decimal.js` values with an explicit precision and rounding mode. No `number` arithmetic anywhere on the money path.     |
+| Reproducible calculations             | Every comparison persists its full input snapshot (request + raw provider quotes + engine config) and a SHA-256 `fingerprint`. Replaying the snapshot must produce the same fingerprint. |
+| Auditable                             | Financially meaningful events are written to an append-only audit log through the `AuditLogger` port.                                                                                    |
+| Sandbox / production separation       | `PLATFORM_MODE` is a first-class, validated config value. Provider registration, response envelopes and the UI all branch on it.                                                         |
 
 ## 2. Bounded contexts and module map
 
@@ -57,7 +57,7 @@ Two distinct numeric kinds, deliberately not interchangeable:
 ```ts
 class Money {
   readonly currency: CurrencyCode; // "USD"
-  readonly minorUnits: bigint;     // 10_000_000n  == USD 100,000.00
+  readonly minorUnits: bigint; // 10_000_000n  == USD 100,000.00
 }
 ```
 
@@ -67,7 +67,7 @@ from a currency registry (`USD` → 2, `KRW` → 0, `JPY` → 0, `BHD` → 3). A
 runtime both refuse it.
 
 **`Rate` / `Ratio`** — a dimensionless or cross-currency conversion factor, backed by
-`decimal.js` configured with 34 significant digits. Rates are *never* rounded to minor units;
+`decimal.js` configured with 34 significant digits. Rates are _never_ rounded to minor units;
 only the result of applying a rate to a `Money` is.
 
 **Rounding.** Every operation that leaves the exact decimal domain names its rounding mode.
@@ -86,27 +86,27 @@ A liquidity source is anything that can price a corridor. It is modelled as:
 
 ```ts
 interface RouteProvider {
-  readonly descriptor: ProviderDescriptor;      // id, display name, rail, mode, licensing posture
-  supports(request: QuoteRequest): boolean;     // corridor / notional / rail eligibility
+  readonly descriptor: ProviderDescriptor; // id, display name, rail, mode, licensing posture
+  supports(request: QuoteRequest): boolean; // corridor / notional / rail eligibility
   fetchQuote(request: QuoteRequest, ctx: ProviderContext): Promise<ProviderQuote>;
 }
 ```
 
-`ProviderQuote` is intentionally *raw pricing input*, not a result:
+`ProviderQuote` is intentionally _raw pricing input_, not a result:
 
 ```ts
 interface ProviderQuote {
-  providerId: ProviderId;          // rule 12 — every quote is attributable
-  quotedAt: string;                // rule 11 — every quote is timestamped (ISO-8601 UTC)
+  providerId: ProviderId; // rule 12 — every quote is attributable
+  quotedAt: string; // rule 11 — every quote is timestamped (ISO-8601 UTC)
   expiresAt: string | null;
-  quoteReference: string | null;   // the upstream provider's own quote id
-  midMarketRate: string;           // decimal string
-  offeredRate: string;             // decimal string
-  fees: FeeSchedule;               // fixed + proportional components
-  settlement: SettlementEstimate;  // p50/p95 seconds + business-day semantics
-  slippage: SlippageModel;         // bps by notional tier, or none
-  reliabilityScore: string;        // 0..1, provider historical success
-  raw: JsonValue;                  // untouched upstream payload, persisted for audit
+  quoteReference: string | null; // the upstream provider's own quote id
+  midMarketRate: string; // decimal string
+  offeredRate: string; // decimal string
+  fees: FeeSchedule; // fixed + proportional components
+  settlement: SettlementEstimate; // p50/p95 seconds + business-day semantics
+  slippage: SlippageModel; // bps by notional tier, or none
+  reliabilityScore: string; // 0..1, provider historical success
+  raw: JsonValue; // untouched upstream payload, persisted for audit
 }
 ```
 
@@ -151,7 +151,7 @@ fully deterministic, no dependence on provider response order.
 
 ## 7. Reproducibility
 
-Reproducibility is a property we can *test*, not a claim:
+Reproducibility is a property we can _test_, not a claim:
 
 1. The request is normalised into a canonical form.
 2. Provider quotes are captured verbatim.
@@ -188,7 +188,7 @@ not-implemented. The API has a single error serialiser producing:
 ```
 
 Unexpected exceptions are logged with full context and returned as `INTERNAL_ERROR` with no
-internals leaked. Provider failures are *partial* failures: one dead provider degrades the
+internals leaked. Provider failures are _partial_ failures: one dead provider degrades the
 comparison (recorded in `providerErrors`) instead of failing the request.
 
 ## 10. Configuration

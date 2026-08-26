@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { PricedRoute } from '../domain/index.js';
 import { Dec } from '../money/index.js';
-import { buildProviderDescriptor, buildProviderQuote, buildQuoteRequest } from '../testing/index.js';
+import {
+  buildProviderDescriptor,
+  buildProviderQuote,
+  buildQuoteRequest,
+} from '../testing/index.js';
 import { RouteCostEngine } from './cost-engine.js';
 import { defaultScoringWeights, parseScoringWeights } from './engine-config.js';
 import { RouteScorer } from './route-scorer.js';
@@ -135,11 +139,25 @@ describe('RouteScorer', () => {
 
   it('breaks a score tie by cost, then settlement time, then route id', () => {
     // Equal weighted scores by construction: one is cheaper, the other faster.
-    const scorer = new RouteScorer(parseScoringWeights({ cost: '0.5', speed: '0.5', reliability: '0' }));
+    const scorer = new RouteScorer(
+      parseScoringWeights({ cost: '0.5', speed: '0.5', reliability: '0' }),
+    );
     const scored = scorer.score(
       [
-        { providerId: 'cheap', rail: 'bank_fx', offeredRate: '1299', p50Seconds: 86_400, reliability: '1' },
-        { providerId: 'fast', rail: 'bank_fx', offeredRate: '1290', p50Seconds: 60, reliability: '1' },
+        {
+          providerId: 'cheap',
+          rail: 'bank_fx',
+          offeredRate: '1299',
+          p50Seconds: 86_400,
+          reliability: '1',
+        },
+        {
+          providerId: 'fast',
+          rail: 'bank_fx',
+          offeredRate: '1290',
+          p50Seconds: 60,
+          reliability: '1',
+        },
       ].map((candidate) => priceCandidate(candidate as Candidate)),
     );
 

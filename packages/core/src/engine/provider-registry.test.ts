@@ -87,9 +87,7 @@ describe('ProviderRegistry', () => {
         stub('bank', { rail: 'bank_fx' }),
         stub('coin', { rail: 'stablecoin_settlement' }),
       ]);
-      const filtered = registry.eligible(
-        buildQuoteRequest({ rails: ['stablecoin_settlement'] }),
-      );
+      const filtered = registry.eligible(buildQuoteRequest({ rails: ['stablecoin_settlement'] }));
       expect(filtered.map((provider) => provider.descriptor.id)).toEqual(['coin']);
     });
 

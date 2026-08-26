@@ -428,9 +428,9 @@ describe('RouteComparisonService', () => {
       expect(types).toContain('comparison.completed');
       expect(harness.audit.typesFor('provider.quote.received')).toHaveLength(3);
       expect(harness.audit.events.every((event) => event.actor === 'test-user')).toBe(true);
-      expect(
-        harness.audit.typesFor('comparison.completed')[0]?.payload['fingerprint'],
-      ).toBe(comparison.fingerprint);
+      expect(harness.audit.typesFor('comparison.completed')[0]?.payload['fingerprint']).toBe(
+        comparison.fingerprint,
+      );
     });
 
     it('records a provider failure', async () => {
