@@ -71,7 +71,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     try {
       const rows = await this.client.$queryRaw<{ present: boolean }[]>`
         SELECT (to_regclass('public.comparisons') IS NOT NULL
-                AND to_regclass('public.audit_events') IS NOT NULL) AS present
+                AND to_regclass('public.audit_logs') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(
@@ -162,7 +162,7 @@ class PrismaAuditLogRepository implements AuditLogRepository {
 
   async append(event: AuditEvent): Promise<void> {
     try {
-      await this.client.auditEvent.create({
+      await this.client.auditLog.create({
         data: {
           eventId: event.eventId,
           type: event.type,
@@ -181,7 +181,7 @@ class PrismaAuditLogRepository implements AuditLogRepository {
 
   async listByComparison(comparisonId: string): Promise<readonly AuditEvent[]> {
     const rows = await this.query(() =>
-      this.client.auditEvent.findMany({
+      this.client.auditLog.findMany({
         where: { comparisonId },
         orderBy: { occurredAt: 'asc' },
       }),
@@ -191,7 +191,7 @@ class PrismaAuditLogRepository implements AuditLogRepository {
 
   async list(options: { limit?: number } = {}): Promise<readonly AuditEvent[]> {
     const rows = await this.query(() =>
-      this.client.auditEvent.findMany({
+      this.client.auditLog.findMany({
         orderBy: { occurredAt: 'desc' },
         take: options.limit ?? DEFAULT_LIST_LIMIT,
       }),

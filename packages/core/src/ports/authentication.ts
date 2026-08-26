@@ -15,13 +15,13 @@ export type PrincipalKind = (typeof PRINCIPAL_KINDS)[number];
 /**
  * Who is making a request.
  *
- * `organisationId` is the tenant boundary every future query is scoped by. It is nullable only
- * because Phase 1 has no tenants; once authentication is real, a null organisation on a
+ * `organizationId` is the tenant boundary every future query is scoped by. It is nullable only
+ * because Phase 1 has no tenants; once authentication is real, a null organization on a
  * business-data request is a bug rather than a valid state.
  */
 export interface Principal {
   readonly kind: PrincipalKind;
-  readonly organisationId: string | null;
+  readonly organizationId: string | null;
   /** User id or API key id, depending on `kind`. */
   readonly subjectId: string | null;
   readonly displayName: string;
@@ -37,7 +37,7 @@ export interface Principal {
 
 export const ANONYMOUS_PRINCIPAL: Principal = {
   kind: 'anonymous',
-  organisationId: null,
+  organizationId: null,
   subjectId: null,
   displayName: 'Anonymous',
   roles: [],

@@ -1,24 +1,31 @@
 // Meridian database schema.
 //
-// Prisma is the source of truth for the schema and for migrations. The generated client is
-// consumed only by packages/persistence, behind the ComparisonRepository and AuditLogRepository
-// ports — nothing above the persistence layer imports Prisma, so the store stays replaceable.
+// Prisma is the source of truth for the schema and for migrations. The generated client is consumed
+// only by packages/persistence, behind the repository ports, so nothing above the persistence layer
+// imports Prisma and the store stays replaceable.
 //
-// Two conventions carry through from the domain model:
+// Four conventions run through the whole schema:
 //
-//   * Monetary amounts are Decimal(38, 0) counts of a currency's minor units. Never Float, never
-//     Money, never an Int that could silently overflow. The client returns Decimal, which is
-//     converted to an exact string at the repository boundary.
-//   * The audit trail is append-only. Prisma cannot express that, so the migration adds a trigger
-//     and the repository exposes no update or delete.
+//   * Monetary amounts are Decimal(38, 0) counts of a currency's minor units, and rates are
+//     Decimal(38, 18). Never Float, never Money, never an Int that could silently overflow. The
+//     repository converts Decimal to an exact string at the boundary and never calls toNumber().
+//   * Every table carries createdAt, and every mutable table carries updatedAt.
+//   * Closed sets are PostgreSQL enums rather than free text, so the database rejects a value the
+//     domain does not recognise. This is what lets the non-custody boundary be enforced by the
+//     schema: TransactionRequestStatus has no settled, executed or funded state to write.
+//   * No credential is ever stored for a provider. Provider secrets are resolved from the
+//     environment through the SecretResolver port; the metadata column holds only non-secret
+//     operational detail such as a base URL or a support contact.
+//
+// See docs/DATABASE.md for the full narrative and the field-name mapping.
 
 generator client {
   // `prisma-client-js` emits JavaScript plus .d.ts declarations, re-exported through
   // `@prisma/client`. The newer `prisma-client` generator emits TypeScript that imports with
   // explicit `.ts` extensions, which a NodeNext package compiling to dist/ cannot consume without
-  // disabling its own emit — and its output would have to be imported by relative path from
-  // outside the package's rootDir. Generating to the conventional location keeps the import a
-  // plain package specifier.
+  // disabling its own emit — and its output would have to be imported by relative path from outside
+  // the package's rootDir. Generating to the conventional location keeps the import a plain
+  // package specifier.
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
 }
@@ -27,7 +34,600 @@ datasource db {
   provider = "postgresql"
 }
 
+// ---------------------------------------------------------------------------
+// Enumerations
+// ---------------------------------------------------------------------------
+
+/// Settlement mechanism a route uses. Mirrors RAIL_TYPES in packages/core.
+enum ProviderRail {
+  bank_fx
+  payment_institution
+  stablecoin_settlement
+  liquidity_provider
+  dex_liquidity
+  treasury_product
+}
+
+/// Regulatory posture of a provider. Decides which platform modes may serve it.
+enum ProviderLicensing {
+  unlicensed_sandbox
+  licensed_partner
+  internal_model
+}
+
+enum PlatformMode {
+  sandbox
+  production
+}
+
+/// Lifecycle shared by records that are enabled, paused or withdrawn.
+enum RecordStatus {
+  active
+  suspended
+  retired
+}
+
+enum CurrencyKind {
+  fiat
+  /// A regulated stablecoin used only as an intermediary leg. Meridian never holds the asset.
+  stablecoin
+}
+
+enum OrganizationRole {
+  owner
+  admin
+  member
+  viewer
+}
+
+enum MembershipStatus {
+  invited
+  active
+  suspended
+  removed
+}
+
+/// Lifecycle of a *requested* transaction.
+///
+/// There is deliberately no settled, executed, funded or in_flight state. Meridian is
+/// non-custodial: it records what a customer asked to compare and which quote they indicated they
+/// would use, then the customer transacts with the provider directly. Adding a settlement state
+/// here would require a migration, a schema review and the compliance checklist in
+/// docs/COMPLIANCE.md — which is exactly the friction it should have.
+enum TransactionRequestStatus {
+  /// Created, not yet priced.
+  draft
+  /// Priced, with at least one live quote.
+  quoted
+  /// Every quote passed its expiry.
+  quotes_expired
+  /// The customer indicated which quote they intend to use. Non-binding; no funds move.
+  quote_selected
+  /// Withdrawn by the customer or the platform.
+  cancelled
+}
+
+enum QuoteStatus {
+  active
+  expired
+  /// Replaced by a newer quote from the same provider for the same request.
+  superseded
+  /// The provider withdrew or declined the price.
+  withdrawn
+}
+
+/// Which leg of the transfer a fee is deducted from. Changes the arithmetic, so it is modelled.
+enum FeeSide {
+  source
+  destination
+}
+
+enum FeeKind {
+  fixed
+  proportional
+}
+
+/// Who levies a fee. Kept distinct from `side` so a platform markup is never mistaken for a
+/// provider charge when a customer disputes a number.
+enum FeeCharger {
+  provider
+  platform
+  correspondent
+  network
+}
+
+/// A hop within a quote. A stablecoin route has three; a bank wire has one.
+enum QuoteLegKind {
+  fx_conversion
+  fiat_onramp
+  stablecoin_transfer
+  fiat_offramp
+  local_payout
+  correspondent_transfer
+}
+
+// ---------------------------------------------------------------------------
+// Reference data
+// ---------------------------------------------------------------------------
+
+/// ISO 4217 currency reference data.
+///
+/// This table governs which currencies the platform *offers*. It is not the source of truth for
+/// arithmetic: CURRENCY_REGISTRY in packages/core is, because the money model needs a currency's
+/// minor-unit exponent synchronously and offline, with no database round trip on the money path. A
+/// test asserts the two agree, so a seeded exponent can never silently diverge from the one the
+/// engine calculates with.
+model Currency {
+  code        String       @id @db.VarChar(3)
+  numericCode String?      @map("numeric_code") @db.VarChar(3)
+  name        String
+  /// ISO 4217 minor unit exponent: 2 for USD, 0 for KRW, 3 for KWD.
+  exponent    Int
+  kind        CurrencyKind @default(fiat)
+  symbol      String?      @db.VarChar(8)
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  capabilitiesAsSource  ProviderCapability[] @relation("CapabilitySourceCurrency")
+  capabilitiesAsTarget  ProviderCapability[] @relation("CapabilityTargetCurrency")
+  routesAsSource        Route[]              @relation("RouteSourceCurrency")
+  routesAsTarget        Route[]              @relation("RouteTargetCurrency")
+  requestsAsSource      TransactionRequest[] @relation("RequestSourceCurrency")
+  requestsAsTarget      TransactionRequest[] @relation("RequestTargetCurrency")
+  quotesAsSource        Quote[]              @relation("QuoteSourceCurrency")
+  quotesAsTarget        Quote[]              @relation("QuoteTargetCurrency")
+  legsAsFrom            QuoteLeg[]           @relation("LegFromCurrency")
+  legsAsTo              QuoteLeg[]           @relation("LegToCurrency")
+  fees                  Fee[]
+  pricingAsSource       CustomerPricing[]    @relation("PricingSourceCurrency")
+  pricingAsTarget       CustomerPricing[]    @relation("PricingTargetCurrency")
+  pricingAsFeeCurrency  CustomerPricing[]    @relation("PricingFeeCurrency")
+
+  @@index([isActive])
+  @@map("currencies")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy and identity
+// ---------------------------------------------------------------------------
+
+/// A business customer. The tenant boundary every query is scoped by.
+model Organization {
+  id          String       @id
+  name        String
+  /// URL-safe identifier used in place of the id in customer-facing contexts.
+  slug        String       @unique
+  countryCode String       @map("country_code") @db.VarChar(2)
+  status      RecordStatus @default(active)
+  /// Non-secret operational detail: billing contact, industry, onboarding notes.
+  metadata    Json         @default("{}")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  members             OrganizationMember[]
+  apiKeys             ApiKey[]
+  transactionRequests TransactionRequest[]
+  quotes              Quote[]
+  customerPricing     CustomerPricing[]
+  comparisons         Comparison[]
+  auditLogs           AuditLog[]
+
+  @@map("organizations")
+}
+
+/// A person. Membership of an organization is a separate record, so one person can act for several
+/// businesses — a group treasury function or an external accountant, both of which are normal in
+/// this market and painful to retrofit.
+model User {
+  id              String       @id
+  email           String       @unique
+  displayName     String       @map("display_name")
+  status          RecordStatus @default(active)
+  emailVerifiedAt DateTime?    @map("email_verified_at") @db.Timestamptz(3)
+  locale          String       @default("en") @db.VarChar(16)
+  timezone        String       @default("UTC")
+  /// Argon2id hash. Null until authentication is implemented; the plaintext is never stored, never
+  /// logged, and never selected into a DTO.
+  passwordHash    String?      @map("password_hash")
+  passwordSetAt   DateTime?    @map("password_set_at") @db.Timestamptz(3)
+  lastSeenAt      DateTime?    @map("last_seen_at") @db.Timestamptz(3)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  memberships         OrganizationMember[]
+  transactionRequests TransactionRequest[]
+
+  @@map("users")
+}
+
+/// Membership of an organization, carrying the role.
+model OrganizationMember {
+  id             String           @id
+  organizationId String           @map("organization_id")
+  userId         String           @map("user_id")
+  role           OrganizationRole @default(member)
+  status         MembershipStatus @default(active)
+  invitedAt      DateTime?        @map("invited_at") @db.Timestamptz(3)
+  joinedAt       DateTime?        @map("joined_at") @db.Timestamptz(3)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@map("organization_members")
+}
+
+/// Credential for a machine caller. Only a hash is stored; the secret is shown once on issue.
+model ApiKey {
+  id             String    @id
+  organizationId String    @map("organization_id")
+  /// Non-secret prefix, safe to display and to log, used to identify the key.
+  keyPrefix      String    @unique @map("key_prefix")
+  /// Hash of the secret. The secret itself is never persisted.
+  secretHash     String    @map("secret_hash")
+  label          String
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("api_keys")
+}
+
+// ---------------------------------------------------------------------------
+// Providers
+// ---------------------------------------------------------------------------
+
+/// A liquidity source: a bank, a payment institution, a stablecoin partner, a wholesale LP.
+///
+/// This is the *operational* registry — who exists, what they are licensed for, whether they are
+/// currently enabled. It holds no credentials of any kind. The pricing *integration* for a provider
+/// is a RouteProvider adapter in packages/adapters, linked to this row by `adapterId`.
+model Provider {
+  id               String            @id
+  slug             String            @unique
+  name             String
+  rail             ProviderRail
+  licensing        ProviderLicensing
+  status           RecordStatus      @default(active)
+  /// Platform modes this provider may be served in. A sandbox provider never reaches production.
+  modes            PlatformMode[]
+  /// ISO 3166-1 alpha-2 codes the provider is authorised to serve, or ["*"] for global.
+  jurisdictions    String[]
+  description      String
+  /// Identifier of the RouteProvider adapter that prices this provider, if one is registered.
+  adapterId        String?           @unique @map("adapter_id")
+  /// Version of the pricing dataset or upstream API contract behind the adapter.
+  pricingVersion   String            @map("pricing_version")
+  /// Historical settlement success rate, 0..1.
+  reliabilityScore Decimal           @map("reliability_score") @db.Decimal(5, 4)
+  /// How long this provider's quotes stay indicative.
+  quoteTtlSeconds  Int               @map("quote_ttl_seconds")
+  /// Non-secret operational metadata only: base URL, docs link, support contact, SLA notes.
+  /// Credentials are resolved from the environment through the SecretResolver port.
+  metadata         Json              @default("{}")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  capabilities    ProviderCapability[]
+  routes          Route[]
+  quotes          Quote[]
+  customerPricing CustomerPricing[]
+
+  @@index([rail, status])
+  @@index([status])
+  @@map("providers")
+}
+
+/// What a provider can actually do on one corridor: limits, timing and indicative spread.
+///
+/// Kept separate from Provider because coverage is per-corridor and changes far more often than the
+/// provider itself — a bank adding KRW payout is a capability change, not a new provider.
+model ProviderCapability {
+  id                   String   @id
+  providerId           String   @map("provider_id")
+  sourceCurrency       String   @map("source_currency") @db.VarChar(3)
+  targetCurrency       String   @map("target_currency") @db.VarChar(3)
+  /// Inclusive bounds, in minor units of sourceCurrency.
+  minAmountMinorUnits  Decimal  @map("min_amount_minor_units") @db.Decimal(38, 0)
+  maxAmountMinorUnits  Decimal  @map("max_amount_minor_units") @db.Decimal(38, 0)
+  /// Indicative spread over mid-market for this corridor, in basis points.
+  spreadBps            Decimal  @map("spread_bps") @db.Decimal(12, 4)
+  /// Expected execution slippage in basis points, for rails that have any.
+  slippageBps          Decimal  @default(0) @map("slippage_bps") @db.Decimal(12, 4)
+  settlementP50Seconds Int      @map("settlement_p50_seconds")
+  settlementP95Seconds Int      @map("settlement_p95_seconds")
+  businessDaysOnly     Boolean  @default(false) @map("business_days_only")
+  /// Daily cut-off after which settlement rolls to the next window, as "HH:MM" UTC.
+  cutoffUtc            String?  @map("cutoff_utc") @db.VarChar(5)
+  /// Intermediary asset for the middle leg, where the rail has one. Never held by the platform.
+  intermediaryAsset    String?  @map("intermediary_asset") @db.VarChar(8)
+  isActive             Boolean  @default(true) @map("is_active")
+  notes                String?
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  source   Currency @relation("CapabilitySourceCurrency", fields: [sourceCurrency], references: [code])
+  target   Currency @relation("CapabilityTargetCurrency", fields: [targetCurrency], references: [code])
+
+  @@unique([providerId, sourceCurrency, targetCurrency])
+  @@index([sourceCurrency, targetCurrency, isActive])
+  @@map("provider_capabilities")
+}
+
+// ---------------------------------------------------------------------------
+// Routes and pricing
+// ---------------------------------------------------------------------------
+
+/// A path a transaction can take: one provider, one rail, one corridor.
+///
+/// A Route is the thing a Quote is a price *for*. Separating them means the catalogue of what is
+/// possible is queryable without reading through priced quotes, and a route's history survives the
+/// expiry of every quote against it.
+model Route {
+  id             String       @id
+  /// Stable, human-readable key: "<providerSlug>:<rail>:<source>-<target>".
+  key            String       @unique
+  providerId     String       @map("provider_id")
+  rail           ProviderRail
+  sourceCurrency String       @map("source_currency") @db.VarChar(3)
+  targetCurrency String       @map("target_currency") @db.VarChar(3)
+  /// Ordered hops this route passes through, describing the shape of its quote legs.
+  legTemplate    QuoteLegKind[] @map("leg_template")
+  status         RecordStatus @default(active)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  source   Currency @relation("RouteSourceCurrency", fields: [sourceCurrency], references: [code])
+  target   Currency @relation("RouteTargetCurrency", fields: [targetCurrency], references: [code])
+  quotes   Quote[]
+
+  @@unique([providerId, sourceCurrency, targetCurrency, rail])
+  @@index([sourceCurrency, targetCurrency, status])
+  @@map("routes")
+}
+
+/// Commercial terms for one organization: what the platform adds to, or takes off, a provider price.
+///
+/// Modelled as overlapping rules resolved by `priority` rather than a single rate per customer,
+/// because real B2B pricing is negotiated per corridor and per rail. `effectiveFrom`/`effectiveTo`
+/// make a repricing an insert rather than an update, so a historical quote can always be explained
+/// by the terms that applied when it was issued.
+model CustomerPricing {
+  id                    String        @id
+  organizationId        String        @map("organization_id")
+  /// Narrowing filters. Null means "any".
+  sourceCurrency        String?       @map("source_currency") @db.VarChar(3)
+  targetCurrency        String?       @map("target_currency") @db.VarChar(3)
+  rail                  ProviderRail?
+  providerId            String?       @map("provider_id")
+  /// Platform markup added on top of the provider's price, in basis points.
+  markupBps             Decimal       @default(0) @map("markup_bps") @db.Decimal(12, 4)
+  /// Discount off the provider's spread, in basis points, negotiated for this customer.
+  discountBps           Decimal       @default(0) @map("discount_bps") @db.Decimal(12, 4)
+  /// Fixed platform fee per transaction, in minor units of `feeCurrency`.
+  platformFeeMinorUnits Decimal       @default(0) @map("platform_fee_minor_units") @db.Decimal(38, 0)
+  feeCurrency           String?       @map("fee_currency") @db.VarChar(3)
+  /// Highest priority wins when several rows match a request.
+  priority              Int           @default(0)
+  status                RecordStatus  @default(active)
+  effectiveFrom         DateTime      @map("effective_from") @db.Timestamptz(3)
+  effectiveTo           DateTime?     @map("effective_to") @db.Timestamptz(3)
+  notes                 String?
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  provider     Provider?    @relation(fields: [providerId], references: [id], onDelete: SetNull)
+  source       Currency?    @relation("PricingSourceCurrency", fields: [sourceCurrency], references: [code])
+  target       Currency?    @relation("PricingTargetCurrency", fields: [targetCurrency], references: [code])
+  feeCurrencyRef Currency?  @relation("PricingFeeCurrency", fields: [feeCurrency], references: [code])
+  quotes       Quote[]
+
+  @@index([organizationId, status, priority(sort: Desc)])
+  @@index([organizationId, sourceCurrency, targetCurrency])
+  @@map("customer_pricing")
+}
+
+// ---------------------------------------------------------------------------
+// Requests and quotes
+// ---------------------------------------------------------------------------
+
+/// A transaction a customer has asked Meridian to price.
+///
+/// This is a *request*, not a settlement. Meridian does not custody funds and does not move money:
+/// the record ends at the customer indicating which quote they intend to use. See the note on
+/// TransactionRequestStatus.
+model TransactionRequest {
+  id                String                   @id
+  organizationId    String                   @map("organization_id")
+  requestedByUserId String?                  @map("requested_by_user_id")
+  /// The customer's own reference, e.g. an invoice or payment run id.
+  reference         String?
+  sourceCurrency    String                   @map("source_currency") @db.VarChar(3)
+  targetCurrency    String                   @map("target_currency") @db.VarChar(3)
+  /// Amount in minor units of `sourceCurrency`.
+  amountMinorUnits  Decimal                  @map("amount_minor_units") @db.Decimal(38, 0)
+  status            TransactionRequestStatus @default(draft)
+  /// Which quote the customer indicated they would use. Non-binding; no funds move.
+  selectedQuoteId   String?                  @unique @map("selected_quote_id")
+  selectedAt        DateTime?                @map("selected_at") @db.Timestamptz(3)
+  notes             String?
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedByUser User?        @relation(fields: [requestedByUserId], references: [id], onDelete: SetNull)
+  source          Currency     @relation("RequestSourceCurrency", fields: [sourceCurrency], references: [code])
+  target          Currency     @relation("RequestTargetCurrency", fields: [targetCurrency], references: [code])
+  quotes          Quote[]
+  comparisons     Comparison[]
+
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([sourceCurrency, targetCurrency])
+  @@map("transaction_requests")
+}
+
+/// One provider's price for one transaction request.
+///
+/// Every figure here is derived by the routing engine from the provider's pricing primitives, so a
+/// quote can always be explained: `exchangeRate` against `midMarketRate` gives the spread,
+/// `totalCostMinorUnits` against `benchmarkReceiveMinorUnits` gives the all-in cost, and the Fee
+/// and QuoteLeg rows account for the rest.
+model Quote {
+  id                   String      @id
+  organizationId       String      @map("organization_id")
+  transactionRequestId String      @map("transaction_request_id")
+  providerId           String      @map("provider_id")
+  routeId              String?     @map("route_id")
+  status               QuoteStatus @default(active)
+
+  /// The provider's own reference for this price, for reconciliation upstream.
+  providerQuoteReference String? @map("provider_quote_reference")
+  /// Rule 11: every quote is timestamped. Rule 12: every quote names its provider.
+  quotedAt               DateTime  @map("quoted_at") @db.Timestamptz(3)
+  /// When the price stops being indicative. Required: a quote without an expiry is a liability.
+  expiresAt              DateTime  @map("expires_at") @db.Timestamptz(3)
+
+  sourceCurrency   String  @map("source_currency") @db.VarChar(3)
+  targetCurrency   String  @map("target_currency") @db.VarChar(3)
+  /// Amount sent, in minor units of `sourceCurrency`.
+  amountMinorUnits Decimal @map("amount_minor_units") @db.Decimal(38, 0)
+
+  /// Interbank mid-market rate observed when the quote was made. The cost benchmark.
+  midMarketRate Decimal @map("mid_market_rate") @db.Decimal(38, 18)
+  /// The rate the provider offered.
+  exchangeRate  Decimal @map("exchange_rate") @db.Decimal(38, 18)
+  /// Realised all-in rate: estimated receive divided by amount sent.
+  effectiveRate Decimal @map("effective_rate") @db.Decimal(38, 18)
+  /// Provider spread over mid-market, in basis points.
+  spreadBps     Decimal @map("spread_bps") @db.Decimal(12, 4)
+  /// Expected execution slippage at this notional, in basis points.
+  slippageBps   Decimal @default(0) @map("slippage_bps") @db.Decimal(12, 4)
+
+  /// Sum of the Fee rows, in minor units of `targetCurrency`.
+  totalFeeMinorUnits         Decimal @map("total_fee_minor_units") @db.Decimal(38, 0)
+  /// All-in cost against the mid-market benchmark, in minor units of `targetCurrency`.
+  totalCostMinorUnits        Decimal @map("total_cost_minor_units") @db.Decimal(38, 0)
+  totalCostBps               Decimal @map("total_cost_bps") @db.Decimal(12, 4)
+  /// What the beneficiary is expected to receive, in minor units of `targetCurrency`.
+  estimatedReceiveMinorUnits Decimal @map("estimated_receive_minor_units") @db.Decimal(38, 0)
+  /// What they would receive at mid-market with zero costs. Makes the cost figure explainable.
+  benchmarkReceiveMinorUnits Decimal @map("benchmark_receive_minor_units") @db.Decimal(38, 0)
+
+  settlementP50Seconds Int     @map("settlement_p50_seconds")
+  settlementP95Seconds Int     @map("settlement_p95_seconds")
+  businessDaysOnly     Boolean @default(false) @map("business_days_only")
+
+  /// Composite route score, 0..100, and its position in the comparison it belonged to.
+  score         Decimal? @db.Decimal(6, 2)
+  rank          Int?
+  isRecommended Boolean  @default(false) @map("is_recommended")
+
+  /// Verbatim upstream payload and pricing provenance, kept for audit and dispute resolution.
+  providerMetadata  Json    @default("{}") @map("provider_metadata")
+  pricingVersion    String  @map("pricing_version")
+  /// The commercial terms applied, so a customer-specific price can be explained later.
+  customerPricingId String? @map("customer_pricing_id")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  transactionRequest TransactionRequest  @relation(fields: [transactionRequestId], references: [id], onDelete: Cascade)
+  provider           Provider            @relation(fields: [providerId], references: [id])
+  route              Route?              @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  customerPricing    CustomerPricing?    @relation(fields: [customerPricingId], references: [id], onDelete: SetNull)
+  source             Currency            @relation("QuoteSourceCurrency", fields: [sourceCurrency], references: [code])
+  target             Currency            @relation("QuoteTargetCurrency", fields: [targetCurrency], references: [code])
+  legs               QuoteLeg[]
+  fees               Fee[]
+
+  @@unique([transactionRequestId, providerId, quotedAt])
+  @@index([transactionRequestId, rank])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@index([providerId, quotedAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@map("quotes")
+}
+
+/// One hop within a quote.
+///
+/// A bank wire is a single fx_conversion leg. A stablecoin route is three: fiat on-ramp, stablecoin
+/// transfer, fiat off-ramp. Modelling the hops is what lets the UI show a customer where their money
+/// actually goes, and names the counterparty on each leg — none of which is Meridian.
+model QuoteLeg {
+  id                   String       @id
+  quoteId              String       @map("quote_id")
+  /// 1-based position in the path.
+  sequence             Int
+  kind                 QuoteLegKind
+  fromCurrency         String       @map("from_currency") @db.VarChar(3)
+  toCurrency           String       @map("to_currency") @db.VarChar(3)
+  fromAmountMinorUnits Decimal      @map("from_amount_minor_units") @db.Decimal(38, 0)
+  toAmountMinorUnits   Decimal      @map("to_amount_minor_units") @db.Decimal(38, 0)
+  /// Conversion rate applied on this leg, where the leg converts.
+  rate                 Decimal?     @db.Decimal(38, 18)
+  /// The party performing this leg. Named for transparency; Meridian never holds the asset.
+  counterparty         String?
+  estimatedSeconds     Int          @map("estimated_seconds")
+  metadata             Json         @default("{}")
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  quote Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  from  Currency @relation("LegFromCurrency", fields: [fromCurrency], references: [code])
+  to    Currency @relation("LegToCurrency", fields: [toCurrency], references: [code])
+
+  @@unique([quoteId, sequence])
+  @@map("quote_legs")
+}
+
+/// One fee component of a quote, resolved to a concrete amount.
+///
+/// Stored per component rather than as a single total so a customer can see, and argue with, the
+/// individual charge rather than a headline percentage.
+model Fee {
+  id               String     @id
+  quoteId          String     @map("quote_id")
+  code             String
+  label            String
+  side             FeeSide
+  kind             FeeKind
+  chargedBy        FeeCharger @default(provider)
+  currency         String     @db.VarChar(3)
+  amountMinorUnits Decimal    @map("amount_minor_units") @db.Decimal(38, 0)
+  /// Rate applied, for a proportional fee, in basis points.
+  rateBps          Decimal?   @map("rate_bps") @db.Decimal(12, 4)
+  /// True when a configured floor or cap changed the computed amount.
+  wasCapped        Boolean    @default(false) @map("was_capped")
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  currencyRef Currency @relation(fields: [currency], references: [code])
+
+  @@unique([quoteId, code, side])
+  @@index([quoteId])
+  @@map("fees")
+}
+
+// ---------------------------------------------------------------------------
+// Reproducibility and audit
+// ---------------------------------------------------------------------------
+
 /// A completed route comparison, stored with everything needed to replay it.
+///
+/// The normalised Quote rows are the queryable projection of a comparison; this is the immutable
+/// record that makes it *reproducible*. Keeping both is deliberate: a schema change to Quote must
+/// never be able to alter what a customer was quoted last quarter.
 model Comparison {
   comparisonId String @id @map("comparison_id")
 
@@ -35,9 +635,11 @@ model Comparison {
   /// rather than an arbitrary one at millisecond resolution.
   sequence BigInt @unique @default(autoincrement())
 
-  createdAt     DateTime @map("created_at") @db.Timestamptz(3)
-  mode          String
-  engineVersion String   @map("engine_version")
+  organizationId       String?  @map("organization_id")
+  transactionRequestId String?  @map("transaction_request_id")
+  createdAt            DateTime @map("created_at") @db.Timestamptz(3)
+  mode                 String
+  engineVersion        String   @map("engine_version")
 
   /// SHA-256 over the canonical snapshot. Identical inputs always produce this same value.
   fingerprint String
@@ -57,87 +659,34 @@ model Comparison {
   /// The serialised result as it was returned to the caller.
   result Json
 
+  organization       Organization?       @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  transactionRequest TransactionRequest? @relation(fields: [transactionRequestId], references: [id], onDelete: SetNull)
+
   @@index([createdAt(sort: Desc), sequence(sort: Desc)])
   @@index([fingerprint])
   @@index([sourceCurrency, targetCurrency, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
   @@map("comparisons")
 }
 
-/// Append-only log of financially meaningful events. Immutability is enforced by a trigger.
-model AuditEvent {
-  eventId      String   @id @map("event_id")
-  type         String
-  occurredAt   DateTime @map("occurred_at") @db.Timestamptz(3)
-  actor        String
-  requestId    String?  @map("request_id")
-  comparisonId String?  @map("comparison_id")
-  providerId   String?  @map("provider_id")
-  payload      Json
+/// Append-only log of financially meaningful events. Immutability is enforced by a trigger as well
+/// as by the repository exposing no update or delete.
+model AuditLog {
+  eventId        String   @id @map("event_id")
+  type           String
+  occurredAt     DateTime @map("occurred_at") @db.Timestamptz(3)
+  actor          String
+  organizationId String?  @map("organization_id")
+  requestId      String?  @map("request_id")
+  comparisonId   String?  @map("comparison_id")
+  providerId     String?  @map("provider_id")
+  payload        Json
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([occurredAt(sort: Desc)])
   @@index([comparisonId, occurredAt])
   @@index([type, occurredAt(sort: Desc)])
-  @@map("audit_events")
-}
-
-// ---------------------------------------------------------------------------
-// Authentication architecture, prepared but not implemented.
-//
-// These models exist so the shape of business-user authentication is settled before it is built:
-// a business is an Organisation, people are Users belonging to one, and an ApiKey authenticates a
-// machine caller. Phase 1 writes no rows and reads none — the API resolves an anonymous principal.
-// Deliberately absent: SSO, SAML, SCIM, MFA and federated identity. See docs/ROADMAP.md Phase 2.
-// ---------------------------------------------------------------------------
-
-/// A business customer. The tenant boundary every future query is scoped by.
-model Organisation {
-  id          String   @id
-  name        String
-  /// URL-safe identifier used in place of the id in customer-facing contexts.
-  slug        String   @unique
-  countryCode String   @map("country_code") @db.VarChar(2)
-  status      String   @default("active")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-
-  users   User[]
-  apiKeys ApiKey[]
-
-  @@map("organisations")
-}
-
-/// A person acting on behalf of an organisation.
-model User {
-  id             String   @id
-  organisationId String   @map("organisation_id")
-  email          String   @unique
-  displayName    String   @map("display_name")
-  /// Coarse role for authorisation. A richer permission model belongs with the feature that needs it.
-  role           String   @default("member")
-  status         String   @default("active")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  lastSeenAt     DateTime? @map("last_seen_at") @db.Timestamptz(3)
-
-  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
-
-  @@index([organisationId])
-  @@map("users")
-}
-
-/// Credential for a machine caller. Only a hash is ever stored; the secret is shown once on issue.
-model ApiKey {
-  id             String    @id
-  organisationId String    @map("organisation_id")
-  /// Non-secret prefix, safe to display and to log, used to identify the key.
-  keyPrefix      String    @unique @map("key_prefix")
-  /// Hash of the secret. The secret itself is never persisted.
-  secretHash     String    @map("secret_hash")
-  label          String
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
-  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz(3)
-  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
-
-  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
-
-  @@index([organisationId])
-  @@map("api_keys")
+  @@index([organizationId, occurredAt(sort: Desc)])
+  @@map("audit_logs")
 }

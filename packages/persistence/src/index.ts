@@ -50,4 +50,4 @@ export {
   type ComparisonRow,
   type PrismaDriverOptions,
 } from './postgres/prisma-driver.js';
-export { readInitialMigration, MIGRATION_DIRECTORY } from './migrations.js';
+export { readMigrations, locateMigrationRoot, MIGRATION_DIRECTORY } from './migrations.js';

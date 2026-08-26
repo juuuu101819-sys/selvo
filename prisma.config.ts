@@ -16,6 +16,9 @@ export default defineConfig({
   schema: 'prisma/schema.prisma',
   migrations: {
     path: 'prisma/migrations',
+    // The seed builds its demo quotes by running the real routing engine over the sandbox adapters,
+    // so it imports workspace packages and needs a TypeScript runner.
+    seed: 'tsx prisma/seed.ts',
   },
   datasource: {
     url: process.env['DATABASE_URL'] ?? '',

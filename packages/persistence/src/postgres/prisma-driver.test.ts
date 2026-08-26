@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { Prisma } from '@prisma/client';
-import { readInitialMigration } from '../migrations.js';
+import { readMigrations } from '../migrations.js';
 import { toAuditEvent, toStoredComparison, type ComparisonRow } from './prisma-driver.js';
 
 /**
- * The Prisma driver's row mapping is unit-tested here because it is where precision and type bugs
- * would hide: `Decimal(38, 0)` arrives as a Prisma Decimal, and `Timestamptz` as a Date. A driver
- * test against a live database belongs in Phase 2, when PostgreSQL becomes the default and CI can
- * provision one.
+ * Mapping and migration checks that need no database.
+ *
+ * These run everywhere, including in CI without PostgreSQL. The behaviour that genuinely requires a
+ * server — whether the constraints and the trigger actually fire — is covered in
+ * prisma-driver.integration.test.ts, gated on TEST_DATABASE_URL.
  */
 function buildRow(overrides: Partial<ComparisonRow> = {}): ComparisonRow {
   return {
@@ -94,43 +95,94 @@ describe('row mapping', () => {
   });
 });
 
-describe('initial migration', () => {
-  const migration = readInitialMigration();
+describe('migrations', () => {
+  const sql = readMigrations();
 
-  it('creates the comparison and audit tables', () => {
-    expect(migration).toContain('CREATE TABLE "comparisons"');
-    expect(migration).toContain('CREATE TABLE "audit_events"');
+  it('creates every table the domain model needs', () => {
+    for (const table of [
+      'currencies',
+      'organizations',
+      'users',
+      'organization_members',
+      'api_keys',
+      'providers',
+      'provider_capabilities',
+      'routes',
+      'customer_pricing',
+      'transaction_requests',
+      'quotes',
+      'quote_legs',
+      'fees',
+      'comparisons',
+      'audit_logs',
+    ]) {
+      expect(sql).toContain(`CREATE TABLE "${table}"`);
+    }
   });
 
-  it('creates the tables the authentication architecture is prepared around', () => {
-    expect(migration).toContain('CREATE TABLE "organisations"');
-    expect(migration).toContain('CREATE TABLE "users"');
-    expect(migration).toContain('CREATE TABLE "api_keys"');
-  });
-
-  it('stores monetary amounts as an exact integer type, never a float', () => {
-    expect(migration).toContain('"amount_minor_units" DECIMAL(38,0)');
-    expect(migration).not.toMatch(/\b(REAL|DOUBLE PRECISION|FLOAT|MONEY)\b/);
+  it('stores monetary amounts as an exact integer type and rates as scaled decimals', () => {
+    expect(sql).toContain('"amount_minor_units" DECIMAL(38,0)');
+    expect(sql).toContain('"exchange_rate" DECIMAL(38,18)');
+    expect(sql).toContain('"estimated_receive_minor_units" DECIMAL(38,0)');
+    expect(sql).not.toMatch(/\b(REAL|DOUBLE PRECISION|FLOAT|MONEY)\b/);
   });
 
   /**
-   * These statements are hand-added to a file that `prisma migrate diff` generates, because Prisma
-   * cannot express a CHECK constraint or a trigger. That makes them exactly the kind of edit a
-   * future regeneration could silently drop, so they are asserted.
+   * These statements are hand-added to files that `prisma migrate diff` generates, because Prisma
+   * cannot express a CHECK constraint, a partial unique index or a trigger. That makes them exactly
+   * the kind of edit a regeneration could silently drop, so they are asserted here as well as
+   * exercised against a real database in the integration suite.
    */
-  it('constrains a comparison to a genuine cross-currency corridor for a positive amount', () => {
-    expect(migration).toContain('CHECK ("source_currency" <> "target_currency")');
-    expect(migration).toContain('CHECK ("amount_minor_units" > 0)');
-    expect(migration).toContain(`CHECK ("mode" IN ('sandbox', 'production'))`);
+  it('constrains requests and quotes to genuine cross-currency corridors', () => {
+    expect(sql).toContain('CHECK ("source_currency" <> "target_currency")');
+    expect(sql).toContain('"request_amount_positive"');
+    expect(sql).toContain('"quote_amount_positive"');
+  });
+
+  it('rejects a quote that expires before it was issued', () => {
+    expect(sql).toContain('CHECK ("expires_at" > "quoted_at")');
+  });
+
+  it('rejects a non-positive rate', () => {
+    expect(sql).toContain('"quote_rates_positive"');
+  });
+
+  it('rejects a negative fee, which would flatter a route', () => {
+    expect(sql).toContain('"fee_amount_non_negative"');
+  });
+
+  it('bounds a currency exponent by kind, since stablecoins carry more decimals than fiat', () => {
+    expect(sql).toContain('"currencies_exponent_range"');
+    expect(sql).toContain("'stablecoin'");
+  });
+
+  it('allows at most one recommended quote per request', () => {
+    expect(sql).toContain('"quotes_one_recommendation_per_request"');
+    expect(sql).toContain('WHERE "is_recommended"');
   });
 
   it('enforces the append-only audit trail in the database', () => {
-    expect(migration).toContain('BEFORE UPDATE OR DELETE ON "audit_events"');
-    expect(migration).toContain('append-only');
+    expect(sql).toContain('BEFORE UPDATE OR DELETE ON "audit_logs"');
+    expect(sql).toContain('append-only');
   });
 
   it('stores only a hash of an API key secret', () => {
-    expect(migration).toContain('"secret_hash"');
-    expect(migration).not.toContain('"secret" TEXT');
+    expect(sql).toContain('"secret_hash"');
+    expect(sql).not.toContain('"secret" TEXT');
+  });
+
+  /**
+   * The non-custody boundary, expressed in the schema: there is no settlement state to write, so
+   * recording one would require a migration and a schema review.
+   */
+  it('defines no settlement state in the transaction request lifecycle', () => {
+    const enumLine = sql
+      .split('\n')
+      .find((line) => line.includes('CREATE TYPE "TransactionRequestStatus"'));
+
+    expect(enumLine).toBeDefined();
+    for (const forbidden of ['settled', 'executed', 'funded', 'in_flight', 'paid', 'completed']) {
+      expect(enumLine).not.toContain(forbidden);
+    }
   });
 });

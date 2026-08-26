@@ -94,7 +94,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     providerTimeoutMs: config.providerTimeoutMs,
   });
 
-  // Phase 2 swaps this for an authenticator backed by the Organisation, User and ApiKey tables.
+  // Phase 2 swaps this for an authenticator backed by the Organization, User and ApiKey tables.
   const authenticator: Authenticator = new AnonymousAuthenticator();
 
   logger.info('Meridian container initialised', {

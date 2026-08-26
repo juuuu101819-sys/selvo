@@ -12,12 +12,12 @@ const MAX_ACTOR_LENGTH = 128;
  *
  * Any request that presents a credential is rejected rather than quietly accepted as anonymous.
  * That matters more than it looks: a client that sends a bearer token and receives `200` would
- * reasonably conclude it is authenticated and that its data is scoped to its organisation, when
+ * reasonably conclude it is authenticated and that its data is scoped to its organization, when
  * neither is true. Failing closed on a credential this deployment cannot verify is the honest
  * behaviour, and it means switching on real authentication later cannot silently downgrade anyone.
  *
  * Replaced in Phase 2 by an authenticator that verifies API keys and session tokens against the
- * Organisation, User and ApiKey tables the schema already defines.
+ * Organization, User and ApiKey tables the schema already defines.
  */
 export class AnonymousAuthenticator implements Authenticator {
   readonly scheme = 'anonymous';

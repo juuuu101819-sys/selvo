@@ -41,7 +41,7 @@ describe('anonymous authentication', () => {
   describe('refusing to pretend', () => {
     /**
      * A client that sends a bearer token and gets a 200 would reasonably conclude it is
-     * authenticated and its data scoped to its organisation. Neither is true here, so a credential
+     * authenticated and its data scoped to its organization. Neither is true here, so a credential
      * this deployment cannot verify is rejected rather than quietly ignored.
      */
     it.each([

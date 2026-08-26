@@ -34,7 +34,9 @@
     "db:studio": "prisma studio",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "pretest:e2e": "npm run build && npm run build --workspace @meridian/web"
+    "pretest:e2e": "npm run build && npm run build --workspace @meridian/web",
+    "db:seed": "prisma db seed",
+    "db:reset": "prisma migrate reset --force"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
@@ -45,6 +47,7 @@
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.6.2",
     "prisma": "^7.10.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.41.0",
     "vitest": "^3.2.4"
