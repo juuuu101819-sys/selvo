@@ -11,7 +11,8 @@ export default tseslint.config(
       '**/.next/**',
       '**/coverage/**',
       '**/*.tsbuildinfo',
-      'apps/web/next-env.d.ts',
+      // The web app is linted by its own config, which layers on the Next.js and React rules.
+      'apps/web/**',
     ],
   },
   eslint.configs.recommended,
