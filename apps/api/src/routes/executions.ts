@@ -1,5 +1,6 @@
 import { ExecutionNotImplementedError } from '@meridian/core';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
+import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
 
 /**
@@ -13,8 +14,8 @@ import type { AppContainer } from '../container.js';
  * See docs/COMPLIANCE.md for what must exist before this is ever implemented.
  */
 export function registerExecutionRoutes(app: FastifyInstance, container: AppContainer): void {
-  app.post('/v1/executions', async (request) => {
-    const actor = resolveActor(request);
+  app.post('/executions', async (request) => {
+    const actor = principalOf(request).actor;
 
     // An attempt to execute is a financially meaningful event even when it is refused: it is
     // exactly the kind of thing an auditor or a regulator would ask to see.
@@ -33,10 +34,4 @@ export function registerExecutionRoutes(app: FastifyInstance, container: AppCont
     request.log.warn({ actor }, 'Execution attempt rejected: the platform is non-custodial');
     throw new ExecutionNotImplementedError();
   });
-}
-
-function resolveActor(request: FastifyRequest): string {
-  const header = request.headers['x-meridian-actor'];
-  const value = Array.isArray(header) ? header[0] : header;
-  return value === undefined || value.trim() === '' ? 'anonymous' : value.trim().slice(0, 128);
 }

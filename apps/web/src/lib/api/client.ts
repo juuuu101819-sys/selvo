@@ -95,7 +95,7 @@ async function request<TData>(options: RequestOptions): Promise<ApiResult<TData>
 }
 
 export function fetchMeta(): Promise<ApiResult<MetaDto>> {
-  return request<MetaDto>({ method: 'GET', path: '/v1/meta' });
+  return request<MetaDto>({ method: 'GET', path: '/api/v1/meta' });
 }
 
 export interface CreateComparisonInput {
@@ -116,7 +116,7 @@ export function createComparison(
 ): Promise<ApiResult<ComparisonDto>> {
   return request<ComparisonDto>({
     method: 'POST',
-    path: '/v1/comparisons',
+    path: '/api/v1/comparisons',
     body: input,
     ...(actor === undefined ? {} : { actor }),
   });
@@ -125,6 +125,6 @@ export function createComparison(
 export function replayComparison(comparisonId: string): Promise<ApiResult<ReplayResultDto>> {
   return request<ReplayResultDto>({
     method: 'POST',
-    path: `/v1/comparisons/${encodeURIComponent(comparisonId)}/replay`,
+    path: `/api/v1/comparisons/${encodeURIComponent(comparisonId)}/replay`,
   });
 }

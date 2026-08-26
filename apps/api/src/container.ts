@@ -9,6 +9,7 @@ import {
   systemClock,
   uuidIdGenerator,
   type AuditLogger,
+  type Authenticator,
   type Clock,
   type Logger,
   type PersistenceDriver,
@@ -16,6 +17,7 @@ import {
   type RouteProvider,
 } from '@meridian/core';
 import { createPersistenceDriver } from '@meridian/persistence';
+import { AnonymousAuthenticator } from './auth/anonymous-authenticator.js';
 import { disclaimerFor, type AppConfig } from './config/env.js';
 
 export interface AppContainer {
@@ -25,6 +27,7 @@ export interface AppContainer {
   readonly registry: ProviderRegistry;
   readonly comparisons: RouteComparisonService;
   readonly auditLogger: AuditLogger;
+  readonly authenticator: Authenticator;
   readonly disclaimer: string;
   readonly pricing: {
     readonly datasetVersion: string;
@@ -91,12 +94,16 @@ export function createContainer(options: ContainerOptions): AppContainer {
     providerTimeoutMs: config.providerTimeoutMs,
   });
 
+  // Phase 2 swaps this for an authenticator backed by the Organisation, User and ApiKey tables.
+  const authenticator: Authenticator = new AnonymousAuthenticator();
+
   logger.info('Meridian container initialised', {
     mode: config.mode,
     engineVersion: ENGINE_VERSION,
     persistenceDriver: persistence.kind,
     providerCount: registry.all().length,
     pricingDataset: sandbox?.pricingVersion ?? null,
+    authenticationScheme: authenticator.scheme,
   });
 
   return {
@@ -106,6 +113,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     registry,
     comparisons,
     auditLogger,
+    authenticator,
     disclaimer: disclaimerFor(config.mode),
     pricing:
       sandbox === null

@@ -6,6 +6,7 @@ import {
   type ReplayResultDto,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
 import {
   comparisonIdParamsSchema,
@@ -25,8 +26,6 @@ interface ResponseEnvelope<TData> {
   };
 }
 
-const MAX_ACTOR_LENGTH = 128;
-
 /**
  * Route comparison endpoints.
  *
@@ -44,7 +43,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
     },
   });
 
-  app.post('/v1/comparisons', async (request, reply) => {
+  app.post('/comparisons', async (request, reply) => {
     const body = parseOrThrow(createComparisonSchema, request.body, 'body');
     const idempotencyKey =
       parseOrThrow(idempotencyKeySchema, request.headers['idempotency-key'], 'headers') ?? null;
@@ -60,7 +59,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       rails: body.rails ?? null,
       weights: body.weights ?? null,
       idempotencyKey,
-      actor: resolveActor(request),
+      actor: principalOf(request).actor,
       requestId: request.id,
     });
 
@@ -69,7 +68,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       .send(envelope<ComparisonDto>(request, serializeComparison(comparison)));
   });
 
-  app.get('/v1/comparisons', async (request) => {
+  app.get('/comparisons', async (request) => {
     const { limit } = parseOrThrow(listQuerySchema, request.query, 'query');
     const stored = await container.persistence.comparisons.list({ limit });
 
@@ -94,7 +93,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
     };
   });
 
-  app.get('/v1/comparisons/:comparisonId', async (request) => {
+  app.get('/comparisons/:comparisonId', async (request) => {
     const { comparisonId } = parseOrThrow(comparisonIdParamsSchema, request.params, 'params');
     const stored = await container.persistence.comparisons.findById(comparisonId);
     if (stored === null) {
@@ -106,16 +105,16 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
     return envelope(request, stored.result);
   });
 
-  app.post('/v1/comparisons/:comparisonId/replay', async (request) => {
+  app.post('/comparisons/:comparisonId/replay', async (request) => {
     const { comparisonId } = parseOrThrow(comparisonIdParamsSchema, request.params, 'params');
     const result = await container.comparisons.replay(comparisonId, {
-      actor: resolveActor(request),
+      actor: principalOf(request).actor,
       requestId: request.id,
     });
     return envelope<ReplayResultDto>(request, serializeReplayResult(result));
   });
 
-  app.get('/v1/comparisons/:comparisonId/audit', async (request) => {
+  app.get('/comparisons/:comparisonId/audit', async (request) => {
     const { comparisonId } = parseOrThrow(comparisonIdParamsSchema, request.params, 'params');
     const stored = await container.persistence.comparisons.findById(comparisonId);
     if (stored === null) {
@@ -133,20 +132,4 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       },
     };
   });
-}
-
-/**
- * Attribution for the audit trail.
- *
- * Phase 1 has no authentication, so the caller may declare an actor for traceability. Phase 2
- * replaces this with an authenticated identity; until then the value is treated as a hint and
- * bounded in length so it cannot be used to bloat the audit log.
- */
-function resolveActor(request: FastifyRequest): string {
-  const header = request.headers['x-meridian-actor'];
-  const value = Array.isArray(header) ? header[0] : header;
-  if (value === undefined || value.trim() === '') {
-    return 'anonymous';
-  }
-  return value.trim().slice(0, MAX_ACTOR_LENGTH);
 }

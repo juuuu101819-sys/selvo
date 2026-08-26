@@ -6,20 +6,24 @@ import {
   type PersistenceDriver,
 } from '@meridian/core';
 import type { FastifyInstance } from 'fastify';
+import { SERVICE_NAME, SERVICE_VERSION } from '../config/service.js';
+import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
 
 /**
- * Operational and discovery endpoints.
+ * Liveness and readiness, mounted without a version prefix.
  *
- * `/health` answers whether the process is up; `/ready` answers whether it can actually serve
- * traffic, which for this service means the store is reachable and the schema is present. Keeping
- * them separate stops an orchestrator from restarting a healthy process because a database blipped.
+ * `/health` answers whether the process is up; `/ready` answers whether it can serve traffic, which
+ * for this service means the store is reachable and its schema present. Keeping them separate stops
+ * an orchestrator restarting a healthy process because a database blipped.
  */
-export function registerSystemRoutes(app: FastifyInstance, container: AppContainer): void {
+export function registerOperationalRoutes(app: FastifyInstance, container: AppContainer): void {
   const startedAt = Date.now();
 
   app.get('/health', () => ({
     status: 'ok',
+    service: SERVICE_NAME,
+    version: SERVICE_VERSION,
     mode: container.config.mode,
     engineVersion: container.engineVersion,
     uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
@@ -33,18 +37,40 @@ export function registerSystemRoutes(app: FastifyInstance, container: AppContain
       app.log.error({ err: error }, 'Readiness check failed');
       return reply.status(503).send({
         status: 'unavailable',
+        service: SERVICE_NAME,
         checks: { persistence: 'failed' },
       });
     }
     return reply.send({
       status: 'ready',
+      service: SERVICE_NAME,
       checks: { persistence: 'ok' },
       persistenceDriver: persistence.kind,
     });
   });
+}
 
-  app.get('/v1/meta', () => ({
+/**
+ * The versioned health endpoint.
+ *
+ * Its response is a fixed three-field contract — status, service, version — with no envelope and
+ * nothing derived from runtime state. A health check that changes shape as the service evolves is
+ * a health check that eventually breaks the monitor watching it.
+ */
+export function registerVersionedHealthRoute(app: FastifyInstance): void {
+  app.get('/health', () => ({
+    status: 'ok',
+    service: SERVICE_NAME,
+    version: SERVICE_VERSION,
+  }));
+}
+
+/** Discovery: everything a client needs to build a valid comparison request. */
+export function registerMetaRoutes(app: FastifyInstance, container: AppContainer): void {
+  app.get('/meta', (request) => ({
     data: {
+      service: SERVICE_NAME,
+      version: SERVICE_VERSION,
       mode: container.config.mode,
       engineVersion: container.engineVersion,
       /** Non-custodial by design; see docs/COMPLIANCE.md. */
@@ -55,6 +81,12 @@ export function registerSystemRoutes(app: FastifyInstance, container: AppContain
         holdCryptoAssets: false,
         issueStablecoins: false,
       },
+      authentication: {
+        scheme: container.authenticator.scheme,
+        enforcing: container.authenticator.enforcing,
+        principalKind: principalOf(request).kind,
+      },
+      persistenceDriver: container.persistence.kind,
       pricing: container.pricing,
       defaultScoringWeights: container.config.weights,
       platformDefaultScoringWeights: DEFAULT_SCORING_WEIGHTS,
@@ -75,6 +107,7 @@ export function registerSystemRoutes(app: FastifyInstance, container: AppContain
     meta: {
       mode: container.config.mode,
       disclaimer: container.disclaimer,
+      requestId: request.id,
     },
   }));
 }

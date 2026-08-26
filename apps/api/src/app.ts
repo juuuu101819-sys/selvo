@@ -6,9 +6,7 @@ import type { AppConfig } from './config/env.js';
 import { createContainer, type AppContainer } from './container.js';
 import { registerErrorHandling } from './http/errors.js';
 import { PinoLoggerAdapter } from './logging/pino-logger.js';
-import { registerComparisonRoutes } from './routes/comparisons.js';
-import { registerExecutionRoutes } from './routes/executions.js';
-import { registerSystemRoutes } from './routes/system.js';
+import { registerRoutes } from './routes/index.js';
 
 /** One megabyte is far more than any comparison request needs, and bounds the attack surface. */
 const MAX_BODY_BYTES = 1_048_576;
@@ -56,8 +54,14 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
   await app.register(cors, {
     origin: config.corsOrigins.length > 0 ? [...config.corsOrigins] : false,
     methods: ['GET', 'POST', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Idempotency-Key', 'X-Meridian-Actor'],
-    exposedHeaders: ['X-Request-Id'],
+    allowedHeaders: [
+      'Content-Type',
+      'Idempotency-Key',
+      'X-Meridian-Actor',
+      'Authorization',
+      'X-Api-Key',
+    ],
+    exposedHeaders: ['X-Request-Id', 'Deprecation', 'Link'],
     maxAge: 600,
   });
 
@@ -69,9 +73,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
   registerJsonBodyParser(app);
 
   registerErrorHandling(app);
-  registerSystemRoutes(app, container);
-  registerComparisonRoutes(app, container);
-  registerExecutionRoutes(app, container);
+  await registerRoutes(app, container);
 
   app.addHook('onClose', async () => {
     await container.close();
