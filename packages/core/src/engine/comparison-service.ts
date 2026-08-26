@@ -1,0 +1,504 @@
+import type {
+  ComparisonInsights,
+  ComparisonSnapshot,
+  PlatformMode,
+  PricedRoute,
+  ProviderDescriptor,
+  ProviderFailure,
+  ProviderQuote,
+  QuoteRequest,
+  RailType,
+  ReplayResult,
+  RouteComparison,
+  ScoredRoute,
+} from '../domain/index.js';
+import { SNAPSHOT_VERSION } from '../domain/index.js';
+import {
+  NoRoutesAvailableError,
+  NotFoundError,
+  ProviderTimeoutError,
+  UnsupportedCorridorError,
+  ValidationError,
+  isAppError,
+  toAppError,
+} from '../errors/index.js';
+import { Dec, Money, type CurrencyCode } from '../money/index.js';
+import type {
+  AuditLogger,
+  Clock,
+  ComparisonRepository,
+  IdGenerator,
+  Logger,
+  RouteProvider,
+} from '../ports/index.js';
+import { fingerprint } from '../reproducibility/index.js';
+import { serializeComparison } from '../serialization/index.js';
+import { RouteCostEngine } from './cost-engine.js';
+import {
+  ENGINE_VERSION,
+  type ScoringWeights,
+  type ScoringWeightsInput,
+  parseScoringWeights,
+  serializeScoringWeights,
+} from './engine-config.js';
+import type { ProviderRegistry } from './provider-registry.js';
+import { RouteScorer } from './route-scorer.js';
+
+export interface ComparisonInput {
+  readonly sourceCurrency: CurrencyCode;
+  readonly targetCurrency: CurrencyCode;
+  /** Send amount in integer minor units of the source currency. */
+  readonly amountMinorUnits: string;
+  readonly rails: readonly RailType[] | null;
+  /** Per-request scoring weights. Falls back to the platform default when absent. */
+  readonly weights: ScoringWeightsInput | null;
+  readonly idempotencyKey: string | null;
+  /** Who asked. Recorded on every audit event. */
+  readonly actor: string;
+  readonly requestId: string | null;
+}
+
+export interface RouteComparisonServiceDependencies {
+  readonly mode: PlatformMode;
+  readonly registry: ProviderRegistry;
+  readonly costEngine: RouteCostEngine;
+  readonly defaultWeights: ScoringWeights;
+  readonly clock: Clock;
+  readonly ids: IdGenerator;
+  readonly auditLogger: AuditLogger;
+  readonly comparisons: ComparisonRepository;
+  readonly logger: Logger;
+  readonly providerTimeoutMs: number;
+}
+
+type QuoteOutcome =
+  | { readonly ok: true; readonly quote: ProviderQuote; readonly descriptor: ProviderDescriptor }
+  | { readonly ok: false; readonly failure: ProviderFailure };
+
+/**
+ * Orchestrates a route comparison: fan out to every eligible provider, price each quote with one
+ * engine, rank the results, persist a replayable snapshot and audit the whole thing.
+ *
+ * A dead or slow provider degrades the comparison instead of failing it — the caller gets the
+ * routes that did answer plus an explicit list of who did not, which is the behaviour a treasury
+ * team needs when one bank's API is down.
+ */
+export class RouteComparisonService {
+  constructor(private readonly deps: RouteComparisonServiceDependencies) {}
+
+  async compare(input: ComparisonInput): Promise<RouteComparison> {
+    const { clock, registry, auditLogger, comparisons, logger } = this.deps;
+
+    this.assertValidCorridor(input);
+    const weights = input.weights === null ? this.deps.defaultWeights : parseScoringWeights(input.weights);
+
+    if (input.idempotencyKey !== null) {
+      const existing = await comparisons.findByIdempotencyKey(input.idempotencyKey);
+      if (existing !== null) {
+        logger.info('Returning comparison from idempotency key', {
+          comparisonId: existing.comparisonId,
+        });
+        return this.rehydrate(existing.snapshot as ComparisonSnapshot, {
+          comparisonId: existing.comparisonId,
+          createdAt: existing.createdAt,
+        });
+      }
+    }
+
+    const request: QuoteRequest = {
+      sourceCurrency: input.sourceCurrency,
+      targetCurrency: input.targetCurrency,
+      amountMinorUnits: input.amountMinorUnits,
+      rails: input.rails === null ? null : [...input.rails].sort(),
+      requestedAt: clock.nowIso(),
+    };
+
+    const comparisonId = this.deps.ids.generate('cmp');
+
+    await auditLogger.record({
+      type: 'comparison.requested',
+      actor: input.actor,
+      requestId: input.requestId,
+      comparisonId,
+      providerId: null,
+      payload: {
+        sourceCurrency: request.sourceCurrency,
+        targetCurrency: request.targetCurrency,
+        amountMinorUnits: request.amountMinorUnits,
+        rails: request.rails === null ? null : [...request.rails],
+        weightCost: weights.cost.toFixed(),
+        weightSpeed: weights.speed.toFixed(),
+        weightReliability: weights.reliability.toFixed(),
+      },
+    });
+
+    const eligible = registry.eligible(request);
+    if (eligible.length === 0) {
+      await auditLogger.record({
+        type: 'comparison.failed',
+        actor: input.actor,
+        requestId: input.requestId,
+        comparisonId,
+        providerId: null,
+        payload: { reason: 'no eligible provider for corridor' },
+      });
+      throw new UnsupportedCorridorError(input.sourceCurrency, input.targetCurrency);
+    }
+
+    const outcomes = await Promise.all(
+      eligible.map((provider) => this.requestQuote(provider, request, input)),
+    );
+
+    const quotes: ProviderQuote[] = [];
+    const descriptors: ProviderDescriptor[] = [];
+    const failures: ProviderFailure[] = [];
+
+    for (const outcome of outcomes) {
+      if (outcome.ok) {
+        quotes.push(outcome.quote);
+        descriptors.push(outcome.descriptor);
+      } else {
+        failures.push(outcome.failure);
+      }
+    }
+
+    if (quotes.length === 0) {
+      await auditLogger.record({
+        type: 'comparison.failed',
+        actor: input.actor,
+        requestId: input.requestId,
+        comparisonId,
+        providerId: null,
+        payload: { reason: 'every provider failed to quote', failures: failures.map(toJsonFailure) },
+      });
+      throw new NoRoutesAvailableError(
+        'No provider returned a usable quote for this transaction.',
+        { providerFailures: failures.map(toJsonFailure) },
+      );
+    }
+
+    const snapshot: ComparisonSnapshot = {
+      snapshotVersion: SNAPSHOT_VERSION,
+      engineVersion: ENGINE_VERSION,
+      mode: this.deps.mode,
+      request,
+      weights: serializeScoringWeights(weights),
+      quotes: sortById(quotes, (quote) => quote.providerId),
+      providers: sortById(descriptors, (descriptor) => descriptor.id),
+    };
+
+    const comparison = this.computeFromSnapshot(snapshot, {
+      comparisonId,
+      createdAt: clock.nowIso(),
+      providerFailures: failures,
+    });
+
+    await comparisons.save({
+      comparisonId: comparison.comparisonId,
+      createdAt: comparison.createdAt,
+      mode: comparison.mode,
+      engineVersion: comparison.engineVersion,
+      fingerprint: comparison.fingerprint,
+      sourceCurrency: request.sourceCurrency,
+      targetCurrency: request.targetCurrency,
+      amountMinorUnits: request.amountMinorUnits,
+      idempotencyKey: input.idempotencyKey,
+      snapshot,
+      result: serializeComparison(comparison),
+    });
+
+    await auditLogger.record({
+      type: 'comparison.completed',
+      actor: input.actor,
+      requestId: input.requestId,
+      comparisonId,
+      providerId: null,
+      payload: {
+        fingerprint: comparison.fingerprint,
+        routeCount: comparison.routes.length,
+        recommendedRouteId: comparison.recommendedRouteId,
+        failedProviderCount: failures.length,
+      },
+    });
+
+    return comparison;
+  }
+
+  /** Recomputes a stored comparison and reports whether the engine still reproduces it. */
+  async replay(
+    comparisonId: string,
+    context: { readonly actor: string; readonly requestId: string | null },
+  ): Promise<ReplayResult> {
+    const stored = await this.deps.comparisons.findById(comparisonId);
+    if (stored === null) {
+      throw new NotFoundError('Comparison', comparisonId);
+    }
+
+    const snapshot = stored.snapshot as ComparisonSnapshot;
+    const replayed = this.rehydrate(snapshot, {
+      comparisonId: stored.comparisonId,
+      createdAt: stored.createdAt,
+    });
+    const reproducible = replayed.fingerprint === stored.fingerprint;
+    const replayedAt = this.deps.clock.nowIso();
+
+    await this.deps.auditLogger.record({
+      type: 'comparison.replayed',
+      actor: context.actor,
+      requestId: context.requestId,
+      comparisonId,
+      providerId: null,
+      payload: {
+        reproducible,
+        originalFingerprint: stored.fingerprint,
+        replayedFingerprint: replayed.fingerprint,
+      },
+    });
+
+    if (!reproducible) {
+      this.deps.logger.error('Comparison replay produced a different fingerprint', {
+        comparisonId,
+        originalFingerprint: stored.fingerprint,
+        replayedFingerprint: replayed.fingerprint,
+      });
+    }
+
+    return {
+      comparisonId,
+      reproducible,
+      originalFingerprint: stored.fingerprint,
+      replayedFingerprint: replayed.fingerprint,
+      replayedAt,
+      comparison: replayed,
+    };
+  }
+
+  private rehydrate(
+    snapshot: ComparisonSnapshot,
+    identity: { comparisonId: string; createdAt: string },
+  ): RouteComparison {
+    return this.computeFromSnapshot(snapshot, { ...identity, providerFailures: [] });
+  }
+
+  /**
+   * The deterministic half of the service: snapshot in, comparison out, no I/O and no clock.
+   * Both the live path and replay go through here, so there is only one calculation to trust.
+   */
+  private computeFromSnapshot(
+    snapshot: ComparisonSnapshot,
+    identity: {
+      comparisonId: string;
+      createdAt: string;
+      providerFailures: readonly ProviderFailure[];
+    },
+  ): RouteComparison {
+    const descriptorsById = new Map(
+      snapshot.providers.map((descriptor) => [descriptor.id, descriptor]),
+    );
+    const weights = parseScoringWeights(snapshot.weights);
+    const scorer = new RouteScorer(weights);
+
+    const priced: PricedRoute[] = [];
+    const pricingFailures: ProviderFailure[] = [];
+
+    for (const quote of snapshot.quotes) {
+      const descriptor = descriptorsById.get(quote.providerId);
+      if (descriptor === undefined) {
+        pricingFailures.push({
+          providerId: quote.providerId,
+          rail: quote.rail,
+          code: 'MISSING_PROVIDER_DESCRIPTOR',
+          message: `Snapshot has no descriptor for provider "${quote.providerId}".`,
+          failedAt: snapshot.request.requestedAt,
+        });
+        continue;
+      }
+      try {
+        priced.push(this.deps.costEngine.price(snapshot.request, quote, descriptor));
+      } catch (error) {
+        const appError = toAppError(error);
+        this.deps.logger.warn('Failed to price provider quote', {
+          providerId: quote.providerId,
+          code: appError.code,
+          message: appError.message,
+        });
+        pricingFailures.push({
+          providerId: quote.providerId,
+          rail: quote.rail,
+          code: appError.code,
+          message: appError.message,
+          failedAt: snapshot.request.requestedAt,
+        });
+      }
+    }
+
+    const routes = scorer.score(priced);
+    const recommended = routes.find((route) => route.recommended) ?? null;
+
+    return {
+      comparisonId: identity.comparisonId,
+      createdAt: identity.createdAt,
+      mode: snapshot.mode,
+      engineVersion: snapshot.engineVersion,
+      fingerprint: fingerprint(snapshot),
+      request: snapshot.request,
+      snapshot,
+      routes,
+      recommendedRouteId: recommended?.routeId ?? null,
+      insights: this.buildInsights(routes),
+      providerFailures: [...identity.providerFailures, ...pricingFailures],
+    };
+  }
+
+  private buildInsights(routes: readonly ScoredRoute[]): ComparisonInsights | null {
+    const recommended = routes[0];
+    if (recommended === undefined) {
+      return null;
+    }
+
+    const cheapest = pickBy(routes, (a, b) => a.totalCost.lessThan(b.totalCost));
+    const fastest = pickBy(
+      routes,
+      (a, b) => a.settlement.p50Seconds < b.settlement.p50Seconds,
+    );
+    const mostExpensive = pickBy(routes, (a, b) => a.totalCost.greaterThan(b.totalCost));
+
+    const savings = mostExpensive.totalCost.subtract(recommended.totalCost);
+    const benchmark = recommended.benchmarkAmount.toDecimal();
+    const bankBaseline = routes
+      .filter((route) => route.rail === 'bank_fx')
+      .reduce<ScoredRoute | null>(
+        (best, route) => (best === null || route.totalCost.lessThan(best.totalCost) ? route : best),
+        null,
+      );
+
+    return {
+      cheapestRouteId: cheapest.routeId,
+      fastestRouteId: fastest.routeId,
+      mostExpensiveRouteId: mostExpensive.routeId,
+      savingsVsMostExpensive: savings,
+      savingsVsMostExpensiveBps: benchmark.isZero()
+        ? new Dec(0)
+        : savings.toDecimal().div(benchmark).times(10_000),
+      savingsVsBankFx:
+        bankBaseline === null ? null : bankBaseline.totalCost.subtract(recommended.totalCost),
+    };
+  }
+
+  private async requestQuote(
+    provider: RouteProvider,
+    request: QuoteRequest,
+    input: ComparisonInput,
+  ): Promise<QuoteOutcome> {
+    const { clock, logger, auditLogger, providerTimeoutMs } = this.deps;
+    const providerId = provider.descriptor.id;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    try {
+      const pending = provider.fetchQuote(request, {
+        clock,
+        logger: logger.child({ providerId }),
+        requestId: input.requestId,
+        signal: controller.signal,
+      });
+      // A late rejection after the timeout has already won the race would otherwise surface as an
+      // unhandled rejection; the race still observes the original outcome.
+      void pending.catch(() => undefined);
+
+      const timeout = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new ProviderTimeoutError(providerId, providerTimeoutMs));
+        }, providerTimeoutMs);
+      });
+
+      const quote = await Promise.race([pending, timeout]);
+
+      await auditLogger.record({
+        type: 'provider.quote.received',
+        actor: input.actor,
+        requestId: input.requestId,
+        comparisonId: null,
+        providerId,
+        payload: {
+          quotedAt: quote.quotedAt,
+          quoteReference: quote.quoteReference,
+          offeredRate: quote.offeredRate,
+          midMarketRate: quote.midMarketRate,
+          pricingVersion: quote.pricingVersion,
+        },
+      });
+
+      return { ok: true, quote, descriptor: provider.descriptor };
+    } catch (error) {
+      const appError = toAppError(error);
+      logger.warn('Provider failed to quote', {
+        providerId,
+        code: appError.code,
+        message: appError.message,
+        operational: isAppError(error) ? error.operational : false,
+      });
+
+      const failure: ProviderFailure = {
+        providerId,
+        rail: provider.descriptor.rail,
+        code: appError.code,
+        message: appError.message,
+        failedAt: clock.nowIso(),
+      };
+
+      await auditLogger.record({
+        type: 'provider.quote.failed',
+        actor: input.actor,
+        requestId: input.requestId,
+        comparisonId: null,
+        providerId,
+        payload: { code: appError.code, message: appError.message },
+      });
+
+      return { ok: false, failure };
+    } finally {
+      if (timer !== undefined) {
+        clearTimeout(timer);
+      }
+    }
+  }
+
+  private assertValidCorridor(input: ComparisonInput): void {
+    if (input.sourceCurrency === input.targetCurrency) {
+      throw new ValidationError(
+        'Source and target currencies must differ. Meridian compares cross-currency routes.',
+        { currency: input.sourceCurrency },
+      );
+    }
+    const amount = Money.ofMinorUnits(input.sourceCurrency, input.amountMinorUnits);
+    if (!amount.isPositive()) {
+      throw new ValidationError('Amount must be greater than zero.', {
+        amountMinorUnits: input.amountMinorUnits,
+      });
+    }
+  }
+}
+
+function sortById<T>(items: readonly T[], key: (item: T) => string): readonly T[] {
+  return [...items].sort((left, right) => key(left).localeCompare(key(right), 'en'));
+}
+
+function pickBy<T>(items: readonly [T, ...T[]] | readonly T[], isBetter: (a: T, b: T) => boolean): T {
+  const [first, ...rest] = items;
+  if (first === undefined) {
+    throw new NoRoutesAvailableError('Cannot select from an empty route set.');
+  }
+  return rest.reduce((best, candidate) => (isBetter(candidate, best) ? candidate : best), first);
+}
+
+function toJsonFailure(failure: ProviderFailure): Record<string, string | null> {
+  return {
+    providerId: failure.providerId,
+    rail: failure.rail,
+    code: failure.code,
+    message: failure.message,
+    failedAt: failure.failedAt,
+  };
+}
