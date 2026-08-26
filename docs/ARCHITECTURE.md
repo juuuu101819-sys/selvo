@@ -33,7 +33,9 @@ packages/
   adapters/       Concrete RouteProvider implementations (sandbox rails today,
                   licensed partners later). Depends on core, never on api/web.
   persistence/    Repository implementations for the core persistence ports.
-                  In-memory driver + PostgreSQL driver behind one interface.
+                  In-memory driver + Prisma/PostgreSQL driver behind one interface.
+prisma/           Schema and migrations. The database's source of truth.
+tests/e2e/        Playwright specs spanning both apps.
 ```
 
 The web app reaches the API through Next.js server actions rather than from the browser, so the
@@ -177,9 +179,16 @@ Core declares ports; `persistence` implements them:
 - `AuditLogRepository` — append-only financial event log.
 
 Two drivers behind those ports: `memory` (default, used by tests and the demo) and `postgres`
-(`pg` + the SQL migration in `packages/persistence/migrations`). The driver is chosen by
-`DATABASE_DRIVER`; the API never learns which one it got. The Postgres audit table has no
-`UPDATE`/`DELETE` path in application code — append-only is enforced by the repository API.
+(Prisma with the `@prisma/adapter-pg` driver adapter, against the migrations in `prisma/`). The driver
+is chosen by `DATABASE_DRIVER`; the API never learns which one it got.
+
+Prisma is confined to this package. Nothing above the persistence layer imports it, which is what
+keeps the store replaceable. Two properties are enforced in the database as well as in code: monetary
+amounts are `DECIMAL(38, 0)` and are read with `toFixed(0)` rather than `toNumber()`, and the audit
+table is append-only — the repository exposes no update or delete, and a trigger rejects both.
+
+`docs/STACK.md` records why the older `prisma-client-js` generator is used and where the constraints
+Prisma cannot express are added by hand.
 
 ## 9. Error handling
 
@@ -196,7 +205,26 @@ Unexpected exceptions are logged with full context and returned as `INTERNAL_ERR
 internals leaked. Provider failures are _partial_ failures: one dead provider degrades the
 comparison (recorded in `providerErrors`) instead of failing the request.
 
-## 10. Configuration
+## 10. Authentication
+
+Prepared, not implemented. The parts that are hard to retrofit exist now:
+
+- `Principal` carries `organisationId` (the tenant boundary), `subjectId`, `roles` and a `verified`
+  flag, so nothing downstream can mistake an unverified header for an identity.
+- The `Authenticator` port resolves a credential to a principal once per request, inside the
+  versioned API plugin. Handlers read the principal; they never parse headers themselves.
+- Audit events take their actor from the principal rather than from a header at the call site.
+- `Organisation`, `User` and `ApiKey` are in the schema, storing only a hash of a key secret.
+
+Phase 1 ships an authenticator that accepts callers presenting no credential and **rejects** any that
+do. Serving a bearer token as anonymous would let a client conclude it was authenticated and scoped
+to its organisation when it was neither; failing closed means enabling real authentication later
+cannot silently downgrade anyone. Liveness and readiness are outside the authenticated plugin, so a
+probe cannot fail on an injected credential.
+
+Out of scope: SSO, SAML, SCIM, MFA, federated identity, password handling, session storage.
+
+## 11. Configuration
 
 All configuration arrives through environment variables, parsed and validated once at startup
 by a Zod schema that fails fast. No secret is ever read from source. Provider credentials are
@@ -208,7 +236,7 @@ every variable; `.env*` is git-ignored.
 every API response carries `"mode": "sandbox"` plus a non-binding-quote disclaimer. Starting in
 `production` without licensed adapters configured is a startup error, not a silent fallback.
 
-## 11. Testing strategy
+## 12. Testing strategy
 
 - **Unit** (`packages/core`) — money arithmetic, rounding boundaries, currency exponents, fee
   application order, slippage tiers, cost derivation, scoring/normalisation edge cases,
@@ -216,10 +244,16 @@ every API response carries `"mode": "sandbox"` plus a non-binding-quote disclaim
 - **Contract** (`packages/adapters`) — a shared conformance suite every `RouteProvider` must
   pass, so a future licensed adapter is validated against the same rules as a sandbox one.
 - **Integration** (`apps/api`) — the app is built in-process and exercised via `fastify.inject`,
-  covering happy paths, every validation failure, idempotency, replay determinism and the
-  execution guard.
+  covering happy paths, every validation failure, idempotency, replay determinism, API versioning,
+  authentication and the execution guard.
+- **End-to-end** (`tests/e2e`) — Playwright drives the built application over real HTTP in three
+  projects: the API contract, the browser journey, and mobile layout. These are not a repeat of the
+  integration tests: they exercise real sockets, real serialisation and real header defaults, which is
+  where a body parser behaves differently from the in-process harness. The empty-body defect fixed
+  earlier in this project was exactly that class of bug, so the suite sends a bodyless POST with a
+  JSON content type on purpose.
 
-## 12. Deliberately out of scope for Phase 1
+## 13. Deliberately out of scope for Phase 1
 
 No execution, no custody, no wallets, no key management, no stablecoin issuance, no auth
 provider integration, no DEX connectivity. `POST /v1/executions` exists and returns

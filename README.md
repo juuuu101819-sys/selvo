@@ -34,7 +34,7 @@ Requires Node.js 20.11 or newer. No database or Docker needed: the default persi
 in-memory and the sandbox rails are priced from data files in the repository.
 
 ```bash
-npm install
+npm install              # also generates the Prisma client via postinstall
 cp .env.example .env     # optional; every value has a working default
 npm run dev              # API on :47311, web app on :43117
 ```
@@ -51,7 +51,10 @@ npm run dev:web
 A quick check against the API directly:
 
 ```bash
-curl -s -X POST http://127.0.0.1:47311/v1/comparisons \
+curl -s http://127.0.0.1:47311/api/v1/health
+# {"status":"ok","service":"financial-router","version":"1.0.0"}
+
+curl -s -X POST http://127.0.0.1:47311/api/v1/comparisons \
   -H 'content-type: application/json' \
   -d '{"sourceCurrency":"USD","targetCurrency":"KRW","amount":"100000.00"}' | jq '.data.routes[] | {rank, provider: .provider.name, cost: .totalCostPercent}'
 ```
@@ -59,14 +62,17 @@ curl -s -X POST http://127.0.0.1:47311/v1/comparisons \
 ## Verifying a change
 
 ```bash
-npm run verify       # lint, typecheck and the full test suite
+npm run verify       # lint, typecheck, unit and integration tests
+npm run test:e2e     # Playwright: API contract, browser journey, mobile layout
+
 npm run lint
 npm run typecheck
 npm test
 ```
 
-265+ tests: unit tests over the financial calculations, a provider conformance check every adapter
-must pass, and integration tests exercising the real Fastify app in-process.
+Roughly 300 Vitest tests — unit tests over the financial calculations, a provider conformance check
+every adapter must pass, and integration tests exercising the real Fastify app in-process — plus 19
+Playwright tests that drive the built app over real HTTP.
 
 ## Repository layout
 
@@ -77,9 +83,15 @@ apps/
 packages/
   core/           Pure domain: money, cost engine, scorer, ports, errors. No I/O.
   adapters/       RouteProvider implementations. Sandbox rails today, partners later.
-  persistence/    Repository implementations: in-memory and PostgreSQL.
+  persistence/    Repository implementations: in-memory and PostgreSQL via Prisma.
+prisma/
+  schema.prisma   Database schema and the prepared authentication tables.
+  migrations/     Generated SQL, plus the constraints and trigger Prisma cannot express.
+tests/
+  e2e/            Playwright specs spanning both apps.
 docs/
   ARCHITECTURE.md How it fits together and why.
+  STACK.md        The chosen stack, the directory mapping, and the decisions behind them.
   ROADMAP.md      Phase plan. Phase 1 is what exists.
   COMPLIANCE.md   The boundaries, and how the code enforces them.
   API.md          Endpoint reference.
@@ -87,6 +99,19 @@ docs/
 
 The dependency graph points inward: `core` depends on nothing but `decimal.js`, which is what makes
 the financial logic testable without a server, a database or a network.
+
+## Authentication
+
+Phase 1 has no authentication, and says so rather than implying otherwise. A request presenting an
+`Authorization` or `X-Api-Key` header is rejected with `401` instead of being quietly served as
+anonymous — a client that sent a token and got a `200` back would reasonably assume it was
+authenticated and scoped to its organisation, when neither is true.
+
+What is prepared is the architecture, because that is the part that is hard to retrofit: an
+`Authenticator` port resolving a credential to a `Principal` once per request, a tenant boundary
+(`organisationId`) on that principal, audit events attributed from it rather than from a header read
+at the call site, and `Organisation` / `User` / `ApiKey` tables in the schema. SSO, SAML, SCIM and MFA
+are explicitly out of scope. See [docs/STACK.md](./docs/STACK.md).
 
 ## Notes on the numbers
 
@@ -102,6 +127,8 @@ the financial logic testable without a server, a database or a network.
   reproduces.
 - Sandbox pricing lives in `packages/adapters/data/`, versioned and validated on load. Point
   `MERIDIAN_PRICING_DATA_DIR` elsewhere to swap the dataset without touching code.
+- In the database, amounts are `DECIMAL(38, 0)` and are read with `toFixed(0)`, never `toNumber()`: a
+  large VND or IDR notional in minor units exceeds `Number.MAX_SAFE_INTEGER`.
 
 ## Configuration
 

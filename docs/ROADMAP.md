@@ -14,21 +14,34 @@ _"Find the best financial route for a business transaction."_
   canonical fingerprinting, typed errors.
 - `packages/adapters`: four sandbox rails (bank FX, FX provider, stablecoin partner, liquidity
   provider) priced from versioned external data files, plus a provider conformance suite.
-- `packages/persistence`: comparison + audit repositories, in-memory and PostgreSQL drivers.
-- `apps/api`: validated `POST /v1/comparisons`, `GET /v1/comparisons/:id`,
-  `POST /v1/comparisons/:id/replay`, corridor/provider metadata, health, and a hard
-  `501` execution guard.
+- `packages/persistence`: comparison + audit repositories, in-memory and Prisma/PostgreSQL drivers.
+- `prisma/`: schema and migrations, including the CHECK constraints and append-only audit trigger
+  Prisma cannot express, plus the Organisation / User / ApiKey tables authentication is prepared around.
+- `apps/api`: REST API versioned at `/api/v1` (with `/v1` kept as a deprecated alias) — validated
+  `POST /api/v1/comparisons`, `GET /api/v1/comparisons/:id`, `POST /api/v1/comparisons/:id/replay`,
+  per-comparison audit, corridor/provider metadata, `GET /api/v1/health`, unversioned liveness and
+  readiness, and a hard `501` execution guard.
+- Authentication _architecture_: an `Authenticator` port, a `Principal` carrying the tenant boundary,
+  and audit attribution taken from it. Phase 1 rejects credentials it cannot verify rather than
+  serving them as anonymous.
 - `apps/web`: comparison UI with ranked routes, cost breakdown, recommendation, and loading /
   empty / error states.
-- Unit tests for financial calculations, integration tests for every endpoint.
+- Unit tests for financial calculations, integration tests for every endpoint, and Playwright
+  end-to-end coverage of the API contract, the browser journey and mobile layout.
 
 **Explicitly excluded:** custody, execution, crypto holdings, stablecoin issuance, regulated
 activity without a licensed partner.
 
-## Phase 2 — Persistence hardening and multi-tenancy _(not started)_
+## Phase 2 — Authentication, multi-tenancy and persistence hardening _(not started)_
 
-Organisations, API keys/JWT with per-tenant rate limits, PostgreSQL as the default driver with
-migration tooling in CI, comparison history and per-tenant audit retention.
+Implement the authentication whose architecture Phase 1 prepared: verify API keys and session tokens
+against the existing `Organisation`, `User` and `ApiKey` tables, scope every query by
+`organisationId`, and add per-tenant rate limits. Make PostgreSQL the default driver with
+`prisma migrate deploy` and a live-database integration suite in CI — the Prisma driver's row mapping
+is unit-tested today, but no test has yet executed the SQL. Then comparison history and per-tenant
+audit retention.
+
+Still excluded: enterprise SSO, SAML and SCIM.
 
 ## Phase 3 — Live provider adapters _(not started)_
 
