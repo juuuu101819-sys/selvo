@@ -5,6 +5,14 @@ export {
   type AuditEventType,
   type AuditLogger,
 } from './audit.js';
+export {
+  ANONYMOUS_PRINCIPAL,
+  PRINCIPAL_KINDS,
+  type AuthenticationAttempt,
+  type Authenticator,
+  type Principal,
+  type PrincipalKind,
+} from './authentication.js';
 export { FixedClock, systemClock, type Clock } from './clock.js';
 export { SequentialIdGenerator, uuidIdGenerator, type IdGenerator } from './id-generator.js';
 export { noopLogger, type LogContext, type LogLevel, type Logger } from './logger.js';

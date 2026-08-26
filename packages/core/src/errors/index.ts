@@ -4,6 +4,8 @@
  */
 export const ErrorCode = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
+  UNAUTHENTICATED: 'UNAUTHENTICATED',
+  FORBIDDEN: 'FORBIDDEN',
   UNSUPPORTED_CURRENCY: 'UNSUPPORTED_CURRENCY',
   UNSUPPORTED_CORRIDOR: 'UNSUPPORTED_CORRIDOR',
   INVALID_AMOUNT: 'INVALID_AMOUNT',
@@ -53,6 +55,23 @@ export abstract class AppError extends Error {
 export class ValidationError extends AppError {
   readonly code = ErrorCode.VALIDATION_ERROR;
   readonly httpStatus = 400;
+}
+
+/**
+ * A presented credential could not be accepted.
+ *
+ * Details deliberately never echo the credential, nor say whether a subject exists — an error
+ * response is not a place to help someone enumerate accounts.
+ */
+export class UnauthenticatedError extends AppError {
+  readonly code = ErrorCode.UNAUTHENTICATED;
+  readonly httpStatus = 401;
+}
+
+/** An authenticated principal lacks the rights for this operation. */
+export class ForbiddenError extends AppError {
+  readonly code = ErrorCode.FORBIDDEN;
+  readonly httpStatus = 403;
 }
 
 export class UnsupportedCurrencyError extends AppError {
