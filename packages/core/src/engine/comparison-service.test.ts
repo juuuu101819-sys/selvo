@@ -433,16 +433,34 @@ describe('RouteComparisonService', () => {
       );
     });
 
-    it('records a provider failure', async () => {
+    it('correlates every provider quote to the comparison it was fetched for', async () => {
+      const comparison = await harness.service.compare(input());
+      const correlated = harness.audit.events.filter(
+        (event) => event.comparisonId === comparison.comparisonId,
+      );
+
+      // Without a comparison id on the provider events, the per-comparison audit trail would show
+      // the request and the result but not which provider quoted what.
+      expect(correlated.filter((event) => event.type === 'provider.quote.received')).toHaveLength(
+        3,
+      );
+      expect(correlated.map((event) => event.type)).toContain('comparison.requested');
+      expect(correlated.map((event) => event.type)).toContain('comparison.completed');
+      expect(harness.audit.events.every((event) => event.comparisonId !== null)).toBe(true);
+    });
+
+    it('records a provider failure against the comparison', async () => {
       const broken = new StubRouteProvider(
         { id: 'broken' },
         { kind: 'reject', error: new ProviderError('broken', 'down') },
       );
       const { service, audit } = buildService([BANK, broken]);
-      await service.compare(input());
+      const comparison = await service.compare(input());
 
-      expect(audit.typesFor('provider.quote.failed')).toHaveLength(1);
-      expect(audit.typesFor('provider.quote.failed')[0]?.providerId).toBe('broken');
+      const failures = audit.typesFor('provider.quote.failed');
+      expect(failures).toHaveLength(1);
+      expect(failures[0]?.providerId).toBe('broken');
+      expect(failures[0]?.comparisonId).toBe(comparison.comparisonId);
     });
 
     it('records a failed comparison', async () => {

@@ -460,6 +460,27 @@ describe('GET /v1/comparisons/:comparisonId/audit', () => {
     expect(body.data.events.every((event) => event.actor === 'treasury-ops')).toBe(true);
   });
 
+  it('shows which provider quoted what for the comparison', async () => {
+    const created = await createComparison();
+    const response = await harness.app.inject({
+      method: 'GET',
+      url: `/v1/comparisons/${created.payload.data.comparisonId}/audit`,
+    });
+
+    const events = response.json<{
+      data: { events: { type: string; providerId: string | null }[] };
+    }>().data.events;
+    const quoteEvents = events.filter((event) => event.type === 'provider.quote.received');
+
+    expect(quoteEvents).toHaveLength(4);
+    expect(quoteEvents.map((event) => event.providerId).sort()).toEqual([
+      'sandbox-meridian-liquidity',
+      'sandbox-northgate-bank',
+      'sandbox-solstice-settlement',
+      'sandbox-veridian-payments',
+    ]);
+  });
+
   it('records a replay in the audit trail', async () => {
     const created = await createComparison();
     await harness.app.inject({

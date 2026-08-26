@@ -147,7 +147,7 @@ export class RouteComparisonService {
     }
 
     const outcomes = await Promise.all(
-      eligible.map((provider) => this.requestQuote(provider, request, input)),
+      eligible.map((provider) => this.requestQuote(provider, request, input, comparisonId)),
     );
 
     const quotes: ProviderQuote[] = [];
@@ -390,6 +390,7 @@ export class RouteComparisonService {
     provider: RouteProvider,
     request: QuoteRequest,
     input: ComparisonInput,
+    comparisonId: string,
   ): Promise<QuoteOutcome> {
     const { clock, logger, auditLogger, providerTimeoutMs } = this.deps;
     const providerId = provider.descriptor.id;
@@ -420,7 +421,7 @@ export class RouteComparisonService {
         type: 'provider.quote.received',
         actor: input.actor,
         requestId: input.requestId,
-        comparisonId: null,
+        comparisonId,
         providerId,
         payload: {
           quotedAt: quote.quotedAt,
@@ -453,7 +454,7 @@ export class RouteComparisonService {
         type: 'provider.quote.failed',
         actor: input.actor,
         requestId: input.requestId,
-        comparisonId: null,
+        comparisonId,
         providerId,
         payload: { code: appError.code, message: appError.message },
       });
