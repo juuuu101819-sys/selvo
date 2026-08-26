@@ -14,8 +14,7 @@
     }
   },
   "files": [
-    "dist",
-    "migrations"
+    "dist"
   ],
   "scripts": {
     "build": "tsc --build tsconfig.build.json",
@@ -24,9 +23,7 @@
   },
   "dependencies": {
     "@meridian/core": "*",
-    "pg": "^8.16.3"
-  },
-  "devDependencies": {
-    "@types/pg": "^8.15.5"
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0"
   }
 }

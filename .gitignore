@@ -7,6 +7,15 @@ coverage/
 .next/
 out/
 
+# Generated Prisma client. Recreated by `npm run db:generate`, which runs on postinstall.
+.prisma/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 .env
 .env.*
 !.env.example

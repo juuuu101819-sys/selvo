@@ -1,0 +1,143 @@
+// Meridian database schema.
+//
+// Prisma is the source of truth for the schema and for migrations. The generated client is
+// consumed only by packages/persistence, behind the ComparisonRepository and AuditLogRepository
+// ports — nothing above the persistence layer imports Prisma, so the store stays replaceable.
+//
+// Two conventions carry through from the domain model:
+//
+//   * Monetary amounts are Decimal(38, 0) counts of a currency's minor units. Never Float, never
+//     Money, never an Int that could silently overflow. The client returns Decimal, which is
+//     converted to an exact string at the repository boundary.
+//   * The audit trail is append-only. Prisma cannot express that, so the migration adds a trigger
+//     and the repository exposes no update or delete.
+
+generator client {
+  // `prisma-client-js` emits JavaScript plus .d.ts declarations, re-exported through
+  // `@prisma/client`. The newer `prisma-client` generator emits TypeScript that imports with
+  // explicit `.ts` extensions, which a NodeNext package compiling to dist/ cannot consume without
+  // disabling its own emit — and its output would have to be imported by relative path from
+  // outside the package's rootDir. Generating to the conventional location keeps the import a
+  // plain package specifier.
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A completed route comparison, stored with everything needed to replay it.
+model Comparison {
+  comparisonId String @id @map("comparison_id")
+
+  /// Breaks ties when two comparisons share a createdAt, so "most recent first" is a total order
+  /// rather than an arbitrary one at millisecond resolution.
+  sequence BigInt @unique @default(autoincrement())
+
+  createdAt     DateTime @map("created_at") @db.Timestamptz(3)
+  mode          String
+  engineVersion String   @map("engine_version")
+
+  /// SHA-256 over the canonical snapshot. Identical inputs always produce this same value.
+  fingerprint String
+
+  sourceCurrency String @map("source_currency") @db.VarChar(3)
+  targetCurrency String @map("target_currency") @db.VarChar(3)
+
+  /// Send amount as an exact integer count of the source currency's minor units.
+  amountMinorUnits Decimal @map("amount_minor_units") @db.Decimal(38, 0)
+
+  idempotencyKey String? @unique @map("idempotency_key")
+
+  /// Inputs the engine needs to recompute the comparison: request, raw provider quotes, provider
+  /// descriptors and scoring weights.
+  snapshot Json
+
+  /// The serialised result as it was returned to the caller.
+  result Json
+
+  @@index([createdAt(sort: Desc), sequence(sort: Desc)])
+  @@index([fingerprint])
+  @@index([sourceCurrency, targetCurrency, createdAt(sort: Desc)])
+  @@map("comparisons")
+}
+
+/// Append-only log of financially meaningful events. Immutability is enforced by a trigger.
+model AuditEvent {
+  eventId      String   @id @map("event_id")
+  type         String
+  occurredAt   DateTime @map("occurred_at") @db.Timestamptz(3)
+  actor        String
+  requestId    String?  @map("request_id")
+  comparisonId String?  @map("comparison_id")
+  providerId   String?  @map("provider_id")
+  payload      Json
+
+  @@index([occurredAt(sort: Desc)])
+  @@index([comparisonId, occurredAt])
+  @@index([type, occurredAt(sort: Desc)])
+  @@map("audit_events")
+}
+
+// ---------------------------------------------------------------------------
+// Authentication architecture, prepared but not implemented.
+//
+// These models exist so the shape of business-user authentication is settled before it is built:
+// a business is an Organisation, people are Users belonging to one, and an ApiKey authenticates a
+// machine caller. Phase 1 writes no rows and reads none — the API resolves an anonymous principal.
+// Deliberately absent: SSO, SAML, SCIM, MFA and federated identity. See docs/ROADMAP.md Phase 2.
+// ---------------------------------------------------------------------------
+
+/// A business customer. The tenant boundary every future query is scoped by.
+model Organisation {
+  id          String   @id
+  name        String
+  /// URL-safe identifier used in place of the id in customer-facing contexts.
+  slug        String   @unique
+  countryCode String   @map("country_code") @db.VarChar(2)
+  status      String   @default("active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  users   User[]
+  apiKeys ApiKey[]
+
+  @@map("organisations")
+}
+
+/// A person acting on behalf of an organisation.
+model User {
+  id             String   @id
+  organisationId String   @map("organisation_id")
+  email          String   @unique
+  displayName    String   @map("display_name")
+  /// Coarse role for authorisation. A richer permission model belongs with the feature that needs it.
+  role           String   @default("member")
+  status         String   @default("active")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt     DateTime? @map("last_seen_at") @db.Timestamptz(3)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@map("users")
+}
+
+/// Credential for a machine caller. Only a hash is ever stored; the secret is shown once on issue.
+model ApiKey {
+  id             String    @id
+  organisationId String    @map("organisation_id")
+  /// Non-secret prefix, safe to display and to log, used to identify the key.
+  keyPrefix      String    @unique @map("key_prefix")
+  /// Hash of the secret. The secret itself is never persisted.
+  secretHash     String    @map("secret_hash")
+  label          String
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId])
+  @@map("api_keys")
+}
