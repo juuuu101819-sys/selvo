@@ -85,12 +85,14 @@ packages/
   adapters/       RouteProvider implementations. Sandbox rails today, partners later.
   persistence/    Repository implementations: in-memory and PostgreSQL via Prisma.
 prisma/
-  schema.prisma   Database schema and the prepared authentication tables.
-  migrations/     Generated SQL, plus the constraints and trigger Prisma cannot express.
+  schema.prisma   The domain model: tenancy, providers, routes, requests, quotes, audit.
+  migrations/     Generated SQL, plus the constraints and triggers Prisma cannot express.
+  seed.ts         Demo data, priced by running the real engine rather than by fixtures.
 tests/
   e2e/            Playwright specs spanning both apps.
 docs/
   ARCHITECTURE.md How it fits together and why.
+  DATABASE.md     The data model, its invariants, and how to work with it locally.
   STACK.md        The chosen stack, the directory mapping, and the decisions behind them.
   ROADMAP.md      Phase plan. Phase 1 is what exists.
   COMPLIANCE.md   The boundaries, and how the code enforces them.
@@ -105,12 +107,12 @@ the financial logic testable without a server, a database or a network.
 Phase 1 has no authentication, and says so rather than implying otherwise. A request presenting an
 `Authorization` or `X-Api-Key` header is rejected with `401` instead of being quietly served as
 anonymous — a client that sent a token and got a `200` back would reasonably assume it was
-authenticated and scoped to its organisation, when neither is true.
+authenticated and scoped to its organization, when neither is true.
 
 What is prepared is the architecture, because that is the part that is hard to retrofit: an
 `Authenticator` port resolving a credential to a `Principal` once per request, a tenant boundary
-(`organisationId`) on that principal, audit events attributed from it rather than from a header read
-at the call site, and `Organisation` / `User` / `ApiKey` tables in the schema. SSO, SAML, SCIM and MFA
+(`organizationId`) on that principal, audit events attributed from it rather than from a header read
+at the call site, and `Organization` / `User` / `ApiKey` tables in the schema. SSO, SAML, SCIM and MFA
 are explicitly out of scope. See [docs/STACK.md](./docs/STACK.md).
 
 ## Notes on the numbers
@@ -144,12 +146,30 @@ source. See [.env.example](./.env.example) for the full list; the ones that matt
 | `WEB_PORT`        | `43117`                  |                                                                     |
 | `API_BASE_URL`    | `http://127.0.0.1:47311` | Where the web app's server-side calls go.                           |
 
-To use PostgreSQL, apply `packages/persistence/migrations/0001_init.sql`, then set
-`DATABASE_DRIVER=postgres` and `DATABASE_URL`. `GET /ready` fails loudly if the schema is missing.
+To use PostgreSQL, set `DATABASE_URL`, run `npm run db:deploy` to apply `prisma/migrations`, then set
+`DATABASE_DRIVER=postgres`. `GET /ready` fails loudly if the schema is missing.
+
+Prisma owns the schema and migrations. Its client is used only inside `packages/persistence`, behind
+the repository ports, so nothing above that layer imports Prisma:
+
+```bash
+npm run db:validate   # validate the schema
+npm run db:generate   # regenerate the client (also runs on postinstall)
+npm run db:deploy     # apply pending migrations
+npm run db:migrate    # create and apply a new migration
+npm run db:seed       # load demo data (idempotent)
+npm run db:studio     # browse the data
+```
+
+The domain model — organizations, users, providers and their corridor capabilities, routes,
+transaction requests, quotes with legs and itemised fees, customer pricing and the audit log — is
+described in [docs/DATABASE.md](./docs/DATABASE.md), including how the schema itself makes recording
+a settlement impossible.
 
 ## Status
 
-Phase 1 (route comparison MVP) is complete. Later phases — multi-tenancy, live licensed-partner
-adapters, corridor analytics, and any execution work — are described in
-[docs/ROADMAP.md](./docs/ROADMAP.md) and are **not** started. Execution in particular is gated on
-the checklist in [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).
+The route comparison MVP and the data model are in place. Later phases — reading provider capability
+from the database, persisting quotes through it, live licensed-partner adapters, corridor analytics,
+and any execution work — are described in [docs/ROADMAP.md](./docs/ROADMAP.md) and are **not**
+started. Execution in particular is gated on the checklist in
+[docs/COMPLIANCE.md](./docs/COMPLIANCE.md).

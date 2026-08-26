@@ -209,16 +209,16 @@ comparison (recorded in `providerErrors`) instead of failing the request.
 
 Prepared, not implemented. The parts that are hard to retrofit exist now:
 
-- `Principal` carries `organisationId` (the tenant boundary), `subjectId`, `roles` and a `verified`
+- `Principal` carries `organizationId` (the tenant boundary), `subjectId`, `roles` and a `verified`
   flag, so nothing downstream can mistake an unverified header for an identity.
 - The `Authenticator` port resolves a credential to a principal once per request, inside the
   versioned API plugin. Handlers read the principal; they never parse headers themselves.
 - Audit events take their actor from the principal rather than from a header at the call site.
-- `Organisation`, `User` and `ApiKey` are in the schema, storing only a hash of a key secret.
+- `Organization`, `User` and `ApiKey` are in the schema, storing only a hash of a key secret.
 
 Phase 1 ships an authenticator that accepts callers presenting no credential and **rejects** any that
 do. Serving a bearer token as anonymous would let a client conclude it was authenticated and scoped
-to its organisation when it was neither; failing closed means enabling real authentication later
+to its organization when it was neither; failing closed means enabling real authentication later
 cannot silently downgrade anyone. Liveness and readiness are outside the authenticated plugin, so a
 probe cannot fail on an injected credential.
 

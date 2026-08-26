@@ -16,7 +16,7 @@ _"Find the best financial route for a business transaction."_
   provider) priced from versioned external data files, plus a provider conformance suite.
 - `packages/persistence`: comparison + audit repositories, in-memory and Prisma/PostgreSQL drivers.
 - `prisma/`: schema and migrations, including the CHECK constraints and append-only audit trigger
-  Prisma cannot express, plus the Organisation / User / ApiKey tables authentication is prepared around.
+  Prisma cannot express, plus the Organization / User / ApiKey tables authentication is prepared around.
 - `apps/api`: REST API versioned at `/api/v1` (with `/v1` kept as a deprecated alias) — validated
   `POST /api/v1/comparisons`, `GET /api/v1/comparisons/:id`, `POST /api/v1/comparisons/:id/replay`,
   per-comparison audit, corridor/provider metadata, `GET /api/v1/health`, unversioned liveness and
@@ -35,8 +35,8 @@ activity without a licensed partner.
 ## Phase 2 — Authentication, multi-tenancy and persistence hardening _(not started)_
 
 Implement the authentication whose architecture Phase 1 prepared: verify API keys and session tokens
-against the existing `Organisation`, `User` and `ApiKey` tables, scope every query by
-`organisationId`, and add per-tenant rate limits. Make PostgreSQL the default driver with
+against the existing `Organization`, `User` and `ApiKey` tables, scope every query by
+`organizationId`, and add per-tenant rate limits. Make PostgreSQL the default driver with
 `prisma migrate deploy` and a live-database integration suite in CI — the Prisma driver's row mapping
 is unit-tested today, but no test has yet executed the SQL. Then comparison history and per-tenant
 audit retention.

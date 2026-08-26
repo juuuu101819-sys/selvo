@@ -67,7 +67,7 @@ for the same reason — never JSON numbers.
 **Authentication.** Phase 1 serves unauthenticated callers, and refuses to pretend otherwise: a
 request presenting an `Authorization` or `X-Api-Key` header is rejected with `401 UNAUTHENTICATED`
 rather than quietly served as anonymous. A client that sent a token and received `200` would
-reasonably conclude it was authenticated and its data scoped to its organisation, when neither is
+reasonably conclude it was authenticated and its data scoped to its organization, when neither is
 true. `GET /api/v1/meta` reports the active scheme under `authentication`.
 
 ---

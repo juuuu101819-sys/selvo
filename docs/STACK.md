@@ -21,7 +21,7 @@ target stack. What was added or changed is marked below.
 | Validation               | Zod 4                                             | Request schemas, environment schema, pricing dataset schema.                                       |
 | Unit / integration tests | Vitest 3                                          | Domain unit tests and in-process Fastify integration tests.                                        |
 | End-to-end tests         | Playwright                                        | **Added.** API contract, browser journey and mobile layout projects.                               |
-| Authentication           | Architecture only                                 | **Added.** `Authenticator` port, `Principal`, and the Organisation / User / ApiKey schema. No SSO. |
+| Authentication           | Architecture only                                 | **Added.** `Authenticator` port, `Principal`, and the Organization / User / ApiKey schema. No SSO. |
 
 ## Directory structure
 
@@ -97,14 +97,14 @@ What is hard to retrofit is not the login screen; it is a tenant boundary on eve
 authenticated actor on every audit event, and a single place where a credential becomes an identity.
 Those exist now:
 
-- `Principal` carries `organisationId`, `subjectId`, `roles` and a `verified` flag.
+- `Principal` carries `organizationId`, `subjectId`, `roles` and a `verified` flag.
 - The `Authenticator` port resolves a credential to a principal, once per request, before any handler.
-- `Organisation`, `User` and `ApiKey` are in the schema. Only a hash of an API key secret is stored.
+- `Organization`, `User` and `ApiKey` are in the schema. Only a hash of an API key secret is stored.
 - Audit events take their actor from the principal, not from a header read at the call site.
 
 Phase 1 ships `AnonymousAuthenticator`, which accepts callers presenting no credential and **rejects
 any request that does** present one. That refusal is the point: a client that sends a bearer token and
-receives `200` would reasonably conclude it is authenticated and its data scoped to its organisation,
+receives `200` would reasonably conclude it is authenticated and its data scoped to its organization,
 when neither is true. Failing closed on a credential the deployment cannot verify means switching
 real authentication on later cannot silently downgrade anyone.
 
