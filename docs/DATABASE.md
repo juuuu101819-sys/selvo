@@ -240,6 +240,11 @@ appended by hand, and the assertions in `prisma-driver.test.ts` extended to cove
 
 `npm run db:seed` is idempotent — it upserts, so it can be re-run.
 
+Because the seed runs the real routing engine, it imports the workspace packages' compiled output.
+`npm run db:seed` and `npm run db:reset` build first; Prisma does not pass its seed command through a
+shell, so the build cannot be chained inside `prisma.config.ts`. Invoking `prisma db seed` directly on
+an unbuilt clone fails to resolve `@meridian/*`, and the fix is to run `npm run build`.
+
 It loads: 7 fiat currencies (USD, KRW, EUR, JPY, SGD, HKD, GBP) plus one demo stablecoin for
 intermediary legs; 4 demo providers with 156 corridor capabilities and 156 routes; a demo
 organization with an owner; 3 overlapping customer pricing rules; and one priced demo transaction

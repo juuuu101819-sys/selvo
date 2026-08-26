@@ -15,6 +15,10 @@
  * The domain-to-row shaping lives here rather than in packages/persistence because Phase 3 owns the
  * production write path, and guessing at it now would be speculative.
  */
+// The imports below resolve to the workspace packages' compiled output, so the seed needs
+// `npm run build` to have run. `npm run db:seed` and `npm run db:reset` do that first; calling
+// `prisma db seed` directly on an unbuilt clone will fail to resolve @meridian/* and the fix is to
+// build.
 import { randomUUID } from 'node:crypto';
 import { createSandboxAdapters } from '@meridian/adapters';
 import {

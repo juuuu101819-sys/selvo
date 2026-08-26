@@ -17,7 +17,10 @@ export default defineConfig({
   migrations: {
     path: 'prisma/migrations',
     // The seed builds its demo quotes by running the real routing engine over the sandbox adapters,
-    // so it imports workspace packages and needs a TypeScript runner.
+    // so it imports the compiled workspace packages and needs a TypeScript runner. Prisma does not
+    // pass this through a shell, so the build cannot be chained here — `npm run db:seed` and
+    // `npm run db:reset` compile first, and invoking `prisma db seed` directly on an unbuilt clone
+    // fails with the guidance in prisma/seed.ts.
     seed: 'tsx prisma/seed.ts',
   },
   datasource: {

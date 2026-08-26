@@ -35,8 +35,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "pretest:e2e": "npm run build && npm run build --workspace @meridian/web",
-    "db:seed": "prisma db seed",
-    "db:reset": "prisma migrate reset --force"
+    "db:seed": "npm run build --silent && prisma db seed",
+    "db:reset": "npm run build --silent && prisma migrate reset --force"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
