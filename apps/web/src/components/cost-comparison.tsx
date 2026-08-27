@@ -40,6 +40,7 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
                   {route.provider.name}
                   {route.recommended && (
                     <span className="ml-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                      {' '}
                       best
                     </span>
                   )}

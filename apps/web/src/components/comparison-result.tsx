@@ -38,7 +38,11 @@ export function ComparisonResult({
   );
 
   return (
-    <section className="space-y-6" aria-label="Route comparison results">
+    <section
+      className={`space-y-6 ${refreshing ? 'pointer-events-none opacity-60' : ''}`}
+      aria-label="Route comparison results"
+      aria-busy={refreshing}
+    >
       {comparisonExpiry.state === 'expired' && (
         <Alert variant="destructive">
           <TimerOff aria-hidden />

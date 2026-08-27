@@ -20,11 +20,14 @@ export function EmptyState() {
 
 export function ResultsSkeleton() {
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="Comparing routes">
-      <Skeleton className="h-28 w-full rounded-xl" />
-      {[0, 1, 2, 3].map((index) => (
-        <Skeleton key={index} className="h-40 w-full rounded-xl" />
-      ))}
+    <div className="space-y-6" aria-busy="true" aria-label="Comparing routes">
+      <Skeleton className="h-64 w-full rounded-xl" />
+      <div className="space-y-3">
+        {[0, 1, 2].map((index) => (
+          <Skeleton key={index} className="h-36 w-full rounded-xl" />
+        ))}
+      </div>
+      <Skeleton className="h-40 w-full rounded-xl" />
     </div>
   );
 }

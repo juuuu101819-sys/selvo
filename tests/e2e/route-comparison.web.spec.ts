@@ -28,6 +28,7 @@ test('compares routes for the worked example, best route first', async ({ page }
 
   const alternatives = page.getByRole('region', { name: /Alternative routes/i });
   await expect(alternatives.locator('article')).toHaveCount(3);
+  await expect(alternatives).not.toContainText('Recommended');
   await expect(alternatives.locator('article').last()).toContainText('Northgate Bank');
   await expect(alternatives.locator('article').last()).toContainText('0.72%');
 

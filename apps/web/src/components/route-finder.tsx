@@ -67,11 +67,11 @@ export function RouteFinder({ meta }: { meta: MetaDto }) {
         </CardContent>
       </Card>
 
-      {isPending && <ResultsSkeleton />}
+      {isPending && state.kind !== 'success' && <ResultsSkeleton />}
 
       {!isPending && state.kind === 'idle' && <EmptyState />}
       {!isPending && state.kind === 'error' && <ErrorState failure={state.failure} />}
-      {!isPending && state.kind === 'success' && (
+      {state.kind === 'success' && (
         <ComparisonResult
           comparison={state.comparison}
           disclaimer={state.disclaimer}

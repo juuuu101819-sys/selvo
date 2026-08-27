@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronDown, Clock, Coins, ShieldCheck, Sparkles } from 'lucide-react';
+import { ChevronDown, Clock, Coins, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
@@ -20,16 +20,9 @@ import {
 
 export function RouteCard({ route }: { route: RouteDto }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
-  const recommended = route.recommended;
 
   return (
-    <article
-      className={`rounded-xl border transition-colors ${
-        recommended
-          ? 'border-emerald-600/60 bg-emerald-50/50 dark:bg-emerald-950/20'
-          : 'border-border bg-card'
-      }`}
-    >
+    <article className="border-border bg-card rounded-xl border">
       <div className="p-4 sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
@@ -39,12 +32,6 @@ export function RouteCard({ route }: { route: RouteDto }) {
               <Badge variant="outline" className="text-xs">
                 {route.provider.railLabel}
               </Badge>
-              {recommended && (
-                <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">
-                  <Sparkles className="size-3" aria-hidden />
-                  Recommended
-                </Badge>
-              )}
               <QuoteExpiryBadge expiresAt={route.quote.expiresAt} />
             </div>
             {route.quote.intermediaryAsset !== null && (
