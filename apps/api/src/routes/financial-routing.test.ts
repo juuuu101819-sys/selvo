@@ -3,8 +3,6 @@ import {
   DEMO_USER_EMAIL,
   DEMO_USER_PASSWORD,
   OTHER_ORGANIZATION_ID,
-  OTHER_USER_EMAIL,
-  OTHER_USER_PASSWORD,
   hashSecret,
 } from '@meridian/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
