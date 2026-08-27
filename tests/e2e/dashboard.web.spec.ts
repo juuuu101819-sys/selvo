@@ -1,9 +1,8 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const DEMO_EMAIL = 'treasury@demo-trading.example.invalid';
-const DEMO_PASSWORD = 'MeridianDemo!2026';
 
-async function signIn(page: import('@playwright/test').Page) {
+async function signIn(page: Page): Promise<void> {
   await page.goto('/login');
   await page.getByRole('button', { name: /Use demo credentials/i }).click();
   await page

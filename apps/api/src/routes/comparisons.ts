@@ -5,6 +5,7 @@ import {
   type ComparisonDto,
   type Principal,
   type ReplayResultDto,
+  type StoredComparison,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { principalOf } from '../http/authentication.js';
@@ -142,7 +143,7 @@ async function loadAccessibleComparison(
   request: FastifyRequest,
   container: AppContainer,
   comparisonId: string,
-) {
+): Promise<StoredComparison> {
   const stored = await container.persistence.comparisons.findById(comparisonId);
   if (
     stored === null ||

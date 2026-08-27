@@ -89,13 +89,17 @@ function isoDaysAgo(days: number): { readonly day: string; readonly at: string }
 async function seedDashboardActivity(dashboard: DashboardRepository): Promise<void> {
   // Dates sit inside the dashboard's 30-day chart window, which is computed from the clock at
   // query time rather than from a fixture timestamp.
-  const recent = [isoDaysAgo(21), isoDaysAgo(14), isoDaysAgo(7), isoDaysAgo(2)];
-  const days = [
-    { ...recent[0]!, amount: '10000000', corridor: ['USD', 'KRW'] as const, ref: 'DEMO-PO-4417' },
-    { ...recent[1]!, amount: '25000000', corridor: ['USD', 'EUR'] as const, ref: 'DEMO-PO-4502' },
-    { ...recent[2]!, amount: '8000000', corridor: ['USD', 'JPY'] as const, ref: 'DEMO-PO-4588' },
-    { ...recent[3]!, amount: '15000000', corridor: ['EUR', 'GBP'] as const, ref: 'DEMO-PO-4610' },
-  ];
+  const dayOffsets = [21, 14, 7, 2] as const;
+  const corridors = [
+    { amount: '10000000', corridor: ['USD', 'KRW'] as const, ref: 'DEMO-PO-4417' },
+    { amount: '25000000', corridor: ['USD', 'EUR'] as const, ref: 'DEMO-PO-4502' },
+    { amount: '8000000', corridor: ['USD', 'JPY'] as const, ref: 'DEMO-PO-4588' },
+    { amount: '15000000', corridor: ['EUR', 'GBP'] as const, ref: 'DEMO-PO-4610' },
+  ] as const;
+  const days = corridors.map((entry, index) => ({
+    ...isoDaysAgo(dayOffsets[index] ?? 2),
+    ...entry,
+  }));
 
   const providers = [
     {

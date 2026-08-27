@@ -8,10 +8,10 @@ import { cn } from '@/lib/utils';
 
 const LINKS = [
   { href: '/dashboard', label: 'Overview', exact: true },
-  { href: '/dashboard/quotes', label: 'Quotes' },
-  { href: '/dashboard/transactions', label: 'Transactions' },
-  { href: '/dashboard/providers', label: 'Providers' },
-  { href: '/dashboard/settings', label: 'Settings' },
+  { href: '/dashboard/quotes', label: 'Quotes', exact: false },
+  { href: '/dashboard/transactions', label: 'Transactions', exact: false },
+  { href: '/dashboard/providers', label: 'Providers', exact: false },
+  { href: '/dashboard/settings', label: 'Settings', exact: false },
 ] as const;
 
 export function DashboardNav({ organizationName }: { organizationName: string }) {
