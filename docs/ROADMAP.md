@@ -32,36 +32,69 @@ _"Find the best financial route for a business transaction."_
 **Explicitly excluded:** custody, execution, crypto holdings, stablecoin issuance, regulated
 activity without a licensed partner.
 
-## Phase 2 — Authentication, multi-tenancy and persistence hardening _(not started)_
+## Phase 2 — Database and core domain model ✅ implemented
+
+- Fifteen tables covering tenancy (`Organization`, `User`, `OrganizationMember`, `ApiKey`), providers
+  (`Provider`, `ProviderCapability`), pricing (`Route`, `CustomerPricing`), requests and quotes
+  (`TransactionRequest`, `Quote`, `QuoteLeg`, `Fee`), reference data (`Currency`) and the
+  reproducibility and audit records (`Comparison`, `AuditLog`).
+- The non-custody boundary enforced by the schema: `TransactionRequestStatus` has no settlement
+  state to write, and no table can represent customer funds.
+- Amounts as `DECIMAL(38, 0)` minor units, rates as `DECIMAL(38, 18)`, and seventeen invariants
+  Prisma cannot express added by hand and asserted twice.
+- A seed that prices its demo quotes by running the real engine rather than by fixture, and stores
+  no credential of any kind.
+- Thirty-one integration tests against a real PostgreSQL, gated on `TEST_DATABASE_URL`.
+
+**Still excluded:** authentication is still architecture only, PostgreSQL is not yet the default
+driver, and nothing reads provider capability from the database yet.
+
+## Phase 2b — Authentication and multi-tenancy _(not started)_
 
 Implement the authentication whose architecture Phase 1 prepared: verify API keys and session tokens
-against the existing `Organization`, `User` and `ApiKey` tables, scope every query by
-`organizationId`, and add per-tenant rate limits. Make PostgreSQL the default driver with
-`prisma migrate deploy` and a live-database integration suite in CI — the Prisma driver's row mapping
-is unit-tested today, but no test has yet executed the SQL. Then comparison history and per-tenant
-audit retention.
+against the `Organization`, `User` and `ApiKey` tables, scope every query by `organizationId`, and add
+per-tenant rate limits. Make PostgreSQL the default driver, with the database integration suite
+running in CI. Then comparison history and per-tenant audit retention.
 
 Still excluded: enterprise SSO, SAML and SCIM.
 
-## Phase 3 — Live provider adapters _(not started)_
+## Phase 3 — Market data and provider architecture ✅ implemented
+
+- Capability interfaces: `MarketDataProvider`, `FXProvider`, `PaymentProvider`,
+  `LiquidityProvider`, over one common `ProviderAdapter` base.
+- `FXRouteProvider` bridges a capability provider to the engine-facing `RouteProvider`, so nothing
+  provider-specific reaches the routing engine.
+- One resilience pipeline: per-attempt timeout with abort, an overall latency budget, bounded
+  jittered retry of transport failures only, and a record of every attempt.
+- Quote freshness: expiry, staleness against the platform's own bound, an expiry guard and clock
+  skew, each distinguished because the remedies differ.
+- `DemoMarketDataProvider` and `DemoFXProvider`, deterministic and priced against an independent
+  benchmark.
+
+**Still excluded:** live partner credentials, circuit breakers, upstream rate limiting and quote
+caching. Read-only pricing only; no money movement.
+
+## Phase 4 — Live provider adapters _(not started)_
 
 Replace sandbox pricing with real read-only quote APIs from licensed partners: per-adapter
-credential resolution, circuit breakers, upstream rate limiting, quote caching with TTL
-honouring `expiresAt`, and per-provider reconciliation of quoted vs. observed cost.
+credential resolution, circuit breakers, upstream rate limiting, quote caching with TTL honouring
+`expiresAt`, and per-provider reconciliation of quoted vs. observed cost. Re-express the four
+dataset rails as `FXProvider`/`PaymentProvider`/`LiquidityProvider` behind bridges, read provider
+capability from the database, and persist quotes through the `quotes` table.
 
-## Phase 4 — Corridor intelligence _(not started)_
+## Phase 5 — Corridor intelligence _(not started)_
 
 Historical quote warehousing, realised-vs-quoted cost analytics, corridor benchmarks, alerting
 on spread anomalies, and a scheduled corridor coverage report.
 
-## Phase 5 — Execution orchestration, licensed partners only _(not started, gated)_
+## Phase 6 — Execution orchestration, licensed partners only _(not started, gated)_
 
 Requires: a licensed partner of record, a compliance sign-off, KYB/KYC and sanctions screening,
 and an explicit written instruction to build it. Meridian would remain non-custodial —
 instructing a licensed partner, never touching funds. Until all of those exist,
 `POST /v1/executions` stays a `501`.
 
-## Phase 6 — Treasury and DEX liquidity research _(not started, gated)_
+## Phase 7 — Treasury and DEX liquidity research _(not started, gated)_
 
 Read-only DEX liquidity depth modelling and treasury product comparison. Read-only analysis
 only; no on-chain transactions, no asset holdings.

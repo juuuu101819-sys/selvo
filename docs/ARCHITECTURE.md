@@ -125,6 +125,21 @@ Adapters are registered in a `ProviderRegistry` filtered by `PLATFORM_MODE`, so 
 provider can never be served in production mode and an unlicensed provider can never be
 registered for a corridor it is not authorised for.
 
+## 4a. Provider capabilities and resilience
+
+`RouteProvider` above is the _engine-facing_ contract. Integrations are written against
+capability-specific ones — `MarketDataProvider`, `FXProvider`, `PaymentProvider`,
+`LiquidityProvider` — shaped like the upstream APIs they wrap, with a bridge composing them into a
+`RouteProvider`. That bridge is where anything peculiar to an upstream is resolved, which is what
+keeps provider-specific concepts out of the engine entirely.
+
+All of them share one thin base, `ProviderAdapter`, so a single resilience pipeline, recorder and
+registry serve every kind of provider. Timeout, overall latency budget, bounded jittered retry of
+transport failures, quote freshness and quote recording live in that pipeline rather than in each
+adapter.
+
+See [PROVIDERS.md](./PROVIDERS.md).
+
 ## 5. Cost engine
 
 `RouteCostEngine.price(request, quote)` produces a `PricedRoute`. The model:
