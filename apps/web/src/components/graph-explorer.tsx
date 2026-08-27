@@ -214,13 +214,19 @@ function GraphResult({
     );
   }
 
+  const groups = groupByAssetWalk(search.paths);
+
   return (
     <div className="space-y-4">
       <p className="text-sm">{search.explanation}</p>
+      <p className="text-muted-foreground text-xs">
+        {String(search.paths.length)} walks collapsed into {String(groups.length)} distinct asset
+        sequences. The cheapest walk in each sequence is shown.
+      </p>
       <ul className="space-y-3">
-        {search.paths.map((path) => (
-          <li key={path.pathId}>
-            <PathCard path={path} />
+        {groups.map((group) => (
+          <li key={group.key}>
+            <PathCard path={group.best} variantCount={group.count} />
           </li>
         ))}
       </ul>
@@ -229,7 +235,26 @@ function GraphResult({
   );
 }
 
-function PathCard({ path }: { path: GraphPathDto }) {
+function groupByAssetWalk(
+  paths: readonly GraphPathDto[],
+): readonly { readonly key: string; readonly best: GraphPathDto; readonly count: number }[] {
+  const grouped = new Map<string, GraphPathDto[]>();
+  for (const path of paths) {
+    const key = path.assets.join('→');
+    const list = grouped.get(key) ?? [];
+    list.push(path);
+    grouped.set(key, list);
+  }
+  return [...grouped.entries()].map(([key, list]) => {
+    const best = list[0];
+    if (best === undefined) {
+      throw new Error(`Empty path group for ${key}`);
+    }
+    return { key, best, count: list.length };
+  });
+}
+
+function PathCard({ path, variantCount }: { path: GraphPathDto; variantCount: number }) {
   return (
     <Card className={path.recommended ? 'border-emerald-600/40' : undefined}>
       <CardHeader className="pb-3">
@@ -239,6 +264,9 @@ function PathCard({ path }: { path: GraphPathDto }) {
           </CardTitle>
           <div className="flex items-center gap-2">
             {path.recommended && <Badge>Recommended</Badge>}
+            {variantCount > 1 && (
+              <Badge variant="secondary">{String(variantCount)} venue variants</Badge>
+            )}
             <span className="font-mono text-xs">{formatBps(path.totalCostBps)}</span>
           </div>
         </div>
