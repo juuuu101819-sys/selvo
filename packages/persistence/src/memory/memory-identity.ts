@@ -18,7 +18,13 @@ interface StoredApiKey extends IdentityApiKey {
   lastUsedAt: string | null;
 }
 
-interface StoredSession extends IdentitySession {
+interface StoredSession {
+  readonly id: string;
+  readonly userId: string;
+  readonly organizationId: string;
+  readonly tokenHash: string;
+  readonly expiresAt: string;
+  revokedAt: string | null;
   lastSeenAt: string | null;
 }
 

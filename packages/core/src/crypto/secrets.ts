@@ -1,10 +1,24 @@
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto';
-import { promisify } from 'node:util';
-
-const scrypt = promisify(scryptCallback);
 
 /** Memory-hard password parameters. Interactive enough for a login, expensive enough to brute-force. */
 const SCRYPT = { N: 16_384, r: 8, p: 1, keylen: 32 } as const;
+
+function scryptAsync(
+  password: string,
+  salt: Buffer,
+  keylen: number,
+  options: { readonly N: number; readonly r: number; readonly p: number },
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keylen, options, (error, derived) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(derived);
+    });
+  });
+}
 
 /**
  * Hashes a password with scrypt.
@@ -16,11 +30,11 @@ const SCRYPT = { N: 16_384, r: 8, p: 1, keylen: 32 } as const;
  */
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const key = (await scrypt(password, salt, SCRYPT.keylen, {
+  const key = await scryptAsync(password, salt, SCRYPT.keylen, {
     N: SCRYPT.N,
     r: SCRYPT.r,
     p: SCRYPT.p,
-  })) as Buffer;
+  });
   return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64url')}$${key.toString('base64url')}`;
 }
 
@@ -51,11 +65,11 @@ export async function verifyPassword(password: string, stored: string): Promise<
     return false;
   }
 
-  const key = (await scrypt(password, Buffer.from(salt, 'base64url'), expectedBuf.length, {
+  const key = await scryptAsync(password, Buffer.from(salt, 'base64url'), expectedBuf.length, {
     N: n,
     r,
     p,
-  })) as Buffer;
+  });
 
   if (key.length !== expectedBuf.length) {
     return false;
