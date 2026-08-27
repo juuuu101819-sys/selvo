@@ -26,7 +26,7 @@ test('rejects the wrong password without leaking whether the email exists', asyn
     .getByRole('button', { name: /^Sign in$/i })
     .click();
 
-  const alert = page.getByRole('alert');
+  const alert = page.getByRole('main').getByRole('alert');
   await expect(alert).toContainText(/Email or password is incorrect/i);
   await expect(page).toHaveURL(/\/login/);
 });
