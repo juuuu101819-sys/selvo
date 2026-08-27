@@ -52,15 +52,25 @@ export async function SiteHeader({
           )}
           {authLinks === 'default' &&
             (signedIn ? (
-              <Button variant="outline" size="sm" render={<Link href="/dashboard" />}>
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={<Link href="/dashboard" />}
+              >
                 Dashboard
               </Button>
             ) : (
-              <Button variant="outline" size="sm" render={<Link href="/login" />}>
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={<Link href="/login" />}
+              >
                 Sign in
               </Button>
             ))}
-          <Button variant="ghost" size="sm" render={<Link href="/rails" />}>
+          <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/rails" />}>
             Multi-rail
           </Button>
         </div>

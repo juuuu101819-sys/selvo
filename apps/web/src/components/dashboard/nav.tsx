@@ -25,10 +25,10 @@ export function DashboardNav({ organizationName }: { organizationName: string })
             Signed in to <span className="text-foreground font-medium">{organizationName}</span>
           </p>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" render={<Link href="/rails" />}>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/rails" />}>
               Multi-rail
             </Button>
-            <Button variant="ghost" size="sm" render={<Link href="/" />}>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/" />}>
               Compare routes
             </Button>
             <form action={signOut}>
