@@ -29,6 +29,7 @@ export interface AppliedFeeDto {
   readonly label: string;
   readonly side: FeeSide;
   readonly kind: 'fixed' | 'proportional';
+  readonly chargedBy: 'provider' | 'platform';
   readonly amount: MoneyJson;
   readonly rateBps: string | null;
   readonly capped: boolean;
@@ -37,6 +38,8 @@ export interface AppliedFeeDto {
 export interface CostBreakdownDto {
   readonly appliedFees: readonly AppliedFeeDto[];
   readonly sourceFeeCost: MoneyJson;
+  /** The platform's own charge, reported apart from the provider's so neither hides in the other. */
+  readonly platformFeeCost: MoneyJson;
   readonly destinationFeeCost: MoneyJson;
   readonly fxSpreadCost: MoneyJson;
   readonly slippageCost: MoneyJson;

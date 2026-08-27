@@ -24,6 +24,11 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
       hint: 'Valued at the mid-market rate',
       amount: breakdown.sourceFeeCost,
     },
+    {
+      label: 'Meridian platform fee',
+      hint: 'Charged by Meridian, not the provider',
+      amount: breakdown.platformFeeCost,
+    },
     { label: 'Receiving fees', amount: breakdown.destinationFeeCost },
     {
       label: 'Expected slippage',

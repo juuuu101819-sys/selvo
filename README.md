@@ -92,6 +92,7 @@ tests/
   e2e/            Playwright specs spanning both apps.
 docs/
   ARCHITECTURE.md How it fits together and why.
+  QUOTE_ENGINE.md The pricing and scoring mathematics, stated formally.
   PROVIDERS.md    Market data and provider interfaces, resilience, quote freshness.
   DATABASE.md     The data model, its invariants, and how to work with it locally.
   STACK.md        The chosen stack, the directory mapping, and the decisions behind them.

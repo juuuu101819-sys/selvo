@@ -74,7 +74,19 @@ Still excluded: enterprise SSO, SAML and SCIM.
 **Still excluded:** live partner credentials, circuit breakers, upstream rate limiting and quote
 caching. Read-only pricing only; no money movement.
 
-## Phase 4 — Live provider adapters _(not started)_
+## Phase 4 — Quote engine ✅ implemented
+
+- `organizationId` threaded through the engine, so two customers can be quoted different prices from
+  identical provider input.
+- Platform pricing wired to the `customer_pricing` table: markup, negotiated spread discount and flat
+  fee, resolved by a pure priority-and-specificity algorithm that replays from a snapshot.
+- The platform's take charged as an explicit fee and reported separately from the provider's.
+- Six-factor deterministic scoring: cost, speed, reliability, slippage, liquidity and risk.
+- Engine version bumped to 2.0.0, and replay now reports `engine_version_changed` rather than
+  claiming reproducibility it cannot demonstrate.
+- The mathematics documented formally in [QUOTE_ENGINE.md](./QUOTE_ENGINE.md).
+
+## Phase 5 — Live provider adapters _(not started)_
 
 Replace sandbox pricing with real read-only quote APIs from licensed partners: per-adapter
 credential resolution, circuit breakers, upstream rate limiting, quote caching with TTL honouring
@@ -82,19 +94,19 @@ credential resolution, circuit breakers, upstream rate limiting, quote caching w
 dataset rails as `FXProvider`/`PaymentProvider`/`LiquidityProvider` behind bridges, read provider
 capability from the database, and persist quotes through the `quotes` table.
 
-## Phase 5 — Corridor intelligence _(not started)_
+## Phase 6 — Corridor intelligence _(not started)_
 
 Historical quote warehousing, realised-vs-quoted cost analytics, corridor benchmarks, alerting
 on spread anomalies, and a scheduled corridor coverage report.
 
-## Phase 6 — Execution orchestration, licensed partners only _(not started, gated)_
+## Phase 7 — Execution orchestration, licensed partners only _(not started, gated)_
 
 Requires: a licensed partner of record, a compliance sign-off, KYB/KYC and sanctions screening,
 and an explicit written instruction to build it. Meridian would remain non-custodial —
 instructing a licensed partner, never touching funds. Until all of those exist,
 `POST /v1/executions` stays a `501`.
 
-## Phase 7 — Treasury and DEX liquidity research _(not started, gated)_
+## Phase 8 — Treasury and DEX liquidity research _(not started, gated)_
 
 Read-only DEX liquidity depth modelling and treasury product comparison. Read-only analysis
 only; no on-chain transactions, no asset holdings.
