@@ -5,6 +5,7 @@ import {
   assetDefinition,
   conversionKindOf,
   type AssetDefinition,
+  type ChainMetadata,
   type CurrencyCode,
   type DeFiLiquiditySource,
   type DeFiVenueKind,
@@ -104,7 +105,7 @@ export class DemoAmmProvider implements DeFiLiquiditySource {
     return this.getSupportedAssets();
   }
 
-  getSupportedChains() {
+  getSupportedChains(): readonly ChainMetadata[] {
     return supportedDefiChains();
   }
 
