@@ -168,6 +168,8 @@ export interface PaymentPolicy {
   readonly minLiquidityHeadroom: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
+  /** Default optimization when the intent does not name one. Null means the engine default. */
+  readonly preferredRoutePreference: RoutePreference | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }

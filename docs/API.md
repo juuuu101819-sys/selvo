@@ -145,7 +145,8 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "financialRoutingApi": true,
   "paymentPolicyEngine": true,
   "executionIntents": true,
-  "multiRailMonetization": true
+  "multiRailMonetization": true,
+  "agentFinancialDashboard": true
 }
 ```
 
@@ -162,7 +163,10 @@ simulator. They still cannot move money. The NL parser does not compute rates, f
 settlement amounts. `paymentPolicyEngine` is true: every agent request is evaluated fail-closed
 before quotes, authorization, simulation, and execution-intent recording. `multiRailMonetization`
 is true: quoted TPV, platform revenue, provider cost, partner commission, gross profit and take
-rate are attributed on the revenue dashboard. `POST /api/v1/executions` remains 501.
+rate are attributed on the revenue dashboard. `agentFinancialDashboard` is true: organization
+operators can inspect agent volume, fees, success rate, spending limits and policy denials, and
+patch allow-lists. The dashboard never custodies funds, holds keys, or generates wallets.
+`POST /api/v1/executions` remains 501.
 
 ## `GET /api/v1/providers`
 
@@ -487,6 +491,34 @@ rate. Breakdowns: rail, provider, currency, asset, organization, AI agent, trans
 source, date. Includes the canonical $100,000 worked example.
 
 Anonymous callers are `401`. Another tenant's events never appear.
+
+## `GET /api/v1/dashboard/agents`
+
+Organization-scoped AI-agent financial summaries. Volume, transaction count, average fee, route
+success rate, preferred route, daily spend and policy-violation count. Amounts are integer minor
+units. Arithmetic is Decimal/`bigint` only. `fundsMoved`, `custody`, `walletsGenerated` and
+`privateKeysHeld` are always false.
+
+Anonymous callers are `401`. Another tenant's agents never appear.
+
+## `GET /api/v1/dashboard/agents/:id`
+
+Detail for one agent in this organization: spending snapshot, preferred routes, policy violations.
+`404` for an unknown id or another organization's agent.
+
+## `GET /api/v1/dashboard/agents/:id/payments`
+
+Payment history (serialized intents) for one agent. `COMPLETED` is simulated.
+
+## `GET /api/v1/dashboard/agents/:id/policies`
+
+Policy, spending remaining, violations, and the allow-list controls (assets, providers, recipients,
+route preferences). Empty allow-lists mean none.
+
+## `PATCH /api/v1/dashboard/agents/:id/policies`
+
+Session users only. Agent credentials are `403`. Body fields are optional; omitted limits are left
+unchanged. Spending amounts are integer minor-unit strings. Records `payment.policy.updated`.
 
 ## `GET /api/v1/dashboard/quotes`
 

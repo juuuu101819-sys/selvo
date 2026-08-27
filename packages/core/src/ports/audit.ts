@@ -41,6 +41,7 @@ export const AUDIT_EVENT_TYPES = [
   'nl.intent.interpreted',
   'nl.route.completed',
   'monetization.recorded',
+  'payment.policy.updated',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -57,6 +58,8 @@ export interface AuditEvent {
   /** The comparison the event belongs to, when applicable. */
   readonly comparisonId: string | null;
   readonly providerId: string | null;
+  /** Tenant that owns the event, when the actor was authenticated. */
+  readonly organizationId?: string | null;
   readonly payload: JsonObject;
 }
 

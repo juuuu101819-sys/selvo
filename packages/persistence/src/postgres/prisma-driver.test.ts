@@ -90,6 +90,7 @@ describe('row mapping', () => {
       requestId: null,
       comparisonId: 'cmp_1',
       providerId: null,
+      organizationId: null,
       payload: {},
     });
   });
@@ -201,6 +202,7 @@ describe('migrations', () => {
     expect(sql).toContain('CREATE TABLE "agent_wallet_references"');
     expect(sql).toContain('CREATE TABLE "merchants"');
     expect(sql).toContain('CREATE TABLE "payment_policies"');
+    expect(sql).toContain('"preferred_route_preference"');
     expect(sql).toContain('CREATE TABLE "payment_intents"');
     expect(sql).toContain('"agent_wallet_references_not_custodied"');
     expect(sql).toContain('CHECK ("controlled_by_platform" = false)');

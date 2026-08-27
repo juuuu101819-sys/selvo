@@ -30,6 +30,7 @@ const policy: PaymentPolicy = {
   minLiquidityHeadroom: '0',
   dailySpendingLimitMinorUnits: '1000000',
   dailySpendingAsset: 'USD',
+  preferredRoutePreference: 'lowest_cost',
   createdAt: '2026-03-01T09:00:00.000Z',
   updatedAt: '2026-03-01T09:00:00.000Z',
 };

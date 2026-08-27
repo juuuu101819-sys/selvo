@@ -1,6 +1,7 @@
 import {
   IdempotencyConflictError,
   type AuditEvent,
+  type AuditEventType,
   type AuditLogRepository,
   type ComparisonRepository,
   type DashboardRepository,
@@ -121,6 +122,26 @@ export class InMemoryAuditLogRepository implements AuditLogRepository {
     return Promise.resolve(
       [...this.events]
         .reverse()
+        .slice(0, limit)
+        .map((event) => structuredClone(event)),
+    );
+  }
+
+  listByOrganization(
+    organizationId: string,
+    options: { readonly types?: readonly AuditEventType[]; readonly limit?: number } = {},
+  ): Promise<readonly AuditEvent[]> {
+    const limit = options.limit ?? DEFAULT_LIST_LIMIT;
+    const types = options.types === undefined ? null : new Set(options.types);
+    return Promise.resolve(
+      [...this.events]
+        .filter((event) => {
+          if (event.organizationId !== organizationId && event.payload['organizationId'] !== organizationId) {
+            return false;
+          }
+          return types === null || types.has(event.type);
+        })
+        .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
         .slice(0, limit)
         .map((event) => structuredClone(event)),
     );

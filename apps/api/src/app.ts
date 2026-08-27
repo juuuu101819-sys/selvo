@@ -67,7 +67,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
 
   await app.register(cors, {
     origin: config.corsOrigins.length > 0 ? [...config.corsOrigins] : false,
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
       'Idempotency-Key',
@@ -97,8 +97,12 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
         identity: container.persistence.identity,
         dashboard: container.persistence.dashboard,
         agentPayments: container.persistence.agentPayments,
+        auditLog: container.persistence.auditLog,
       },
-      { seedDashboard: container.persistence.kind === 'memory' },
+      {
+        seedDashboard: container.persistence.kind === 'memory',
+        nowIso: container.clock.nowIso(),
+      },
     );
   }
 

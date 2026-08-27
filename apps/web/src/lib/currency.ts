@@ -10,6 +10,9 @@ export function exponentFor(currency: string): number {
     case 'KRW':
     case 'JPY':
       return 0;
+    case 'USDC':
+    case 'USDT':
+      return 6;
     case 'KWD':
     case 'BHD':
     case 'OMR':

@@ -144,5 +144,10 @@ export {
   OTHER_USER_PASSWORD,
 } from '../auth/demo-tenant.js';
 export { demoMonetizationEvents } from '../auth/demo-monetization.js';
+export {
+  DEMO_OTHER_AGENT_ID,
+  demoAgentPaymentIntents,
+  demoAgentPolicyViolations,
+} from '../auth/demo-agent-dashboard.js';
 export { hashPassword, hashSecret, randomToken, secretsMatch, verifyPassword } from '../crypto/secrets.js';
 export type { RouteProvider, SecretResolver } from './route-provider.js';

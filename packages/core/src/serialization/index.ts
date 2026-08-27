@@ -54,6 +54,12 @@ export type {
   MonetizationTotalsDto,
   MonetizationBreakdownRowDto,
   MonetizationWorkedExampleDto,
+  PreferredRouteRowDto,
+  AgentPolicyViolationDto,
+  AgentSpendingSnapshotDto,
+  AgentDashboardSummaryDto,
+  AgentDashboardDetailDto,
+  AgentPolicyControlsDto,
 } from './dto.js';
 export {
   serializeComparison,
@@ -85,4 +91,8 @@ export {
   serializeNlInterpretation,
   serializeNlRouteResult,
   serializeMonetizationReport,
+  serializeAgentDashboardDetail,
+  serializeAgentDashboardSummary,
+  serializeAgentPolicyViolation,
+  serializeAgentSpendingSnapshot,
 } from './serialize.js';

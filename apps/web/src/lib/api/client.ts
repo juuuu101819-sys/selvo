@@ -32,6 +32,10 @@ import type {
   RouteSearchDto,
   AssetCatalogEntryDto,
   CurrencyCatalogEntryDto,
+  AgentDashboardDetailDto,
+  AgentDashboardListDto,
+  AgentPaymentHistoryDto,
+  AgentPolicyControlsDto,
 } from './types';
 
 /**
@@ -54,7 +58,7 @@ function baseUrl(): string {
 }
 
 interface RequestOptions {
-  readonly method: 'GET' | 'POST';
+  readonly method: 'GET' | 'POST' | 'PATCH';
   readonly path: string;
   readonly body?: unknown;
   readonly actor?: string;
@@ -558,5 +562,69 @@ export function routeAgentInstruction(
     body: input,
     authorization: extras.authorization,
     idempotencyKey: extras.idempotencyKey,
+  });
+}
+
+export function fetchDashboardAgents(
+  authorization: string,
+): Promise<ApiResult<AgentDashboardListDto>> {
+  return request<AgentDashboardListDto>({
+    method: 'GET',
+    path: '/api/v1/dashboard/agents',
+    authorization,
+  });
+}
+
+export function fetchDashboardAgent(
+  id: string,
+  authorization: string,
+): Promise<ApiResult<AgentDashboardDetailDto>> {
+  return request<AgentDashboardDetailDto>({
+    method: 'GET',
+    path: `/api/v1/dashboard/agents/${encodeURIComponent(id)}`,
+    authorization,
+  });
+}
+
+export function fetchDashboardAgentPayments(
+  id: string,
+  authorization: string,
+): Promise<ApiResult<AgentPaymentHistoryDto>> {
+  return request<AgentPaymentHistoryDto>({
+    method: 'GET',
+    path: `/api/v1/dashboard/agents/${encodeURIComponent(id)}/payments`,
+    authorization,
+  });
+}
+
+export function fetchDashboardAgentPolicies(
+  id: string,
+  authorization: string,
+): Promise<ApiResult<AgentPolicyControlsDto>> {
+  return request<AgentPolicyControlsDto>({
+    method: 'GET',
+    path: `/api/v1/dashboard/agents/${encodeURIComponent(id)}/policies`,
+    authorization,
+  });
+}
+
+export function updateAgentPolicy(
+  id: string,
+  input: {
+    readonly maxTransactionAmountMinorUnits?: string;
+    readonly dailySpendingLimitMinorUnits?: string;
+    readonly dailySpendingAsset?: string;
+    readonly allowedAssets?: readonly string[];
+    readonly allowedRecipientCodes?: readonly string[];
+    readonly allowedProviderIds?: readonly string[];
+    readonly preferredRoutePreference?: string | null;
+  },
+  authorization: string,
+): Promise<ApiResult<AgentPolicyControlsDto>> {
+  return request<AgentPolicyControlsDto>({
+    method: 'PATCH',
+    path: `/api/v1/dashboard/agents/${encodeURIComponent(id)}/policies`,
+    body: input,
+    authorization,
   });
 }

@@ -9,6 +9,7 @@ import type {
   PaymentIntentStatus,
   PaymentPolicy,
   PublicAgent,
+  RoutePreference,
 } from '../domain/agent-payments.js';
 
 export interface CreateAgentInput {
@@ -64,6 +65,7 @@ export interface CreatePaymentPolicyInput {
   readonly minLiquidityHeadroom: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
+  readonly preferredRoutePreference: RoutePreference | null;
   readonly createdAt: string;
 }
 
@@ -111,6 +113,7 @@ export interface AgentPaymentsRepository {
   createPolicy(input: CreatePaymentPolicyInput): Promise<PaymentPolicy>;
   findPolicyByAgent(organizationId: string, agentId: string): Promise<PaymentPolicy | null>;
   listPolicies(organizationId: string): Promise<readonly PaymentPolicy[]>;
+  updatePolicy(policy: PaymentPolicy): Promise<PaymentPolicy>;
 
   createIntent(intent: PaymentIntent): Promise<PaymentIntent>;
   updateIntent(intent: PaymentIntent): Promise<PaymentIntent>;

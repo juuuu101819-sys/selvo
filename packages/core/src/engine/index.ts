@@ -118,3 +118,8 @@ export {
   SANDBOX_SIMULATOR_PROVIDER_ID,
   simulateSandboxExecution,
 } from './sandbox-simulator.js';
+export {
+  buildAgentDashboardDetail,
+  summarizeAgentDashboard,
+  violationFromAuditPayload,
+} from './agent-dashboard.js';

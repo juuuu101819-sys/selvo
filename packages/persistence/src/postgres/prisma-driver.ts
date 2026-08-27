@@ -208,6 +208,7 @@ class PrismaAuditLogRepository implements AuditLogRepository {
           requestId: event.requestId,
           comparisonId: event.comparisonId,
           providerId: event.providerId,
+          organizationId: event.organizationId ?? null,
           payload: event.payload,
         },
       });
@@ -229,6 +230,23 @@ class PrismaAuditLogRepository implements AuditLogRepository {
   async list(options: { limit?: number } = {}): Promise<readonly AuditEvent[]> {
     const rows = await this.query(() =>
       this.client.auditLog.findMany({
+        orderBy: { occurredAt: 'desc' },
+        take: options.limit ?? DEFAULT_LIST_LIMIT,
+      }),
+    );
+    return rows.map(toAuditEvent);
+  }
+
+  async listByOrganization(
+    organizationId: string,
+    options: { readonly types?: readonly AuditEventType[]; readonly limit?: number } = {},
+  ): Promise<readonly AuditEvent[]> {
+    const rows = await this.query(() =>
+      this.client.auditLog.findMany({
+        where: {
+          organizationId,
+          ...(options.types === undefined ? {} : { type: { in: [...options.types] } }),
+        },
         orderBy: { occurredAt: 'desc' },
         take: options.limit ?? DEFAULT_LIST_LIMIT,
       }),
@@ -269,6 +287,7 @@ export interface AuditEventRow {
   readonly requestId: string | null;
   readonly comparisonId: string | null;
   readonly providerId: string | null;
+  readonly organizationId?: string | null;
   readonly payload: unknown;
 }
 
@@ -299,6 +318,7 @@ export function toAuditEvent(row: AuditEventRow): AuditEvent {
     requestId: row.requestId,
     comparisonId: row.comparisonId,
     providerId: row.providerId,
+    organizationId: row.organizationId ?? null,
     payload: (row.payload ?? {}) as JsonObject,
   };
 }

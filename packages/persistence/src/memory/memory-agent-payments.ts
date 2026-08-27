@@ -199,6 +199,7 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
       minLiquidityHeadroom: input.minLiquidityHeadroom,
       dailySpendingLimitMinorUnits: input.dailySpendingLimitMinorUnits,
       dailySpendingAsset: input.dailySpendingAsset,
+      preferredRoutePreference: input.preferredRoutePreference,
       createdAt: input.createdAt,
       updatedAt: input.createdAt,
     };
@@ -219,6 +220,23 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
         .filter((policy) => policy.organizationId === organizationId)
         .map((policy) => structuredClone(policy)),
     );
+  }
+
+  updatePolicy(policy: PaymentPolicy): Promise<PaymentPolicy> {
+    const existing = [...this.policies.values()].find(
+      (row) => row.organizationId === policy.organizationId && row.agentId === policy.agentId,
+    );
+    if (existing === undefined) {
+      this.policies.set(policy.id, structuredClone(policy));
+      return Promise.resolve(structuredClone(policy));
+    }
+    const stored: PaymentPolicy = {
+      ...policy,
+      id: existing.id,
+      createdAt: existing.createdAt,
+    };
+    this.policies.set(existing.id, stored);
+    return Promise.resolve(structuredClone(stored));
   }
 
   createIntent(intent: PaymentIntent): Promise<PaymentIntent> {

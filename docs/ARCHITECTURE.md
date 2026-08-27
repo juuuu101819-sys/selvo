@@ -360,6 +360,13 @@ in basis points, or null when TPV is zero (subscriptions). Events are attributed
 currency, asset, organization, AI agent, transaction type, revenue source and date. Quoted fees
 only: `fundsMoved` is always false. `GET /api/v1/dashboard/revenue` is org-scoped.
 
+## 12c. AI agent financial dashboard
+
+`summarizeAgentDashboard` projects quoted and simulated intents into volume, average fee, success
+rate, preferred routes and remaining daily spend. Counts are integers; money is Decimal/`bigint`.
+`GET /api/v1/dashboard/agents` is org-scoped. Policy PATCH is a session-user control surface, not a
+wallet. `fundsMoved`, `custody`, `walletsGenerated` and `privateKeysHeld` stay false.
+
 ## 13. Testing strategy
 
 - **Unit** (`packages/core`) — money arithmetic, rounding boundaries, currency exponents, fee

@@ -131,3 +131,35 @@ export function shortFingerprint(fingerprint: string): string {
 export function amountPlaceholder(exponent: number): string {
   return exponent === 0 ? '100000000' : `100000.${'0'.repeat(exponent)}`;
 }
+
+/**
+ * Converts a major-unit decimal string to integer minor units without `Number`.
+ * `"1000.50"` at exponent 2 becomes `"100050"`. Extra fractional digits are rejected.
+ */
+export function majorToMinorUnits(major: string, exponent: number): string | null {
+  const trimmed = major.trim();
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) {
+    return null;
+  }
+  const [wholeRaw, fractionRaw = ''] = trimmed.split('.');
+  if (fractionRaw.length > exponent) {
+    return null;
+  }
+  const fraction = fractionRaw.padEnd(exponent, '0');
+  const combined = `${wholeRaw}${fraction}`.replace(/^0+(?=\d)/, '');
+  return combined === '' ? '0' : combined;
+}
+
+/** Inverse of {@link majorToMinorUnits} for form fields. Trailing zeros in the fraction are dropped. */
+export function minorToMajorUnits(minorUnits: string, exponent: number): string {
+  if (!/^\d+$/.test(minorUnits)) {
+    return '0';
+  }
+  if (exponent === 0) {
+    return minorUnits.replace(/^0+(?=\d)/, '') || '0';
+  }
+  const digits = minorUnits.padStart(exponent + 1, '0');
+  const whole = digits.slice(0, digits.length - exponent).replace(/^0+(?=\d)/, '') || '0';
+  const fraction = digits.slice(digits.length - exponent).replace(/0+$/, '');
+  return fraction === '' ? whole : `${whole}.${fraction}`;
+}

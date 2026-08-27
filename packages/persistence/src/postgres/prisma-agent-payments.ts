@@ -1,6 +1,7 @@
 import {
   IdempotencyConflictError,
   PersistenceError,
+  isRoutePreference,
   type Agent,
   type AgentCredential,
   type AgentPaymentsRepository,
@@ -205,6 +206,7 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
           minLiquidityHeadroom: new Prisma.Decimal(input.minLiquidityHeadroom),
           dailySpendingLimitMinorUnits: new Prisma.Decimal(input.dailySpendingLimitMinorUnits),
           dailySpendingAsset: input.dailySpendingAsset,
+          preferredRoutePreference: input.preferredRoutePreference,
           createdAt: new Date(input.createdAt),
           updatedAt: new Date(input.createdAt),
         },
@@ -227,6 +229,31 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
       this.client.paymentPolicy.findMany({ where: { organizationId } }),
     );
     return rows.map(toPolicy);
+  }
+
+  async updatePolicy(policy: PaymentPolicy): Promise<PaymentPolicy> {
+    const row = await this.write(() =>
+      this.client.paymentPolicy.update({
+        where: { organizationId_agentId: { organizationId: policy.organizationId, agentId: policy.agentId } },
+        data: {
+          maxTransactionAmountMinorUnits: new Prisma.Decimal(policy.maxTransactionAmountMinorUnits),
+          allowedAssets: [...policy.allowedAssets],
+          allowedRecipientCodes: [...policy.allowedRecipientCodes],
+          allowedProviderIds: [...policy.allowedProviderIds],
+          allowedChainIds: [...policy.allowedChainIds],
+          allowedCountryCodes: [...policy.allowedCountryCodes],
+          maxFeeBps: new Prisma.Decimal(policy.maxFeeBps),
+          maxSlippageBps: new Prisma.Decimal(policy.maxSlippageBps),
+          minRouteScore: new Prisma.Decimal(policy.minRouteScore),
+          minLiquidityHeadroom: new Prisma.Decimal(policy.minLiquidityHeadroom),
+          dailySpendingLimitMinorUnits: new Prisma.Decimal(policy.dailySpendingLimitMinorUnits),
+          dailySpendingAsset: policy.dailySpendingAsset,
+          preferredRoutePreference: policy.preferredRoutePreference,
+          updatedAt: new Date(policy.updatedAt),
+        },
+      }),
+    );
+    return toPolicy(row);
   }
 
   async createIntent(intent: PaymentIntent): Promise<PaymentIntent> {
@@ -429,6 +456,7 @@ interface PolicyRow {
   readonly minLiquidityHeadroom: { toFixed(decimalPlaces?: number): string };
   readonly dailySpendingLimitMinorUnits: { toFixed(decimalPlaces?: number): string };
   readonly dailySpendingAsset: string;
+  readonly preferredRoutePreference: string | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 }
@@ -539,6 +567,9 @@ function toPolicy(row: PolicyRow): PaymentPolicy {
     minLiquidityHeadroom: row.minLiquidityHeadroom.toFixed(),
     dailySpendingLimitMinorUnits: row.dailySpendingLimitMinorUnits.toFixed(0),
     dailySpendingAsset: row.dailySpendingAsset,
+    preferredRoutePreference: isRoutePreference(row.preferredRoutePreference)
+      ? row.preferredRoutePreference
+      : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };

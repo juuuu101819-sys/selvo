@@ -262,6 +262,7 @@ describe('AI agent payment infrastructure', () => {
           maxSlippageBps: string;
           minRouteScore: string;
           minLiquidityHeadroom: string;
+          preferredRoutePreference: string | null;
         }[];
       }>
     >().data.policies;
@@ -276,6 +277,7 @@ describe('AI agent payment infrastructure', () => {
       maxSlippageBps: DEMO_AGENT_POLICY.maxSlippageBps,
       minRouteScore: DEMO_AGENT_POLICY.minRouteScore,
       minLiquidityHeadroom: DEMO_AGENT_POLICY.minLiquidityHeadroom,
+      preferredRoutePreference: DEMO_AGENT_POLICY.preferredRoutePreference,
     });
 
     const created = await harness.app.inject({

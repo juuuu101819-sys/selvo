@@ -206,6 +206,14 @@ export {
   type PolicyDecision,
   type PolicyEvaluationInput,
 } from './payment-policy.js';
+export type {
+  AgentDashboardDetail,
+  AgentDashboardSummary,
+  AgentPolicyViolation,
+  AgentSpendingSnapshot,
+  PreferredRouteRow,
+} from './agent-dashboard.js';
+export { AGENT_DASHBOARD_VOLUME_STATUSES } from './agent-dashboard.js';
 export type { StructuredNlPaymentIntent } from './nl-intent.js';
 export {
   NL_DID_NOT_COMPUTE,

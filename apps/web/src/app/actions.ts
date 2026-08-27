@@ -1,8 +1,9 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, updateAgentPolicy } from '@/lib/api/client';
+import type { ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -287,4 +288,29 @@ function unauthenticatedPayment<T>(): ApiResult<T> {
       requestId: null,
     },
   };
+}
+
+export async function saveAgentPolicy(
+  agentId: string,
+  input: {
+    readonly maxTransactionAmountMinorUnits?: string;
+    readonly dailySpendingLimitMinorUnits?: string;
+    readonly dailySpendingAsset?: string;
+    readonly allowedAssets?: readonly string[];
+    readonly allowedRecipientCodes?: readonly string[];
+    readonly allowedProviderIds?: readonly string[];
+    readonly preferredRoutePreference?: string | null;
+  },
+): Promise<ApiResult<AgentPolicyControlsDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticatedPayment();
+  }
+  const result = await updateAgentPolicy(agentId, input, token);
+  if (result.ok) {
+    revalidatePath(`/dashboard/agents/${agentId}`);
+    revalidatePath(`/dashboard/agents/${agentId}/policies`);
+    revalidatePath('/dashboard/agents');
+  }
+  return result;
 }

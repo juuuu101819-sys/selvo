@@ -614,3 +614,51 @@ export const nlAgentInstructionSchema = z
 
 export type NlAgentInstructionBody = z.infer<typeof nlAgentInstructionSchema>;
 
+const minorUnitsInteger = z
+  .string()
+  .trim()
+  .regex(/^\d+$/, 'must be a non-negative integer string of minor units');
+
+const routePreference = z.enum([
+  'lowest_cost',
+  'fastest',
+  'recommended',
+  'balanced',
+  'lowest_slippage',
+  'high_liquidity',
+]);
+
+/**
+ * Body of `PATCH /v1/dashboard/agents/:id/policies`.
+ *
+ * Spending limits are integer minor units. Empty allow-lists mean none, not all. Keys, wallets and
+ * custody fields are rejected by `.strict()`.
+ */
+export const patchAgentPolicySchema = z
+  .object({
+    maxTransactionAmountMinorUnits: minorUnitsInteger.optional(),
+    dailySpendingLimitMinorUnits: minorUnitsInteger.optional(),
+    dailySpendingAsset: z.string().trim().min(2).max(16).optional(),
+    allowedAssets: z.array(z.string().trim().min(2).max(16)).max(32).optional(),
+    allowedRecipientCodes: z.array(z.string().trim().min(1).max(80)).max(64).optional(),
+    allowedProviderIds: z.array(z.string().trim().min(1).max(128)).max(64).optional(),
+    allowedChainIds: z.array(z.string().trim().min(1).max(64)).max(32).optional(),
+    allowedCountryCodes: z.array(z.string().trim().min(1).max(8)).max(64).optional(),
+    maxFeeBps: feeBps.optional(),
+    maxSlippageBps: feeBps.optional(),
+    minRouteScore: z
+      .string()
+      .trim()
+      .regex(/^\d+(\.\d{1,4})?$/, 'must be a non-negative decimal string')
+      .optional(),
+    minLiquidityHeadroom: z
+      .string()
+      .trim()
+      .regex(/^\d+(\.\d{1,4})?$/, 'must be a non-negative decimal string')
+      .optional(),
+    preferredRoutePreference: routePreference.nullable().optional(),
+  })
+  .strict();
+
+export type PatchAgentPolicyBody = z.infer<typeof patchAgentPolicySchema>;
+

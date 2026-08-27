@@ -53,4 +53,5 @@ export const DEMO_AGENT_POLICY = {
   maxSlippageBps: '50',
   minRouteScore: '0',
   minLiquidityHeadroom: '0',
+  preferredRoutePreference: 'lowest_cost',
 } as const;

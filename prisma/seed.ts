@@ -39,6 +39,8 @@ import {
   RouteComparisonService,
   RouteCostEngine,
   defaultScoringWeights,
+  demoAgentPaymentIntents,
+  demoAgentPolicyViolations,
   demoMonetizationEvents,
   hashPassword,
   hashSecret,
@@ -244,6 +246,7 @@ async function main(): Promise<void> {
   await seedRoutes(providerIdBySlug);
   await seedOrganization();
   await seedDemoAgent();
+  await seedAgentDashboard();
   await seedCustomerPricing(providerIdBySlug);
   await seedDemoComparison(providerIdBySlug);
   await seedMonetization();
@@ -576,6 +579,7 @@ async function seedDemoAgent(): Promise<void> {
       minLiquidityHeadroom: new Prisma.Decimal(DEMO_AGENT_POLICY.minLiquidityHeadroom),
       dailySpendingLimitMinorUnits: new Prisma.Decimal(DEMO_AGENT_POLICY.dailySpendingLimitMinorUnits),
       dailySpendingAsset: DEMO_AGENT_POLICY.dailySpendingAsset,
+      preferredRoutePreference: DEMO_AGENT_POLICY.preferredRoutePreference,
       createdAt,
       updatedAt: createdAt,
     },
@@ -592,8 +596,86 @@ async function seedDemoAgent(): Promise<void> {
       minLiquidityHeadroom: new Prisma.Decimal(DEMO_AGENT_POLICY.minLiquidityHeadroom),
       dailySpendingLimitMinorUnits: new Prisma.Decimal(DEMO_AGENT_POLICY.dailySpendingLimitMinorUnits),
       dailySpendingAsset: DEMO_AGENT_POLICY.dailySpendingAsset,
+      preferredRoutePreference: DEMO_AGENT_POLICY.preferredRoutePreference,
     },
   });
+}
+
+async function seedAgentDashboard(): Promise<void> {
+  const nowIso = new Date().toISOString();
+  for (const intent of demoAgentPaymentIntents(nowIso)) {
+    if (intent.organizationId !== DEMO_ORGANIZATION_ID) {
+      continue;
+    }
+    await prisma.paymentIntent.upsert({
+      where: { id: intent.id },
+      create: {
+        id: intent.id,
+        organizationId: intent.organizationId,
+        agentId: intent.agentId,
+        sourceAsset: intent.sourceAsset,
+        destinationAsset: intent.destinationAsset,
+        amountMinorUnits: new Prisma.Decimal(intent.amountMinorUnits),
+        recipient: intent.recipient,
+        purpose: intent.purpose,
+        routePreference: intent.routePreference,
+        maxFeeBps: intent.maxFeeBps === null ? null : new Prisma.Decimal(intent.maxFeeBps),
+        expiresAt: new Date(intent.expiresAt),
+        status: intent.status,
+        idempotencyKey: intent.idempotencyKey,
+        payloadFingerprint: intent.payloadFingerprint,
+        quotedRoutes: intent.quotedRoutes as unknown as Prisma.InputJsonValue,
+        quoteExpiresAt: intent.quoteExpiresAt === null ? null : new Date(intent.quoteExpiresAt),
+        selectedRouteId: intent.selectedRouteId,
+        authorizedAt: intent.authorizedAt === null ? null : new Date(intent.authorizedAt),
+        simulatedAt: intent.simulatedAt === null ? null : new Date(intent.simulatedAt),
+        simulation:
+          intent.simulation === null
+            ? Prisma.JsonNull
+            : (intent.simulation as unknown as Prisma.InputJsonValue),
+        failureReason: intent.failureReason,
+        fundsMoved: false,
+        custody: false,
+        realExecution: false,
+        actor: intent.actor,
+        createdAt: new Date(intent.createdAt),
+        updatedAt: new Date(intent.updatedAt),
+      },
+      update: {},
+    });
+  }
+
+  for (const violation of demoAgentPolicyViolations(nowIso)) {
+    if (violation.organizationId !== DEMO_ORGANIZATION_ID) {
+      continue;
+    }
+    const existing = await prisma.auditLog.findUnique({ where: { eventId: violation.eventId } });
+    if (existing !== null) {
+      continue;
+    }
+    await prisma.auditLog.create({
+      data: {
+        eventId: violation.eventId,
+        type: 'payment.policy.denied',
+        occurredAt: new Date(violation.occurredAt),
+        actor: 'provision',
+        requestId: null,
+        comparisonId: null,
+        providerId: null,
+        organizationId: violation.organizationId,
+        payload: {
+          rule: violation.rule,
+          message: violation.message,
+          failClosed: true,
+          organizationId: violation.organizationId,
+          agentId: violation.agentId,
+          ...(violation.paymentIntentId === null
+            ? {}
+            : { paymentIntentId: violation.paymentIntentId }),
+        },
+      },
+    });
+  }
 }
 
 async function seedCustomerPricing(providerIdBySlug: Map<string, string>): Promise<void> {

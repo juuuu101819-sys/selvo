@@ -428,6 +428,7 @@ model PaymentPolicy {
   minLiquidityHeadroom            Decimal  @map("min_liquidity_headroom") @db.Decimal(12, 4)
   dailySpendingLimitMinorUnits    Decimal  @map("daily_spending_limit_minor_units") @db.Decimal(38, 0)
   dailySpendingAsset              String   @map("daily_spending_asset") @db.VarChar(16)
+  preferredRoutePreference        String?  @map("preferred_route_preference")
   createdAt                       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 

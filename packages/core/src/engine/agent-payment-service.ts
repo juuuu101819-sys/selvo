@@ -275,6 +275,8 @@ export class AgentPaymentService {
           requestId: input.requestId,
           paymentIntentId: quoting.id,
           providerId: null,
+          organizationId: quoting.organizationId,
+          agentId: quoting.agentId,
         });
         throw denied;
       }
@@ -648,6 +650,8 @@ export class AgentPaymentService {
         requestId,
         paymentIntentId,
         providerId: null,
+        organizationId,
+        agentId,
       });
       throw error;
     }
@@ -749,6 +753,8 @@ export class AgentPaymentService {
           requestId: input.requestId,
           paymentIntentId: input.paymentIntentId,
           providerId,
+          organizationId: policy.organizationId,
+          agentId: policy.agentId,
         });
       }
       throw error;
@@ -760,6 +766,8 @@ export class AgentPaymentService {
       requestId: input.requestId,
       paymentIntentId: input.paymentIntentId,
       providerId,
+      organizationId: policy.organizationId,
+      agentId: policy.agentId,
     });
   }
 
@@ -770,6 +778,8 @@ export class AgentPaymentService {
     readonly requestId: string;
     readonly paymentIntentId: string | null;
     readonly providerId: string | null;
+    readonly organizationId: string;
+    readonly agentId: string;
   }): Promise<void> {
     let rule: string | null = null;
     if (input.error !== null) {
@@ -780,6 +790,8 @@ export class AgentPaymentService {
       allowed: input.allowed,
       aiUsed: false,
       failClosed: true,
+      organizationId: input.organizationId,
+      agentId: input.agentId,
       ...(rule === null ? {} : { rule }),
       ...(input.error === null ? {} : { message: input.error.message }),
       ...(input.paymentIntentId === null ? {} : { paymentIntentId: input.paymentIntentId }),
@@ -790,6 +802,7 @@ export class AgentPaymentService {
       requestId: input.requestId,
       comparisonId: null,
       providerId: input.providerId,
+      organizationId: input.organizationId,
       payload,
     });
     if (input.error !== null) {
@@ -799,10 +812,13 @@ export class AgentPaymentService {
         requestId: input.requestId,
         comparisonId: null,
         providerId: input.providerId,
+        organizationId: input.organizationId,
         payload: {
           rule: rule ?? '',
           message: input.error.message,
           failClosed: true,
+          organizationId: input.organizationId,
+          agentId: input.agentId,
           ...(input.paymentIntentId === null ? {} : { paymentIntentId: input.paymentIntentId }),
         },
       });

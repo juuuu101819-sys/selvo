@@ -809,6 +809,7 @@ export interface PaymentPolicyDto {
   readonly minLiquidityHeadroom: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
+  readonly preferredRoutePreference: string | null;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -902,6 +903,82 @@ export interface MonetizationWorkedExampleDto {
   readonly takeRateBps: string;
   readonly currency: string;
   readonly description: string;
+}
+
+export interface PreferredRouteRowDto {
+  readonly providerId: string;
+  readonly providerName: string;
+  readonly rail: string;
+  readonly intentCount: number;
+}
+
+export interface AgentPolicyViolationDto {
+  readonly eventId: string;
+  readonly occurredAt: string;
+  readonly agentId: string;
+  readonly rule: string;
+  readonly message: string;
+  readonly paymentIntentId: string | null;
+}
+
+export interface AgentSpendingSnapshotDto {
+  readonly asset: string;
+  readonly exponent: number;
+  readonly dailyLimitMinorUnits: string;
+  readonly dailySpentMinorUnits: string;
+  readonly dailyRemainingMinorUnits: string;
+  readonly maxTransactionMinorUnits: string;
+  readonly preferredRoutePreference: string | null;
+}
+
+export interface AgentDashboardSummaryDto {
+  readonly agentId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly createdAt: string;
+  readonly transactionCount: number;
+  readonly completedCount: number;
+  readonly failedCount: number;
+  readonly quotedCount: number;
+  readonly policyViolationCount: number;
+  readonly paymentVolumeMinorUnits: string;
+  readonly currency: string;
+  readonly exponent: number;
+  readonly averageFeeBps: string | null;
+  readonly routeSuccessRatePercent: string | null;
+  readonly preferredRoute: PreferredRouteRowDto | null;
+  readonly dailySpentMinorUnits: string;
+  readonly dailyLimitMinorUnits: string | null;
+  readonly fundsMoved: false;
+  readonly custody: false;
+}
+
+export interface AgentDashboardDetailDto {
+  readonly summary: AgentDashboardSummaryDto;
+  readonly spending: AgentSpendingSnapshotDto | null;
+  readonly preferredRoutes: readonly PreferredRouteRowDto[];
+  readonly violations: readonly AgentPolicyViolationDto[];
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly walletsGenerated: false;
+  readonly privateKeysHeld: false;
+}
+
+export interface AgentPolicyControlsDto {
+  readonly policy: PaymentPolicyDto | null;
+  readonly spending: AgentSpendingSnapshotDto | null;
+  readonly violations: readonly AgentPolicyViolationDto[];
+  readonly availableAssets: readonly string[];
+  readonly availableProviders: readonly { readonly id: string; readonly name: string }[];
+  readonly availableRecipients: readonly {
+    readonly code: string;
+    readonly name: string;
+  }[];
+  readonly routePreferences: readonly string[];
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly walletsGenerated: false;
+  readonly privateKeysHeld: false;
 }
 
 export interface MonetizationReportDto {

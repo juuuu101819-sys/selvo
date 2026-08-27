@@ -1,4 +1,4 @@
-import type { AuditEvent } from './audit.js';
+import type { AuditEvent, AuditEventType } from './audit.js';
 import type { DashboardRepository } from './dashboard.js';
 import type { ExecutionIntentRepository } from './execution-intent.js';
 import type { AgentPaymentsRepository } from './agent-payments.js';
@@ -45,6 +45,10 @@ export interface AuditLogRepository {
   append(event: AuditEvent): Promise<void>;
   listByComparison(comparisonId: string): Promise<readonly AuditEvent[]>;
   list(options?: { readonly limit?: number }): Promise<readonly AuditEvent[]>;
+  listByOrganization(
+    organizationId: string,
+    options?: { readonly types?: readonly AuditEventType[]; readonly limit?: number },
+  ): Promise<readonly AuditEvent[]>;
 }
 
 /** Lifecycle contract shared by every persistence driver. */

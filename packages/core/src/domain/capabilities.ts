@@ -84,6 +84,11 @@ export const PLATFORM_CAPABILITIES = {
    * profit and take rate on quoted activity. Decimal only. Distinct from `executeTransactions`.
    */
   multiRailMonetization: true,
+  /**
+   * Organization-scoped AI-agent financial dashboard. Quoted volume, fees, success rate, spending
+   * limits and policy controls. Distinct from `executeTransactions`. No custody, keys or wallets.
+   */
+  agentFinancialDashboard: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

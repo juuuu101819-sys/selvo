@@ -40,6 +40,12 @@ import type {
   PaymentPolicy,
   PublicAgent,
 } from '../domain/agent-payments.js';
+import type {
+  AgentDashboardDetail,
+  AgentDashboardSummary,
+  AgentPolicyViolation,
+  AgentSpendingSnapshot,
+} from '../domain/agent-dashboard.js';
 import type { StructuredNlPaymentIntent } from '../domain/nl-intent.js';
 import type { NlRouteResult } from '../engine/nl-routing-service.js';
 import type { ExecutionIntent } from '../ports/execution-intent.js';
@@ -85,6 +91,11 @@ import type {
   StablecoinSlippageDto,
   MonetizationReportDto,
   MonetizationEventDto,
+  AgentDashboardDetailDto,
+  AgentDashboardSummaryDto,
+  AgentPolicyViolationDto,
+  AgentSpendingSnapshotDto,
+  PreferredRouteRowDto,
 } from './dto.js';
 
 const BPS_DECIMAL_PLACES = 4;
@@ -924,6 +935,7 @@ export function serializePaymentPolicy(policy: PaymentPolicy): PaymentPolicyDto 
     minLiquidityHeadroom: policy.minLiquidityHeadroom,
     dailySpendingLimitMinorUnits: policy.dailySpendingLimitMinorUnits,
     dailySpendingAsset: policy.dailySpendingAsset,
+    preferredRoutePreference: policy.preferredRoutePreference,
     createdAt: policy.createdAt,
     updatedAt: policy.updatedAt,
   };
@@ -1008,5 +1020,88 @@ function serializeMonetizationEvent(event: MonetizationEvent): MonetizationEvent
     fundsMoved: false,
     custody: false,
     realExecution: false,
+  };
+}
+
+export function serializeAgentDashboardSummary(
+  summary: AgentDashboardSummary,
+): AgentDashboardSummaryDto {
+  return {
+    agentId: summary.agentId,
+    name: summary.name,
+    status: summary.status,
+    createdAt: summary.createdAt,
+    transactionCount: summary.transactionCount,
+    completedCount: summary.completedCount,
+    failedCount: summary.failedCount,
+    quotedCount: summary.quotedCount,
+    policyViolationCount: summary.policyViolationCount,
+    paymentVolumeMinorUnits: summary.paymentVolumeMinorUnits,
+    currency: summary.currency,
+    exponent: summary.exponent,
+    averageFeeBps: summary.averageFeeBps,
+    routeSuccessRatePercent: summary.routeSuccessRatePercent,
+    preferredRoute:
+      summary.preferredRoute === null ? null : serializePreferredRoute(summary.preferredRoute),
+    dailySpentMinorUnits: summary.dailySpentMinorUnits,
+    dailyLimitMinorUnits: summary.dailyLimitMinorUnits,
+    fundsMoved: false,
+    custody: false,
+  };
+}
+
+export function serializeAgentDashboardDetail(
+  detail: AgentDashboardDetail,
+): AgentDashboardDetailDto {
+  return {
+    summary: serializeAgentDashboardSummary(detail.summary),
+    spending: detail.spending === null ? null : serializeAgentSpendingSnapshot(detail.spending),
+    preferredRoutes: detail.preferredRoutes.map(serializePreferredRoute),
+    violations: detail.violations.map(serializeAgentPolicyViolation),
+    fundsMoved: false,
+    custody: false,
+    walletsGenerated: false,
+    privateKeysHeld: false,
+  };
+}
+
+export function serializeAgentSpendingSnapshot(
+  spending: AgentSpendingSnapshot,
+): AgentSpendingSnapshotDto {
+  return {
+    asset: spending.asset,
+    exponent: spending.exponent,
+    dailyLimitMinorUnits: spending.dailyLimitMinorUnits,
+    dailySpentMinorUnits: spending.dailySpentMinorUnits,
+    dailyRemainingMinorUnits: spending.dailyRemainingMinorUnits,
+    maxTransactionMinorUnits: spending.maxTransactionMinorUnits,
+    preferredRoutePreference: spending.preferredRoutePreference,
+  };
+}
+
+export function serializeAgentPolicyViolation(
+  violation: AgentPolicyViolation,
+): AgentPolicyViolationDto {
+  return {
+    eventId: violation.eventId,
+    occurredAt: violation.occurredAt,
+    agentId: violation.agentId,
+    rule: violation.rule,
+    message: violation.message,
+    paymentIntentId: violation.paymentIntentId,
+  };
+}
+
+function serializePreferredRoute(row: {
+  readonly providerId: string;
+  readonly providerName: string;
+  readonly rail: string;
+  readonly intentCount: number;
+}): PreferredRouteRowDto {
+  return {
+    providerId: row.providerId,
+    providerName: row.providerName,
+    rail: row.rail,
+    intentCount: row.intentCount,
   };
 }

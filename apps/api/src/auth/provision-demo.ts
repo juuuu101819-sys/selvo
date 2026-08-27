@@ -1,5 +1,7 @@
 import {
   demoMonetizationEvents,
+  demoAgentPaymentIntents,
+  demoAgentPolicyViolations,
   DEMO_AGENT_CREDENTIAL_ID,
   DEMO_AGENT_ID,
   DEMO_AGENT_NAME,
@@ -12,6 +14,7 @@ import {
   DEMO_ORGANIZATION_ID,
   DEMO_ORGANIZATION_NAME,
   DEMO_ORGANIZATION_SLUG,
+  DEMO_OTHER_AGENT_ID,
   DEMO_PAYMENT_POLICY_ID,
   DEMO_USER_DISPLAY_NAME,
   DEMO_USER_EMAIL,
@@ -28,6 +31,7 @@ import {
   hashSecret,
   randomToken,
   type AgentPaymentsRepository,
+  type AuditLogRepository,
   type DashboardRepository,
   type IdentityStore,
 } from '@meridian/core';
@@ -37,6 +41,7 @@ export interface TenantStores {
   readonly identity: IdentityStore;
   readonly dashboard: DashboardRepository;
   readonly agentPayments?: AgentPaymentsRepository;
+  readonly auditLog?: AuditLogRepository;
 }
 
 /**
@@ -47,7 +52,7 @@ export interface TenantStores {
  */
 export async function provisionDemoTenants(
   stores: TenantStores,
-  options: { readonly seedDashboard?: boolean } = {},
+  options: { readonly seedDashboard?: boolean; readonly nowIso?: string } = {},
 ): Promise<void> {
   const demoHash = await hashPassword(DEMO_USER_PASSWORD);
   const otherHash = await hashPassword(OTHER_USER_PASSWORD);
@@ -96,7 +101,13 @@ export async function provisionDemoTenants(
   }
 
   if (stores.agentPayments !== undefined) {
-    await provisionDemoAgent(stores.agentPayments);
+    await provisionDemoAgent(stores.agentPayments, options.nowIso ?? new Date().toISOString());
+  }
+  if (stores.agentPayments !== undefined && stores.auditLog !== undefined) {
+    await seedAgentDashboardAudits(
+      stores.auditLog,
+      options.nowIso ?? new Date().toISOString(),
+    );
   }
 }
 
@@ -262,58 +273,124 @@ export function issueDemoApiKeySecret(): { readonly prefix: string; readonly sec
   return { prefix: secret.slice(0, 16), secret };
 }
 
-async function provisionDemoAgent(store: AgentPaymentsRepository): Promise<void> {
+async function provisionDemoAgent(
+  store: AgentPaymentsRepository,
+  nowIso: string,
+): Promise<void> {
   const existing = await store.findAgent(DEMO_AGENT_ID, DEMO_ORGANIZATION_ID);
-  if (existing !== null) {
-    return;
+  if (existing === null) {
+    const createdAt = '2026-03-01T09:00:00.000Z';
+    await store.createAgent({
+      id: DEMO_AGENT_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      name: DEMO_AGENT_NAME,
+      createdAt,
+    });
+    await store.createCredential({
+      id: DEMO_AGENT_CREDENTIAL_ID,
+      agentId: DEMO_AGENT_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      keyPrefix: DEMO_AGENT_SECRET.slice(0, API_KEY_PREFIX_LENGTH),
+      secretHash: hashSecret(DEMO_AGENT_SECRET),
+      scopes: DEFAULT_AGENT_SCOPES,
+      createdAt,
+      expiresAt: null,
+    });
+    await store.createWalletReference({
+      id: DEMO_WALLET_REFERENCE_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      agentId: DEMO_AGENT_ID,
+      kind: 'external_account',
+      label: 'Demo treasury operating account',
+      externalRef: 'ext_acct_demo_treasury',
+      createdAt,
+    });
+    await store.createMerchant({
+      id: DEMO_MERCHANT_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      name: DEMO_MERCHANT_NAME,
+      recipientCode: DEMO_MERCHANT_CODE,
+      settlementAsset: 'KRW',
+      createdAt,
+    });
+    await store.createPolicy({
+      id: DEMO_PAYMENT_POLICY_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      agentId: DEMO_AGENT_ID,
+      ...DEMO_AGENT_POLICY,
+      allowedAssets: [...DEMO_AGENT_POLICY.allowedAssets],
+      allowedRecipientCodes: [...DEMO_AGENT_POLICY.allowedRecipientCodes],
+      allowedProviderIds: [...DEMO_AGENT_POLICY.allowedProviderIds],
+      allowedChainIds: [...DEMO_AGENT_POLICY.allowedChainIds],
+      allowedCountryCodes: [...DEMO_AGENT_POLICY.allowedCountryCodes],
+      createdAt,
+    });
   }
 
-  const createdAt = '2026-03-01T09:00:00.000Z';
-  await store.createAgent({
-    id: DEMO_AGENT_ID,
-    organizationId: DEMO_ORGANIZATION_ID,
-    name: DEMO_AGENT_NAME,
-    createdAt,
-  });
-  await store.createCredential({
-    id: DEMO_AGENT_CREDENTIAL_ID,
-    agentId: DEMO_AGENT_ID,
-    organizationId: DEMO_ORGANIZATION_ID,
-    keyPrefix: DEMO_AGENT_SECRET.slice(0, API_KEY_PREFIX_LENGTH),
-    secretHash: hashSecret(DEMO_AGENT_SECRET),
-    scopes: DEFAULT_AGENT_SCOPES,
-    createdAt,
-    expiresAt: null,
-  });
-  await store.createWalletReference({
-    id: DEMO_WALLET_REFERENCE_ID,
-    organizationId: DEMO_ORGANIZATION_ID,
-    agentId: DEMO_AGENT_ID,
-    kind: 'external_account',
-    label: 'Demo treasury operating account',
-    externalRef: 'ext_acct_demo_treasury',
-    createdAt,
-  });
-  await store.createMerchant({
-    id: DEMO_MERCHANT_ID,
-    organizationId: DEMO_ORGANIZATION_ID,
-    name: DEMO_MERCHANT_NAME,
-    recipientCode: DEMO_MERCHANT_CODE,
-    settlementAsset: 'KRW',
-    createdAt,
-  });
-  await store.createPolicy({
-    id: DEMO_PAYMENT_POLICY_ID,
-    organizationId: DEMO_ORGANIZATION_ID,
-    agentId: DEMO_AGENT_ID,
-    ...DEMO_AGENT_POLICY,
-    allowedAssets: [...DEMO_AGENT_POLICY.allowedAssets],
-    allowedRecipientCodes: [...DEMO_AGENT_POLICY.allowedRecipientCodes],
-    allowedProviderIds: [...DEMO_AGENT_POLICY.allowedProviderIds],
-    allowedChainIds: [...DEMO_AGENT_POLICY.allowedChainIds],
-    allowedCountryCodes: [...DEMO_AGENT_POLICY.allowedCountryCodes],
-    createdAt,
-  });
+  const other = await store.findAgent(DEMO_OTHER_AGENT_ID, OTHER_ORGANIZATION_ID);
+  if (other === null) {
+    const createdAt = '2026-03-01T09:00:00.000Z';
+    await store.createAgent({
+      id: DEMO_OTHER_AGENT_ID,
+      organizationId: OTHER_ORGANIZATION_ID,
+      name: 'Other Secret Agent',
+      createdAt,
+    });
+    await store.createPolicy({
+      id: 'pol_other_secret',
+      organizationId: OTHER_ORGANIZATION_ID,
+      agentId: DEMO_OTHER_AGENT_ID,
+      ...DEMO_AGENT_POLICY,
+      allowedAssets: [...DEMO_AGENT_POLICY.allowedAssets],
+      allowedRecipientCodes: [...DEMO_AGENT_POLICY.allowedRecipientCodes],
+      allowedProviderIds: [...DEMO_AGENT_POLICY.allowedProviderIds],
+      allowedChainIds: [...DEMO_AGENT_POLICY.allowedChainIds],
+      allowedCountryCodes: [...DEMO_AGENT_POLICY.allowedCountryCodes],
+      createdAt,
+    });
+  }
+
+  for (const intent of demoAgentPaymentIntents(nowIso)) {
+    const found = await store.findIntentById(intent.id, intent.organizationId);
+    if (found === null) {
+      await store.createIntent(intent);
+    }
+  }
+}
+
+async function seedAgentDashboardAudits(
+  auditLog: AuditLogRepository,
+  nowIso: string,
+): Promise<void> {
+  for (const violation of demoAgentPolicyViolations(nowIso)) {
+    const existing = await auditLog.listByOrganization(violation.organizationId, {
+      types: ['payment.policy.denied'],
+      limit: 200,
+    });
+    if (existing.some((event) => event.eventId === violation.eventId)) {
+      continue;
+    }
+    await auditLog.append({
+      eventId: violation.eventId,
+      type: 'payment.policy.denied',
+      occurredAt: violation.occurredAt,
+      actor: 'provision',
+      requestId: null,
+      comparisonId: null,
+      providerId: null,
+      organizationId: violation.organizationId,
+      payload: {
+        rule: violation.rule,
+        message: violation.message,
+        failClosed: true,
+        organizationId: violation.organizationId,
+        agentId: violation.agentId,
+        ...(violation.paymentIntentId === null
+          ? {}
+          : { paymentIntentId: violation.paymentIntentId }),
+      },
+    });
+  }
 }
 
 export { hashSecret };

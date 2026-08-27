@@ -382,3 +382,22 @@ provider, currency, asset, organization, AI agent, transaction type, revenue sou
 including the $100k example. `multiRailMonetization` is true. Engine versions unchanged.
 `POST /executions` remains 501.
 
+## Phase 18 — AI agent financial dashboard ✅ implemented
+
+Organization operators inspect one agent's quoted and simulated activity without custody:
+
+- `/dashboard/agents` — volume, transaction count, average fee, success rate, daily spend, violations
+- `/dashboard/agents/[id]` — spending limits, preferred routes, policy denials
+- `/dashboard/agents/[id]/payments` — payment history
+- `/dashboard/agents/[id]/policies` — controls for spending limits, allowed assets, providers,
+  recipients and route preference
+
+API: `GET /api/v1/dashboard/agents`, `GET /api/v1/dashboard/agents/:id`,
+`GET /api/v1/dashboard/agents/:id/payments`, `GET /api/v1/dashboard/agents/:id/policies`,
+`PATCH /api/v1/dashboard/agents/:id/policies`. Agent credentials cannot PATCH. Empty allow-lists
+still mean none. Volume, average fee and remaining spend use Decimal/`bigint` only.
+
+Demo identity: $4,250 TPV across five intents, 75.0% success, 42.5000 bps average fee, $1,000 max /
+$10,000 daily. The other organization's $999,999 intent never appears. `agentFinancialDashboard` is
+true. Engine versions unchanged. No wallets, keys or custody. `POST /executions` remains 501.
+

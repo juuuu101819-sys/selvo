@@ -133,7 +133,8 @@ source asset ticker (`VARCHAR(16)`), not an ISO currency FK. No wallet, key or s
 
 **`PaymentPolicy`** — fail-closed limits for one agent: max transaction and daily spending (minor
 units), allowed assets / recipients / providers / CAIP-2 chains / ISO country codes, max fee and
-slippage (bps), minimum route score, minimum liquidity headroom. Empty arrays mean none, not all.
+slippage (bps), minimum route score, minimum liquidity headroom, optional `preferred_route_preference`.
+Empty arrays mean none, not all.
 
 **`MonetizationEvent`** — quoted (never settled) revenue ledger. Amounts are `DECIMAL(38,0)` minor
 units of the event currency. `funds_moved`, `custody` and `real_execution` are CHECK-constrained to

@@ -8,6 +8,8 @@ import {
   formatReliability,
   formatSettlement,
   formatTakeRate,
+  majorToMinorUnits,
+  minorToMajorUnits,
   sharePercent,
 } from './format';
 
@@ -105,5 +107,18 @@ describe('formatSettlement', () => {
 describe('formatReliability', () => {
   it('renders a settlement record as a percentage', () => {
     expect(formatReliability('0.985')).toBe('98.5%');
+  });
+});
+
+describe('majorToMinorUnits and minorToMajorUnits', () => {
+  it('round-trips USD amounts without floating point', () => {
+    expect(majorToMinorUnits('1000', 2)).toBe('100000');
+    expect(majorToMinorUnits('1000.50', 2)).toBe('100050');
+    expect(majorToMinorUnits('0.50', 2)).toBe('50');
+    expect(majorToMinorUnits('10.5', 2)).toBe('1050');
+    expect(majorToMinorUnits('1000.123', 2)).toBeNull();
+    expect(minorToMajorUnits('100000', 2)).toBe('1000');
+    expect(minorToMajorUnits('100050', 2)).toBe('1000.5');
+    expect(minorToMajorUnits('50', 2)).toBe('0.5');
   });
 });

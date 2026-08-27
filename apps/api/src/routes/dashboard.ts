@@ -1,9 +1,21 @@
-import { NotFoundError, serializeMonetizationReport } from '@meridian/core';
+import {
+  ForbiddenError,
+  NotFoundError,
+  serializeMonetizationReport,
+  serializePaymentIntent,
+  type PaymentPolicy,
+} from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppContainer } from '../container.js';
+import {
+  listAgentDashboardSummaries,
+  loadAgentDashboardDetail,
+  loadAgentPaymentHistory,
+  loadAgentPolicyControls,
+} from '../dashboard/agent-financials.js';
 import { requireOrganization } from '../http/require-organization.js';
-import { parseOrThrow } from '../http/validation.js';
+import { parseOrThrow, patchAgentPolicySchema } from '../http/validation.js';
 
 const listQuery = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).strict();
 const idParams = z.object({ id: z.string().min(1).max(128) }).strict();
@@ -106,5 +118,146 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
       apiKeys,
       role: principal.roles[0] ?? null,
     });
+  });
+
+  app.get('/dashboard/agents', async (request) => {
+    const principal = requireOrganization(request);
+    const agents = await listAgentDashboardSummaries({
+      organizationId: principal.organizationId,
+      nowIso: container.clock.nowIso(),
+      agentPayments: container.persistence.agentPayments,
+      auditLog: container.persistence.auditLog,
+    });
+    return envelope(request, {
+      agents,
+      fundsMoved: false,
+      custody: false,
+      walletsGenerated: false,
+      privateKeysHeld: false,
+    });
+  });
+
+  app.get('/dashboard/agents/:id', async (request) => {
+    const principal = requireOrganization(request);
+    const { id } = parseOrThrow(idParams, request.params, 'params');
+    const detail = await loadAgentDashboardDetail({
+      organizationId: principal.organizationId,
+      agentId: id,
+      nowIso: container.clock.nowIso(),
+      agentPayments: container.persistence.agentPayments,
+      auditLog: container.persistence.auditLog,
+    });
+    if (detail === null) {
+      throw new NotFoundError('Agent', id);
+    }
+    return envelope(request, detail);
+  });
+
+  app.get('/dashboard/agents/:id/payments', async (request) => {
+    const principal = requireOrganization(request);
+    const { id } = parseOrThrow(idParams, request.params, 'params');
+    const intents = await loadAgentPaymentHistory({
+      organizationId: principal.organizationId,
+      agentId: id,
+      agentPayments: container.persistence.agentPayments,
+    });
+    if (intents === null) {
+      throw new NotFoundError('Agent', id);
+    }
+    return envelope(request, {
+      payments: intents.map(serializePaymentIntent),
+      fundsMoved: false,
+      custody: false,
+    });
+  });
+
+  app.get('/dashboard/agents/:id/policies', async (request) => {
+    const principal = requireOrganization(request);
+    const { id } = parseOrThrow(idParams, request.params, 'params');
+    const controls = await loadAgentPolicyControls({
+      organizationId: principal.organizationId,
+      agentId: id,
+      nowIso: container.clock.nowIso(),
+      agentPayments: container.persistence.agentPayments,
+      auditLog: container.persistence.auditLog,
+      providers: container.providers.map((provider) => ({ id: provider.id, name: provider.name })),
+    });
+    if (controls === null) {
+      throw new NotFoundError('Agent', id);
+    }
+    return envelope(request, controls);
+  });
+
+  app.patch('/dashboard/agents/:id/policies', async (request) => {
+    const principal = requireOrganization(request);
+    if (principal.kind === 'agent') {
+      throw new ForbiddenError('Agent credentials cannot update payment policy.', {
+        kind: principal.kind,
+      });
+    }
+    const { id } = parseOrThrow(idParams, request.params, 'params');
+    const body = parseOrThrow(patchAgentPolicySchema, request.body, 'body');
+    const existing = await container.persistence.agentPayments.findPolicyByAgent(
+      principal.organizationId,
+      id,
+    );
+    if (existing === null) {
+      const agent = await container.persistence.agentPayments.findAgent(
+        id,
+        principal.organizationId,
+      );
+      throw new NotFoundError(agent === null ? 'Agent' : 'PaymentPolicy', id);
+    }
+    const updated: PaymentPolicy = {
+      ...existing,
+      maxTransactionAmountMinorUnits:
+        body.maxTransactionAmountMinorUnits ?? existing.maxTransactionAmountMinorUnits,
+      dailySpendingLimitMinorUnits:
+        body.dailySpendingLimitMinorUnits ?? existing.dailySpendingLimitMinorUnits,
+      dailySpendingAsset: body.dailySpendingAsset ?? existing.dailySpendingAsset,
+      allowedAssets: body.allowedAssets ?? existing.allowedAssets,
+      allowedRecipientCodes: body.allowedRecipientCodes ?? existing.allowedRecipientCodes,
+      allowedProviderIds: body.allowedProviderIds ?? existing.allowedProviderIds,
+      allowedChainIds: body.allowedChainIds ?? existing.allowedChainIds,
+      allowedCountryCodes: body.allowedCountryCodes ?? existing.allowedCountryCodes,
+      maxFeeBps: body.maxFeeBps ?? existing.maxFeeBps,
+      maxSlippageBps: body.maxSlippageBps ?? existing.maxSlippageBps,
+      minRouteScore: body.minRouteScore ?? existing.minRouteScore,
+      minLiquidityHeadroom: body.minLiquidityHeadroom ?? existing.minLiquidityHeadroom,
+      preferredRoutePreference:
+        body.preferredRoutePreference === undefined
+          ? existing.preferredRoutePreference
+          : body.preferredRoutePreference,
+      updatedAt: container.clock.nowIso(),
+    };
+    await container.persistence.agentPayments.updatePolicy(updated);
+    await container.auditLogger.record({
+      type: 'payment.policy.updated',
+      actor: principal.actor,
+      requestId: request.id,
+      comparisonId: null,
+      providerId: null,
+      organizationId: principal.organizationId,
+      payload: {
+        agentId: id,
+        organizationId: principal.organizationId,
+        fundsMoved: false,
+        custody: false,
+        walletsGenerated: false,
+        privateKeysHeld: false,
+      },
+    });
+    const controls = await loadAgentPolicyControls({
+      organizationId: principal.organizationId,
+      agentId: id,
+      nowIso: container.clock.nowIso(),
+      agentPayments: container.persistence.agentPayments,
+      auditLog: container.persistence.auditLog,
+      providers: container.providers.map((provider) => ({ id: provider.id, name: provider.name })),
+    });
+    if (controls === null) {
+      throw new NotFoundError('Agent', id);
+    }
+    return envelope(request, controls);
   });
 }
