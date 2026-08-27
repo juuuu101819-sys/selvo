@@ -125,17 +125,18 @@ export function AgentPaymentsExplorer({
                     {policy.dailySpendingLimitMinorUnits} {policy.dailySpendingAsset}
                   </p>
                   <p>
-                    Assets {policy.allowedAssets.join(', ') || 'none'} · recipients{' '}
-                    {policy.allowedRecipientCodes.join(', ') || 'none'}
+                    Assets {(policy.allowedAssets ?? []).join(', ') || 'none'} · recipients{' '}
+                    {(policy.allowedRecipientCodes ?? []).join(', ') || 'none'}
                   </p>
                   <p>
-                    Providers {policy.allowedProviderIds.join(', ') || 'none'} · chains{' '}
-                    {policy.allowedChainIds.join(', ') || 'fiat only'} · countries{' '}
-                    {policy.allowedCountryCodes.join(', ') || 'none'}
+                    Providers {(policy.allowedProviderIds ?? []).join(', ') || 'none'} · chains{' '}
+                    {(policy.allowedChainIds ?? []).join(', ') || 'fiat only'} · countries{' '}
+                    {(policy.allowedCountryCodes ?? []).join(', ') || 'none'}
                   </p>
                   <p>
-                    Fee cap {policy.maxFeeBps} bps · slippage {policy.maxSlippageBps} bps · min score{' '}
-                    {policy.minRouteScore} · min liquidity {policy.minLiquidityHeadroom}
+                    Fee cap {policy.maxFeeBps} bps · slippage {policy.maxSlippageBps ?? '—'} bps · min
+                    score {policy.minRouteScore ?? '—'} · min liquidity{' '}
+                    {policy.minLiquidityHeadroom ?? '—'}
                   </p>
                 </li>
               ))}
@@ -324,9 +325,11 @@ export function AgentPaymentsExplorer({
               {intent.quotedRoutes.map((route) => (
                 <li key={route.routeId}>
                   {route.rank}. {route.providerName} · {route.rail} · {route.totalCostBps} bps
-                  {route.routeScore !== null ? ` · score ${route.routeScore}` : ''}
-                  {route.slippageBps !== null ? ` · slip ${route.slippageBps} bps` : ''}
-                  {route.chainId !== null ? ` · ${route.chainId}` : ''}
+                  {route.routeScore != null && route.routeScore !== '' ? ` · score ${route.routeScore}` : ''}
+                  {route.slippageBps != null && route.slippageBps !== ''
+                    ? ` · slip ${route.slippageBps} bps`
+                    : ''}
+                  {route.chainId != null && route.chainId !== '' ? ` · ${route.chainId}` : ''}
                   {route.recommended ? ' · recommended' : ''}
                 </li>
               ))}
