@@ -20,7 +20,6 @@ import {
   Dec,
   Rounding,
   bpsToRatio,
-  formatDecimal,
   isCurrencyCode,
   ratioToBps,
   toDecimal,
@@ -238,7 +237,7 @@ function takeRate(platformRevenue: bigint, tpv: bigint): string | null {
   if (tpv === 0n) {
     return null;
   }
-  return formatDecimal(ratioToBps(toDecimal(platformRevenue.toString()).div(toDecimal(tpv.toString()))), 4);
+  return ratioToBps(toDecimal(platformRevenue.toString()).div(toDecimal(tpv.toString()))).toFixed(4);
 }
 
 function parseMinor(raw: string, field: string): bigint {

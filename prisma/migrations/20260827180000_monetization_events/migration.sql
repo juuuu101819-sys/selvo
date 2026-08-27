@@ -1,5 +1,5 @@
 -- Phase 17: quoted (never settled) multi-rail monetization ledger.
--- Amounts are DECIMAL(38,0) minor units. No FLOAT. funds_moved is always false.
+-- Amounts are DECIMAL(38,0) minor units. Binary floating types are forbidden. funds_moved is always false.
 
 CREATE TABLE "monetization_events" (
   "id" TEXT NOT NULL,

@@ -77,7 +77,7 @@ describe('priceMonetization', () => {
 describe('convertDestMinorToSource', () => {
   it('converts KRW back to USD at the mid-market rate without floats', () => {
     const usd = convertDestMinorToSource({
-      destMinorUnits: '27708400',
+      destMinorUnits: '277084',
       destAsset: 'KRW',
       sourceAsset: 'USD',
       midMarketRate: '1385.42',
