@@ -401,3 +401,24 @@ Demo identity: $4,250 TPV across five intents, 75.0% success, 42.5000 bps averag
 $10,000 daily. The other organization's $999,999 intent never appears. `agentFinancialDashboard` is
 true. Engine versions unchanged. No wallets, keys or custody. `POST /executions` remains 501.
 
+## Phase 19 — End-to-end financial routing test suite ✅ implemented
+
+Playwright coverage of the eight routing cases over real HTTP, plus the invariants the hub is
+required to keep:
+
+1. USD 100,000 → KRW compares traditional FX and stablecoin settlement.
+2. USD → USDC quotes the Helios ramp; DEX vs stablecoin comparison is asserted on USDC → USDT
+   (demo DEX books do not price USD → USDC).
+3. AI agent “Pay 500 USD” walks intent → policy → quote → route → execution intent → demo
+   sandbox provider. `POST /executions` stays 501.
+4. An agent over the spending limit fail-closes (`403 POLICY_DENIED`).
+5. An unavailable provider is removed; an alternative path is still evaluated.
+6. An expired quote cannot become an execution intent (`409 QUOTE_EXPIRED`).
+7. Insufficient liquidity rejects the graph path and fail-closes agent selection.
+8. High slippage is penalized in scoring and rejected by policy.
+
+Cross-cutting checks: no custody, no private-key storage, no real-money execution, no fabricated
+quotes (replay fingerprints), deterministic calculations, authorization, audit logging, idempotency,
+and API security (strict bodies, unauthenticated 401). Engine versions unchanged. No wallets, keys
+or custody. `POST /executions` remains 501.
+

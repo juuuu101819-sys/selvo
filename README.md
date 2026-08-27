@@ -107,16 +107,18 @@ curl -s -X POST http://127.0.0.1:47311/api/v1/defi-routes \
 
 ```bash
 npm run verify       # lint, typecheck, unit and integration tests
-npm run test:e2e     # Playwright: API contract, browser journey, mobile layout
+npm run test:e2e     # Playwright: API contract, eight routing cases, browser journey, mobile layout
 
 npm run lint
 npm run typecheck
 npm test
 ```
 
-Roughly 300 Vitest tests — unit tests over the financial calculations, a provider conformance check
-every adapter must pass, and integration tests exercising the real Fastify app in-process — plus 19
-Playwright tests that drive the built app over real HTTP.
+Vitest covers unit tests over the financial calculations, a provider conformance check every
+adapter must pass, and integration tests exercising the real Fastify app in-process. Playwright
+drives the built app over real HTTP, including the eight financial-routing cases (corridor
+comparison, agent pipeline, fail-closed policy, unavailable provider, expired quote, liquidity and
+slippage) and the non-custodial invariants.
 
 ## Repository layout
 

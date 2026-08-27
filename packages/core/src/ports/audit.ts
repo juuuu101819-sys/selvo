@@ -25,6 +25,7 @@ export const AUDIT_EVENT_TYPES = [
   'provider.quote.failed',
   'execution.rejected',
   'execution.intent.recorded',
+  'execution.intent.rejected',
   'apikey.issued',
   'apikey.revoked',
   'agent.issued',

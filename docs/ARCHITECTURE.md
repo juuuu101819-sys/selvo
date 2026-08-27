@@ -383,6 +383,11 @@ wallet. `fundsMoved`, `custody`, `walletsGenerated` and `privateKeysHeld` stay f
   where a body parser behaves differently from the in-process harness. The empty-body defect fixed
   earlier in this project was exactly that class of bug, so the suite sends a bodyless POST with a
   JSON content type on purpose.
+- **Financial routing cases** (`tests/e2e/financial-routing.api.spec.ts`) — eight corridor and
+  agent-pipeline cases (tradfi vs stablecoin, stablecoin vs DEX, Pay 500 USD, spend-limit fail-closed,
+  unavailable provider, expired quote, insufficient liquidity, high slippage) plus non-custodial,
+  authorization, audit, idempotency and strict-body checks. Quote expiry waits on the live clock;
+  execution intents with a past `quoteExpiresAt` are rejected immediately.
 
 ## 14. Deliberately out of scope
 

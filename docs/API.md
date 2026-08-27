@@ -598,7 +598,9 @@ prefixes, never secrets or hashes.
 ## `GET /api/v1/execution-intents`
 
 Requires `transaction:create`. Records a route choice with `status: "recorded"`, `executable: false`,
-`submitted: false`. This is not a payment. `POST /api/v1/executions` remains the audited `501`.
+`submitted: false`. This is not a payment. An expired `quoteExpiresAt` is rejected with
+`409 QUOTE_EXPIRED` and audited as `execution.intent.rejected`; nothing is stored. `POST /api/v1/executions`
+remains the audited `501`.
 
 ## AI agent payments
 

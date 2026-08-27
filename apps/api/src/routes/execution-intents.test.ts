@@ -140,4 +140,70 @@ describe('POST /api/v1/execution-intents', () => {
     });
     expect(response.statusCode).toBe(403);
   });
+
+  it('rejects an execution intent whose quote has already expired', async () => {
+    const token = await login();
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/execution-intents`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        requestId: 'req_expired_quote',
+        routeId: 'rte_northgate',
+        sourceAsset: 'USD',
+        destinationAsset: 'KRW',
+        amount: '100000.00',
+        quoteExpiresAt: '2026-03-01T08:59:59.000Z',
+      },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json<ApiError>().error.code).toBe('QUOTE_EXPIRED');
+    expect(response.json<ApiError>().error.details['quoteExpiresAt']).toBe(
+      '2026-03-01T08:59:59.000Z',
+    );
+
+    const events = await harness.auditEvents();
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'execution.intent.rejected' &&
+          event.payload['reason'] === 'QUOTE_EXPIRED' &&
+          event.payload['executable'] === false &&
+          event.payload['submitted'] === false &&
+          event.payload['fundsMoved'] === false,
+      ),
+    ).toBe(true);
+
+    const listed = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/execution-intents`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(listed.statusCode).toBe(200);
+    const intents = listed.json<{ data: { intents: { requestId: string }[] } }>().data.intents;
+    expect(intents.some((intent) => intent.requestId === 'req_expired_quote')).toBe(false);
+  });
+
+  it('records an execution intent when the quote is still fresh', async () => {
+    const token = await login();
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/execution-intents`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        requestId: 'req_fresh_quote',
+        routeId: 'rte_northgate',
+        sourceAsset: 'USD',
+        destinationAsset: 'KRW',
+        amount: '100000.00',
+        quoteExpiresAt: '2026-03-01T09:15:00.000Z',
+      },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json<{ data: { quoteExpiresAt: string | null; executable: boolean } }>().data)
+      .toMatchObject({
+        quoteExpiresAt: '2026-03-01T09:15:00.000Z',
+        executable: false,
+      });
+  });
 });

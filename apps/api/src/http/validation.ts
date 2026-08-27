@@ -513,6 +513,7 @@ export const apiKeyIdParamsSchema = z.object({ id: z.string().min(1).max(128) })
  * Body of `POST /v1/execution-intents`.
  *
  * Records a route choice. Never submits a payment, swap or payout.
+ * An expired `quoteExpiresAt` is rejected with `409 QUOTE_EXPIRED`.
  */
 export const createExecutionIntentSchema = z
   .object({

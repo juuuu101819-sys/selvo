@@ -36,7 +36,7 @@ Financially meaningful events are appended to an immutable audit log with an act
 and a payload: comparison requested, provider quote received, provider quote failed, comparison
 completed, comparison replayed, routing requested/completed/failed, graph requested/completed/failed,
 stablecoin routing requested/completed/failed, DeFi routing requested/completed/failed, execution
-rejected, execution intent recorded, API key issued/revoked, agent issued/revoked, payment intent
+rejected, execution intent recorded, execution intent rejected (expired quote), API key issued/revoked, agent issued/revoked, payment intent
 lifecycle, `payment.policy.evaluated` (every allow and deny), `payment.policy.denied`, NL interpret
 and NL route completed, `monetization.recorded`. The audit repository exposes no update or delete operation.
 

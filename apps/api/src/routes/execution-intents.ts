@@ -1,4 +1,9 @@
-import { serializeExecutionIntent, uuidIdGenerator, type ExecutionIntentDto } from '@meridian/core';
+import {
+  QuoteExpiredError,
+  serializeExecutionIntent,
+  uuidIdGenerator,
+  type ExecutionIntentDto,
+} from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
 import { requireScope } from '../http/require-organization.js';
@@ -38,6 +43,30 @@ export function registerExecutionIntentRoutes(
     const body = parseOrThrow(createExecutionIntentSchema, request.body, 'body');
     const resolved = resolveRouteRequest(body);
     const createdAt = container.clock.nowIso();
+    if (body.quoteExpiresAt !== undefined && body.quoteExpiresAt <= createdAt) {
+      await container.auditLogger.record({
+        type: 'execution.intent.rejected',
+        actor: principal.actor,
+        requestId: request.id,
+        comparisonId: null,
+        providerId: null,
+        payload: {
+          reason: 'QUOTE_EXPIRED',
+          routeId: body.routeId,
+          quoteExpiresAt: body.quoteExpiresAt,
+          executable: false,
+          submitted: false,
+          fundsMoved: false,
+        },
+      });
+      throw new QuoteExpiredError(
+        'The quote has expired. Record a new execution intent after requoting.',
+        {
+          quoteExpiresAt: body.quoteExpiresAt,
+          routeId: body.routeId,
+        },
+      );
+    }
     const intent = await container.persistence.executionIntents.create({
       id: uuidIdGenerator.generate('eit'),
       organizationId: principal.organizationId,
