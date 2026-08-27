@@ -132,6 +132,25 @@ describe('the quote engine over HTTP', () => {
       expect(payload.data).toHaveProperty('organizationId');
       expect(payload.data.organizationId).toBeNull();
     });
+
+    /**
+     * The tenancy identity comes only from the authenticated principal. A caller who could claim an
+     * organizationId in the request body would be choosing whose negotiated pricing they are quoted
+     * on — another customer's discount, another customer's markup — so the strict schema must
+     * reject the field, not ignore it.
+     */
+    it('rejects a caller claiming an organizationId in the body', async () => {
+      const response = await harness.app.inject({
+        method: 'POST',
+        url: `${API_V1_PREFIX}/comparisons`,
+        payload: { ...USD_100K, targetCurrency: 'KRW', organizationId: 'org_demo_meridian' },
+      });
+
+      expect(response.statusCode).toBe(400);
+      const body = response.json<ApiError>();
+      expect(body.error.code).toBe('VALIDATION_ERROR');
+      expect(JSON.stringify(body.error.details)).toContain('organizationId');
+    });
   });
 
   describe('the cost breakdown reconciles', () => {

@@ -163,6 +163,31 @@ describe('platform fee', () => {
     expectBreakdownToReconcile(with_);
   });
 
+  /**
+   * Pins the subsidy semantics. The documented model is σ = σ_q − δ with no floor, so a discount
+   * larger than the quoted spread takes the customer through mid-market: the total cost goes
+   * negative, meaning the platform funds an improvement no counterparty is paying for. That is a
+   * legitimate commercial promotion, but it must be a decision someone can see in a test and a
+   * negative-cost line, never a surprise discovered in the platform's own revenue.
+   */
+  it('takes the customer through mid when the discount exceeds the spread, at the platform’s cost', () => {
+    // 10 bps of quoted spread, 25 bps of negotiated discount.
+    const route = price({
+      quote: { midMarketRate: '1300', offeredRate: '1298.7' },
+      rule: pricingRule({ discountBps: '25' }),
+    });
+
+    expect(route.spreadBps.toDecimalPlaces(2).toFixed()).toBe('-15');
+    expect(route.offeredRate.value.greaterThan(route.midMarketRate.value)).toBe(true);
+    // The beneficiary receives more than the mid-market benchmark; the cost is negative.
+    expect(route.deliveredAmount.greaterThan(route.benchmarkAmount)).toBe(true);
+    expect(route.totalCost.isNegative()).toBe(true);
+    expect(route.totalCostBps.toDecimalPlaces(2).toFixed()).toBe('-15');
+    // The decomposition still balances exactly, with the subsidy visible as negative spread cost.
+    expect(route.breakdown.fxSpreadCost.isNegative()).toBe(true);
+    expectBreakdownToReconcile(route);
+  });
+
   it('lets a discount and a markup coexist, each doing its own job', () => {
     const route = price({
       quote: { midMarketRate: '1300', offeredRate: '1290.64' },

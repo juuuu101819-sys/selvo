@@ -103,6 +103,12 @@ A discount can only improve a rate. A provider quoting _above_ mid ($\sigma_q < 
 keenly priced corridors) keeps that advantage and the discount is added on top, rather than being
 clamped away at zero. $O \le 0$ is rejected.
 
+There is deliberately no floor at $\sigma = 0$: a discount larger than the quoted spread takes the
+customer **through** mid-market, the total cost goes negative, and the difference is funded by the
+platform. That is a subsidy — a legitimate commercial promotion, but one that shows up as negative
+platform take, so it is pinned by a test and must never be configured by accident. An account
+manager who wants "free, at cost" sets the discount equal to the spread, not above it.
+
 ### 1.3 Fees
 
 Fixed fees are taken as stated. Proportional fees are applied to the amount on their own side of the

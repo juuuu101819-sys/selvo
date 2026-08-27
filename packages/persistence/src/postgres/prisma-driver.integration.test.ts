@@ -3,7 +3,9 @@ import { CURRENCY_REGISTRY, isCurrencyCode, type CurrencyCode } from '@meridian/
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { selectPricingRule } from '@meridian/core';
 import { PrismaPersistenceDriver } from './prisma-driver.js';
+import { PrismaPlatformPricingResolver } from './prisma-pricing-resolver.js';
 
 /**
  * Integration tests against a real PostgreSQL instance.
@@ -591,6 +593,111 @@ describeIntegration('PostgreSQL schema', () => {
       expect(organization?.members).toHaveLength(1);
       expect(organization?.members[0]?.role).toBe('owner');
       expect(organization?.members[0]?.user.passwordHash).toBeNull();
+    });
+  });
+
+  describe('platform pricing resolution against seeded terms', () => {
+    /**
+     * The resolver fetches candidates and the engine's pure `selectPricingRule` chooses — so these
+     * tests exercise the two together, against the real seeded rows, which is the path a production
+     * quote takes. This was the one financial component of the quote engine with no test against a
+     * real database.
+     */
+    const resolver = () => new PrismaPlatformPricingResolver(prisma);
+    const AT = '2026-03-01T00:00:00.000Z';
+
+    function criteriaFor(
+      source: string,
+      target: string,
+      rail: string,
+      providerId: string,
+    ): Parameters<typeof selectPricingRule>[1] {
+      return {
+        organizationId: 'org_demo_meridian',
+        sourceCurrency: source,
+        targetCurrency: target,
+        rail,
+        providerId,
+        at: AT,
+      } as Parameters<typeof selectPricingRule>[1];
+    }
+
+    async function resolveFor(
+      source: string,
+      target: string,
+      rail = 'bank_fx',
+      providerId = 'prv_demo_bank_fx',
+    ) {
+      const rules = await resolver().rulesFor({
+        organizationId: 'org_demo_meridian',
+        sourceCurrency: source as never,
+        targetCurrency: target as never,
+        at: AT,
+      });
+      return selectPricingRule(rules, criteriaFor(source, target, rail, providerId));
+    }
+
+    it('selects the corridor-specific term over the blanket default', async () => {
+      const rule = await resolveFor('USD', 'KRW');
+
+      expect(rule?.id).toBe('cpr_demo_usd_krw');
+      expect(rule?.markupBps).toBe('4');
+      expect(rule?.discountBps).toBe('2');
+    });
+
+    it('falls back to the default markup on a corridor with no negotiated term', async () => {
+      const rule = await resolveFor('EUR', 'JPY');
+
+      expect(rule?.id).toBe('cpr_demo_default');
+      expect(rule?.markupBps).toBe('8');
+    });
+
+    it('selects the rail-and-provider term where it matches', async () => {
+      const rule = await resolveFor(
+        'USD',
+        'EUR',
+        'stablecoin_settlement',
+        'prv_demo_stablecoin_provider',
+      );
+
+      expect(rule?.id).toBe('cpr_demo_stablecoin');
+      expect(rule?.markupBps).toBe('6');
+    });
+
+    it('lets an explicit priority outrank a more specific lower-priority rule', async () => {
+      // USD->KRW over the stablecoin rail matches all three seeded rules. The corridor term wins on
+      // priority 100, despite the rail rule naming the provider.
+      const rule = await resolveFor(
+        'USD',
+        'KRW',
+        'stablecoin_settlement',
+        'prv_demo_stablecoin_provider',
+      );
+
+      expect(rule?.id).toBe('cpr_demo_usd_krw');
+    });
+
+    it('returns no rules for an organization with no negotiated terms', async () => {
+      const rules = await resolver().rulesFor({
+        organizationId: 'org_nobody',
+        sourceCurrency: 'USD',
+        targetCurrency: 'KRW',
+        at: AT,
+      });
+
+      expect(rules).toEqual([]);
+    });
+
+    it('excludes terms that were not yet effective at the quoted instant', async () => {
+      const rules = await resolver().rulesFor({
+        organizationId: 'org_demo_meridian',
+        sourceCurrency: 'USD',
+        targetCurrency: 'KRW',
+        // Before the seeded effectiveFrom of 2026-01-01.
+        at: '2025-12-01T00:00:00.000Z',
+      });
+
+      expect(rules).toEqual([]);
     });
   });
 
