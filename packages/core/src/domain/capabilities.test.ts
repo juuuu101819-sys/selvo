@@ -13,6 +13,7 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.operateAsPrincipal).toBe(false);
     expect(PLATFORM_CAPABILITIES.issueStablecoins).toBe(false);
     expect(PLATFORM_CAPABILITIES.agentPayments).toBe(false);
+    expect(PLATFORM_CAPABILITIES.defiQuotes).toBe(true);
     expect(PLATFORM_CAPABILITIES.defiExecution).toBe(false);
   });
 });

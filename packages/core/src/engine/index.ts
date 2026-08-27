@@ -26,5 +26,9 @@ export {
   type SerializedScoringWeights,
 } from './engine-config.js';
 export { ProviderRegistry, type RegistryExclusion } from './provider-registry.js';
+export {
+  FinancialProviderRegistry,
+  type FinancialRegistryExclusion,
+} from './financial-registry.js';
 export { assertValidProviderQuote } from './quote-validation.js';
 export { RouteScorer } from './route-scorer.js';

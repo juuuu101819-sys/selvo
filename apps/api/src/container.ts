@@ -1,6 +1,7 @@
-import { createSandboxAdapters, type SandboxAdapterSet } from '@meridian/adapters';
+import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet } from '@meridian/adapters';
 import {
   ENGINE_VERSION,
+  FinancialProviderRegistry,
   ProviderRegistry,
   RepositoryAuditLogger,
   RouteComparisonService,
@@ -27,6 +28,7 @@ export interface AppContainer {
   readonly clock: Clock;
   readonly persistence: PersistenceDriver;
   readonly registry: ProviderRegistry;
+  readonly financialProviders: FinancialProviderRegistry;
   readonly comparisons: RouteComparisonService;
   readonly auditLogger: AuditLogger;
   readonly authenticator: Authenticator;
@@ -70,6 +72,10 @@ export function createContainer(options: ContainerOptions): AppContainer {
 
   const { providers, sandbox } = buildProviders(config, logger);
   const registry = ProviderRegistry.create(config.mode, providers);
+  const financialProviders = FinancialProviderRegistry.create(
+    config.mode,
+    createFinancialCatalog(providers),
+  );
 
   if (registry.exclusions.length > 0) {
     logger.warn('Some provider adapters were excluded from the registry', {
@@ -114,6 +120,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     engineVersion: ENGINE_VERSION,
     persistenceDriver: persistence.kind,
     providerCount: registry.all().length,
+    financialProviderCount: financialProviders.all().length,
     pricingDataset: sandbox?.pricingVersion ?? null,
     authenticationScheme: authenticator.scheme,
   });
@@ -123,6 +130,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     clock,
     persistence,
     registry,
+    financialProviders,
     comparisons,
     auditLogger,
     authenticator,

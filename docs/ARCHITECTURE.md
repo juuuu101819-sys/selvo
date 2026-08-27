@@ -48,7 +48,10 @@ made. Nothing below rebuilds the application.
 - `ROUTING_PIPELINE` with `delegate` planned.
 - Economic actors and `INTERACTION_MODELS` (agent flows planned).
 - `PRODUCT` / `PRODUCT_KIND`.
-- `DexLiquidityProvider` — **read-only `getDepth`**. No swap, no keys, **no adapter registered**.
+- `DexLiquidityProvider` — **read-only `getDepth`**. Demo AMM is on the financial catalog, not the
+  comparison engine.
+- `FinancialProvider` — normalised `getQuote` / capabilities / assets / fees / liquidity across
+  traditional, stablecoin and DeFi demo adapters.
 
 ### Deliberately not changed
 
@@ -57,7 +60,8 @@ made. Nothing below rebuilds the application.
 - Prisma schema and enums (`dex_liquidity` already existed).
 - Sandbox adapters and pricing datasets.
 - Comparison UI and dashboard behaviour.
-- No DEX quoting, no agent credentials, no delegated execution.
+- No DEX *execution*, no agent credentials, no delegated execution. Read-only DeFi quotes live on
+  `POST /provider-quotes`.
 
 ### HTTP surface of this phase
 
@@ -188,11 +192,11 @@ registered for a corridor it is not authorised for.
 
 `RouteProvider` above is the _engine-facing_ contract. Integrations are written against
 capability-specific ones — `MarketDataProvider`, `FXProvider`, `PaymentProvider`,
-`LiquidityProvider`, and a planned read-only `DexLiquidityProvider` — shaped like the upstream APIs
-they wrap, with a bridge composing them into a `RouteProvider`. That bridge is where anything
-peculiar to an upstream is resolved, which is what keeps provider-specific concepts out of the
-engine entirely. `DexLiquidityProvider` has no registered adapter; it exists so a future depth
-feed cannot teach the engine about pools, chains or wallets.
+`LiquidityProvider`, `DexLiquidityProvider`, and the catalog façade `FinancialProvider` — shaped
+like the upstream APIs they wrap. `RouteFinancialProvider` presents an existing `RouteProvider`
+through that façade without changing the engine. Demo AMM/aggregator/ramp implement
+`FinancialProvider` directly. They are registered in `FinancialProviderRegistry`, not in
+`ProviderRegistry`, so `POST /comparisons` is unchanged.
 
 All of them share one thin base, `ProviderAdapter`, so a single resilience pipeline, recorder and
 registry serve every kind of provider. Timeout, overall latency budget, bounded jittered retry of
@@ -328,9 +332,9 @@ every API response carries `"mode": "sandbox"` plus a non-binding-quote disclaim
 ## 13. Deliberately out of scope
 
 No execution (principal or delegated), no custody of fiat or crypto, no wallets, no key management,
-no stablecoin issuance, no auth-provider integration, no DEX connectivity, no AI-agent payment
-initiation. `POST /v1/executions` exists and returns `501 EXECUTION_NOT_IMPLEMENTED` — a
-deliberate, tested, audited refusal rather than an absent endpoint, so the boundary is visible in
-the API surface itself.
+no stablecoin issuance, no auth-provider integration, no on-chain execution, no AI-agent payment
+initiation. Read-only DeFi quotes exist on the financial catalog. `POST /v1/executions` exists and
+returns `501 EXECUTION_NOT_IMPLEMENTED` — a deliberate, tested, audited refusal rather than an absent
+endpoint, so the boundary is visible in the API surface itself.
 
 See [ROADMAP.md](./ROADMAP.md) for the phase plan.

@@ -4,6 +4,9 @@ export type {
   ComparisonInsightsDto,
   ComparisonRequestDto,
   CostBreakdownDto,
+  FinancialProviderDto,
+  NormalizedFeeDto,
+  NormalizedQuoteDto,
   ProviderFailureDto,
   ReplayResultDto,
   RouteDto,
@@ -11,4 +14,10 @@ export type {
   RouteQuoteDto,
   SettlementDto,
 } from './dto.js';
-export { serializeComparison, serializeReplayResult, serializeRoute } from './serialize.js';
+export {
+  serializeComparison,
+  serializeFinancialProvider,
+  serializeNormalizedQuote,
+  serializeReplayResult,
+  serializeRoute,
+} from './serialize.js';

@@ -85,6 +85,9 @@ describe('non-custodial guarantees', () => {
       '/v1/balances',
       '/v1/withdrawals',
       '/v1/custody',
+      '/v1/swaps',
+      '/v1/onchain',
+      '/v1/keys',
     ];
 
     for (const url of forbidden) {

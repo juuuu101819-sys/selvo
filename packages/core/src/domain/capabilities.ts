@@ -21,6 +21,11 @@ export const PLATFORM_CAPABILITIES = {
   issueStablecoins: false,
   /** AI agents requesting quotes or initiating delegated payments. Quotes may be public; initiation is not. */
   agentPayments: false,
+  /**
+   * Read-only DeFi / multi-asset quotes via the financial provider catalog. Distinct from
+   * `defiExecution`: a quote is not a swap.
+   */
+  defiQuotes: true,
   /** On-chain swaps, wraps or bridging. Depth analysis may be added as read-only later. */
   defiExecution: false,
 } as const;

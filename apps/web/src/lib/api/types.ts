@@ -201,6 +201,7 @@ export interface MetaDto {
     readonly operateAsPrincipal: boolean;
     readonly issueStablecoins: boolean;
     readonly agentPayments: boolean;
+    readonly defiQuotes: boolean;
     readonly defiExecution: boolean;
   };
   readonly execution: {
@@ -229,6 +230,22 @@ export interface MetaDto {
   }[];
   readonly rails: readonly RailDto[];
   readonly currencies: readonly CurrencyDto[];
+  readonly assets?: readonly {
+    readonly code: string;
+    readonly kind: string;
+    readonly exponent: number;
+    readonly name: string;
+    readonly chainId: string | null;
+  }[];
+  readonly providerCatalog?: {
+    readonly categories: readonly string[];
+    readonly providers: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly category: string;
+      readonly features: readonly string[];
+    }[];
+  };
 }
 
 export interface Envelope<TData> {

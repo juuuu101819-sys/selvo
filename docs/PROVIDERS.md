@@ -17,7 +17,8 @@ engine.
         │                        │        │        │                      │
  MarketDataProvider       FXProvider  PaymentProvider  LiquidityProvider  RouteProvider
  getMarketRate()          getFXQuote()  getPaymentQuote()  getLiquidityQuote()  fetchQuote()
- DexLiquidityProvider (planned, unregistered) — getDepth() only; no swap, no keys
+ DexLiquidityProvider (demo AMM, catalog only) — getDepth() / getQuote(); no swap, no keys
+        │                        │        │        │                      ▲
         │                        │        │        │                      ▲
         │                        │        │        │                      │
         └────────► bridge (FXRouteProvider, …) ────┴──────────────────────┘
@@ -29,10 +30,15 @@ engine.
 Two families of contract, meeting at a bridge:
 
 - **Integration-facing** — `MarketDataProvider`, `FXProvider`, `PaymentProvider`,
-  `LiquidityProvider`, and a planned read-only `DexLiquidityProvider`. Shaped like the upstream APIs
-  they wrap, so an adapter is a thin translation rather than a reinterpretation. The DEX port is
-  depth-only: implementations must not hold keys, sign, submit, wrap, bridge or swap. No DEX adapter
-  is registered in this phase.
+  `LiquidityProvider`, and `DexLiquidityProvider`. Shaped like the upstream APIs they wrap, so an
+  adapter is a thin translation rather than a reinterpretation.
+- **Catalog-facing** — `FinancialProvider`. The common façade: `getQuote`, `getCapabilities`,
+  `getSupportedAssets`, `getSupportedCurrencies`, `getSettlementEstimate`, `getFees`,
+  `getLiquidityInfo`. Existing route adapters are wrapped; demo ramp / AMM / aggregator implement it
+  directly. A normalised quote can represent fiat, stablecoin and crypto pairs. `executable` is
+  always false.
+- **Engine-facing** — `RouteProvider`. Unchanged. The comparison engine still only sees ISO currency
+  corridors. DeFi demos are not registered as `RouteProvider`s.
 - **Engine-facing** — `RouteProvider`. Expressed in the engine's own vocabulary: a mid-market
   benchmark, an offered rate, a fee schedule, a settlement estimate, a slippage model.
 
@@ -180,7 +186,7 @@ then bridge — in one place, rather than leaving each caller to rediscover it a
 | `resilience.test.ts`                | Timeout, abort propagation, retry counts, backoff schedule and cap, jitter, the overall budget, classification, recording of every attempt. |
 | `demo-fx-provider.test.ts`          | USD→KRW, USD→EUR and EUR→JPY across valid quote, expired quote, invalid currency, provider failure and timeout.                             |
 | `demo-market-data-provider.test.ts` | Rates, TTL, provenance, two-sided prices, cross-rate consistency, invalid input.                                                            |
-| `fx-route-provider.test.ts`         | The bridge, fee mapping, benchmark precedence and fallback, and an end-to-end comparison through the engine.                                |
+| `financial-catalog.test.ts`         | Wrapped rails, Helios Ramp, Meridian Pool, Horizon Aggregator, conversion kinds, `executable: false`. |
 
 The corridors are covered as a table so all three get every scenario, rather than one corridor
 getting thorough treatment and the others a smoke test.
@@ -189,7 +195,8 @@ getting thorough treatment and the others a smoke test.
 
 Nothing here initiates a payment. These are read-only pricing integrations against a static dataset;
 there is no outbound payment-initiation call anywhere in the repository, and
-`POST /api/v1/executions` remains an audited `501`. Delegated execution is declared and false. See
+`POST /api/v1/executions` remains an audited `501`. Delegated execution is declared and false.
+`POST /api/v1/provider-quotes` returns `executable: false` and rejects `execute` / key fields. See
 [COMPLIANCE.md](./COMPLIANCE.md).
 
 ## What comes next

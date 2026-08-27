@@ -145,10 +145,21 @@ and an explicit written instruction to build it. Meridian would remain non-custo
 acting as principal. Until all of those exist, `POST /v1/executions` stays a `501` and
 `delegateExecution` stays false.
 
-## Phase 8 — Treasury and DEX liquidity research _(not started, gated)_
+## Phase 8 — Multi-rail financial provider architecture ✅ implemented
 
-Read-only DEX liquidity depth modelling (`DexLiquidityProvider.getDepth`) and treasury product
-comparison. Read-only analysis only; no on-chain transactions, no asset holdings, no swaps.
+A normalised `FinancialProvider` contract sits beside the existing `RouteProvider` engine port:
+
+- Categories: `traditional`, `stablecoin`, `defi`.
+- Feature tags (FX, fiat, settlement, on/off-ramp, swap, on-chain, AMM, aggregator).
+- A common quote model for fiat ↔ fiat, fiat ↔ stablecoin, stablecoin ↔ stablecoin, and
+  stablecoin/crypto (plus an indicative crypto → fiat composite).
+- Demo adapters only: Helios Ramp, Meridian Pool (AMM), Horizon Aggregator, plus the four
+  comparison rails wrapped so they speak the same contract.
+- `GET /api/v1/providers` and `POST /api/v1/provider-quotes`. Quotes are never executable.
+- No schema migration: crypto tickers are assets, not `VARCHAR(3)` ISO currencies.
+- Comparison engine unchanged (`ENGINE_VERSION` 2.0.0, four USD→KRW routes).
+
+**Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials.
 
 ## Phase 9 — AI agent payments _(not started, gated)_
 
@@ -156,3 +167,5 @@ Issue `ai_agent` principals that still act *for* an organization. Agents may req
 compare routes through the same API. Initiation remains delegated execution (Phase 7) and is
 gated on the same compliance bar. No agent wallets, no agent custody, no agent-to-agent settlement
 on this platform.
+
+Treasury product comparison remains planned on the `treasury_product` rail.

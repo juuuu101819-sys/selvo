@@ -65,6 +65,13 @@ export type {
   DexDepthRequest,
   DexLiquidityProvider,
 } from './dex-liquidity.js';
+export type {
+  FinancialProvider,
+  LiquidityInfo,
+  NormalizedFee,
+  NormalizedQuote,
+  NormalizedQuoteRequest,
+} from './financial-provider.js';
 export {
   PROVIDER_CAPABILITIES,
   type ProviderAdapter,

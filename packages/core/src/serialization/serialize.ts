@@ -9,11 +9,14 @@ import type {
 } from '../domain/index.js';
 import { RAIL_REGISTRY } from '../domain/index.js';
 import { Money, type Decimal } from '../money/index.js';
+import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
 import type {
   AppliedFeeDto,
   ComparisonDto,
   ComparisonInsightsDto,
   CostBreakdownDto,
+  FinancialProviderDto,
+  NormalizedQuoteDto,
   ProviderFailureDto,
   ReplayResultDto,
   RouteDto,
@@ -157,6 +160,45 @@ function serializeInsights(insights: ComparisonInsights): ComparisonInsightsDto 
 
 function serializeFailure(failure: ProviderFailure): ProviderFailureDto {
   return { ...failure };
+}
+
+export function serializeNormalizedQuote(quote: NormalizedQuote): NormalizedQuoteDto {
+  return {
+    providerId: quote.providerId,
+    timestamp: quote.timestamp,
+    expiresAt: quote.expiresAt,
+    quoteReference: quote.quoteReference,
+    conversionKind: quote.conversionKind,
+    sourceAsset: quote.sourceAsset,
+    targetAsset: quote.targetAsset,
+    amountMinorUnits: quote.amountMinorUnits,
+    indicatedRate: quote.indicatedRate,
+    midMarketRate: quote.midMarketRate,
+    fees: quote.fees.map((fee) => ({ ...fee })),
+    settlement: quote.settlement,
+    liquidity: quote.liquidity,
+    slippage: { kind: quote.slippage.kind },
+    executable: false,
+    chainId: quote.chainId,
+    metadata: quote.metadata,
+  };
+}
+
+export function serializeFinancialProvider(provider: FinancialProvider): FinancialProviderDto {
+  const capabilities = provider.getCapabilities();
+  return {
+    id: provider.descriptor.id,
+    name: provider.descriptor.name,
+    rail: provider.descriptor.rail,
+    railLabel: RAIL_REGISTRY[provider.descriptor.rail].label,
+    category: capabilities.category,
+    features: [...capabilities.features],
+    conversionKinds: [...capabilities.conversionKinds],
+    licensing: provider.descriptor.licensing,
+    description: provider.descriptor.description,
+    supportedAssets: provider.getSupportedAssets().map((asset) => asset.code),
+    supportedCurrencies: [...provider.getSupportedCurrencies()],
+  };
 }
 
 /** Derived percentages are rounded for presentation only; the authoritative figure is the Money. */

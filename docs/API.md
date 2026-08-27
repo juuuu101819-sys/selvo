@@ -125,13 +125,42 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "operateAsPrincipal": false,
   "issueStablecoins": false,
   "agentPayments": false,
+  "defiQuotes": true,
   "defiExecution": false
 }
 ```
 
 `execution.delegated` is false. `pipeline` names Discover → Delegate; only `delegate` is `planned`.
-`railFamilies` lists `tradfi` and `stablecoin` as available and `defi` as planned. Agent
-interaction models (`business_agent`, `agent_business`, `agent_agent`) are planned.
+`railFamilies` lists `tradfi` and `stablecoin` as available and `defi` as planned for the
+comparison engine. `providerCatalog` lists every `FinancialProvider`, including read-only DeFi
+demos that are not in `providers`. `defiQuotes` is true; `defiExecution` is false.
+
+## `GET /api/v1/providers`
+
+The multi-rail catalog: wrapped comparison rails plus demo ramp, AMM and aggregator. Each row has
+`category` (`traditional` | `stablecoin` | `defi`), `features`, `conversionKinds`, supported
+assets and supported ISO currencies.
+
+## `GET /api/v1/providers/:providerId`
+
+One catalog entry, or `404`.
+
+## `POST /api/v1/provider-quotes`
+
+Indicative quote from one catalog provider. Not a comparison, and never executable.
+
+```jsonc
+{
+  "providerId": "demo-meridian-pool",
+  "sourceAsset": "USDC",
+  "targetAsset": "ETH",
+  "amount": "10000.00",
+}
+```
+
+`sourceAsset` / `targetAsset` are catalog assets (`USD`, `USDC`, `ETH`, …), not only ISO
+currencies. The schema is strict: `execute`, `privateKey`, `wallet` and beneficiary fields are
+rejected. `data.executable` is always `false`.
 
 ## `POST /api/v1/comparisons`
 

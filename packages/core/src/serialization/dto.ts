@@ -158,3 +158,51 @@ export interface ReplayResultDto {
   readonly replayedAt: string;
   readonly comparison: ComparisonDto;
 }
+
+export interface NormalizedFeeDto {
+  readonly code: string;
+  readonly label: string;
+  readonly side: 'source' | 'destination';
+  readonly kind: 'fixed' | 'proportional';
+  readonly asset: string;
+  readonly amountMinorUnits: string | null;
+  readonly rateBps: string | null;
+}
+
+export interface NormalizedQuoteDto {
+  readonly providerId: string;
+  readonly timestamp: string;
+  readonly expiresAt: string;
+  readonly quoteReference: string | null;
+  readonly conversionKind: string;
+  readonly sourceAsset: string;
+  readonly targetAsset: string;
+  readonly amountMinorUnits: string;
+  readonly indicatedRate: string;
+  readonly midMarketRate: string | null;
+  readonly fees: readonly NormalizedFeeDto[];
+  readonly settlement: SettlementDto;
+  readonly liquidity: {
+    readonly availableDepthMinorUnits: string | null;
+    readonly venue: string | null;
+    readonly chainId: string | null;
+  };
+  readonly slippage: { readonly kind: string };
+  readonly executable: false;
+  readonly chainId: string | null;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
+
+export interface FinancialProviderDto {
+  readonly id: string;
+  readonly name: string;
+  readonly rail: string;
+  readonly railLabel: string;
+  readonly category: string;
+  readonly features: readonly string[];
+  readonly conversionKinds: readonly string[];
+  readonly licensing: ProviderLicensing;
+  readonly description: string;
+  readonly supportedAssets: readonly string[];
+  readonly supportedCurrencies: readonly string[];
+}

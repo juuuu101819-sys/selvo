@@ -77,6 +77,7 @@ describe('GET /v1/meta', () => {
       operateAsPrincipal: false,
       issueStablecoins: false,
       agentPayments: false,
+      defiQuotes: true,
       defiExecution: false,
     });
     expect(body.execution).toMatchObject({
@@ -133,6 +134,26 @@ describe('GET /v1/meta', () => {
       'stablecoin_settlement',
     ]);
     expect(providers.every((provider) => provider.licensing === 'unlicensed_sandbox')).toBe(true);
+  });
+
+  it('publishes the multi-rail financial provider catalog without mixing it into comparison providers', async () => {
+    const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
+    const catalog = response.json<{
+      data: {
+        providerCatalog: {
+          categories: string[];
+          providers: { id: string; category: string; features: string[] }[];
+        };
+        assets: { code: string; kind: string }[];
+      };
+    }>().data;
+
+    expect(catalog.providerCatalog.categories).toEqual(['traditional', 'stablecoin', 'defi']);
+    expect(catalog.providerCatalog.providers).toHaveLength(7);
+    expect(catalog.assets.map((asset) => asset.code)).toEqual(
+      expect.arrayContaining(['USD', 'USDC', 'ETH']),
+    );
+    expect(catalog.assets.find((asset) => asset.code === 'USDC')?.kind).toBe('stablecoin');
   });
 
   it('publishes the pricing dataset version so a quote can be traced to its inputs', async () => {

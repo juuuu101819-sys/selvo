@@ -27,6 +27,7 @@ export const PROVIDER_CAPABILITIES = [
   'liquidity',
   'dex_liquidity',
   'route',
+  'financial',
 ] as const;
 
 export type ProviderCapability = (typeof PROVIDER_CAPABILITIES)[number];

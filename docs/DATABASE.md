@@ -4,6 +4,10 @@ PostgreSQL, with Prisma owning the schema and the migrations. The generated clie
 inside `packages/persistence`, behind the `ComparisonRepository` and `AuditLogRepository` ports, so
 nothing above the persistence layer imports Prisma.
 
+Crypto and stablecoin *tickers* (`USDC`, `ETH`) are not rows in `currencies`. That table is ISO 4217
+(`VARCHAR(3)`). Multi-rail assets live in `ASSET_REGISTRY` in core; Phase 8 did not migrate the
+schema.
+
 Schema: [`prisma/schema.prisma`](../prisma/schema.prisma).
 Migrations: [`prisma/migrations`](../prisma/migrations).
 Seed: [`prisma/seed.ts`](../prisma/seed.ts).

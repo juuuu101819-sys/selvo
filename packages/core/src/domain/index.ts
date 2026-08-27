@@ -41,7 +41,41 @@ export {
   type InteractionModel,
   type InteractionModelId,
 } from './actor.js';
+export {
+  ASSET_KINDS,
+  ASSET_REGISTRY,
+  SUPPORTED_ASSETS,
+  assertAssetCode,
+  assetDefinition,
+  assetExponent,
+  assetKind,
+  fiatCodeOf,
+  isAssetCode,
+  isFiatAsset,
+  toAssetMinorUnits,
+  type AssetCode,
+  type AssetDefinition,
+  type AssetKind,
+} from './asset.js';
 export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
+export {
+  CONVERSION_KINDS,
+  conversionKindOf,
+  isConversionKind,
+  type ConversionKind,
+} from './conversion.js';
+export {
+  PROVIDER_CATEGORIES,
+  PROVIDER_FEATURE_TAGS,
+  categoryOfFamily,
+  categoryOfRail,
+  defaultProfileForRail,
+  isProviderCategory,
+  isProviderFeatureTag,
+  type ProviderCapabilityProfile,
+  type ProviderCategory,
+  type ProviderFeatureTag,
+} from './provider-catalog.js';
 export {
   PRODUCT,
   PRODUCT_KIND,

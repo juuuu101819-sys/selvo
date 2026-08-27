@@ -12,7 +12,8 @@ import type { ProviderAdapter, ProviderContext, ProviderQuoteEnvelope } from './
  * - wrap, unwrap, bridge or swap
  * - take custody of an asset
  *
- * No adapter is registered in this phase. Depth quoting is planned; DeFi execution is out of scope.
+ * A sandbox AMM adapter is registered on the *financial provider catalog*, not as a
+ * `RouteProvider`. Depth quoting is read-only. DeFi execution is out of scope.
  */
 export interface DexDepthRequest {
   readonly baseAsset: string;

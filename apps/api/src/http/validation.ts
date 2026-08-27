@@ -4,8 +4,10 @@ import {
   RAIL_TYPES,
   SUPPORTED_CURRENCIES,
   ValidationError,
+  assertAssetCode,
   currencyExponent,
   resolveRailFilter,
+  toAssetMinorUnits,
   type CurrencyCode,
   type RailType,
 } from '@meridian/core';
@@ -108,6 +110,10 @@ export const comparisonIdParamsSchema = z
   .object({ comparisonId: z.string().min(1).max(128) })
   .strict();
 
+export const providerIdParamsSchema = z
+  .object({ providerId: z.string().trim().min(1).max(128) })
+  .strict();
+
 export const listQuerySchema = z
   .object({ limit: z.coerce.number().int().min(1).max(100).default(20) })
   .strict();
@@ -166,4 +172,45 @@ export function toMinorUnits(
     );
   }
   return money.minorUnits.toString();
+}
+
+const assetAmount = z
+  .string()
+  .trim()
+  .regex(/^\d{1,24}(\.\d{1,18})?$/, 'must be a positive decimal amount in major units');
+
+/**
+ * Body of `POST /v1/provider-quotes`.
+ *
+ * Strict: keys, wallets, beneficiary details and an `execute` flag are rejected rather than ignored.
+ */
+export const createProviderQuoteSchema = z
+  .object({
+    providerId: z.string().trim().min(1).max(128),
+    sourceAsset: z.string().trim().min(2).max(16),
+    targetAsset: z.string().trim().min(2).max(16),
+    amount: assetAmount,
+  })
+  .strict()
+  .refine((body) => body.sourceAsset !== body.targetAsset, {
+    message: 'sourceAsset and targetAsset must differ',
+    path: ['targetAsset'],
+  });
+
+export type CreateProviderQuoteBody = z.infer<typeof createProviderQuoteSchema>;
+
+export function resolveProviderQuoteRequest(body: CreateProviderQuoteBody): {
+  readonly providerId: string;
+  readonly sourceAsset: string;
+  readonly targetAsset: string;
+  readonly amountMinorUnits: string;
+} {
+  const sourceAsset = assertAssetCode(body.sourceAsset);
+  const targetAsset = assertAssetCode(body.targetAsset);
+  return {
+    providerId: body.providerId,
+    sourceAsset,
+    targetAsset,
+    amountMinorUnits: toAssetMinorUnits(sourceAsset, body.amount),
+  };
 }

@@ -1,4 +1,5 @@
 export { FXRouteProvider, type FXRouteProviderOptions } from './bridge/fx-route-provider.js';
+export { RouteFinancialProvider } from './bridge/route-financial-provider.js';
 export {
   checkProviderContract,
   type ContractCheckOptions,
@@ -23,7 +24,11 @@ export { referenceRatesSchema, sandboxPricingSchema } from './data/schema.js';
 export {
   DemoFXProvider,
   DemoMarketDataProvider,
+  DemoAmmProvider,
+  DemoDexAggregatorProvider,
+  DemoStablecoinRampProvider,
   createDemoMarketDataStack,
+  createFinancialCatalog,
   type DemoFXProviderOptions,
   type DemoMarketDataProviderOptions,
   type DemoMarketDataStack,

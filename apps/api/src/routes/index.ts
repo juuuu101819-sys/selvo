@@ -5,6 +5,7 @@ import { registerAuthRoutes } from './auth.js';
 import { registerComparisonRoutes } from './comparisons.js';
 import { registerDashboardRoutes } from './dashboard.js';
 import { registerExecutionRoutes } from './executions.js';
+import { registerProviderCatalogRoutes } from './providers.js';
 import {
   registerMetaRoutes,
   registerOperationalRoutes,
@@ -37,6 +38,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerMetaRoutes(instance, container);
     registerAuthRoutes(instance, container);
     registerComparisonRoutes(instance, container);
+    registerProviderCatalogRoutes(instance, container);
     registerDashboardRoutes(instance, container);
     registerExecutionRoutes(instance, container);
   };

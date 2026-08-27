@@ -55,9 +55,10 @@ Current rail: `stablecoin_settlement`.
 
 DEX, AMM, DEX aggregators, on-chain liquidity, and later cross-chain liquidity.
 
-Reserved rail: `dex_liquidity`. A read-only `DexLiquidityProvider` port exists so a future depth
-adapter has a place to hang. **No adapter is registered.** No swaps, wraps, bridges, keys or
-wallets. DeFi *execution* is out of scope for this platform.
+Reserved rail: `dex_liquidity`. A read-only `DexLiquidityProvider` and demo AMM/aggregator live on
+the **financial provider catalog** (`GET /api/v1/providers`, `POST /api/v1/provider-quotes`). They
+are not `RouteProvider`s and do not appear in `POST /comparisons`. **No adapter submits a swap.**
+No keys, wallets or custody. DeFi *execution* is out of scope.
 
 ---
 
@@ -159,4 +160,5 @@ docs that describe them.
 **Not changed:** the quote engine, `ENGINE_VERSION` (`2.0.0`), Prisma schema, sandbox adapters, the
 comparison UI, dashboard, or any execution path.
 
-**Not started:** DeFi quoting, DeFi execution, delegated settlement, AI agent payment execution.
+**Not started:** DeFi execution, delegated settlement, AI agent payment execution. Read-only DeFi
+quotes exist on the financial provider catalog.
