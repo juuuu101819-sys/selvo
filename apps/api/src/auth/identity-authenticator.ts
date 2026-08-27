@@ -1,8 +1,10 @@
 import {
+  AGENT_CREDENTIAL_PREFIX,
   ANONYMOUS_PRINCIPAL,
   SESSION_API_SCOPES,
   hashSecret,
   secretsMatch,
+  type AgentPaymentsRepository,
   type AuthenticationAttempt,
   type Authenticator,
   type Clock,
@@ -15,7 +17,7 @@ export const SESSION_PREFIX = 'mds_';
 export const API_KEY_PREFIX_LENGTH = 16;
 
 /**
- * Verifies session tokens and API keys against the identity store.
+ * Verifies session tokens, organization API keys (`mk_`) and agent credentials (`mag_`).
  *
  * Callers that present no credential remain anonymous so the public comparison page keeps working.
  * A credential that cannot be verified is rejected — returning anonymous here would let a client
@@ -28,6 +30,7 @@ export class IdentityAuthenticator implements Authenticator {
   constructor(
     private readonly identity: IdentityStore,
     private readonly clock: Clock,
+    private readonly agentPayments: AgentPaymentsRepository,
   ) {}
 
   async authenticate(attempt: AuthenticationAttempt): Promise<Principal | null> {
@@ -35,7 +38,7 @@ export class IdentityAuthenticator implements Authenticator {
       return this.fromAuthorization(attempt.authorization);
     }
     if (attempt.apiKey !== null) {
-      return this.fromApiKey(attempt.apiKey);
+      return this.fromPresentedSecret(attempt.apiKey);
     }
     return anonymousFrom(attempt.declaredActor);
   }
@@ -46,9 +49,19 @@ export class IdentityAuthenticator implements Authenticator {
       return null;
     }
     const token = match[1];
-    if (token === undefined || !token.startsWith(SESSION_PREFIX)) {
+    if (token === undefined) {
       return null;
     }
+    if (token.startsWith(SESSION_PREFIX)) {
+      return this.fromSession(token);
+    }
+    if (token.startsWith(AGENT_CREDENTIAL_PREFIX) || token.startsWith('mk_')) {
+      return this.fromPresentedSecret(token);
+    }
+    return null;
+  }
+
+  private async fromSession(token: string): Promise<Principal | null> {
     const resolved = await this.identity.findValidSessionByTokenHash(
       hashSecret(token),
       this.clock.nowIso(),
@@ -72,10 +85,13 @@ export class IdentityAuthenticator implements Authenticator {
     };
   }
 
-  private async fromApiKey(raw: string): Promise<Principal | null> {
+  private async fromPresentedSecret(raw: string): Promise<Principal | null> {
     const presented = raw.trim();
     if (presented.length < API_KEY_PREFIX_LENGTH) {
       return null;
+    }
+    if (presented.startsWith(AGENT_CREDENTIAL_PREFIX)) {
+      return this.fromAgentCredential(presented);
     }
     const key = await this.identity.findApiKeyByPrefix(presented.slice(0, API_KEY_PREFIX_LENGTH));
     if (key === null || key.revokedAt !== null) {
@@ -101,6 +117,41 @@ export class IdentityAuthenticator implements Authenticator {
       roles: ['service'],
       scopes: key.scopes,
       actor: `apikey:${key.keyPrefix}`,
+      verified: true,
+    };
+  }
+
+  private async fromAgentCredential(presented: string): Promise<Principal | null> {
+    const credential = await this.agentPayments.findCredentialByPrefix(
+      presented.slice(0, API_KEY_PREFIX_LENGTH),
+    );
+    if (credential === null || credential.revokedAt !== null) {
+      return null;
+    }
+    if (credential.expiresAt !== null && credential.expiresAt <= this.clock.nowIso()) {
+      return null;
+    }
+    if (!secretsMatch(presented, credential.secretHash)) {
+      return null;
+    }
+    const agent = await this.agentPayments.findAgent(credential.agentId, credential.organizationId);
+    if (agent === null || agent.status !== 'active') {
+      return null;
+    }
+    const organization = await this.identity.findOrganization(credential.organizationId);
+    if (organization === null || organization.status !== 'active') {
+      return null;
+    }
+    await this.agentPayments.touchCredential(credential.id, this.clock.nowIso());
+    return {
+      kind: 'agent',
+      economicActor: 'ai_agent',
+      organizationId: organization.id,
+      subjectId: agent.id,
+      displayName: agent.name,
+      roles: ['agent'],
+      scopes: credential.scopes,
+      actor: `agent:${credential.keyPrefix}`,
       verified: true,
     };
   }

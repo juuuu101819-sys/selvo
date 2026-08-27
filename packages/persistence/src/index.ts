@@ -37,6 +37,7 @@ export function createPersistenceDriver(options: PersistenceOptions): Persistenc
   }
 }
 
+export { InMemoryAgentPaymentsRepository } from './memory/memory-agent-payments.js';
 export { InMemoryExecutionIntentRepository } from './memory/memory-execution-intents.js';
 export { InMemoryDashboardRepository } from './memory/memory-dashboard.js';
 export { InMemoryIdentityStore } from './memory/memory-identity.js';
@@ -45,6 +46,7 @@ export {
   InMemoryComparisonRepository,
   InMemoryPersistenceDriver,
 } from './memory/memory-driver.js';
+export { PrismaAgentPaymentsRepository } from './postgres/prisma-agent-payments.js';
 export { PrismaDashboardRepository } from './postgres/prisma-dashboard.js';
 export { PrismaExecutionIntentRepository } from './postgres/prisma-execution-intents.js';
 export { PrismaIdentityStore } from './postgres/prisma-identity.js';

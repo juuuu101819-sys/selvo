@@ -15,7 +15,7 @@ export const PRODUCT = {
     'traditional finance, stablecoin and DeFi liquidity rails. Execution is delegated to licensed ' +
     'or authorized providers; this platform never holds funds or private keys.',
   scope: ['tradfi', 'stablecoin', 'defi', 'fx', 'payments', 'routing'] as const,
-  customers: ['businesses', 'licensed_institutions', 'ai_agents_planned'] as const,
+  customers: ['businesses', 'licensed_institutions', 'ai_agents'] as const,
   notFor: ['retail_consumers', 'personal_wallets', 'custody', 'principal_trading'] as const,
 } as const;
 

@@ -39,6 +39,14 @@ export type {
   RouteSearchDto,
   AssetCatalogEntryDto,
   CurrencyCatalogEntryDto,
+  AgentWalletReferenceDto,
+  IssuedAgentDto,
+  MerchantDto,
+  PaymentIntentDto,
+  PaymentPolicyDto,
+  PublicAgentDto,
+  QuotedRouteOptionDto,
+  SimulatedExecutionReceiptDto,
 } from './dto.js';
 export {
   serializeComparison,
@@ -61,4 +69,10 @@ export {
   serializeExecutionIntent,
   serializeAssetCatalog,
   serializeCurrencyCatalog,
+  serializePaymentIntent,
+  serializePublicAgent,
+  serializeIssuedAgent,
+  serializeWalletReference,
+  serializeMerchant,
+  serializePaymentPolicy,
 } from './serialize.js';

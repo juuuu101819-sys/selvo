@@ -96,6 +96,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
       {
         identity: container.persistence.identity,
         dashboard: container.persistence.dashboard,
+        agentPayments: container.persistence.agentPayments,
       },
       { seedDashboard: container.persistence.kind === 'memory' },
     );

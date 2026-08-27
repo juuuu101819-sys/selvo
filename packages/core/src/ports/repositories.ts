@@ -1,6 +1,7 @@
 import type { AuditEvent } from './audit.js';
 import type { DashboardRepository } from './dashboard.js';
 import type { ExecutionIntentRepository } from './execution-intent.js';
+import type { AgentPaymentsRepository } from './agent-payments.js';
 import type { IdentityStore } from './identity.js';
 
 /**
@@ -54,6 +55,7 @@ export interface PersistenceDriver {
   readonly identity: IdentityStore;
   readonly dashboard: DashboardRepository;
   readonly executionIntents: ExecutionIntentRepository;
+  readonly agentPayments: AgentPaymentsRepository;
   /** Verifies the store is reachable and the schema is present. */
   healthCheck(): Promise<void>;
   close(): Promise<void>;

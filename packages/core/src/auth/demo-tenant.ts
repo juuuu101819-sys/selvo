@@ -20,3 +20,18 @@ export const OTHER_USER_ID = 'usr_acme_other';
 export const OTHER_USER_EMAIL = 'ops@acme-other.example.invalid';
 export const OTHER_USER_PASSWORD = 'OtherOrg!2026';
 export const OTHER_ORGANIZATION_NAME = 'Acme Other Co';
+
+/** Documented sandbox agent. Credential is hashed at provision; plaintext is never stored. */
+export const DEMO_AGENT_ID = 'agt_demo_treasury';
+export const DEMO_AGENT_NAME = 'Demo Treasury Agent';
+/**
+ * Sandbox-only agent credential, same class of secret as {@link DEMO_USER_PASSWORD}.
+ * Prefix (first 16 characters) is `mag_demo_agent01`.
+ */
+export const DEMO_AGENT_SECRET = 'mag_demo_agent01_sandbox_only_not_production';
+export const DEMO_AGENT_CREDENTIAL_ID = 'agc_demo_treasury';
+export const DEMO_WALLET_REFERENCE_ID = 'awr_demo_treasury';
+export const DEMO_MERCHANT_ID = 'mrc_demo_merchant_x';
+export const DEMO_MERCHANT_CODE = 'merchant-x';
+export const DEMO_MERCHANT_NAME = 'Merchant X';
+export const DEMO_PAYMENT_POLICY_ID = 'pol_demo_treasury';

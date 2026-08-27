@@ -97,7 +97,9 @@ export {
 } from './defi-liquidity.js';
 export {
   API_SCOPES,
+  DEFAULT_AGENT_SCOPES,
   DEFAULT_API_KEY_SCOPES,
+  ORGANIZATION_API_KEY_SCOPES,
   SESSION_API_SCOPES,
   isApiScope,
   parseApiScopes,
@@ -158,3 +160,45 @@ export type {
   ScoreComponents,
   ScoredRoute,
 } from './route.js';
+export {
+  AGENT_CREDENTIAL_PREFIX,
+  AGENT_STATUSES,
+  AGENT_WALLET_KINDS,
+  DAILY_SPENDING_STATUSES,
+  PAYMENT_INTENT_STATUSES,
+  POLICY_RULES,
+  ROUTE_PREFERENCES,
+  isAgentWalletKind,
+  isPaymentIntentStatus,
+  isRoutePreference,
+  paymentIntentFingerprint,
+  utcDayWindow,
+  weightsForRoutePreference,
+  type Agent,
+  type AgentCredential,
+  type AgentStatus,
+  type AgentWalletKind,
+  type AgentWalletReference,
+  type IssuedAgent,
+  type Merchant,
+  type PaymentIntent,
+  type PaymentIntentFingerprintInput,
+  type PaymentIntentStatus,
+  type PaymentPolicy,
+  type PolicyRule,
+  type PublicAgent,
+  type QuotedRouteOption,
+  type RoutePreference,
+  type SimulatedExecutionReceipt,
+} from './agent-payments.js';
+export {
+  parsePayInstruction,
+  resolveMerchant,
+  type ParsedPaymentInstruction,
+} from './payment-instruction.js';
+export {
+  evaluatePaymentPolicy,
+  feeCapBps,
+  filterRoutesByPolicy,
+  type PolicyEvaluationInput,
+} from './payment-policy.js';

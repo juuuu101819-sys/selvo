@@ -214,6 +214,12 @@ model Organization {
   comparisons         Comparison[]
   auditLogs           AuditLog[]
   executionIntents    ExecutionIntent[]
+  agents              Agent[]
+  agentCredentials    AgentCredential[]
+  agentWalletReferences AgentWalletReference[]
+  merchants           Merchant[]
+  paymentPolicies     PaymentPolicy[]
+  paymentIntents      PaymentIntent[]
 
   @@map("organizations")
 }
@@ -327,6 +333,141 @@ model ExecutionIntent {
 
   @@index([organizationId, createdAt])
   @@map("execution_intents")
+}
+
+/// Autonomous AI agent acting *for* an organization. Never a custodian of funds.
+model Agent {
+  id             String       @id
+  organizationId String       @map("organization_id")
+  name           String
+  status         RecordStatus @default(active)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  credentials       AgentCredential[]
+  walletReferences  AgentWalletReference[]
+  paymentPolicies   PaymentPolicy[]
+  paymentIntents    PaymentIntent[]
+
+  @@index([organizationId])
+  @@map("agents")
+}
+
+/// Hashed agent credential (`mag_`). Plaintext is never stored.
+model AgentCredential {
+  id             String    @id
+  agentId        String    @map("agent_id")
+  organizationId String    @map("organization_id")
+  keyPrefix      String    @unique @map("key_prefix")
+  secretHash     String    @map("secret_hash")
+  scopes         String[]  @default([])
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz(3)
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([agentId])
+  @@index([organizationId])
+  @@map("agent_credentials")
+}
+
+/// External wallet/account handle. The platform never controls it.
+model AgentWalletReference {
+  id                    String   @id
+  organizationId        String   @map("organization_id")
+  agentId               String   @map("agent_id")
+  kind                  String
+  label                 String
+  externalRef           String   @map("external_ref")
+  controlledByPlatform  Boolean  @default(false) @map("controlled_by_platform")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, agentId])
+  @@map("agent_wallet_references")
+}
+
+/// Payee an agent may name. Settlement happens at an external provider, not here.
+model Merchant {
+  id               String       @id
+  organizationId   String       @map("organization_id")
+  name             String
+  recipientCode    String       @map("recipient_code")
+  settlementAsset  String       @map("settlement_asset") @db.VarChar(16)
+  status           RecordStatus @default(active)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, recipientCode])
+  @@index([organizationId])
+  @@map("merchants")
+}
+
+/// Spending controls for one agent. Empty allow-lists mean none, not all.
+model PaymentPolicy {
+  id                              String   @id
+  organizationId                  String   @map("organization_id")
+  agentId                         String   @map("agent_id")
+  maxTransactionAmountMinorUnits  Decimal  @map("max_transaction_amount_minor_units") @db.Decimal(38, 0)
+  allowedAssets                   String[] @map("allowed_assets")
+  allowedRecipientCodes           String[] @map("allowed_recipient_codes")
+  allowedProviderIds              String[] @map("allowed_provider_ids")
+  maxFeeBps                       Decimal  @map("max_fee_bps") @db.Decimal(12, 4)
+  dailySpendingLimitMinorUnits    Decimal  @map("daily_spending_limit_minor_units") @db.Decimal(38, 0)
+  dailySpendingAsset              String   @map("daily_spending_asset") @db.VarChar(16)
+  createdAt                       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                       DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, agentId])
+  @@map("payment_policies")
+}
+
+/// Structured agent payment. Simulation may complete; funds never move.
+model PaymentIntent {
+  id                  String    @id
+  organizationId      String    @map("organization_id")
+  agentId             String    @map("agent_id")
+  sourceAsset         String    @map("source_asset") @db.VarChar(16)
+  destinationAsset    String    @map("destination_asset") @db.VarChar(16)
+  amountMinorUnits    Decimal   @map("amount_minor_units") @db.Decimal(38, 0)
+  recipient           String
+  purpose             String
+  routePreference     String?   @map("route_preference")
+  maxFeeBps           Decimal?  @map("max_fee_bps") @db.Decimal(12, 4)
+  expiresAt           DateTime  @map("expires_at") @db.Timestamptz(3)
+  status              String
+  idempotencyKey      String?   @map("idempotency_key")
+  payloadFingerprint  String    @map("payload_fingerprint")
+  quotedRoutes        Json      @default("[]") @map("quoted_routes")
+  quoteExpiresAt      DateTime? @map("quote_expires_at") @db.Timestamptz(3)
+  selectedRouteId     String?   @map("selected_route_id")
+  authorizedAt        DateTime? @map("authorized_at") @db.Timestamptz(3)
+  simulatedAt         DateTime? @map("simulated_at") @db.Timestamptz(3)
+  simulation          Json?     @map("simulation")
+  failureReason       String?   @map("failure_reason")
+  fundsMoved          Boolean   @default(false) @map("funds_moved")
+  custody             Boolean   @default(false)
+  realExecution       Boolean   @default(false) @map("real_execution")
+  actor               String
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, agentId, createdAt])
+  @@map("payment_intents")
 }
 
 // ---------------------------------------------------------------------------

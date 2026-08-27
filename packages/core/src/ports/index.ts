@@ -105,15 +105,33 @@ export type {
   ExecutionIntentStatus,
 } from './execution-intent.js';
 export { EXECUTION_INTENT_STATUS } from './execution-intent.js';
+export type {
+  AgentPaymentsRepository,
+  CreateAgentCredentialInput,
+  CreateAgentInput,
+  CreateMerchantInput,
+  CreatePaymentPolicyInput,
+  CreateWalletReferenceInput,
+  DailySpendingQuery,
+} from './agent-payments.js';
 export {
+  DEMO_AGENT_CREDENTIAL_ID,
+  DEMO_AGENT_ID,
+  DEMO_AGENT_NAME,
+  DEMO_AGENT_SECRET,
   DEMO_MEMBERSHIP_ID,
+  DEMO_MERCHANT_CODE,
+  DEMO_MERCHANT_ID,
+  DEMO_MERCHANT_NAME,
   DEMO_ORGANIZATION_ID,
   DEMO_ORGANIZATION_NAME,
   DEMO_ORGANIZATION_SLUG,
+  DEMO_PAYMENT_POLICY_ID,
   DEMO_USER_DISPLAY_NAME,
   DEMO_USER_EMAIL,
   DEMO_USER_ID,
   DEMO_USER_PASSWORD,
+  DEMO_WALLET_REFERENCE_ID,
   OTHER_ORGANIZATION_ID,
   OTHER_ORGANIZATION_NAME,
   OTHER_USER_EMAIL,

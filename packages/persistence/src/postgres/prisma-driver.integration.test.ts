@@ -74,6 +74,12 @@ describeIntegration('PostgreSQL schema', () => {
           'sessions',
           'users',
           'execution_intents',
+          'agents',
+          'agent_credentials',
+          'agent_wallet_references',
+          'merchants',
+          'payment_policies',
+          'payment_intents',
         ]),
       );
     });

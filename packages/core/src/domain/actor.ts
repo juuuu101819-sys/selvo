@@ -53,7 +53,7 @@ export const INTERACTION_MODELS: readonly InteractionModel[] = [
     payer: 'ai_agent',
     payee: 'business',
     label: 'AI Agent → Business',
-    status: 'planned',
+    status: 'available',
   },
   {
     id: 'agent_agent',

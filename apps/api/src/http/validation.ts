@@ -531,3 +531,68 @@ export const createExecutionIntentSchema = z
 
 export type CreateExecutionIntentBody = z.infer<typeof createExecutionIntentSchema>;
 
+export const createAgentSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+  })
+  .strict();
+
+export type CreateAgentBody = z.infer<typeof createAgentSchema>;
+
+export const agentIdParamsSchema = z.object({ id: z.string().min(1).max(128) }).strict();
+
+export const paymentIntentIdParamsSchema = z
+  .object({ id: z.string().min(1).max(128) })
+  .strict();
+
+const feeBps = z
+  .string()
+  .trim()
+  .regex(/^\d+(\.\d{1,4})?$/, 'must be a non-negative decimal string in basis points');
+
+/**
+ * Body of `POST /v1/payment-intents`.
+ *
+ * Accepts a sandbox instruction (`Pay 500 USD to merchant X`) and/or structured fields.
+ * `execute`, keys and wallet material are rejected by `.strict()`.
+ */
+export const createPaymentIntentSchema = z
+  .object({
+    instruction: z.string().trim().min(8).max(280).optional(),
+    agentId: z.string().trim().min(1).max(128).optional(),
+    sourceAsset: z.string().trim().min(2).max(16).optional(),
+    destinationAsset: z.string().trim().min(2).max(16).optional(),
+    amount: assetAmount.optional(),
+    recipient: z.string().trim().min(1).max(80).optional(),
+    purpose: z.string().trim().min(1).max(280).optional(),
+    routePreference: z.enum(['lowest_cost', 'fastest', 'recommended']).optional(),
+    maxFee: feeBps.optional(),
+    maxFeeBps: feeBps.optional(),
+    expiresAt: isoTimestamp.optional(),
+  })
+  .strict()
+  .refine((body) => body.instruction !== undefined || body.amount !== undefined, {
+    message: 'either instruction or amount is required',
+    path: ['instruction'],
+  })
+  .refine(
+    (body) =>
+      body.maxFee === undefined ||
+      body.maxFeeBps === undefined ||
+      body.maxFee === body.maxFeeBps,
+    {
+      message: 'maxFee and maxFeeBps must agree when both are supplied',
+      path: ['maxFeeBps'],
+    },
+  );
+
+export type CreatePaymentIntentBody = z.infer<typeof createPaymentIntentSchema>;
+
+export const selectPaymentRouteSchema = z
+  .object({
+    routeId: z.string().trim().min(1).max(128),
+  })
+  .strict();
+
+export type SelectPaymentRouteBody = z.infer<typeof selectPaymentRouteSchema>;
+

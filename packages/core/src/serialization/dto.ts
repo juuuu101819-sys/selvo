@@ -699,3 +699,104 @@ export interface CurrencyCatalogEntryDto {
   readonly decimals: number;
   readonly name: string;
 }
+
+export interface QuotedRouteOptionDto {
+  readonly routeId: string;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly providerId: string;
+  readonly providerName: string;
+  readonly rail: string;
+  readonly totalCostBps: string;
+  readonly expiresAt: string | null;
+}
+
+export interface SimulatedExecutionReceiptDto {
+  readonly simulationId: string;
+  readonly simulated: true;
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly realExecution: false;
+  readonly providerId: string;
+  readonly occurredAt: string;
+  readonly receipt: string;
+}
+
+export interface PaymentIntentDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly agentId: string;
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: AssetAmountDto;
+  readonly recipient: string;
+  readonly purpose: string;
+  readonly routePreference: string | null;
+  readonly maxFeeBps: string | null;
+  readonly expiresAt: string;
+  readonly status: string;
+  readonly quotedRoutes: readonly QuotedRouteOptionDto[];
+  readonly quoteExpiresAt: string | null;
+  readonly selectedRouteId: string | null;
+  readonly authorizedAt: string | null;
+  readonly simulatedAt: string | null;
+  readonly simulation: SimulatedExecutionReceiptDto | null;
+  readonly failureReason: string | null;
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly realExecution: false;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export interface PublicAgentDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly status: string;
+  readonly createdAt: string;
+  readonly keyPrefix: string | null;
+  readonly scopes: readonly string[];
+  readonly credentialExpiresAt: string | null;
+  readonly credentialRevokedAt: string | null;
+}
+
+export interface IssuedAgentDto extends PublicAgentDto {
+  readonly secret: string;
+}
+
+export interface AgentWalletReferenceDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly agentId: string;
+  readonly kind: string;
+  readonly label: string;
+  readonly externalRef: string;
+  readonly controlledByPlatform: false;
+  readonly createdAt: string;
+}
+
+export interface MerchantDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly name: string;
+  readonly recipientCode: string;
+  readonly settlementAsset: string;
+  readonly status: string;
+  readonly createdAt: string;
+}
+
+export interface PaymentPolicyDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly agentId: string;
+  readonly maxTransactionAmountMinorUnits: string;
+  readonly allowedAssets: readonly string[];
+  readonly allowedRecipientCodes: readonly string[];
+  readonly allowedProviderIds: readonly string[];
+  readonly maxFeeBps: string;
+  readonly dailySpendingLimitMinorUnits: string;
+  readonly dailySpendingAsset: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}

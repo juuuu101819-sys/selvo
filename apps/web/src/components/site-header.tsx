@@ -87,6 +87,9 @@ export async function SiteHeader({
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/defi" />}>
             DeFi
           </Button>
+          <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/agents" />}>
+            Agents
+          </Button>
           <Button
             variant="ghost"
             size="sm"

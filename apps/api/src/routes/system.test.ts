@@ -63,7 +63,7 @@ describe('GET /v1/meta', () => {
     expect(body.product).toMatchObject({
       kind: 'global_non_custodial_financial_routing_hub',
       scope: expect.arrayContaining(['tradfi', 'stablecoin', 'defi']),
-      customers: expect.arrayContaining(['businesses', 'ai_agents_planned']),
+      customers: expect.arrayContaining(['businesses', 'ai_agents']),
       notFor: expect.arrayContaining(['custody', 'principal_trading']),
     });
     expect(body.capabilities).toEqual({
@@ -76,7 +76,8 @@ describe('GET /v1/meta', () => {
       controlCustomerWallets: false,
       operateAsPrincipal: false,
       issueStablecoins: false,
-      agentPayments: false,
+      agentPayments: true,
+      agentPaymentSimulation: true,
       defiQuotes: true,
       defiExecution: false,
       multiRailRouting: true,
@@ -119,6 +120,7 @@ describe('GET /v1/meta', () => {
       expect.arrayContaining([
         expect.objectContaining({ id: 'human_business', status: 'available' }),
         expect.objectContaining({ id: 'business_business', status: 'available' }),
+        expect.objectContaining({ id: 'agent_business', status: 'available' }),
         expect.objectContaining({ id: 'agent_agent', status: 'planned' }),
       ]),
     );

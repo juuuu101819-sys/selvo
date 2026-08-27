@@ -17,6 +17,7 @@ import {
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaPlatformPricingResolver } from './prisma-pricing-resolver.js';
 import { PrismaDashboardRepository } from './prisma-dashboard.js';
+import { PrismaAgentPaymentsRepository } from './prisma-agent-payments.js';
 import { PrismaExecutionIntentRepository } from './prisma-execution-intents.js';
 import { PrismaIdentityStore } from './prisma-identity.js';
 import { Prisma, PrismaClient } from '@prisma/client';
@@ -52,6 +53,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly identity: IdentityStore;
   readonly dashboard: DashboardRepository;
   readonly executionIntents: ExecutionIntentRepository;
+  readonly agentPayments: PrismaAgentPaymentsRepository;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -75,6 +77,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.identity = new PrismaIdentityStore(this.client);
     this.dashboard = new PrismaDashboardRepository(this.client);
     this.executionIntents = new PrismaExecutionIntentRepository(this.client);
+    this.agentPayments = new PrismaAgentPaymentsRepository(this.client);
     this.pricing = new PrismaPlatformPricingResolver(this.client);
   }
 
@@ -89,7 +92,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
       const rows = await this.client.$queryRaw<{ present: boolean }[]>`
         SELECT (to_regclass('public.comparisons') IS NOT NULL
                 AND to_regclass('public.audit_logs') IS NOT NULL
-                AND to_regclass('public.execution_intents') IS NOT NULL) AS present
+                AND to_regclass('public.execution_intents') IS NOT NULL
+                AND to_regclass('public.payment_intents') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(

@@ -170,6 +170,25 @@ describe('InMemoryPersistenceDriver', () => {
     expect(listed).toHaveLength(1);
     await expect(driver.executionIntents.findById('eit_1', 'org_other')).resolves.toBeNull();
   });
+
+  it('stores an external wallet reference the platform does not control', async () => {
+    await driver.agentPayments.createAgent({
+      id: 'agt_1',
+      organizationId: 'org_1',
+      name: 'Agent',
+      createdAt: '2026-03-01T09:00:00.000Z',
+    });
+    const wallet = await driver.agentPayments.createWalletReference({
+      id: 'awr_1',
+      organizationId: 'org_1',
+      agentId: 'agt_1',
+      kind: 'external_account',
+      label: 'Operating account',
+      externalRef: 'ext_1',
+      createdAt: '2026-03-01T09:00:00.000Z',
+    });
+    expect(wallet.controlledByPlatform).toBe(false);
+  });
 });
 
 describe('createPersistenceDriver', () => {

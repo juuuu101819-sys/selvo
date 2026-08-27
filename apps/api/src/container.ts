@@ -1,5 +1,6 @@
 import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet } from '@meridian/adapters';
 import {
+  AgentPaymentService,
   DEFI_ROUTING_ENGINE_VERSION,
   DefiRouter,
   ENGINE_VERSION,
@@ -48,6 +49,7 @@ export interface AppContainer {
   readonly routeGraph: RouteGraphService;
   readonly auditLogger: AuditLogger;
   readonly authenticator: Authenticator;
+  readonly agentPayments: AgentPaymentService;
   readonly disclaimer: string;
   readonly pricing: {
     readonly datasetVersion: string;
@@ -182,7 +184,19 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
   });
 
-  const authenticator: Authenticator = new IdentityAuthenticator(persistence.identity, clock);
+  const authenticator: Authenticator = new IdentityAuthenticator(
+    persistence.identity,
+    clock,
+    persistence.agentPayments,
+  );
+
+  const agentPayments = new AgentPaymentService({
+    agentPayments: persistence.agentPayments,
+    routing,
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+  });
 
   logger.info('Meridian container initialised', {
     mode: config.mode,
@@ -211,6 +225,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     routeGraph,
     auditLogger,
     authenticator,
+    agentPayments,
     disclaimer: disclaimerFor(config.mode),
     pricing:
       sandbox === null

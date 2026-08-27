@@ -22,6 +22,10 @@ import type {
   ExecutionIntentDto,
   FinancialQuoteDto,
   IssuedApiKeyDto,
+  MerchantDto,
+  PaymentIntentDto,
+  PaymentPolicyDto,
+  PublicAgentDto,
   RouteSearchDto,
   AssetCatalogEntryDto,
   CurrencyCatalogEntryDto,
@@ -52,6 +56,7 @@ interface RequestOptions {
   readonly body?: unknown;
   readonly actor?: string;
   readonly authorization?: string | null;
+  readonly idempotencyKey?: string;
   readonly cache?: RequestCache;
 }
 
@@ -68,6 +73,7 @@ async function request<TData>(options: RequestOptions): Promise<ApiResult<TData>
         ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
         'x-meridian-actor': options.actor ?? 'web-app',
         ...(options.authorization ? { authorization: `Bearer ${options.authorization}` } : {}),
+        ...(options.idempotencyKey ? { 'idempotency-key': options.idempotencyKey } : {}),
       },
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
       cache: options.cache ?? 'no-store',
@@ -434,5 +440,85 @@ export function createExecutionIntent(
     path: '/api/v1/execution-intents',
     body: input,
     ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export function fetchAgents(
+  authorization: string,
+): Promise<ApiResult<{ agents: readonly PublicAgentDto[] }>> {
+  return request({ method: 'GET', path: '/api/v1/agents', authorization });
+}
+
+export function fetchMerchants(
+  authorization: string,
+): Promise<ApiResult<{ merchants: readonly MerchantDto[] }>> {
+  return request({ method: 'GET', path: '/api/v1/merchants', authorization });
+}
+
+export function fetchPaymentPolicies(
+  authorization: string,
+): Promise<ApiResult<{ policies: readonly PaymentPolicyDto[] }>> {
+  return request({ method: 'GET', path: '/api/v1/payment-policies', authorization });
+}
+
+export function createPaymentIntent(
+  input: {
+    readonly agentId: string;
+    readonly instruction: string;
+  },
+  extras: { readonly authorization: string; readonly idempotencyKey: string },
+): Promise<ApiResult<PaymentIntentDto>> {
+  return request<PaymentIntentDto>({
+    method: 'POST',
+    path: '/api/v1/payment-intents',
+    body: input,
+    authorization: extras.authorization,
+    idempotencyKey: extras.idempotencyKey,
+  });
+}
+
+export function quotePaymentIntent(
+  id: string,
+  authorization: string,
+): Promise<ApiResult<PaymentIntentDto>> {
+  return request<PaymentIntentDto>({
+    method: 'POST',
+    path: `/api/v1/payment-intents/${encodeURIComponent(id)}/quote`,
+    authorization,
+  });
+}
+
+export function selectPaymentRoute(
+  id: string,
+  routeId: string,
+  authorization: string,
+): Promise<ApiResult<PaymentIntentDto>> {
+  return request<PaymentIntentDto>({
+    method: 'POST',
+    path: `/api/v1/payment-intents/${encodeURIComponent(id)}/select`,
+    body: { routeId },
+    authorization,
+  });
+}
+
+export function authorizePaymentIntent(
+  id: string,
+  authorization: string,
+): Promise<ApiResult<PaymentIntentDto>> {
+  return request<PaymentIntentDto>({
+    method: 'POST',
+    path: `/api/v1/payment-intents/${encodeURIComponent(id)}/authorize`,
+    authorization,
+  });
+}
+
+export function simulatePaymentIntent(
+  id: string,
+  authorization: string,
+): Promise<ApiResult<PaymentIntentDto>> {
+  return request<PaymentIntentDto>({
+    method: 'POST',
+    path: `/api/v1/payment-intents/${encodeURIComponent(id)}/simulate`,
+    authorization,
   });
 }

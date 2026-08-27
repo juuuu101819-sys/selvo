@@ -116,7 +116,13 @@ describe('migrations', () => {
       'comparisons',
       'audit_logs',
       'sessions',
-      'execution_intents',
+          'execution_intents',
+          'agents',
+          'agent_credentials',
+          'agent_wallet_references',
+          'merchants',
+          'payment_policies',
+          'payment_intents',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -179,13 +185,30 @@ describe('migrations', () => {
     expect(sql).toContain('"api_keys_scopes_known"');
   });
 
-  it('records execution intents as non-executable recorded choices', () => {
+  it('records execution intents as non-executable recorded choices', async () => {
     expect(sql).toContain('CREATE TABLE "execution_intents"');
     expect(sql).toContain('"execution_intents_status_recorded"');
     expect(sql).toContain('"execution_intents_not_executable"');
     expect(sql).toContain('"execution_intents_not_submitted"');
     expect(sql).toContain('CHECK ("executable" = false)');
     expect(sql).toContain('CHECK ("submitted" = false)');
+  });
+
+  it('stores agent credentials as a hash and wallet references as non-custodial', () => {
+    expect(sql).toContain('CREATE TABLE "agents"');
+    expect(sql).toContain('CREATE TABLE "agent_credentials"');
+    expect(sql).toContain('CREATE TABLE "agent_wallet_references"');
+    expect(sql).toContain('CREATE TABLE "merchants"');
+    expect(sql).toContain('CREATE TABLE "payment_policies"');
+    expect(sql).toContain('CREATE TABLE "payment_intents"');
+    expect(sql).toContain('"agent_wallet_references_not_custodied"');
+    expect(sql).toContain('CHECK ("controlled_by_platform" = false)');
+    expect(sql).toContain('"payment_intents_not_funds_moved"');
+    expect(sql).toContain('CHECK ("funds_moved" = false)');
+    expect(sql).toContain('CHECK ("custody" = false)');
+    expect(sql).toContain('CHECK ("real_execution" = false)');
+    expect(sql).not.toContain('"private_key"');
+    expect(sql).not.toContain('"seed"');
   });
 
   /**

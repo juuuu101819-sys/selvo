@@ -89,3 +89,13 @@ export {
   type DefiRoutingInput,
 } from './defi-routing.js';
 export type { DefiQuoteRequest, DefiRoute, DefiRouting } from './defi-types.js';
+export {
+  AgentPaymentService,
+  type AgentPaymentServiceDependencies,
+  type CreatePaymentIntentCommand,
+} from './agent-payment-service.js';
+export {
+  SANDBOX_SIMULATION_RECEIPT,
+  SANDBOX_SIMULATOR_PROVIDER_ID,
+  simulateSandboxExecution,
+} from './sandbox-simulator.js';

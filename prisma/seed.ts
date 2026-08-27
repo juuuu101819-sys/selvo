@@ -22,13 +22,24 @@ import { randomUUID } from 'node:crypto';
 import { createSandboxAdapters } from '@meridian/adapters';
 import {
   CURRENCY_REGISTRY,
+  DEFAULT_AGENT_SCOPES,
+  DEMO_AGENT_CREDENTIAL_ID,
+  DEMO_AGENT_ID,
+  DEMO_AGENT_NAME,
+  DEMO_AGENT_SECRET,
+  DEMO_MERCHANT_CODE,
+  DEMO_MERCHANT_ID,
+  DEMO_MERCHANT_NAME,
+  DEMO_PAYMENT_POLICY_ID,
   DEMO_USER_PASSWORD,
+  DEMO_WALLET_REFERENCE_ID,
   ProviderRegistry,
   RepositoryAuditLogger,
   RouteComparisonService,
   RouteCostEngine,
   defaultScoringWeights,
   hashPassword,
+  hashSecret,
   isCurrencyCode,
   noopLogger,
   serializeComparison,
@@ -230,6 +241,7 @@ async function main(): Promise<void> {
   const providerIdBySlug = await seedProviders();
   await seedRoutes(providerIdBySlug);
   await seedOrganization();
+  await seedDemoAgent();
   await seedCustomerPricing(providerIdBySlug);
   await seedDemoComparison(providerIdBySlug);
 
@@ -486,6 +498,83 @@ async function seedOrganization(): Promise<void> {
       joinedAt: new Date('2026-01-15T09:00:00.000Z'),
     },
     update: { role: 'owner', status: 'active' },
+  });
+}
+
+async function seedDemoAgent(): Promise<void> {
+  const createdAt = new Date('2026-03-01T09:00:00.000Z');
+  await prisma.agent.upsert({
+    where: { id: DEMO_AGENT_ID },
+    create: {
+      id: DEMO_AGENT_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      name: DEMO_AGENT_NAME,
+      status: 'active',
+      createdAt,
+      updatedAt: createdAt,
+    },
+    update: { name: DEMO_AGENT_NAME, status: 'active' },
+  });
+  await prisma.agentCredential.upsert({
+    where: { id: DEMO_AGENT_CREDENTIAL_ID },
+    create: {
+      id: DEMO_AGENT_CREDENTIAL_ID,
+      agentId: DEMO_AGENT_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      keyPrefix: DEMO_AGENT_SECRET.slice(0, 16),
+      secretHash: hashSecret(DEMO_AGENT_SECRET),
+      scopes: [...DEFAULT_AGENT_SCOPES],
+      createdAt,
+    },
+    update: { secretHash: hashSecret(DEMO_AGENT_SECRET), scopes: [...DEFAULT_AGENT_SCOPES] },
+  });
+  await prisma.agentWalletReference.upsert({
+    where: { id: DEMO_WALLET_REFERENCE_ID },
+    create: {
+      id: DEMO_WALLET_REFERENCE_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      agentId: DEMO_AGENT_ID,
+      kind: 'external_account',
+      label: 'Demo treasury operating account',
+      externalRef: 'ext_acct_demo_treasury',
+      controlledByPlatform: false,
+      createdAt,
+    },
+    update: { controlledByPlatform: false },
+  });
+  await prisma.merchant.upsert({
+    where: { id: DEMO_MERCHANT_ID },
+    create: {
+      id: DEMO_MERCHANT_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      name: DEMO_MERCHANT_NAME,
+      recipientCode: DEMO_MERCHANT_CODE,
+      settlementAsset: 'KRW',
+      status: 'active',
+      createdAt,
+    },
+    update: { name: DEMO_MERCHANT_NAME, recipientCode: DEMO_MERCHANT_CODE },
+  });
+  await prisma.paymentPolicy.upsert({
+    where: { id: DEMO_PAYMENT_POLICY_ID },
+    create: {
+      id: DEMO_PAYMENT_POLICY_ID,
+      organizationId: DEMO_ORGANIZATION_ID,
+      agentId: DEMO_AGENT_ID,
+      maxTransactionAmountMinorUnits: new Prisma.Decimal('1000000'),
+      allowedAssets: ['USD', 'KRW'],
+      allowedRecipientCodes: [DEMO_MERCHANT_CODE],
+      allowedProviderIds: [],
+      maxFeeBps: new Prisma.Decimal('100'),
+      dailySpendingLimitMinorUnits: new Prisma.Decimal('2000000'),
+      dailySpendingAsset: 'USD',
+      createdAt,
+      updatedAt: createdAt,
+    },
+    update: {
+      maxTransactionAmountMinorUnits: new Prisma.Decimal('1000000'),
+      allowedAssets: ['USD', 'KRW'],
+    },
   });
 }
 

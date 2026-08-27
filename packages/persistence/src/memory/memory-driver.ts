@@ -9,6 +9,7 @@ import {
   type PersistenceDriver,
   type StoredComparison,
 } from '@meridian/core';
+import { InMemoryAgentPaymentsRepository } from './memory-agent-payments.js';
 import { InMemoryDashboardRepository } from './memory-dashboard.js';
 import { InMemoryExecutionIntentRepository } from './memory-execution-intents.js';
 import { InMemoryIdentityStore } from './memory-identity.js';
@@ -137,6 +138,7 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly identity: IdentityStore = new InMemoryIdentityStore();
   readonly dashboard: DashboardRepository = new InMemoryDashboardRepository();
   readonly executionIntents: ExecutionIntentRepository = new InMemoryExecutionIntentRepository();
+  readonly agentPayments = new InMemoryAgentPaymentsRepository();
 
   healthCheck(): Promise<void> {
     return Promise.resolve();

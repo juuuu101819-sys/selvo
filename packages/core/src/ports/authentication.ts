@@ -11,7 +11,7 @@ import type { EconomicActorKind } from '../domain/actor.js';
  * Deliberately out of scope: SSO, SAML, SCIM, MFA and federated identity. See docs/ROADMAP.md.
  */
 
-export const PRINCIPAL_KINDS = ['anonymous', 'user', 'service'] as const;
+export const PRINCIPAL_KINDS = ['anonymous', 'user', 'service', 'agent'] as const;
 export type PrincipalKind = (typeof PRINCIPAL_KINDS)[number];
 
 /**
@@ -22,11 +22,12 @@ export type PrincipalKind = (typeof PRINCIPAL_KINDS)[number];
  * bug rather than a valid state.
  *
  * `economicActor` is who is speaking, distinct from tenancy: a human user and an API key both act
- * *for* an organization. An `ai_agent` principal kind is reserved and not issued in this phase.
+ * *for* an organization. An `agent` principal still acts *for* that organization and never
+ * custodies funds on this platform.
  */
 export interface Principal {
   readonly kind: PrincipalKind;
-  /** Who is speaking. Agents are a planned principal kind, not a way around tenancy. */
+  /** Who is speaking. An `ai_agent` still acts for an organization, never as a holder of funds. */
   readonly economicActor: EconomicActorKind;
   readonly organizationId: string | null;
   /** User id or API key id, depending on `kind`. */

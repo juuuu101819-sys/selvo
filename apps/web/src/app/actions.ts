@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, replayComparison, revokeOrganizationApiKey, searchRoutes } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent } from '@/lib/api/client';
+import type { ApiResult, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -193,4 +193,73 @@ export async function searchFinancialRoutes(input: {
 }): Promise<ApiResult<RouteSearchDto>> {
   const authorization = await readSessionToken();
   return searchRoutes(input, { actor: 'web-app', authorization });
+}
+
+export async function createAgentPaymentIntent(input: {
+  readonly agentId: string;
+  readonly instruction: string;
+}): Promise<ApiResult<PaymentIntentDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return {
+      ok: false,
+      failure: {
+        code: 'UNAUTHENTICATED',
+        message: 'Sign in to create an agent payment intent.',
+        details: {},
+        requestId: null,
+      },
+    };
+  }
+  return createPaymentIntent(input, {
+    authorization: token,
+    idempotencyKey: `web-${input.agentId}-${Date.now()}`,
+  });
+}
+
+export async function quoteAgentPaymentIntent(id: string): Promise<ApiResult<PaymentIntentDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticatedPayment();
+  }
+  return quotePaymentIntent(id, token);
+}
+
+export async function selectAgentPaymentRoute(
+  id: string,
+  routeId: string,
+): Promise<ApiResult<PaymentIntentDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticatedPayment();
+  }
+  return selectPaymentRoute(id, routeId, token);
+}
+
+export async function authorizeAgentPaymentIntent(id: string): Promise<ApiResult<PaymentIntentDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticatedPayment();
+  }
+  return authorizePaymentIntent(id, token);
+}
+
+export async function simulateAgentPaymentIntent(id: string): Promise<ApiResult<PaymentIntentDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticatedPayment();
+  }
+  return simulatePaymentIntent(id, token);
+}
+
+function unauthenticatedPayment(): ApiResult<PaymentIntentDto> {
+  return {
+    ok: false,
+    failure: {
+      code: 'UNAUTHENTICATED',
+      message: 'Sign in to continue the agent payment flow.',
+      details: {},
+      requestId: null,
+    },
+  };
 }

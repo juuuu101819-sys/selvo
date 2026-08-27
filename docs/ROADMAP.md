@@ -258,17 +258,29 @@ Versioned organization API for quote, path search and catalogs, with hashed API 
 - `transaction:create` writes an execution intent (`status: recorded`, `executable: false`,
   `submitted: false`). `POST /api/v1/executions` remains the audited 501
 - In-process rate limiting. Request logs redact credentials and never print API key secrets
-- `financialRoutingApi` and `executionIntents` true. `executeTransactions` and `agentPayments` stay
-  false. Comparison engine **2.0.0**, routing **1.0.0**, graph **1.0.0**, stablecoin **1.0.0**,
+- `financialRoutingApi` and `executionIntents` true. `executeTransactions` stays false.
+  Comparison engine **2.0.0**, routing **1.0.0**, graph **1.0.0**, stablecoin **1.0.0**,
   DeFi **1.0.0** unchanged
 
-**Still excluded:** real transactions, wallets, keys, custody, DeFi execution, AI agent payments.
+**Still excluded (at Phase 13):** real transactions, wallets, keys, custody, DeFi execution, AI agent payments.
 
-## Phase 14 — AI agent payments _(not started, gated)_
+## Phase 14 — AI agent payment infrastructure ✅ implemented
 
-Issue `ai_agent` principals that still act *for* an organization. Agents may request quotes and
-compare routes through the same API. Initiation remains delegated execution (Phase 7) and is
-gated on the same compliance bar. No agent wallets, no agent custody, no agent-to-agent settlement
-on this platform. Agents never compute route economics — they consume `POST /api/v1/quote`.
+Autonomous AI agents act *for* an organization. They never custody funds on this platform.
+
+```
+AI Agent → Financial Router → Financial Rail → External Provider
+```
+
+- Domain: `Agent`, `AgentWalletReference` (external handle, `controlledByPlatform: false`), `Merchant`, `PaymentPolicy`, `PaymentIntent`
+- Intent fields: `agentId`, `sourceAsset`, `destinationAsset`, `amount`, `recipient`, `purpose`, `routePreference`, `maxFee`, `expiresAt`, `status`
+- Statuses: `CREATED` → `QUOTING` → `QUOTED` → `ROUTED` → `AUTHORIZED` → `EXECUTION_PENDING` → `COMPLETED`, plus `FAILED` and `EXPIRED`
+- Sandbox instruction `"Pay 500 USD to merchant X"` parses into a structured intent
+- Flow: create intent → quote (existing `MultiRailRouter`) → select route → authorize → simulate via in-process demo provider
+- Hashed agent credentials (`mag_`), scopes `payment:create` / `payment:quote` / `payment:authorize` plus `quote:read`
+- Idempotency keys on create. Policy engine: max amount, allowed assets, recipients, providers, max fee, daily spending
+- `COMPLETED` means the simulator finished. `fundsMoved`, `custody` and `realExecution` stay false. `POST /executions` remains 501
+- `agentPayments` and `agentPaymentSimulation` true. `executeTransactions`, `delegateExecution`, `custodyFunds`, `holdPrivateKeys`, `controlCustomerWallets`, `operateAsPrincipal`, `defiExecution` stay false
+- Interaction model `agent_business` available. Engine versions unchanged
 
 Treasury product comparison remains planned on the `treasury_product` rail.

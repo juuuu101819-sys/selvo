@@ -11,6 +11,7 @@ const LINKS = [
   { href: '/dashboard/quotes', label: 'Quotes', exact: false },
   { href: '/dashboard/transactions', label: 'Transactions', exact: false },
   { href: '/dashboard/providers', label: 'Providers', exact: false },
+  { href: '/dashboard/agents', label: 'Agents', exact: false },
   { href: '/dashboard/settings', label: 'Settings', exact: false },
 ] as const;
 

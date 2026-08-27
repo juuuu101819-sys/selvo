@@ -27,6 +27,16 @@ export const AUDIT_EVENT_TYPES = [
   'execution.intent.recorded',
   'apikey.issued',
   'apikey.revoked',
+  'agent.issued',
+  'agent.revoked',
+  'payment.intent.created',
+  'payment.intent.quoted',
+  'payment.intent.selected',
+  'payment.intent.authorized',
+  'payment.intent.simulated',
+  'payment.intent.failed',
+  'payment.intent.expired',
+  'payment.policy.denied',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

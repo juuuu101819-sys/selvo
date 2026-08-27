@@ -83,6 +83,8 @@ Organization ──┬── OrganizationMember ── User
                ├── CustomerPricing
                ├── Comparison
                ├── ExecutionIntent
+               ├── Agent ── AgentCredential / AgentWalletReference / PaymentPolicy / PaymentIntent
+               ├── Merchant
                └── AuditLog
 ```
 

@@ -19,8 +19,16 @@ export const PLATFORM_CAPABILITIES = {
   controlCustomerWallets: false,
   operateAsPrincipal: false,
   issueStablecoins: false,
-  /** AI agents requesting quotes or initiating delegated payments. Quotes may be public; initiation is not. */
-  agentPayments: false,
+  /**
+   * AI agents may create payment intents, request quotes, authorize and run the sandbox
+   * simulator. They still cannot move money, hold keys, or settle as principal.
+   */
+  agentPayments: true,
+  /**
+   * Sandbox execution simulator for agent payment intents. `COMPLETED` means the simulation
+   * finished. Funds never move. Distinct from `executeTransactions`.
+   */
+  agentPaymentSimulation: true,
   /**
    * Read-only DeFi / multi-asset quotes via the financial provider catalog. Distinct from
    * `defiExecution`: a quote is not a swap.

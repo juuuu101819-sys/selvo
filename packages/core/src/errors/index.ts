@@ -21,6 +21,7 @@ export const ErrorCode = {
   RATE_LIMITED: 'RATE_LIMITED',
   REPRODUCIBILITY_MISMATCH: 'REPRODUCIBILITY_MISMATCH',
   EXECUTION_NOT_IMPLEMENTED: 'EXECUTION_NOT_IMPLEMENTED',
+  POLICY_DENIED: 'POLICY_DENIED',
   CONFIGURATION_ERROR: 'CONFIGURATION_ERROR',
   PERSISTENCE_ERROR: 'PERSISTENCE_ERROR',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
@@ -265,9 +266,20 @@ export class ReproducibilityMismatchError extends AppError {
 }
 
 /**
- * Deliberate refusal to execute a transaction. The MVP is non-custodial and does not move money;
- * see docs/COMPLIANCE.md.
+ * An AI-agent payment policy rejected the request.
+ *
+ * Distinct from {@link ForbiddenError} (missing scope or role) and {@link ValidationError}
+ * (malformed input). Clients branch on `POLICY_DENIED` to tell the agent which rule fired.
  */
+export class PolicyDeniedError extends AppError {
+  readonly code = ErrorCode.POLICY_DENIED;
+  readonly httpStatus = 403;
+
+  constructor(rule: string, message: string, details: ErrorDetails = {}) {
+    super(message, { rule, ...details });
+  }
+}
+
 export class ExecutionNotImplementedError extends AppError {
   readonly code = ErrorCode.EXECUTION_NOT_IMPLEMENTED;
   readonly httpStatus = 501;

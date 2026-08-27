@@ -32,6 +32,13 @@ import {
   type GraphSearch,
 } from '../graph/index.js';
 import { AssetAmount, CURRENCY_REGISTRY, Money, formatDecimal, type Decimal } from '../money/index.js';
+import type {
+  AgentWalletReference,
+  Merchant,
+  PaymentIntent,
+  PaymentPolicy,
+  PublicAgent,
+} from '../domain/agent-payments.js';
 import type { ExecutionIntent } from '../ports/execution-intent.js';
 import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
 import { isDeFiLiquiditySource } from '../ports/defi-liquidity.js';
@@ -47,6 +54,12 @@ import type {
   DefiRouteDto,
   DefiRoutingDto,
   ExecutionIntentDto,
+  IssuedAgentDto,
+  MerchantDto,
+  PaymentIntentDto,
+  PaymentPolicyDto,
+  PublicAgentDto,
+  AgentWalletReferenceDto,
   FinancialProviderDto,
   FinancialQuoteDto,
   GraphEdgeDto,
@@ -813,4 +826,93 @@ export function serializeCurrencyCatalog(): readonly CurrencyCatalogEntryDto[] {
       name: currency.name,
     }))
     .sort((left, right) => left.code.localeCompare(right.code, 'en'));
+}
+
+export function serializePaymentIntent(intent: PaymentIntent): PaymentIntentDto {
+  return {
+    id: intent.id,
+    organizationId: intent.organizationId,
+    agentId: intent.agentId,
+    sourceAsset: intent.sourceAsset,
+    destinationAsset: intent.destinationAsset,
+    amount: AssetAmount.ofMinorUnits(intent.sourceAsset, intent.amountMinorUnits).toJSON(),
+    recipient: intent.recipient,
+    purpose: intent.purpose,
+    routePreference: intent.routePreference,
+    maxFeeBps: intent.maxFeeBps,
+    expiresAt: intent.expiresAt,
+    status: intent.status,
+    quotedRoutes: intent.quotedRoutes.map((route) => ({ ...route })),
+    quoteExpiresAt: intent.quoteExpiresAt,
+    selectedRouteId: intent.selectedRouteId,
+    authorizedAt: intent.authorizedAt,
+    simulatedAt: intent.simulatedAt,
+    simulation: intent.simulation,
+    failureReason: intent.failureReason,
+    fundsMoved: false,
+    custody: false,
+    realExecution: false,
+    createdAt: intent.createdAt,
+    updatedAt: intent.updatedAt,
+  };
+}
+
+export function serializePublicAgent(agent: PublicAgent): PublicAgentDto {
+  return {
+    id: agent.id,
+    organizationId: agent.organizationId,
+    name: agent.name,
+    status: agent.status,
+    createdAt: agent.createdAt,
+    keyPrefix: agent.keyPrefix,
+    scopes: [...agent.scopes],
+    credentialExpiresAt: agent.credentialExpiresAt,
+    credentialRevokedAt: agent.credentialRevokedAt,
+  };
+}
+
+export function serializeIssuedAgent(agent: PublicAgent, secret: string): IssuedAgentDto {
+  return { ...serializePublicAgent(agent), secret };
+}
+
+export function serializeWalletReference(wallet: AgentWalletReference): AgentWalletReferenceDto {
+  return {
+    id: wallet.id,
+    organizationId: wallet.organizationId,
+    agentId: wallet.agentId,
+    kind: wallet.kind,
+    label: wallet.label,
+    externalRef: wallet.externalRef,
+    controlledByPlatform: false,
+    createdAt: wallet.createdAt,
+  };
+}
+
+export function serializeMerchant(merchant: Merchant): MerchantDto {
+  return {
+    id: merchant.id,
+    organizationId: merchant.organizationId,
+    name: merchant.name,
+    recipientCode: merchant.recipientCode,
+    settlementAsset: merchant.settlementAsset,
+    status: merchant.status,
+    createdAt: merchant.createdAt,
+  };
+}
+
+export function serializePaymentPolicy(policy: PaymentPolicy): PaymentPolicyDto {
+  return {
+    id: policy.id,
+    organizationId: policy.organizationId,
+    agentId: policy.agentId,
+    maxTransactionAmountMinorUnits: policy.maxTransactionAmountMinorUnits,
+    allowedAssets: [...policy.allowedAssets],
+    allowedRecipientCodes: [...policy.allowedRecipientCodes],
+    allowedProviderIds: [...policy.allowedProviderIds],
+    maxFeeBps: policy.maxFeeBps,
+    dailySpendingLimitMinorUnits: policy.dailySpendingLimitMinorUnits,
+    dailySpendingAsset: policy.dailySpendingAsset,
+    createdAt: policy.createdAt,
+    updatedAt: policy.updatedAt,
+  };
 }

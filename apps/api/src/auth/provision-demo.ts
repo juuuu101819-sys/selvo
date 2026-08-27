@@ -1,12 +1,22 @@
 import {
+  DEMO_AGENT_CREDENTIAL_ID,
+  DEMO_AGENT_ID,
+  DEMO_AGENT_NAME,
+  DEMO_AGENT_SECRET,
   DEMO_MEMBERSHIP_ID,
+  DEMO_MERCHANT_CODE,
+  DEMO_MERCHANT_ID,
+  DEMO_MERCHANT_NAME,
   DEMO_ORGANIZATION_ID,
   DEMO_ORGANIZATION_NAME,
   DEMO_ORGANIZATION_SLUG,
+  DEMO_PAYMENT_POLICY_ID,
   DEMO_USER_DISPLAY_NAME,
   DEMO_USER_EMAIL,
   DEMO_USER_ID,
   DEMO_USER_PASSWORD,
+  DEMO_WALLET_REFERENCE_ID,
+  DEFAULT_AGENT_SCOPES,
   OTHER_ORGANIZATION_ID,
   OTHER_ORGANIZATION_NAME,
   OTHER_USER_EMAIL,
@@ -15,13 +25,16 @@ import {
   hashPassword,
   hashSecret,
   randomToken,
+  type AgentPaymentsRepository,
   type DashboardRepository,
   type IdentityStore,
 } from '@meridian/core';
+import { API_KEY_PREFIX_LENGTH } from './identity-authenticator.js';
 
 export interface TenantStores {
   readonly identity: IdentityStore;
   readonly dashboard: DashboardRepository;
+  readonly agentPayments?: AgentPaymentsRepository;
 }
 
 /**
@@ -78,6 +91,10 @@ export async function provisionDemoTenants(
   const existing = await stores.dashboard.listTransactions(DEMO_ORGANIZATION_ID, { limit: 1 });
   if ((options.seedDashboard ?? true) && existing.length === 0) {
     await seedDashboardActivity(stores.dashboard);
+  }
+
+  if (stores.agentPayments !== undefined) {
+    await provisionDemoAgent(stores.agentPayments);
   }
 }
 
@@ -214,6 +231,61 @@ async function seedDashboardActivity(dashboard: DashboardRepository): Promise<vo
 export function issueDemoApiKeySecret(): { readonly prefix: string; readonly secret: string } {
   const secret = randomToken('mk_');
   return { prefix: secret.slice(0, 16), secret };
+}
+
+async function provisionDemoAgent(store: AgentPaymentsRepository): Promise<void> {
+  const existing = await store.findAgent(DEMO_AGENT_ID, DEMO_ORGANIZATION_ID);
+  if (existing !== null) {
+    return;
+  }
+
+  const createdAt = '2026-03-01T09:00:00.000Z';
+  await store.createAgent({
+    id: DEMO_AGENT_ID,
+    organizationId: DEMO_ORGANIZATION_ID,
+    name: DEMO_AGENT_NAME,
+    createdAt,
+  });
+  await store.createCredential({
+    id: DEMO_AGENT_CREDENTIAL_ID,
+    agentId: DEMO_AGENT_ID,
+    organizationId: DEMO_ORGANIZATION_ID,
+    keyPrefix: DEMO_AGENT_SECRET.slice(0, API_KEY_PREFIX_LENGTH),
+    secretHash: hashSecret(DEMO_AGENT_SECRET),
+    scopes: DEFAULT_AGENT_SCOPES,
+    createdAt,
+    expiresAt: null,
+  });
+  await store.createWalletReference({
+    id: DEMO_WALLET_REFERENCE_ID,
+    organizationId: DEMO_ORGANIZATION_ID,
+    agentId: DEMO_AGENT_ID,
+    kind: 'external_account',
+    label: 'Demo treasury operating account',
+    externalRef: 'ext_acct_demo_treasury',
+    createdAt,
+  });
+  await store.createMerchant({
+    id: DEMO_MERCHANT_ID,
+    organizationId: DEMO_ORGANIZATION_ID,
+    name: DEMO_MERCHANT_NAME,
+    recipientCode: DEMO_MERCHANT_CODE,
+    settlementAsset: 'KRW',
+    createdAt,
+  });
+  await store.createPolicy({
+    id: DEMO_PAYMENT_POLICY_ID,
+    organizationId: DEMO_ORGANIZATION_ID,
+    agentId: DEMO_AGENT_ID,
+    maxTransactionAmountMinorUnits: '1000000',
+    allowedAssets: ['USD', 'KRW'],
+    allowedRecipientCodes: [DEMO_MERCHANT_CODE],
+    allowedProviderIds: [],
+    maxFeeBps: '100',
+    dailySpendingLimitMinorUnits: '2000000',
+    dailySpendingAsset: 'USD',
+    createdAt,
+  });
 }
 
 export { hashSecret };

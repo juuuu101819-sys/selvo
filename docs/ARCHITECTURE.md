@@ -29,7 +29,8 @@ made. Nothing below rebuilds the application.
   `liquidity_provider`. Reserved rails `dex_liquidity` and `treasury_product` were already in
   `RAIL_TYPES` and Prisma `ProviderRail`.
 - Org-scoped auth, dashboard, comparison API, and the deliberate `501` on `POST /executions`.
-- Schema non-custody: no balances, no settlement states, no key or wallet tables.
+- Schema non-custody: no balances, no settlement states, no private keys. `AgentWalletReference`
+  is an external handle with `controlledByPlatform = false` enforced by CHECK.
 
 ### Generalize (not replace)
 

@@ -46,6 +46,7 @@ Then open <http://127.0.0.1:43117> to compare fiat routes, <http://127.0.0.1:431
 multi-rail engine (tradfi, stablecoin and DeFi), <http://127.0.0.1:43117/graph> for multi-hop path
 discovery, <http://127.0.0.1:43117/stablecoins> for USDC/USDT routing,
 <http://127.0.0.1:43117/defi> for DEX / AMM / aggregator quotes,
+<http://127.0.0.1:43117/agents> for AI-agent payment intents,
 <http://127.0.0.1:43117/developers> for the versioned routing API explorer, or
 <http://127.0.0.1:43117/login> for the organization dashboard.
 
@@ -56,8 +57,15 @@ email     treasury@demo-trading.example.invalid
 password  MeridianDemo!2026
 ```
 
+Sandbox AI agent (hashed at provision; treat like the demo password — local only):
+
+```
+agent credential  mag_demo_agent01_sandbox_only_not_production
+instruction       Pay 500 USD to merchant X
+```
+
 Dashboard pages (signed in): `/dashboard`, `/dashboard/quotes`, `/dashboard/transactions`,
-`/dashboard/providers`, `/dashboard/settings`. Each query is scoped to that organization; another
+`/dashboard/providers`, `/dashboard/agents`, `/dashboard/settings`. Each query is scoped to that organization; another
 tenant's quotes never appear.
 
 To run just one side:

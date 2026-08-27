@@ -25,7 +25,7 @@ A caller describes an economic transfer — currencies, amount, optional rail or
 Meridian returns ranked, comparable routes with all-in cost against a mid-market benchmark.
 
 The long-term job is to be the **financial routing layer for autonomous economic activity**: humans,
-businesses and (later) AI agents using the same quote-and-delegate contract.
+businesses and AI agents using the same quote-and-delegate contract.
 
 It is **not** a bank, a broker, an exchange, a custodian, a wallet, a DEX, a money transmitter, or a
 principal trading desk.
@@ -118,7 +118,7 @@ never a holder of funds on this platform.
 | ----------- | ------------------------------------------ | ----- |
 | Human       | Session user comparing routes for a firm   | Same  |
 | Business    | Organization via dashboard or API key      | Same  |
-| AI agent    | Not issued. Reserved on `Principal`        | Quote, compare, select, initiate via an authorized provider |
+| AI agent    | Issued (`mag_` credentials). Intent, quote, authorize, sandbox simulate | Real delegated settlement |
 
 Interaction models:
 
@@ -127,11 +127,12 @@ Interaction models:
 | Human → Business      | available |
 | Business → Business   | available |
 | Business → AI Agent   | planned   |
-| AI Agent → Business   | planned   |
+| AI Agent → Business   | available (sandbox intents + simulation) |
 | AI Agent → AI Agent   | planned   |
 
-Today's product is the first two. Agent payment *execution* is not implemented; agents must not be
-able to move money through this platform until delegation exists and is licensed.
+Today's product includes sandbox agent payments. Agent payment *execution* is not implemented; the
+simulator never moves money. Agents must not be able to settle through this platform until
+delegation exists and is licensed.
 
 ---
 
@@ -165,7 +166,8 @@ docs that describe them.
 **Not changed:** the quote engine, `ENGINE_VERSION` (`2.0.0`), Prisma schema, sandbox adapters, the
 comparison UI, dashboard, or any execution path.
 
-**Not started:** DeFi execution, delegated settlement, AI agent payment execution. The financial
+**Not started:** DeFi execution, delegated settlement, real agent payment execution. Sandbox agent
+payment intents and simulation are implemented. The financial
 routing API (`POST /api/v1/quote`, `POST /api/v1/routes/search`, hashed organization API keys) is
 implemented. `transaction:create` records an execution intent; it does not pay. Read-only DeFi
 quotes exist on the financial provider catalog and on the DeFi liquidity routing layer

@@ -133,7 +133,8 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "controlCustomerWallets": false,
   "operateAsPrincipal": false,
   "issueStablecoins": false,
-  "agentPayments": false,
+  "agentPayments": true,
+  "agentPaymentSimulation": true,
   "defiQuotes": true,
   "defiExecution": false,
   "multiRailRouting": true,
@@ -152,6 +153,8 @@ demos that are not in `providers`. `defiQuotes` is true; `defiLiquidityRouting` 
 `defiExecution` is false. `defiRoutingEngineVersion` is **1.0.0**. `financialRoutingApi` and
 `executionIntents` are true: `POST /api/v1/quote` and `POST /api/v1/routes/search` are the
 authenticated routing API; `transaction:create` records an intent, it does not pay.
+`agentPayments` and `agentPaymentSimulation` are true: agents may create payment intents and run
+the sandbox simulator. They still cannot move money. `POST /api/v1/executions` remains 501.
 
 ## `GET /api/v1/providers`
 
@@ -545,6 +548,35 @@ prefixes, never secrets or hashes.
 
 Requires `transaction:create`. Records a route choice with `status: "recorded"`, `executable: false`,
 `submitted: false`. This is not a payment. `POST /api/v1/executions` remains the audited `501`.
+
+## AI agent payments
+
+Agents authenticate with `X-Api-Key: mag_...` (hashed, revocable). Session users with
+`payment:*` scopes can drive the same flow for an `agentId`. Organization `mk_` keys do not receive
+payment scopes by default.
+
+| Method | Path | Scope |
+| ------ | ---- | ----- |
+| POST | `/api/v1/agents` | owner/admin session |
+| GET | `/api/v1/agents` | organization |
+| GET | `/api/v1/agents/me` | agent |
+| POST | `/api/v1/agents/:id/revoke` | owner/admin session |
+| GET | `/api/v1/merchants` | organization or agent |
+| GET | `/api/v1/payment-policies` | organization or agent |
+| POST | `/api/v1/payment-intents` | `payment:create` |
+| GET | `/api/v1/payment-intents` | organization / owning agent |
+| GET | `/api/v1/payment-intents/:id` | organization / owning agent |
+| POST | `/api/v1/payment-intents/:id/quote` | `payment:quote` |
+| POST | `/api/v1/payment-intents/:id/select` | `payment:authorize` |
+| POST | `/api/v1/payment-intents/:id/authorize` | `payment:authorize` |
+| POST | `/api/v1/payment-intents/:id/simulate` | `payment:authorize` |
+
+Create accepts `instruction` (e.g. `"Pay 500 USD to merchant X"`) and/or structured fields, plus
+`Idempotency-Key`. Same key and payload replay the original intent; a different payload is
+`409 IDEMPOTENCY_CONFLICT`. Policy denials are `403 POLICY_DENIED`.
+
+Simulate sets `COMPLETED` with `simulated: true` and `fundsMoved: false`. It does not call a real
+provider. `POST /api/v1/executions` is still 501.
 
 ## `GET /api/v1/dashboard/settings`
 
