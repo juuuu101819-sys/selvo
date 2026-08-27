@@ -179,7 +179,25 @@ One normalised engine evaluates Traditional Finance, stablecoin and DeFi quotes:
 **Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
 AI-determined prices.
 
-## Phase 10 — AI agent payments _(not started, gated)_
+## Phase 10 — Financial route graph ✅ implemented
+
+A directed graph of assets and venues, with a constrained path finder:
+
+- Node kinds: `FIAT`, `STABLECOIN`, `CRYPTO_ASSET`, `BANK`, `FX_PROVIDER`, `PAYMENT_PROVIDER`,
+  `DEX`, `AMM`, `LIQUIDITY_POOL`, `SETTLEMENT_PROVIDER`
+- Edges are possible conversions or transfers (indicative cost, liquidity, availability,
+  compliance). Never executable. No chain is contacted.
+- Multi-hop discovery, e.g. `USD → USDC → USDT → KRW`, under max hops, max expected cost,
+  minimum liquidity, supported assets, provider availability and compliance eligibility
+- Cycle prevention: an asset is never revisited on the same walk
+- `GET /api/v1/route-graph` and `POST /api/v1/route-graph/paths`
+- `graphEngineVersion` **1.0.0**, independent of comparison `2.0.0` and routing `1.0.0`
+- Comparison engine unchanged (four USD→KRW routes). Multi-rail quoting unchanged.
+
+**Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
+AI-determined prices.
+
+## Phase 11 — AI agent payments _(not started, gated)_
 
 Issue `ai_agent` principals that still act *for* an organization. Agents may request quotes and
 compare routes through the same API. Initiation remains delegated execution (Phase 7) and is

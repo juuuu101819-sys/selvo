@@ -9,10 +9,12 @@ import type {
   DashboardSettingsDto,
   DashboardTransactionDto,
   Envelope,
+  GraphSearchDto,
   LoginDto,
   MetaDto,
   MultiRailRoutingDto,
   ReplayResultDto,
+  RouteGraphDto,
 } from './types';
 
 /**
@@ -244,6 +246,41 @@ export function createRoute(
   return request<MultiRailRoutingDto>({
     method: 'POST',
     path: '/api/v1/routes',
+    body: input,
+    actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export function fetchRouteGraph(
+  extras: { readonly authorization?: string | null } = {},
+): Promise<ApiResult<RouteGraphDto>> {
+  return request<RouteGraphDto>({
+    method: 'GET',
+    path: '/api/v1/route-graph',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export interface DiscoverGraphPathsInput {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount?: string;
+  readonly constraints?: {
+    readonly maxHops?: number;
+    readonly maxExpectedCostBps?: string;
+    readonly minLiquidity?: string;
+    readonly supportedAssets?: readonly string[];
+  };
+}
+
+export function discoverGraphPaths(
+  input: DiscoverGraphPathsInput,
+  extras: { readonly actor?: string; readonly authorization?: string | null } = {},
+): Promise<ApiResult<GraphSearchDto>> {
+  return request<GraphSearchDto>({
+    method: 'POST',
+    path: '/api/v1/route-graph/paths',
     body: input,
     actor: extras.actor ?? 'web-app',
     ...(extras.authorization ? { authorization: extras.authorization } : {}),

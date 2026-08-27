@@ -9,7 +9,16 @@ import type {
 } from '../domain/index.js';
 import { RAIL_REGISTRY } from '../domain/index.js';
 import type { MultiRailRouting, ScoredMultiRailRoute } from '../engine/routing-types.js';
-import { AssetAmount, Money, type Decimal } from '../money/index.js';
+import {
+  GRAPH_ENGINE_VERSION,
+  isAssetNode,
+  type FinancialRouteGraph,
+  type GraphEdge,
+  type GraphNode,
+  type GraphPath,
+  type GraphSearch,
+} from '../graph/index.js';
+import { AssetAmount, Money, formatDecimal, type Decimal } from '../money/index.js';
 import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
 import type {
   AppliedFeeDto,
@@ -17,12 +26,17 @@ import type {
   ComparisonInsightsDto,
   CostBreakdownDto,
   FinancialProviderDto,
+  GraphEdgeDto,
+  GraphNodeDto,
+  GraphPathDto,
+  GraphSearchDto,
   MultiRailRouteDto,
   MultiRailRoutingDto,
   NormalizedQuoteDto,
   ProviderFailureDto,
   ReplayResultDto,
   RouteDto,
+  RouteGraphDto,
 } from './dto.js';
 
 const BPS_DECIMAL_PLACES = 4;
@@ -307,6 +321,105 @@ export function serializeMultiRailRoute(route: ScoredMultiRailRoute): MultiRailR
       settlementConfidence: route.scoreComponents.settlementConfidence.toFixed(),
     },
     routeExplanation: route.routeExplanation,
+    executable: false,
+  };
+}
+
+export function serializeRouteGraph(graph: FinancialRouteGraph): RouteGraphDto {
+  return {
+    graphEngineVersion: GRAPH_ENGINE_VERSION,
+    nodeCount: graph.nodes.length,
+    edgeCount: graph.edges.length,
+    nodes: graph.nodes.map(serializeGraphNode),
+    edges: graph.edges.map(serializeGraphEdge),
+    executable: false,
+  };
+}
+
+export function serializeGraphSearch(search: GraphSearch): GraphSearchDto {
+  const paths = search.discovery.paths.map((path, index) =>
+    serializeGraphPath(path, index, search.discovery.recommendedPath?.pathId ?? null),
+  );
+  const recommended = search.discovery.recommendedPath;
+  return {
+    searchId: search.searchId,
+    organizationId: search.organizationId,
+    createdAt: search.createdAt,
+    mode: search.mode,
+    graphEngineVersion: search.discovery.graphEngineVersion,
+    aiUsed: false,
+    executable: false,
+    request: {
+      sourceAsset: search.discovery.sourceAsset,
+      destinationAsset: search.discovery.destinationAsset,
+    },
+    constraints: { ...search.discovery.constraints },
+    paths,
+    recommendedPath:
+      recommended === null ? null : serializeGraphPath(recommended, 0, recommended.pathId),
+    rejections: search.discovery.rejections.map((rejection) => ({ ...rejection })),
+    explanation: search.discovery.explanation,
+  };
+}
+
+function serializeGraphPath(
+  path: GraphPath,
+  rankIndex: number,
+  recommendedId: string | null,
+): GraphPathDto {
+  return {
+    pathId: path.pathId,
+    hops: path.hops,
+    rank: rankIndex + 1,
+    recommended: path.pathId === recommendedId,
+    nodes: path.nodes.map(serializeGraphNode),
+    edges: path.edges.map(serializeGraphEdge),
+    assets: [...path.assets],
+    providers: [...path.providers],
+    totalCostBps: formatDecimal(path.totalCostBps),
+    minLiquidityMinorUnits:
+      path.minLiquidityMinorUnits === null ? null : path.minLiquidityMinorUnits.toString(),
+    minLiquidityAsset: path.minLiquidityAsset,
+    explanation: path.explanation,
+    executable: false,
+  };
+}
+
+function serializeGraphNode(node: GraphNode): GraphNodeDto {
+  if (isAssetNode(node)) {
+    return {
+      id: node.id,
+      kind: node.kind,
+      label: node.label,
+      asset: node.asset,
+      providerId: null,
+      available: null,
+    };
+  }
+  return {
+    id: node.id,
+    kind: node.kind,
+    label: node.label,
+    asset: null,
+    providerId: node.providerId,
+    available: node.available,
+  };
+}
+
+function serializeGraphEdge(edge: GraphEdge): GraphEdgeDto {
+  return {
+    id: edge.id,
+    fromNodeId: edge.fromNodeId,
+    toNodeId: edge.toNodeId,
+    viaNodeId: edge.viaNodeId,
+    providerId: edge.providerId,
+    conversionKind: edge.conversionKind,
+    available: edge.available,
+    costBps: formatDecimal(edge.costBps),
+    liquidityMinorUnits:
+      edge.liquidityMinorUnits === null ? null : edge.liquidityMinorUnits.toString(),
+    liquidityAsset: edge.liquidityAsset,
+    complianceEligible: edge.complianceEligible,
     executable: false,
   };
 }

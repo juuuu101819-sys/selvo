@@ -73,6 +73,9 @@ export async function SiteHeader({
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/rails" />}>
             Multi-rail
           </Button>
+          <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/graph" />}>
+            Graph
+          </Button>
         </div>
       </div>
     </header>

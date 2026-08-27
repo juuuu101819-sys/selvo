@@ -80,6 +80,7 @@ describe('GET /v1/meta', () => {
       defiQuotes: true,
       defiExecution: false,
       multiRailRouting: true,
+      routeGraph: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,

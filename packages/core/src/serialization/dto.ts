@@ -305,6 +305,86 @@ export interface MultiRailRouteDto {
   readonly executable: false;
 }
 
+export interface GraphNodeDto {
+  readonly id: string;
+  readonly kind: string;
+  readonly label: string;
+  readonly asset: string | null;
+  readonly providerId: string | null;
+  readonly available: boolean | null;
+}
+
+export interface GraphEdgeDto {
+  readonly id: string;
+  readonly fromNodeId: string;
+  readonly toNodeId: string;
+  readonly viaNodeId: string;
+  readonly providerId: string;
+  readonly conversionKind: string;
+  readonly available: boolean;
+  readonly costBps: string;
+  readonly liquidityMinorUnits: string | null;
+  readonly liquidityAsset: string | null;
+  readonly complianceEligible: boolean;
+  readonly executable: false;
+}
+
+export interface RouteGraphDto {
+  readonly graphEngineVersion: string;
+  readonly nodeCount: number;
+  readonly edgeCount: number;
+  readonly nodes: readonly GraphNodeDto[];
+  readonly edges: readonly GraphEdgeDto[];
+  readonly executable: false;
+}
+
+export interface GraphPathDto {
+  readonly pathId: string;
+  readonly hops: number;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly nodes: readonly GraphNodeDto[];
+  readonly edges: readonly GraphEdgeDto[];
+  readonly assets: readonly string[];
+  readonly providers: readonly string[];
+  readonly totalCostBps: string;
+  readonly minLiquidityMinorUnits: string | null;
+  readonly minLiquidityAsset: string | null;
+  readonly explanation: string;
+  readonly executable: false;
+}
+
+export interface GraphRejectionDto {
+  readonly reason: string;
+  readonly edgeId: string;
+  readonly detail: string;
+}
+
+export interface GraphSearchDto {
+  readonly searchId: string;
+  readonly organizationId: string | null;
+  readonly createdAt: string;
+  readonly mode: PlatformMode;
+  readonly graphEngineVersion: string;
+  readonly aiUsed: false;
+  readonly executable: false;
+  readonly request: {
+    readonly sourceAsset: string;
+    readonly destinationAsset: string;
+  };
+  readonly constraints: {
+    readonly maxHops: number;
+    readonly maxExpectedCostBps: string | null;
+    readonly minLiquidityMinorUnits: string | null;
+    readonly liquidityAsset: string | null;
+    readonly supportedAssets: readonly string[] | null;
+  };
+  readonly paths: readonly GraphPathDto[];
+  readonly recommendedPath: GraphPathDto | null;
+  readonly rejections: readonly GraphRejectionDto[];
+  readonly explanation: string;
+}
+
 export interface MultiRailRoutingDto {
   readonly routingId: string;
   readonly organizationId: string | null;

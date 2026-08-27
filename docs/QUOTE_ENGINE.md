@@ -371,6 +371,10 @@ No rail family is assumed cheaper. Ranking is score, then cost, then p50, then r
 
 Route D (fiat → stablecoin → DEX → fiat) is listed under `plannedRoutes` and is not composed.
 
+The **financial route graph** (`packages/core/src/graph`, `graphEngineVersion` 1.0.0) is a separate
+discovery engine. It walks indicative conversion edges; it does not replace this scoring mathematics
+and it does not submit a conversion.
+
 | Concern                 | File                                               |
 | ----------------------- | -------------------------------------------------- |
 | Asset amounts           | `packages/core/src/money/asset-amount.ts`          |
@@ -378,4 +382,5 @@ Route D (fiat → stablecoin → DEX → fiat) is listed under `plannedRoutes` a
 | Routing score           | `packages/core/src/engine/routing-scorer.ts`       |
 | Explanation             | `packages/core/src/engine/routing-explanation.ts`  |
 | Orchestration           | `packages/core/src/engine/routing-engine.ts`       |
+| Route graph             | `packages/core/src/graph/`                         |
 | HTTP                    | `apps/api/src/routes/routing.ts`                   |

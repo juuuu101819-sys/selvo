@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createComparison, createRoute, login, logout, replayComparison } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, MultiRailRoutingDto, ReplayResultDto } from '@/lib/api/types';
+import { createComparison, createRoute, discoverGraphPaths, login, logout, replayComparison } from '@/lib/api/client';
+import type { ApiResult, ComparisonDto, GraphSearchDto, MultiRailRoutingDto, ReplayResultDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -53,6 +53,30 @@ export async function evaluateRoutes(input: {
       sourceAsset: input.sourceAsset,
       destinationAsset: input.destinationAsset,
       amount: input.amount,
+    },
+    { actor: 'web-app', authorization },
+  );
+}
+
+export async function discoverGraphRoutes(input: {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly maxHops: number;
+  readonly maxExpectedCostBps: string;
+  readonly minLiquidity: string;
+}): Promise<ApiResult<GraphSearchDto>> {
+  const authorization = await readSessionToken();
+  return discoverGraphPaths(
+    {
+      sourceAsset: input.sourceAsset,
+      destinationAsset: input.destinationAsset,
+      constraints: {
+        maxHops: input.maxHops,
+        ...(input.maxExpectedCostBps.trim() === ''
+          ? {}
+          : { maxExpectedCostBps: input.maxExpectedCostBps.trim() }),
+        ...(input.minLiquidity.trim() === '' ? {} : { minLiquidity: input.minLiquidity.trim() }),
+      },
     },
     { actor: 'web-app', authorization },
   );

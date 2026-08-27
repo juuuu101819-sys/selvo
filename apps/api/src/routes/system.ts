@@ -81,6 +81,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       mode: container.config.mode,
       engineVersion: container.engineVersion,
       routingEngineVersion: container.routingEngineVersion,
+      graphEngineVersion: container.graphEngineVersion,
       product: {
         kind: PRODUCT.kind,
         name: PRODUCT.name,

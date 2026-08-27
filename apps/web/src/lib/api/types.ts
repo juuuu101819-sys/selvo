@@ -180,6 +180,7 @@ export interface MetaDto {
   readonly mode: string;
   readonly engineVersion: string;
   readonly routingEngineVersion?: string;
+  readonly graphEngineVersion?: string;
   readonly product: {
     readonly kind: string;
     readonly name: string;
@@ -205,6 +206,7 @@ export interface MetaDto {
     readonly defiQuotes: boolean;
     readonly defiExecution: boolean;
     readonly multiRailRouting: boolean;
+    readonly routeGraph: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -503,4 +505,75 @@ export interface MultiRailRoutingDto {
     readonly reliability: string;
     readonly settlementConfidence: string;
   };
+}
+
+export interface GraphNodeDto {
+  readonly id: string;
+  readonly kind: string;
+  readonly label: string;
+  readonly asset: string | null;
+  readonly providerId: string | null;
+  readonly available: boolean | null;
+}
+
+export interface GraphEdgeDto {
+  readonly id: string;
+  readonly fromNodeId: string;
+  readonly toNodeId: string;
+  readonly viaNodeId: string;
+  readonly providerId: string;
+  readonly conversionKind: string;
+  readonly available: boolean;
+  readonly costBps: string;
+  readonly liquidityMinorUnits: string | null;
+  readonly liquidityAsset: string | null;
+  readonly complianceEligible: boolean;
+  readonly executable: false;
+}
+
+export interface RouteGraphDto {
+  readonly graphEngineVersion: string;
+  readonly nodeCount: number;
+  readonly edgeCount: number;
+  readonly nodes: readonly GraphNodeDto[];
+  readonly edges: readonly GraphEdgeDto[];
+  readonly executable: false;
+}
+
+export interface GraphPathDto {
+  readonly pathId: string;
+  readonly hops: number;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly nodes: readonly GraphNodeDto[];
+  readonly edges: readonly GraphEdgeDto[];
+  readonly assets: readonly string[];
+  readonly providers: readonly string[];
+  readonly totalCostBps: string;
+  readonly minLiquidityMinorUnits: string | null;
+  readonly minLiquidityAsset: string | null;
+  readonly explanation: string;
+  readonly executable: false;
+}
+
+export interface GraphSearchDto {
+  readonly searchId: string;
+  readonly graphEngineVersion: string;
+  readonly aiUsed: false;
+  readonly executable: false;
+  readonly request: {
+    readonly sourceAsset: string;
+    readonly destinationAsset: string;
+  };
+  readonly constraints: {
+    readonly maxHops: number;
+    readonly maxExpectedCostBps: string | null;
+    readonly minLiquidityMinorUnits: string | null;
+    readonly liquidityAsset: string | null;
+    readonly supportedAssets: readonly string[] | null;
+  };
+  readonly paths: readonly GraphPathDto[];
+  readonly recommendedPath: GraphPathDto | null;
+  readonly rejections: readonly { readonly reason: string; readonly detail: string }[];
+  readonly explanation: string;
 }

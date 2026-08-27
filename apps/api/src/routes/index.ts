@@ -6,6 +6,7 @@ import { registerComparisonRoutes } from './comparisons.js';
 import { registerDashboardRoutes } from './dashboard.js';
 import { registerExecutionRoutes } from './executions.js';
 import { registerProviderCatalogRoutes } from './providers.js';
+import { registerRouteGraphRoutes } from './route-graph.js';
 import { registerRoutingRoutes } from './routing.js';
 import {
   registerMetaRoutes,
@@ -40,6 +41,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerAuthRoutes(instance, container);
     registerComparisonRoutes(instance, container);
     registerRoutingRoutes(instance, container);
+    registerRouteGraphRoutes(instance, container);
     registerProviderCatalogRoutes(instance, container);
     registerDashboardRoutes(instance, container);
     registerExecutionRoutes(instance, container);

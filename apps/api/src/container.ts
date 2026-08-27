@@ -2,6 +2,7 @@ import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet }
 import {
   ENGINE_VERSION,
   FinancialProviderRegistry,
+  GRAPH_ENGINE_VERSION,
   MultiRailCostEngine,
   MultiRailRouter,
   ProviderRegistry,
@@ -9,6 +10,8 @@ import {
   RepositoryAuditLogger,
   RouteComparisonService,
   RouteCostEngine,
+  RouteGraphService,
+  buildDemoFinancialGraph,
   defaultRoutingWeights,
   noPlatformPricingResolver,
   parseRoutingWeights,
@@ -36,6 +39,7 @@ export interface AppContainer {
   readonly financialProviders: FinancialProviderRegistry;
   readonly comparisons: RouteComparisonService;
   readonly routing: MultiRailRouter;
+  readonly routeGraph: RouteGraphService;
   readonly auditLogger: AuditLogger;
   readonly authenticator: Authenticator;
   readonly disclaimer: string;
@@ -48,6 +52,7 @@ export interface AppContainer {
   readonly providers: readonly ProviderDescriptor[];
   readonly engineVersion: string;
   readonly routingEngineVersion: string;
+  readonly graphEngineVersion: string;
   /** Where negotiated commercial terms come from, or `"none"` when none are configured. */
   readonly pricingResolverKind: string;
   close(): Promise<void>;
@@ -136,12 +141,22 @@ export function createContainer(options: ContainerOptions): AppContainer {
     pricingResolver,
   });
 
+  const routeGraph = new RouteGraphService({
+    mode: config.mode,
+    graph: buildDemoFinancialGraph(),
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+    logger,
+  });
+
   const authenticator: Authenticator = new IdentityAuthenticator(persistence.identity, clock);
 
   logger.info('Meridian container initialised', {
     mode: config.mode,
     engineVersion: ENGINE_VERSION,
     routingEngineVersion: ROUTING_ENGINE_VERSION,
+    graphEngineVersion: GRAPH_ENGINE_VERSION,
     persistenceDriver: persistence.kind,
     providerCount: registry.all().length,
     financialProviderCount: financialProviders.all().length,
@@ -157,6 +172,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     financialProviders,
     comparisons,
     routing,
+    routeGraph,
     auditLogger,
     authenticator,
     disclaimer: disclaimerFor(config.mode),
@@ -172,6 +188,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     providers: registry.descriptors(),
     engineVersion: ENGINE_VERSION,
     routingEngineVersion: ROUTING_ENGINE_VERSION,
+    graphEngineVersion: GRAPH_ENGINE_VERSION,
     pricingResolverKind: pricingResolver === noPlatformPricingResolver ? 'none' : persistence.kind,
     close: () => persistence.close(),
   };

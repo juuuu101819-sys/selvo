@@ -43,8 +43,8 @@ npm run dev              # API on :47311, web app on :43117
 ```
 
 Then open <http://127.0.0.1:43117> to compare fiat routes, <http://127.0.0.1:43117/rails> for the
-multi-rail engine (tradfi, stablecoin and DeFi), or <http://127.0.0.1:43117/login> for the
-organization dashboard.
+multi-rail engine (tradfi, stablecoin and DeFi), <http://127.0.0.1:43117/graph> for multi-hop path
+discovery, or <http://127.0.0.1:43117/login> for the organization dashboard.
 
 Local sandbox login (in-memory driver provisions this on API start; Postgres gets it from `npm run db:seed`):
 
@@ -74,10 +74,10 @@ curl -s -X POST http://127.0.0.1:47311/api/v1/comparisons \
   -H 'content-type: application/json' \
   -d '{"sourceCurrency":"USD","targetCurrency":"KRW","amount":"100000.00"}' | jq '.data.routes[] | {rank, provider: .provider.name, cost: .totalCostPercent}'
 
-curl -s -X POST http://127.0.0.1:47311/api/v1/routes \
+curl -s -X POST http://127.0.0.1:47311/api/v1/route-graph/paths \
   -H 'content-type: application/json' \
-  -d '{"sourceAsset":"USD","destinationAsset":"KRW","amount":"100000.00"}' \
-  | jq '.data | {recommended: .recommendedRoute.provider.name, score: .routeScore, explanation: .routeExplanation}'
+  -d '{"sourceAsset":"USD","destinationAsset":"KRW","constraints":{"maxHops":3}}' \
+  | jq '.data.paths[] | {hops, assets, cost: .totalCostBps}'
 ```
 
 ## Verifying a change
@@ -105,7 +105,7 @@ apps/
                   comparison; quote expiry is a live countdown with a refresh once a price lapses;
                   and the only forward action is "Continue with partner" — nothing implies execution.
 packages/
-  core/           Pure domain: money, cost engine, scorer, ports, errors. No I/O.
+  core/           Pure domain: money, cost engine, scorer, route graph, ports, errors. No I/O.
   adapters/       RouteProvider implementations. Sandbox rails today, partners later.
   persistence/    Repository implementations: in-memory and PostgreSQL via Prisma.
 prisma/
@@ -121,7 +121,7 @@ docs/
   PROVIDERS.md    Market data and provider interfaces, resilience, quote freshness.
   DATABASE.md     The data model, its invariants, and how to work with it locally.
   STACK.md        The chosen stack, the directory mapping, and the decisions behind them.
-  ROADMAP.md      Phase plan. Phases 1–4b, the dashboard (Phase 2b), and architectural alignment.
+  ROADMAP.md      Phase plan. Phases 1–4b, dashboard (2b), catalog (8), routing (9), graph (10).
   COMPLIANCE.md   The boundaries, and how the code enforces them.
   API.md          Endpoint reference.
 ```
@@ -200,8 +200,8 @@ a settlement impossible.
 
 ## Status
 
-The route comparison MVP, the data model, and the authenticated organization dashboard are in place
-(through roadmap Phase 4b and Phase 2b). Later phases — live licensed-partner adapters, corridor
-analytics, and any execution work — are described in [docs/ROADMAP.md](./docs/ROADMAP.md) and wait
-for an explicit request. Execution in particular is gated on the checklist in
-[docs/COMPLIANCE.md](./docs/COMPLIANCE.md).
+The route comparison MVP, the data model, the organization dashboard, the financial provider
+catalog, the multi-rail routing engine and the financial route graph are in place (through roadmap
+Phase 10). Later phases — live licensed-partner adapters, corridor analytics, and any execution
+work — are described in [docs/ROADMAP.md](./docs/ROADMAP.md) and wait for an explicit request.
+Execution in particular is gated on the checklist in [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).

@@ -126,7 +126,9 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "issueStablecoins": false,
   "agentPayments": false,
   "defiQuotes": true,
-  "defiExecution": false
+  "defiExecution": false,
+  "multiRailRouting": true,
+  "routeGraph": true
 }
 ```
 
@@ -201,6 +203,46 @@ Returns `201` with:
 
 USD 100,000 → KRW still returns **four** routes on `POST /comparisons`. The routing engine may
 return those same wrapped rails plus catalog-only venues when the corridor is on-chain or a ramp.
+
+## `GET /api/v1/route-graph`
+
+Demo financial-route graph. Nodes are assets (`FIAT`, `STABLECOIN`, `CRYPTO_ASSET`) and venues
+(`BANK`, `FX_PROVIDER`, `PAYMENT_PROVIDER`, `DEX`, `AMM`, `LIQUIDITY_POOL`, `SETTLEMENT_PROVIDER`).
+Edges are directed conversions with indicative `costBps` and liquidity. `executable` is always
+`false`. `graphEngineVersion` is **1.0.0**.
+
+## `POST /api/v1/route-graph/paths`
+
+Constrained multi-hop path discovery on that graph. Distinct from `POST /routes` (live quotes) and
+`POST /comparisons` (fiat scoring). No model is used. No chain is contacted.
+
+```jsonc
+{
+  "sourceAsset": "USD",
+  "destinationAsset": "KRW", // `targetAsset` accepted as a synonym
+  "constraints": {
+    "maxHops": 3,                 // 1–8; default 4
+    "maxExpectedCostBps": "80",   // optional cumulative ceiling
+    "minLiquidity": "1000.00",    // optional, major units of the source asset
+    "supportedAssets": ["USD", "USDC", "USDT", "KRW"]
+  }
+}
+```
+
+`organizationId` is taken from the principal. The schema is strict: `execute`, keys and beneficiary
+fields are rejected.
+
+Returns `201` with ranked `paths[]` (fewest hops, then lowest indicative cost), `recommendedPath`,
+constraint rejections (`UNAVAILABLE_EDGE`, `HIGH_COST`, `INSUFFICIENT_LIQUIDITY`, `CYCLE`, …),
+`aiUsed: false`, `executable: false`.
+
+Examples the demo graph can discover:
+
+- one hop: `USD → Veridian Payments → KRW`
+- two hop: `USD → Helios Ramp → USDC → Helios Ramp → KRW`
+- three hop: `USD → USDC → USDT → KRW`
+
+An asset is never revisited on the same walk.
 
 ## `POST /api/v1/comparisons`
 

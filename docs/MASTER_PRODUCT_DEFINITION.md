@@ -162,4 +162,6 @@ comparison UI, dashboard, or any execution path.
 
 **Not started:** DeFi execution, delegated settlement, AI agent payment execution. Read-only DeFi
 quotes exist on the financial provider catalog. Multi-rail routing (`POST /api/v1/routes`) ranks
-those quotes deterministically; it does not execute them.
+those quotes deterministically; it does not execute them. The financial route graph
+(`GET /api/v1/route-graph`, `POST /api/v1/route-graph/paths`) discovers multi-hop conversions
+without pricing them or submitting them.

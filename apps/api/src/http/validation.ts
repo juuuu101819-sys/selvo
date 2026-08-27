@@ -284,3 +284,81 @@ export function resolveRouteRequest(body: CreateRouteBody): {
     amountMinorUnits: toAssetMinorUnits(sourceAsset, body.amount),
   };
 }
+
+const graphCostBps = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal string');
+
+/**
+ * Body of `POST /v1/route-graph/paths`.
+ *
+ * `organizationId` is taken from the principal. `execute`, keys and beneficiary fields are
+ * rejected by `.strict()`.
+ */
+export const createGraphPathSchema = z
+  .object({
+    sourceAsset: z.string().trim().min(2).max(16),
+    destinationAsset: z.string().trim().min(2).max(16).optional(),
+    targetAsset: z.string().trim().min(2).max(16).optional(),
+    amount: assetAmount.optional(),
+    constraints: z
+      .object({
+        maxHops: z.number().int().min(1).max(8).optional(),
+        maxExpectedCostBps: graphCostBps.optional(),
+        minLiquidity: assetAmount.optional(),
+        supportedAssets: z.array(z.string().trim().min(2).max(16)).min(1).max(32).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine((body) => (body.destinationAsset ?? body.targetAsset) !== undefined, {
+    message: 'either destinationAsset or targetAsset is required',
+    path: ['destinationAsset'],
+  })
+  .refine(
+    (body) =>
+      body.destinationAsset === undefined ||
+      body.targetAsset === undefined ||
+      body.destinationAsset === body.targetAsset,
+    {
+      message: 'destinationAsset and targetAsset must agree when both are supplied',
+      path: ['targetAsset'],
+    },
+  )
+  .refine((body) => body.sourceAsset !== (body.destinationAsset ?? body.targetAsset), {
+    message: 'sourceAsset and destinationAsset must differ',
+    path: ['destinationAsset'],
+  });
+
+export type CreateGraphPathBody = z.infer<typeof createGraphPathSchema>;
+
+export function resolveGraphPathRequest(body: CreateGraphPathBody): {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amountMinorUnits: string | null;
+  readonly maxHops: number | undefined;
+  readonly maxExpectedCostBps: string | null;
+  readonly minLiquidityMinorUnits: string | null;
+  readonly supportedAssets: readonly string[] | null;
+} {
+  const destination = body.destinationAsset ?? body.targetAsset;
+  if (destination === undefined) {
+    throw new ValidationError('A destination asset is required.', {});
+  }
+  const sourceAsset = assertAssetCode(body.sourceAsset);
+  const destinationAsset = assertAssetCode(destination);
+  const amountMinorUnits =
+    body.amount === undefined ? null : toAssetMinorUnits(sourceAsset, body.amount);
+  const minLiquidityMinorUnits =
+    body.constraints?.minLiquidity === undefined
+      ? null
+      : toAssetMinorUnits(sourceAsset, body.constraints.minLiquidity);
+  return {
+    sourceAsset,
+    destinationAsset,
+    amountMinorUnits,
+    maxHops: body.constraints?.maxHops,
+    maxExpectedCostBps: body.constraints?.maxExpectedCostBps ?? null,
+    minLiquidityMinorUnits,
+    supportedAssets: body.constraints?.supportedAssets ?? null,
+  };
+}

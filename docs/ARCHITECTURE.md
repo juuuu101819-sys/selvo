@@ -71,6 +71,8 @@ made. Nothing below rebuilds the application.
   that names only planned rails (for example DeFi-only) is **400**, not a silent empty quote.
 - `POST /api/v1/routes` ranks tradfi, stablecoin and DeFi quotes with a separate engine
   (`routingEngineVersion` 1.0.0). Comparison scoring is unchanged.
+- `GET /api/v1/route-graph` and `POST /api/v1/route-graph/paths` walk a demo asset/venue graph
+  (`graphEngineVersion` 1.0.0). Paths are not quotes and are never executable.
 - Planned rails never expand into a comparison quote. Direct catalog quotes (ramps, AMM, aggregator)
   appear on `/routes` and `/provider-quotes`.
 
@@ -94,8 +96,8 @@ apps/
   api/            HTTP boundary. Fastify + Zod. Owns validation, error mapping, wiring.
   web/            Next.js UI. Renders comparisons. Holds no financial logic.
 packages/
-  core/           Pure domain. Money, rates, cost engine, scorer, ports, errors.
-                  Zero I/O. Zero framework imports. Zero provider knowledge.
+  core/           Pure domain. Money, rates, cost engine, scorer, route graph, ports, errors.
+                  Zero I/O. Zero framework imports. Zero live-provider adapters.
   adapters/       Concrete RouteProvider implementations (sandbox rails today,
                   licensed partners later). Depends on core, never on api/web.
   persistence/    Repository implementations for the core persistence ports.

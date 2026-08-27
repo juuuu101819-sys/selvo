@@ -33,6 +33,11 @@ export const PLATFORM_CAPABILITIES = {
    * scorer. Distinct from `compareRoutes`, which remains the fiat comparison engine.
    */
   multiRailRouting: true,
+  /**
+   * Graph of assets and venues with constrained multi-hop path discovery. Distinct from live
+   * quoting: edges carry indicative cost/liquidity metadata and are never executable.
+   */
+  routeGraph: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;
