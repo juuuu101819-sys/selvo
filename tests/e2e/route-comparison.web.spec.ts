@@ -129,6 +129,8 @@ test('explains an amount that no provider will price', async ({ page }) => {
 
   // Scoped to main: Next.js keeps a live route announcer with role="alert" outside it.
   const alert = page.getByRole('main').getByRole('alert');
+  await expect(alert).toContainText('No provider will price this');
+  await expect(alert).not.toContainText('No route for this corridor');
   await expect(alert).toContainText('1.00 USD');
   await expect(alert).toContainText(/outside every provider/i);
 });

@@ -1,7 +1,7 @@
 # Meridian — Phase Roadmap
 
-Phases are implemented **one at a time, on explicit instruction only**. Nothing below Phase 1
-has been built.
+Phases are implemented **one at a time, on explicit instruction only**. Phases 1–4b are in
+place. Later phases wait for an explicit request.
 
 ---
 

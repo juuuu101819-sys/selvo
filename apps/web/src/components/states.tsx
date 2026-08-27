@@ -2,6 +2,7 @@ import { AlertCircle, Route, ServerCrash } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ApiFailure } from '@/lib/api/types';
+import { comparisonErrorTitle } from '@/lib/error-title';
 
 /** Shown before the first comparison: explains the product rather than showing a blank panel. */
 export function EmptyState() {
@@ -46,7 +47,7 @@ export function ErrorState({ failure }: { failure: ApiFailure }) {
   return (
     <Alert variant="destructive">
       {unreachable ? <ServerCrash aria-hidden /> : <AlertCircle aria-hidden />}
-      <AlertTitle>{unreachable ? 'Routing API unavailable' : titleFor(failure.code)}</AlertTitle>
+      <AlertTitle>{comparisonErrorTitle(failure)}</AlertTitle>
       <AlertDescription>
         <p>{failure.message}</p>
         {issues.length > 0 && (
@@ -65,19 +66,6 @@ export function ErrorState({ failure }: { failure: ApiFailure }) {
       </AlertDescription>
     </Alert>
   );
-}
-
-function titleFor(code: string): string {
-  switch (code) {
-    case 'VALIDATION_ERROR':
-      return 'Check the request';
-    case 'UNSUPPORTED_CORRIDOR':
-      return 'No route for this corridor';
-    case 'NO_ROUTES_AVAILABLE':
-      return 'No provider could quote';
-    default:
-      return 'Comparison failed';
-  }
 }
 
 function extractIssues(

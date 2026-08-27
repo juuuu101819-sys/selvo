@@ -173,8 +173,8 @@ a settlement impossible.
 
 ## Status
 
-The route comparison MVP and the data model are in place. Later phases — reading provider capability
-from the database, persisting quotes through it, live licensed-partner adapters, corridor analytics,
-and any execution work — are described in [docs/ROADMAP.md](./docs/ROADMAP.md) and are **not**
-started. Execution in particular is gated on the checklist in
+The route comparison MVP and the data model are in place, through the productised results page
+(Phase 4b). Later phases — authentication, live licensed-partner adapters, corridor analytics,
+and any execution work — are described in [docs/ROADMAP.md](./docs/ROADMAP.md) and wait for an
+explicit request. Execution in particular is gated on the checklist in
 [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).

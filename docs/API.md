@@ -37,7 +37,7 @@ execute transactions; see [COMPLIANCE.md](./COMPLIANCE.md).
 | ------------------------------------- | --------- | ----------------------------------------------------------------------------------- |
 | `VALIDATION_ERROR`                    | 400       | Request failed schema or amount validation.                                         |
 | `UNSUPPORTED_CURRENCY`                | 400       | Currency is outside the supported set.                                              |
-| `UNSUPPORTED_CORRIDOR`                | 422       | No registered provider prices this corridor.                                        |
+| `UNSUPPORTED_CORRIDOR`                | 422       | No registered provider will price this request — the corridor, the amount, or a rail filter. |
 | `NO_ROUTES_AVAILABLE`                 | 422       | Providers were eligible but none returned a usable quote.                           |
 | `NOT_FOUND`                           | 404       | Unknown comparison, or unknown route.                                               |
 | `IDEMPOTENCY_CONFLICT`                | 409       | Idempotency key reused with a different payload.                                    |
