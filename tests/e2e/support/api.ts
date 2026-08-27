@@ -379,9 +379,3 @@ export function defined<T>(value: T | undefined | null, message: string): T {
   }
   return value;
 }
-
-export async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}

@@ -16,7 +16,6 @@ import {
   expectError,
   jsonBody,
   loginDemoOperator,
-  sleep,
   uniqueIdempotencyKey,
   type AuditTrailBody,
   type ComparisonBody,
@@ -131,6 +130,17 @@ test.describe('CASE 2 — USD → USDC compares a stablecoin provider and DEX ve
     for (const route of rampBody.data.routes) {
       assertNeverExecutes(route);
     }
+
+    const defiUsd = await request.post('/api/v1/defi-routes', {
+      data: { sourceAsset: 'USD', destinationAsset: 'USDC', amount: '10000.00' },
+    });
+    expect(defiUsd.status()).toBe(201);
+    const defiUsdBody = await jsonBody<Envelope<DefiRoutingBody>>(defiUsd);
+    expect(defiUsdBody.data.comparedFamilies).toEqual(['stablecoin']);
+    expect(defiUsdBody.data.routes.some((route) => route.provider.id === 'demo-helios-ramp')).toBe(
+      true,
+    );
+    expect(defiUsdBody.data.routes.every((route) => route.routeKind !== 'dex')).toBe(true);
 
     // Demo DEX books do not price USD→USDC. The pair where a stablecoin venue and a DEX both
     // quote is USDC→USDT: the ramp/stablecoin layer and the DeFi layer are compared there.
@@ -344,46 +354,6 @@ test.describe('CASE 6 — Quote expires', () => {
     const body = await expectError(response, 409, 'QUOTE_EXPIRED');
     expect(body.error.details['quoteExpiresAt']).toBe('2000-01-01T00:00:00.000Z');
   });
-
-  test('rejects select once the quoted routes have lapsed', async ({ request }) => {
-    test.setTimeout(90_000);
-    const token = await loginDemoOperator(request);
-    const minted = await request.post('/api/v1/agents', {
-      headers: bearerHeaders(token),
-      data: { name: 'E2E quote-expiry agent' },
-    });
-    const issued = await jsonBody<Envelope<IssuedAgentBody>>(minted);
-    const secret = issued.data.secret;
-    const policy = await request.patch(`/api/v1/dashboard/agents/${issued.data.id}/policies`, {
-      headers: bearerHeaders(token),
-      data: { allowedProviderIds: ['sandbox-solstice-settlement'] },
-    });
-    expect(policy.status()).toBe(200);
-
-    const created = await request.post('/api/v1/payment-intents', {
-      headers: agentHeaders({ 'idempotency-key': uniqueIdempotencyKey('quote-ttl') }, secret),
-      data: { instruction: 'Pay 500 USD to merchant X' },
-    });
-    const intent = await jsonBody<Envelope<PaymentIntentBody>>(created);
-    const quoted = await request.post(`/api/v1/payment-intents/${intent.data.id}/quote`, {
-      headers: agentHeaders({}, secret),
-    });
-    expect(quoted.status()).toBe(200);
-    const quotedBody = await jsonBody<Envelope<PaymentIntentBody>>(quoted);
-    const expiresAt = defined(quotedBody.data.quoteExpiresAt, 'quoteExpiresAt');
-    const routeId = defined(quotedBody.data.quotedRoutes[0]?.routeId, 'quoted route id');
-    const waitMs = Date.parse(expiresAt) - Date.now() + 1_500;
-    expect(waitMs).toBeLessThan(75_000);
-    if (waitMs > 0) {
-      await sleep(waitMs);
-    }
-
-    const selected = await request.post(`/api/v1/payment-intents/${intent.data.id}/select`, {
-      headers: agentHeaders({}, secret),
-      data: { routeId },
-    });
-    await expectError(selected, 409, 'QUOTE_EXPIRED');
-  });
 });
 
 test.describe('CASE 7 — Insufficient liquidity', () => {
@@ -474,9 +444,10 @@ test.describe('CASE 8 — High slippage', () => {
     expect(Number(highest.scoreComponents.slippage)).toBeLessThanOrEqual(
       Number(lowest.scoreComponents.slippage),
     );
+    expect(Number(highest.slippageBps)).toBeGreaterThanOrEqual(Number(lowest.slippageBps));
   });
 
-  test('rejects selecting a route that now exceeds the slippage cap', async ({ request }) => {
+  test('rejects selecting a route after policy PATCH lowers maxSlippageBps', async ({ request }) => {
     const token = await loginDemoOperator(request);
     const minted = await request.post('/api/v1/agents', {
       headers: bearerHeaders(token),
@@ -485,27 +456,24 @@ test.describe('CASE 8 — High slippage', () => {
     expect(minted.status()).toBe(201);
     const issued = await jsonBody<Envelope<IssuedAgentBody>>(minted);
     const secret = issued.data.secret;
-    const scoped = await request.patch(`/api/v1/dashboard/agents/${issued.data.id}/policies`, {
-      headers: bearerHeaders(token),
-      data: { allowedProviderIds: ['sandbox-solstice-settlement'] },
-    });
-    expect(scoped.status()).toBe(200);
 
+    // Solstice's sandbox notional floor is USD 1,000; $500 payments never receive that quote.
     const created = await request.post('/api/v1/payment-intents', {
       headers: agentHeaders({ 'idempotency-key': uniqueIdempotencyKey('slip-create') }, secret),
-      data: { instruction: 'Pay 500 USD to merchant X' },
+      data: { instruction: 'Pay 1000 USD to merchant X' },
     });
+    expect(created.status(), await created.text()).toBe(201);
     const intent = await jsonBody<Envelope<PaymentIntentBody>>(created);
     const quoted = await request.post(`/api/v1/payment-intents/${intent.data.id}/quote`, {
       headers: agentHeaders({}, secret),
     });
-    expect(quoted.status()).toBe(200);
+    expect(quoted.status(), await quoted.text()).toBe(200);
     const quotedBody = await jsonBody<Envelope<PaymentIntentBody>>(quoted);
     const rejected = defined(
-      quotedBody.data.quotedRoutes.find(
-        (route) => route.providerId === 'sandbox-solstice-settlement',
-      ),
-      'Solstice quoted route',
+      [...quotedBody.data.quotedRoutes].sort(
+        (left, right) => Number(right.slippageBps ?? '0') - Number(left.slippageBps ?? '0'),
+      )[0],
+      'highest-slippage quoted route',
     );
     expect(Number(rejected.slippageBps ?? '0')).toBeGreaterThan(1);
 

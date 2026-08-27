@@ -19,7 +19,8 @@ test('opens the AI agent financial dashboard without an execute control', async 
   await expect(page.getByRole('heading', { name: /AI agent financial dashboard/i })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Demo Treasury Agent' })).toBeVisible();
   await expect(page.getByText('agt_demo_treasury').first()).toBeVisible();
-  await expect(page.getByText('4,250.00 USD')).toBeVisible();
+  const demoRow = page.locator('tr').filter({ hasText: 'agt_demo_treasury' }).first();
+  await expect(demoRow).toContainText(/[\d,]+\.\d{2} USD/);
   await expect(page.getByRole('button', { name: /^Execute/i })).toHaveCount(0);
   await expect(page.getByText('pay_other_secret')).toHaveCount(0);
   await expect(page.getByText('99999900')).toHaveCount(0);

@@ -413,9 +413,13 @@ required to keep:
    sandbox provider. `POST /executions` stays 501.
 4. An agent over the spending limit fail-closes (`403 POLICY_DENIED`).
 5. An unavailable provider is removed; an alternative path is still evaluated.
-6. An expired quote cannot become an execution intent (`409 QUOTE_EXPIRED`).
+6. An expired quote cannot become an execution intent (`409 QUOTE_EXPIRED`). Quote-select
+   lapse waits are not used: demo agent quotes use Veridian’s 600s TTL, and Solstice’s 60s
+   book is below the $1,000 notional floor on the $500 “Pay” path.
 7. Insufficient liquidity rejects the graph path and fail-closes agent selection.
-8. High slippage is penalized in scoring and rejected by policy.
+8. High slippage is penalized in scoring. Selecting a quoted route after
+   `maxSlippageBps` is tightened fail-closes (`403 POLICY_DENIED`). The policy test uses a
+   $1,000 payment so Solstice’s notional floor is met.
 
 Cross-cutting checks: no custody, no private-key storage, no real-money execution, no fabricated
 quotes (replay fingerprints), deterministic calculations, authorization, audit logging, idempotency,
