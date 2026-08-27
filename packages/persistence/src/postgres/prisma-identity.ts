@@ -1,4 +1,5 @@
 import type {
+  ApiScope,
   IdentityApiKey,
   IdentityMembership,
   IdentityOrganization,
@@ -12,7 +13,7 @@ import type {
   UpsertOrganizationInput,
   UpsertUserInput,
 } from '@meridian/core';
-import { PersistenceError } from '@meridian/core';
+import { PersistenceError, parseApiScopes } from '@meridian/core';
 import type { PrismaClient } from '@prisma/client';
 
 export class PrismaIdentityStore implements IdentityStore {
@@ -179,6 +180,8 @@ export class PrismaIdentityStore implements IdentityStore {
       label: row.label,
       createdAt: row.createdAt.toISOString(),
       lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
+      expiresAt: row.expiresAt?.toISOString() ?? null,
+      scopes: parseApiScopes(row.scopes),
       revokedAt: row.revokedAt?.toISOString() ?? null,
     }));
   }
@@ -240,6 +243,8 @@ export class PrismaIdentityStore implements IdentityStore {
     readonly secretHash: string;
     readonly label: string;
     readonly createdAt: string;
+    readonly scopes: readonly ApiScope[];
+    readonly expiresAt: string | null;
   }): Promise<void> {
     await this.client.apiKey.create({
       data: {
@@ -249,8 +254,31 @@ export class PrismaIdentityStore implements IdentityStore {
         secretHash: input.secretHash,
         label: input.label,
         createdAt: new Date(input.createdAt),
+        scopes: [...input.scopes],
+        expiresAt: input.expiresAt === null ? null : new Date(input.expiresAt),
       },
     });
+  }
+
+  async revokeApiKey(id: string, organizationId: string, nowIso: string): Promise<boolean> {
+    try {
+      const existing = await this.client.apiKey.findFirst({
+        where: { id, organizationId },
+      });
+      if (existing === null) {
+        return false;
+      }
+      if (existing.revokedAt !== null) {
+        return true;
+      }
+      await this.client.apiKey.update({
+        where: { id },
+        data: { revokedAt: new Date(nowIso) },
+      });
+      return true;
+    } catch (error) {
+      throw new PersistenceError('Failed to revoke the API key.', {}, { cause: error });
+    }
   }
 
   private async query<TResult>(run: () => Promise<TResult>): Promise<TResult> {
@@ -334,6 +362,8 @@ function toApiKey(row: {
   keyPrefix: string;
   secretHash: string;
   label: string;
+  scopes: readonly string[];
+  expiresAt: Date | null;
   revokedAt: Date | null;
 }): IdentityApiKey {
   return {
@@ -342,6 +372,8 @@ function toApiKey(row: {
     keyPrefix: row.keyPrefix,
     secretHash: row.secretHash,
     label: row.label,
+    scopes: parseApiScopes(row.scopes),
+    expiresAt: row.expiresAt?.toISOString() ?? null,
     revokedAt: row.revokedAt?.toISOString() ?? null,
   };
 }

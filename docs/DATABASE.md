@@ -82,6 +82,7 @@ Organization ──┬── OrganizationMember ── User
                │                        └── Comparison
                ├── CustomerPricing
                ├── Comparison
+               ├── ExecutionIntent
                └── AuditLog
 ```
 
@@ -116,10 +117,16 @@ its own record rather than a column on `User`, so one person can act for several
 treasury function or an external accountant, both normal in this market and painful to retrofit.
 
 **`ApiKey`** — machine credential, hash only. Lookups go by `keyPrefix`; the secret is compared as a
-SHA-256 hash. The prefix is the only form returned to the dashboard.
+SHA-256 hash with a timing-safe check. `scopes` is a subset of `quote:read`, `route:read`,
+`transaction:create`. `expiresAt` and `revokedAt` are optional. The prefix is the only form returned
+to the dashboard; the raw secret is shown once on issue.
 
 **`Session`** — a hashed session token (`mds_…`) bound to one user and one organization, with an
 expiry. Logout sets `revokedAt`. Raw tokens are never stored.
+
+**`ExecutionIntent`** — a recorded route choice. `status` is always `recorded`. `executable` and
+`submitted` are always false (CHECK constraints). Amounts are `DECIMAL(38,0)` minor units of the
+source asset ticker (`VARCHAR(16)`), not an ISO currency FK. No wallet, key or settlement columns.
 
 ### Providers
 
@@ -199,6 +206,8 @@ runs anywhere, and by execution against a real server in the integration suite.
 | Commercial terms are non-negative over a valid period            | `pricing_non_negative`, `pricing_period_valid`                               |
 | At most one recommended quote per request                        | partial unique index `quotes_one_recommendation_per_request`                 |
 | The audit trail is immutable                                     | trigger `audit_logs_no_mutation`                                             |
+| API key scopes are the known three values                        | `api_keys_scopes_known`                                                      |
+| An execution intent is recorded, never executable or submitted   | `execution_intents_status_recorded`, `execution_intents_not_executable`, `execution_intents_not_submitted` |
 
 ## Working with the database locally
 

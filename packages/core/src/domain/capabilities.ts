@@ -50,6 +50,16 @@ export const PLATFORM_CAPABILITIES = {
    * `defiExecution` stays false: no swap is submitted, no wallet is connected, no key is held.
    */
   defiLiquidityRouting: true,
+  /**
+   * Versioned financial routing API: `POST /quote`, `POST /routes/search`, catalog GETs, hashed
+   * organization API keys with scopes. Distinct from `executeTransactions`.
+   */
+  financialRoutingApi: true,
+  /**
+   * `transaction:create` writes an execution intent (`status: recorded`). Never a submitted
+   * payment, swap or payout.
+   */
+  executionIntents: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

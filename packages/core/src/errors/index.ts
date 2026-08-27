@@ -18,6 +18,7 @@ export const ErrorCode = {
   QUOTE_STALE: 'QUOTE_STALE',
   NOT_FOUND: 'NOT_FOUND',
   IDEMPOTENCY_CONFLICT: 'IDEMPOTENCY_CONFLICT',
+  RATE_LIMITED: 'RATE_LIMITED',
   REPRODUCIBILITY_MISMATCH: 'REPRODUCIBILITY_MISMATCH',
   EXECUTION_NOT_IMPLEMENTED: 'EXECUTION_NOT_IMPLEMENTED',
   CONFIGURATION_ERROR: 'CONFIGURATION_ERROR',
@@ -231,6 +232,17 @@ export class IdempotencyConflictError extends AppError {
       `Idempotency key "${idempotencyKey}" was already used with a different request payload.`,
       { idempotencyKey },
     );
+  }
+}
+
+export class RateLimitedError extends AppError {
+  readonly code = ErrorCode.RATE_LIMITED;
+  readonly httpStatus = 429;
+
+  constructor(retryAfterSeconds: number) {
+    super('Too many requests. Retry after the window resets.', {
+      retryAfterSeconds,
+    });
   }
 }
 

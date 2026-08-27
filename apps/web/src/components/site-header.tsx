@@ -87,6 +87,14 @@ export async function SiteHeader({
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/defi" />}>
             DeFi
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/developers" />}
+          >
+            API
+          </Button>
         </div>
       </div>
     </header>

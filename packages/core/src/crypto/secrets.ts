@@ -82,6 +82,17 @@ export function hashSecret(raw: string): string {
   return createHash('sha256').update(raw, 'utf8').digest('hex');
 }
 
+/** Timing-safe compare of a presented secret against a stored SHA-256 hex digest. */
+export function secretsMatch(presented: string, storedHash: string): boolean {
+  const computed = hashSecret(presented);
+  const left = Buffer.from(computed, 'utf8');
+  const right = Buffer.from(storedHash, 'utf8');
+  if (left.length !== right.length) {
+    return false;
+  }
+  return timingSafeEqual(left, right);
+}
+
 export function randomToken(prefix: string, bytes = 32): string {
   return `${prefix}${randomBytes(bytes).toString('base64url')}`;
 }

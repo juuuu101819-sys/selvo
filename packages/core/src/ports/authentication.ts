@@ -1,3 +1,4 @@
+import type { ApiScope } from '../domain/api-scope.js';
 import type { EconomicActorKind } from '../domain/actor.js';
 
 /**
@@ -32,6 +33,8 @@ export interface Principal {
   readonly subjectId: string | null;
   readonly displayName: string;
   readonly roles: readonly string[];
+  /** Rights granted to this caller. Empty for anonymous. Session users receive every scope. */
+  readonly scopes: readonly ApiScope[];
   /**
    * Label recorded on audit events. For an authenticated principal this is derived from the
    * verified identity; for an anonymous one it is a caller-supplied hint and must not be trusted.
@@ -48,6 +51,7 @@ export const ANONYMOUS_PRINCIPAL: Principal = {
   subjectId: null,
   displayName: 'Anonymous',
   roles: [],
+  scopes: [],
   actor: 'anonymous',
   verified: false,
 };

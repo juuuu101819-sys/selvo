@@ -9,6 +9,7 @@ import type {
   ScoredRoute,
 } from '../domain/index.js';
 import {
+  ASSET_REGISTRY,
   CHAIN_REGISTRY,
   DEFI_POOL_REGISTRY,
   DEFI_VENUE_KINDS,
@@ -30,7 +31,8 @@ import {
   type GraphPath,
   type GraphSearch,
 } from '../graph/index.js';
-import { AssetAmount, Money, formatDecimal, type Decimal } from '../money/index.js';
+import { AssetAmount, CURRENCY_REGISTRY, Money, formatDecimal, type Decimal } from '../money/index.js';
+import type { ExecutionIntent } from '../ports/execution-intent.js';
 import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
 import { isDeFiLiquiditySource } from '../ports/defi-liquidity.js';
 import type {
@@ -39,10 +41,14 @@ import type {
   ComparisonDto,
   ComparisonInsightsDto,
   CostBreakdownDto,
+  AssetCatalogEntryDto,
+  CurrencyCatalogEntryDto,
   DefiCatalogDto,
   DefiRouteDto,
   DefiRoutingDto,
+  ExecutionIntentDto,
   FinancialProviderDto,
+  FinancialQuoteDto,
   GraphEdgeDto,
   GraphNodeDto,
   GraphPathDto,
@@ -54,6 +60,7 @@ import type {
   ReplayResultDto,
   RouteDto,
   RouteGraphDto,
+  RouteSearchDto,
   StablecoinCatalogDto,
   StablecoinRouteDto,
   StablecoinRoutingDto,
@@ -724,4 +731,86 @@ export function serializeDefiRoute(route: DefiRoute): DefiRouteDto {
     executable: false,
     delegateExecution: false,
   };
+}
+
+export function serializeFinancialQuote(
+  routing: MultiRailRouting,
+  requestId: string,
+): FinancialQuoteDto {
+  const routes = routing.routes.map(serializeMultiRailRoute);
+  const recommended =
+    routing.recommendedRoute === null ? null : serializeMultiRailRoute(routing.recommendedRoute);
+  return {
+    requestId,
+    routes,
+    recommendedRoute: recommended,
+    quoteExpiresAt: earliestQuoteExpiry(routing.routes),
+  };
+}
+
+function earliestQuoteExpiry(routes: readonly ScoredMultiRailRoute[]): string | null {
+  let earliest: string | null = null;
+  for (const route of routes) {
+    const expiresAt = route.quote.expiresAt;
+    if (earliest === null || expiresAt < earliest) {
+      earliest = expiresAt;
+    }
+  }
+  return earliest;
+}
+
+export function serializeRouteSearch(input: {
+  readonly requestId: string;
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly graph: GraphSearch;
+  readonly matchingProviders: readonly FinancialProvider[];
+}): RouteSearchDto {
+  return {
+    requestId: input.requestId,
+    sourceAsset: input.sourceAsset,
+    destinationAsset: input.destinationAsset,
+    graph: serializeGraphSearch(input.graph),
+    matchingProviders: input.matchingProviders.map(serializeFinancialProvider),
+    executable: false,
+  };
+}
+
+export function serializeExecutionIntent(intent: ExecutionIntent): ExecutionIntentDto {
+  return {
+    id: intent.id,
+    organizationId: intent.organizationId,
+    requestId: intent.requestId,
+    routeId: intent.routeId,
+    sourceAsset: intent.sourceAsset,
+    destinationAsset: intent.destinationAsset,
+    amountMinorUnits: intent.amountMinorUnits,
+    status: 'recorded',
+    executable: false,
+    submitted: false,
+    quoteExpiresAt: intent.quoteExpiresAt,
+    createdAt: intent.createdAt,
+  };
+}
+
+export function serializeAssetCatalog(): readonly AssetCatalogEntryDto[] {
+  return Object.values(ASSET_REGISTRY)
+    .map((asset) => ({
+      code: asset.code,
+      kind: asset.kind,
+      decimals: asset.exponent,
+      displayName: asset.name,
+      networks: asset.chainId === null ? [] : [asset.chainId],
+    }))
+    .sort((left, right) => left.code.localeCompare(right.code, 'en'));
+}
+
+export function serializeCurrencyCatalog(): readonly CurrencyCatalogEntryDto[] {
+  return Object.values(CURRENCY_REGISTRY)
+    .map((currency) => ({
+      code: currency.code,
+      decimals: currency.exponent,
+      name: currency.name,
+    }))
+    .sort((left, right) => left.code.localeCompare(right.code, 'en'));
 }

@@ -4,11 +4,13 @@ import {
   type AuditLogRepository,
   type ComparisonRepository,
   type DashboardRepository,
+  type ExecutionIntentRepository,
   type IdentityStore,
   type PersistenceDriver,
   type StoredComparison,
 } from '@meridian/core';
 import { InMemoryDashboardRepository } from './memory-dashboard.js';
+import { InMemoryExecutionIntentRepository } from './memory-execution-intents.js';
 import { InMemoryIdentityStore } from './memory-identity.js';
 
 const DEFAULT_LIST_LIMIT = 50;
@@ -134,6 +136,7 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly auditLog = new InMemoryAuditLogRepository();
   readonly identity: IdentityStore = new InMemoryIdentityStore();
   readonly dashboard: DashboardRepository = new InMemoryDashboardRepository();
+  readonly executionIntents: ExecutionIntentRepository = new InMemoryExecutionIntentRepository();
 
   healthCheck(): Promise<void> {
     return Promise.resolve();

@@ -24,6 +24,9 @@ export const AUDIT_EVENT_TYPES = [
   'provider.quote.received',
   'provider.quote.failed',
   'execution.rejected',
+  'execution.intent.recorded',
+  'apikey.issued',
+  'apikey.revoked',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

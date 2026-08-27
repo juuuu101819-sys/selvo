@@ -172,6 +172,8 @@ describe('organization authorization', () => {
       secretHash: (await import('@meridian/core')).hashSecret(secret),
       label: 'CI',
       createdAt: '2026-03-01T09:00:00.000Z',
+      scopes: ['quote:read', 'route:read', 'transaction:create'],
+      expiresAt: null,
     });
 
     const ok = await harness.app.inject({

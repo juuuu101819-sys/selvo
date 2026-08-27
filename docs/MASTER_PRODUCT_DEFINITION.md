@@ -165,7 +165,9 @@ docs that describe them.
 **Not changed:** the quote engine, `ENGINE_VERSION` (`2.0.0`), Prisma schema, sandbox adapters, the
 comparison UI, dashboard, or any execution path.
 
-**Not started:** DeFi execution, delegated settlement, AI agent payment execution. Read-only DeFi
+**Not started:** DeFi execution, delegated settlement, AI agent payment execution. The financial
+routing API (`POST /api/v1/quote`, `POST /api/v1/routes/search`, hashed organization API keys) is
+implemented. `transaction:create` records an execution intent; it does not pay. Read-only DeFi
 quotes exist on the financial provider catalog and on the DeFi liquidity routing layer
 (`GET /api/v1/defi-liquidity`, `POST /api/v1/defi-routes`). Multi-rail routing (`POST /api/v1/routes`) ranks
 those quotes deterministically; it does not execute them. The financial route graph

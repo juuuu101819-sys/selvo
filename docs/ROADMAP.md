@@ -242,11 +242,33 @@ implements a normalised `DeFiLiquiditySource`: `getQuote`, `getLiquidity`, `getS
 **Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
 AI-determined prices.
 
-## Phase 13 — AI agent payments _(not started, gated)_
+## Phase 13 — Financial routing API ✅ implemented
+
+Versioned organization API for quote, path search and catalogs, with hashed API keys.
+
+- `POST /api/v1/quote` — authenticated multi-rail quote (`quote:read`). Slim DTO:
+  `requestId`, `routes`, `recommendedRoute`, `quoteExpiresAt`. Optional body `organizationId` is a
+  claim that must match the principal
+- `POST /api/v1/routes/search` — graph discovery plus catalog providers for a pair (`route:read`).
+  Not a second live quote engine. `POST /api/v1/routes` stays public
+- `GET /api/v1/providers` unchanged (8 catalog providers). `GET /api/v1/assets`,
+  `GET /api/v1/currencies` public catalogs
+- Organization API keys: SHA-256 hashed secrets, never plaintext; revocation; expiry; scopes
+  `quote:read`, `route:read`, `transaction:create`. Default issued scopes omit `transaction:create`
+- `transaction:create` writes an execution intent (`status: recorded`, `executable: false`,
+  `submitted: false`). `POST /api/v1/executions` remains the audited 501
+- In-process rate limiting. Request logs redact credentials and never print API key secrets
+- `financialRoutingApi` and `executionIntents` true. `executeTransactions` and `agentPayments` stay
+  false. Comparison engine **2.0.0**, routing **1.0.0**, graph **1.0.0**, stablecoin **1.0.0**,
+  DeFi **1.0.0** unchanged
+
+**Still excluded:** real transactions, wallets, keys, custody, DeFi execution, AI agent payments.
+
+## Phase 14 — AI agent payments _(not started, gated)_
 
 Issue `ai_agent` principals that still act *for* an organization. Agents may request quotes and
 compare routes through the same API. Initiation remains delegated execution (Phase 7) and is
 gated on the same compliance bar. No agent wallets, no agent custody, no agent-to-agent settlement
-on this platform. Agents never compute route economics — they consume `POST /api/v1/routes`.
+on this platform. Agents never compute route economics — they consume `POST /api/v1/quote`.
 
 Treasury product comparison remains planned on the `treasury_product` rail.

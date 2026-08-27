@@ -407,3 +407,127 @@ export function resolveGraphPathRequest(body: CreateGraphPathBody): {
     supportedAssets: body.constraints?.supportedAssets ?? null,
   };
 }
+
+const isoTimestamp = z
+  .string()
+  .trim()
+  .refine(
+    (value) => Number.isFinite(Date.parse(value)) && value.includes('T'),
+    'must be an ISO-8601 timestamp',
+  );
+
+const apiScope = z.enum(['quote:read', 'route:read', 'transaction:create']);
+
+/**
+ * Body of `POST /v1/quote`.
+ *
+ * `organizationId` is accepted as a claim that must match the authenticated principal. The
+ * principal is the source of truth. `execute`, keys and beneficiary fields are rejected by
+ * `.strict()`.
+ */
+export const createFinancialQuoteSchema = z
+  .object({
+    sourceAsset: z.string().trim().min(2).max(16),
+    destinationAsset: z.string().trim().min(2).max(16),
+    amount: assetAmount,
+    organizationId: z.string().trim().min(1).max(128).optional(),
+    preferences: z
+      .object({
+        weights: z
+          .object({
+            cost: routingWeight,
+            speed: routingWeight,
+            liquidity: routingWeight,
+            reliability: routingWeight,
+            settlementConfidence: routingWeight,
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine((body) => body.sourceAsset !== body.destinationAsset, {
+    message: 'sourceAsset and destinationAsset must differ',
+    path: ['destinationAsset'],
+  });
+
+export type CreateFinancialQuoteBody = z.infer<typeof createFinancialQuoteSchema>;
+
+/**
+ * Body of `POST /v1/routes/search`.
+ *
+ * Discovers graph paths and catalog providers for a pair. Does not run the live quote engine.
+ */
+export const searchRoutesSchema = z
+  .object({
+    sourceAsset: z.string().trim().min(2).max(16),
+    destinationAsset: z.string().trim().min(2).max(16),
+    amount: assetAmount.optional(),
+    organizationId: z.string().trim().min(1).max(128).optional(),
+    preferences: z
+      .object({
+        maxHops: z.number().int().min(1).max(8).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine((body) => body.sourceAsset !== body.destinationAsset, {
+    message: 'sourceAsset and destinationAsset must differ',
+    path: ['destinationAsset'],
+  });
+
+export type SearchRoutesBody = z.infer<typeof searchRoutesSchema>;
+
+export function resolveSearchRoutesRequest(body: SearchRoutesBody): {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amountMinorUnits: string | null;
+  readonly maxHops: number | undefined;
+} {
+  const sourceAsset = assertAssetCode(body.sourceAsset);
+  const destinationAsset = assertAssetCode(body.destinationAsset);
+  return {
+    sourceAsset,
+    destinationAsset,
+    amountMinorUnits: body.amount === undefined ? null : toAssetMinorUnits(sourceAsset, body.amount),
+    maxHops: body.preferences?.maxHops,
+  };
+}
+
+export const createApiKeySchema = z
+  .object({
+    label: z.string().trim().min(1).max(80),
+    scopes: z.array(apiScope).min(1).max(3).optional(),
+    expiresAt: isoTimestamp.optional(),
+  })
+  .strict();
+
+export type CreateApiKeyBody = z.infer<typeof createApiKeySchema>;
+
+export const apiKeyIdParamsSchema = z.object({ id: z.string().min(1).max(128) }).strict();
+
+/**
+ * Body of `POST /v1/execution-intents`.
+ *
+ * Records a route choice. Never submits a payment, swap or payout.
+ */
+export const createExecutionIntentSchema = z
+  .object({
+    requestId: z.string().trim().min(1).max(128),
+    routeId: z.string().trim().min(1).max(128),
+    sourceAsset: z.string().trim().min(2).max(16),
+    destinationAsset: z.string().trim().min(2).max(16),
+    amount: assetAmount,
+    quoteExpiresAt: isoTimestamp.optional(),
+  })
+  .strict()
+  .refine((body) => body.sourceAsset !== body.destinationAsset, {
+    message: 'sourceAsset and destinationAsset must differ',
+    path: ['destinationAsset'],
+  });
+
+export type CreateExecutionIntentBody = z.infer<typeof createExecutionIntentSchema>;
+

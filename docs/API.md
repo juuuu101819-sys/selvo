@@ -42,7 +42,9 @@ hub: it does not custody funds, hold keys, act as principal, or execute transfer
 | `NO_ROUTES_AVAILABLE`                 | 422       | Providers were eligible but none returned a usable quote.                                    |
 | `NOT_FOUND`                           | 404       | Unknown comparison, quote, transaction — or one that belongs to another organization.        |
 | `UNAUTHENTICATED`                     | 401       | Missing or unverifiable session / API key.                                                   |
+| `FORBIDDEN`                           | 403       | Authenticated, but the credential lacks the required scope or claimed org does not match.    |
 | `IDEMPOTENCY_CONFLICT`                | 409       | Idempotency key reused with a different payload.                                             |
+| `RATE_LIMITED`                        | 429       | Too many requests in the current window. `Retry-After` is set.                               |
 | `EXECUTION_NOT_IMPLEMENTED`           | 501       | Deliberate refusal to move money.                                                            |
 | `PROVIDER_TIMEOUT` / `PROVIDER_ERROR` | 504 / 502 | Upstream provider failed. Usually reported per-route in `providerFailures` instead.          |
 | `INTERNAL_ERROR`                      | 500       | Unexpected defect. Details are never leaked.                                                 |
@@ -66,11 +68,18 @@ for the same reason — never JSON numbers.
 | `X-Request-Id`                | response  | Correlates a response with its log and audit entries.                                      |
 | `Deprecation` / `Link`        | response  | Present on the legacy `/v1` prefix only.                                                   |
 
-**Authentication.** Public comparison, meta and health stay available without a credential. Presenting
-`Authorization: Bearer mds_…` or `X-Api-Key` authenticates a user or service principal whose
-`organizationId` scopes every dashboard query. A credential that cannot be verified is `401
-UNAUTHENTICATED`, never silently treated as anonymous. `GET /api/v1/meta` reports the active scheme
-under `authentication` (`session+api_key`, `enforcing: true`).
+**Authentication.** Public comparison, meta, health, provider catalog, assets and currencies stay
+available without a credential. Presenting `Authorization: Bearer mds_…` or `X-Api-Key` authenticates
+a user or service principal whose `organizationId` scopes every tenant query. API keys carry scopes
+(`quote:read`, `route:read`, `transaction:create`); session users receive all three. A credential
+that cannot be verified is `401 UNAUTHENTICATED`, never silently treated as anonymous.
+`GET /api/v1/meta` reports the active scheme under `authentication` (`session+api_key`,
+`enforcing: true`).
+
+Organization API keys are hashed (SHA-256) before persist, never stored in plaintext, and support
+revocation, expiry and scopes. The raw secret is returned once on `POST /api/v1/api-keys`. Request
+logs redact `Authorization`, `X-Api-Key`, passwords, tokens, wallets and private keys. In-process
+rate limiting applies to `/api/v1` (`RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`).
 
 Demo sandbox login: `treasury@demo-trading.example.invalid` / `MeridianDemo!2026`. Sessions last
 12 hours. Dashboard settings return API key **prefixes** only.
@@ -130,7 +139,9 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "multiRailRouting": true,
   "routeGraph": true,
   "stablecoinRouting": true,
-  "defiLiquidityRouting": true
+  "defiLiquidityRouting": true,
+  "financialRoutingApi": true,
+  "executionIntents": true
 }
 ```
 
@@ -138,7 +149,9 @@ The `capabilities` block is the machine-readable form of the compliance boundary
 `railFamilies` lists `tradfi` and `stablecoin` as available and `defi` as planned for the
 comparison engine. `providerCatalog` lists every `FinancialProvider`, including read-only DeFi
 demos that are not in `providers`. `defiQuotes` is true; `defiLiquidityRouting` is true;
-`defiExecution` is false. `defiRoutingEngineVersion` is **1.0.0**.
+`defiExecution` is false. `defiRoutingEngineVersion` is **1.0.0**. `financialRoutingApi` and
+`executionIntents` are true: `POST /api/v1/quote` and `POST /api/v1/routes/search` are the
+authenticated routing API; `transaction:create` records an intent, it does not pay.
 
 ## `GET /api/v1/providers`
 
@@ -462,6 +475,76 @@ organization.
 ## `GET /api/v1/dashboard/transactions/:id`
 
 ## `GET /api/v1/dashboard/providers`
+
+## `GET /api/v1/assets`
+
+Public catalog of `ASSET_REGISTRY` (fiat, stablecoins, crypto) with decimals and optional networks.
+
+## `GET /api/v1/currencies`
+
+Public ISO 4217 catalog from `CURRENCY_REGISTRY`.
+
+## `POST /api/v1/quote`
+
+Authenticated financial quote. Requires a verified organization and `quote:read`. Wraps the
+multi-rail engine (`routingEngineVersion` 1.0.0) and returns a slim DTO. Optional `organizationId`
+in the body is a claim that must match the principal — it is never the source of truth.
+
+```jsonc
+{
+  "sourceAsset": "USD",
+  "destinationAsset": "KRW",
+  "amount": "100000.00",
+  "organizationId": "org_...",
+  "preferences": {
+    "weights": {
+      "cost": "0.45",
+      "speed": "0.2",
+      "liquidity": "0.15",
+      "reliability": "0.1",
+      "settlementConfidence": "0.1"
+    }
+  }
+}
+```
+
+```jsonc
+{
+  "requestId": "req_...",
+  "routes": [ { "routeId": "...", "executable": false } ],
+  "recommendedRoute": { "routeId": "..." },
+  "quoteExpiresAt": "2026-03-01T09:15:00.000Z"
+}
+```
+
+Anonymous callers are `401`. A mismatched `organizationId` is `403`. Missing `quote:read` is `403`.
+`POST /api/v1/routes` remains the public (unscoped) multi-rail endpoint.
+
+## `POST /api/v1/routes/search`
+
+Authenticated path discovery. Requires `route:read`. Returns graph paths plus catalog providers that
+support the pair. Does **not** run a second live quote engine. `executable` is always `false`.
+
+```jsonc
+{ "sourceAsset": "USD", "destinationAsset": "USDC" }
+```
+
+## `GET /api/v1/api-keys`
+
+## `POST /api/v1/api-keys`
+
+## `POST /api/v1/api-keys/:id/revoke`
+
+Owner or admin sessions only. Service keys cannot mint keys. Create returns the secret **once**.
+Default scopes are `quote:read` and `route:read`. Optional `scopes` and `expiresAt`. List returns
+prefixes, never secrets or hashes.
+
+## `POST /api/v1/execution-intents`
+
+## `GET /api/v1/execution-intents`
+
+Requires `transaction:create`. Records a route choice with `status: "recorded"`, `executable: false`,
+`submitted: false`. This is not a payment. `POST /api/v1/executions` remains the audited `501`.
 
 ## `GET /api/v1/dashboard/settings`
 

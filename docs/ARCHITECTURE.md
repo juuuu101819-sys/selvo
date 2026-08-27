@@ -79,6 +79,9 @@ made. Nothing below rebuilds the application.
 - `GET /api/v1/defi-liquidity` and `POST /api/v1/defi-routes` quote DEX, AMM and aggregator venues
   (`defiRoutingEngineVersion` 1.0.0) and rank a stablecoin or traditional FX quote on the same pair
   when one exists. No swap is submitted. Adding a chain is a registry row.
+- `POST /api/v1/quote` and `POST /api/v1/routes/search` are the authenticated financial routing API
+  (`quote:read` / `route:read`). Organization API keys are hashed, scoped, expirable and revocable.
+  `POST /api/v1/execution-intents` records a choice; `POST /api/v1/executions` stays 501.
 - Planned rails never expand into a comparison quote. Direct catalog quotes (ramps, DEX, AMM,
   aggregator) appear on `/routes` and `/provider-quotes`.
 

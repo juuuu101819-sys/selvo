@@ -45,7 +45,8 @@ npm run dev              # API on :47311, web app on :43117
 Then open <http://127.0.0.1:43117> to compare fiat routes, <http://127.0.0.1:43117/rails> for the
 multi-rail engine (tradfi, stablecoin and DeFi), <http://127.0.0.1:43117/graph> for multi-hop path
 discovery, <http://127.0.0.1:43117/stablecoins> for USDC/USDT routing,
-<http://127.0.0.1:43117/defi> for DEX / AMM / aggregator quotes, or
+<http://127.0.0.1:43117/defi> for DEX / AMM / aggregator quotes,
+<http://127.0.0.1:43117/developers> for the versioned routing API explorer, or
 <http://127.0.0.1:43117/login> for the organization dashboard.
 
 Local sandbox login (in-memory driver provisions this on API start; Postgres gets it from `npm run db:seed`):

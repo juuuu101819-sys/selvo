@@ -1,4 +1,5 @@
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
+import { ApiKeyManager } from '@/components/dashboard/api-key-manager';
 import { Badge } from '@/components/ui/badge';
 import {
   Table,
@@ -11,7 +12,6 @@ import {
 import { ErrorState } from '@/components/states';
 import { fetchDashboardSettings } from '@/lib/api/client';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
-import { formatTimestamp } from '@/lib/format';
 
 export default async function DashboardSettingsPage() {
   const session = await loadDashboardSession();
@@ -90,42 +90,10 @@ export default async function DashboardSettingsPage() {
         )}
       </section>
 
-      <section>
-        <h2 className="text-sm font-semibold">API keys</h2>
-        <p className="text-muted-foreground mt-1 text-xs">
-          Only the public prefix is shown. The secret is hashed at rest and cannot be recovered.
-        </p>
-        {apiKeys.length === 0 ? (
-          <p className="text-muted-foreground mt-3 text-sm">No API keys have been issued.</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Label</TableHead>
-                <TableHead>Prefix</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apiKeys.map((key) => (
-                <TableRow key={key.id}>
-                  <TableCell>{key.label}</TableCell>
-                  <TableCell className="font-mono text-xs">{key.keyPrefix}…</TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {formatTimestamp(key.createdAt)}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">
-                    {key.lastUsedAt === null ? '—' : formatTimestamp(key.lastUsedAt)}
-                  </TableCell>
-                  <TableCell>{key.revokedAt === null ? 'active' : 'revoked'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </section>
+      <ApiKeyManager
+        keys={apiKeys}
+        canManage={role === 'owner' || role === 'admin' || session.me.role === 'owner'}
+      />
     </div>
   );
 }

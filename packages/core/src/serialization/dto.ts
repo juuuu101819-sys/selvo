@@ -654,3 +654,48 @@ export interface DefiCatalogDto {
   readonly chains: readonly ChainMetadataDto[];
   readonly explanation: string;
 }
+
+export interface FinancialQuoteDto {
+  readonly requestId: string;
+  readonly routes: readonly MultiRailRouteDto[];
+  readonly recommendedRoute: MultiRailRouteDto | null;
+  readonly quoteExpiresAt: string | null;
+}
+
+export interface RouteSearchDto {
+  readonly requestId: string;
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly graph: GraphSearchDto;
+  readonly matchingProviders: readonly FinancialProviderDto[];
+  readonly executable: false;
+}
+
+export interface ExecutionIntentDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly requestId: string;
+  readonly routeId: string;
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amountMinorUnits: string;
+  readonly status: 'recorded';
+  readonly executable: false;
+  readonly submitted: false;
+  readonly quoteExpiresAt: string | null;
+  readonly createdAt: string;
+}
+
+export interface AssetCatalogEntryDto {
+  readonly code: string;
+  readonly kind: 'fiat' | 'stablecoin' | 'crypto';
+  readonly decimals: number;
+  readonly displayName: string;
+  readonly networks: readonly string[];
+}
+
+export interface CurrencyCatalogEntryDto {
+  readonly code: string;
+  readonly decimals: number;
+  readonly name: string;
+}

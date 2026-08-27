@@ -213,6 +213,7 @@ model Organization {
   customerPricing     CustomerPricing[]
   comparisons         Comparison[]
   auditLogs           AuditLog[]
+  executionIntents    ExecutionIntent[]
 
   @@map("organizations")
 }
@@ -271,8 +272,11 @@ model ApiKey {
   /// Hash of the secret. The secret itself is never persisted.
   secretHash     String    @map("secret_hash")
   label          String
+  /// Subset of quote:read, route:read, transaction:create. Enforced in application code and by CHECK.
+  scopes         String[]  @default([])
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz(3)
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(3)
   revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -299,6 +303,30 @@ model Session {
   @@index([organizationId])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+/// Recorded route choice. Never a payment: status is always recorded, executable and submitted
+/// are always false. Enforced by CHECK constraints the Prisma schema cannot express.
+model ExecutionIntent {
+  id                 String   @id
+  organizationId     String   @map("organization_id")
+  requestId          String   @map("request_id")
+  routeId            String   @map("route_id")
+  /// Asset ticker (USD, USDC, ETH), not an ISO currency FK — crypto codes are longer than 3.
+  sourceAsset        String   @map("source_asset") @db.VarChar(16)
+  destinationAsset   String   @map("destination_asset") @db.VarChar(16)
+  amountMinorUnits   Decimal  @map("amount_minor_units") @db.Decimal(38, 0)
+  status             String   @default("recorded")
+  executable         Boolean  @default(false)
+  submitted          Boolean  @default(false)
+  quoteExpiresAt     DateTime? @map("quote_expires_at") @db.Timestamptz(3)
+  actor              String
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("execution_intents")
 }
 
 // ---------------------------------------------------------------------------

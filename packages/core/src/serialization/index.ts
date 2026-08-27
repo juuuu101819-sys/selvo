@@ -34,6 +34,11 @@ export type {
   DefiCatalogDto,
   DefiRouteDto,
   DefiRoutingDto,
+  ExecutionIntentDto,
+  FinancialQuoteDto,
+  RouteSearchDto,
+  AssetCatalogEntryDto,
+  CurrencyCatalogEntryDto,
 } from './dto.js';
 export {
   serializeComparison,
@@ -51,4 +56,9 @@ export {
   serializeDefiCatalog,
   serializeDefiRoute,
   serializeDefiRouting,
+  serializeFinancialQuote,
+  serializeRouteSearch,
+  serializeExecutionIntent,
+  serializeAssetCatalog,
+  serializeCurrencyCatalog,
 } from './serialize.js';

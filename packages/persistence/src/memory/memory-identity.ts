@@ -1,4 +1,5 @@
 import type {
+  ApiScope,
   IdentityApiKey,
   IdentityMembership,
   IdentityOrganization,
@@ -13,9 +14,10 @@ import type {
   UpsertUserInput,
 } from '@meridian/core';
 
-interface StoredApiKey extends IdentityApiKey {
+interface StoredApiKey extends Omit<IdentityApiKey, 'revokedAt'> {
   readonly createdAt: string;
   lastUsedAt: string | null;
+  revokedAt: string | null;
 }
 
 interface StoredSession {
@@ -180,6 +182,8 @@ export class InMemoryIdentityStore implements IdentityStore {
         label: key.label,
         createdAt: key.createdAt,
         lastUsedAt: key.lastUsedAt,
+        expiresAt: key.expiresAt,
+        scopes: key.scopes,
         revokedAt: key.revokedAt,
       });
     }
@@ -231,6 +235,8 @@ export class InMemoryIdentityStore implements IdentityStore {
     readonly secretHash: string;
     readonly label: string;
     readonly createdAt: string;
+    readonly scopes: readonly ApiScope[];
+    readonly expiresAt: string | null;
   }): Promise<void> {
     const key: StoredApiKey = {
       id: input.id,
@@ -238,6 +244,8 @@ export class InMemoryIdentityStore implements IdentityStore {
       keyPrefix: input.keyPrefix,
       secretHash: input.secretHash,
       label: input.label,
+      scopes: [...input.scopes],
+      expiresAt: input.expiresAt,
       revokedAt: null,
       createdAt: input.createdAt,
       lastUsedAt: null,
@@ -245,6 +253,21 @@ export class InMemoryIdentityStore implements IdentityStore {
     this.apiKeysByPrefix.set(input.keyPrefix, key);
     this.apiKeysById.set(input.id, input.keyPrefix);
     return Promise.resolve();
+  }
+
+  revokeApiKey(id: string, organizationId: string, nowIso: string): Promise<boolean> {
+    const prefix = this.apiKeysById.get(id);
+    if (prefix === undefined) {
+      return Promise.resolve(false);
+    }
+    const key = this.apiKeysByPrefix.get(prefix);
+    if (key === undefined || key.organizationId !== organizationId) {
+      return Promise.resolve(false);
+    }
+    if (key.revokedAt === null) {
+      key.revokedAt = nowIso;
+    }
+    return Promise.resolve(true);
   }
 
   private resolve(

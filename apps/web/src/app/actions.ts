@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createComparison, createDeFiRoute, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, replayComparison } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, DefiRoutingDto, GraphSearchDto, MultiRailRoutingDto, ReplayResultDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, replayComparison, revokeOrganizationApiKey, searchRoutes } from '@/lib/api/client';
+import type { ApiResult, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -139,4 +139,58 @@ export async function signOut(): Promise<void> {
   }
   await clearSessionCookie();
   redirect('/login');
+}
+
+export async function createOrganizationKey(input: {
+  readonly label: string;
+  readonly scopes: readonly string[];
+}): Promise<ApiResult<IssuedApiKeyDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return {
+      ok: false,
+      failure: {
+        code: 'UNAUTHENTICATED',
+        message: 'Sign in to issue an API key.',
+        details: {},
+        requestId: null,
+      },
+    };
+  }
+  return createOrganizationApiKey({ label: input.label, scopes: input.scopes }, token);
+}
+
+export async function revokeOrganizationKey(
+  id: string,
+): Promise<ApiResult<{ id: string; revoked: true }>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return {
+      ok: false,
+      failure: {
+        code: 'UNAUTHENTICATED',
+        message: 'Sign in to revoke an API key.',
+        details: {},
+        requestId: null,
+      },
+    };
+  }
+  return revokeOrganizationApiKey(id, token);
+}
+
+export async function quoteFinancialRoute(input: {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: string;
+}): Promise<ApiResult<FinancialQuoteDto>> {
+  const authorization = await readSessionToken();
+  return createFinancialQuote(input, { actor: 'web-app', authorization });
+}
+
+export async function searchFinancialRoutes(input: {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+}): Promise<ApiResult<RouteSearchDto>> {
+  const authorization = await readSessionToken();
+  return searchRoutes(input, { actor: 'web-app', authorization });
 }

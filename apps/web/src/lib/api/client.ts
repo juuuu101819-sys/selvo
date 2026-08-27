@@ -19,6 +19,12 @@ import type {
   StablecoinRoutingDto,
   DefiCatalogDto,
   DefiRoutingDto,
+  ExecutionIntentDto,
+  FinancialQuoteDto,
+  IssuedApiKeyDto,
+  RouteSearchDto,
+  AssetCatalogEntryDto,
+  CurrencyCatalogEntryDto,
 } from './types';
 
 /**
@@ -345,6 +351,88 @@ export function createDeFiRoute(
     path: '/api/v1/defi-routes',
     body: input,
     actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export function fetchAssets(): Promise<ApiResult<{ assets: readonly AssetCatalogEntryDto[] }>> {
+  return request({ method: 'GET', path: '/api/v1/assets' });
+}
+
+export function fetchCurrencies(): Promise<
+  ApiResult<{ currencies: readonly CurrencyCatalogEntryDto[] }>
+> {
+  return request({ method: 'GET', path: '/api/v1/currencies' });
+}
+
+export function createFinancialQuote(
+  input: {
+    readonly sourceAsset: string;
+    readonly destinationAsset: string;
+    readonly amount: string;
+    readonly organizationId?: string;
+  },
+  extras: { readonly actor?: string; readonly authorization?: string | null } = {},
+): Promise<ApiResult<FinancialQuoteDto>> {
+  return request<FinancialQuoteDto>({
+    method: 'POST',
+    path: '/api/v1/quote',
+    body: input,
+    actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export function searchRoutes(
+  input: { readonly sourceAsset: string; readonly destinationAsset: string },
+  extras: { readonly actor?: string; readonly authorization?: string | null } = {},
+): Promise<ApiResult<RouteSearchDto>> {
+  return request<RouteSearchDto>({
+    method: 'POST',
+    path: '/api/v1/routes/search',
+    body: input,
+    actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export function createOrganizationApiKey(
+  input: { readonly label: string; readonly scopes?: readonly string[] },
+  authorization: string,
+): Promise<ApiResult<IssuedApiKeyDto>> {
+  return request<IssuedApiKeyDto>({
+    method: 'POST',
+    path: '/api/v1/api-keys',
+    body: input,
+    authorization,
+  });
+}
+
+export function revokeOrganizationApiKey(
+  id: string,
+  authorization: string,
+): Promise<ApiResult<{ id: string; revoked: true }>> {
+  return request({
+    method: 'POST',
+    path: `/api/v1/api-keys/${encodeURIComponent(id)}/revoke`,
+    authorization,
+  });
+}
+
+export function createExecutionIntent(
+  input: {
+    readonly requestId: string;
+    readonly routeId: string;
+    readonly sourceAsset: string;
+    readonly destinationAsset: string;
+    readonly amount: string;
+  },
+  extras: { readonly authorization?: string | null } = {},
+): Promise<ApiResult<ExecutionIntentDto>> {
+  return request<ExecutionIntentDto>({
+    method: 'POST',
+    path: '/api/v1/execution-intents',
+    body: input,
     ...(extras.authorization ? { authorization: extras.authorization } : {}),
   });
 }

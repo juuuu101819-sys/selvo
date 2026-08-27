@@ -1,11 +1,15 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { AppContainer } from '../container.js';
-import { registerAuthentication } from '../http/authentication.js';
+import { registerAuthentication, registerRequestLogging } from '../http/authentication.js';
+import { registerRateLimiting } from '../http/rate-limit.js';
+import { registerApiKeyRoutes } from './api-keys.js';
 import { registerAuthRoutes } from './auth.js';
 import { registerComparisonRoutes } from './comparisons.js';
 import { registerDashboardRoutes } from './dashboard.js';
 import { registerDefiRoutes } from './defi-routes.js';
+import { registerExecutionIntentRoutes } from './execution-intents.js';
 import { registerExecutionRoutes } from './executions.js';
+import { registerFinancialRoutingRoutes } from './financial-routing.js';
 import { registerProviderCatalogRoutes } from './providers.js';
 import { registerRouteGraphRoutes } from './route-graph.js';
 import { registerRoutingRoutes } from './routing.js';
@@ -38,6 +42,8 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     // Registered inside the plugin so authentication is scoped to the versioned API by Fastify's
     // encapsulation, rather than applied globally and then excepted route by route.
     registerAuthentication(instance, container.authenticator);
+    registerRateLimiting(instance, container.config.rateLimit);
+    registerRequestLogging(instance);
     registerVersionedHealthRoute(instance);
     registerMetaRoutes(instance, container);
     registerAuthRoutes(instance, container);
@@ -46,8 +52,11 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerRouteGraphRoutes(instance, container);
     registerStablecoinRoutes(instance, container);
     registerDefiRoutes(instance, container);
+    registerFinancialRoutingRoutes(instance, container);
     registerProviderCatalogRoutes(instance, container);
+    registerApiKeyRoutes(instance, container);
     registerDashboardRoutes(instance, container);
+    registerExecutionIntentRoutes(instance, container);
     registerExecutionRoutes(instance, container);
   };
 

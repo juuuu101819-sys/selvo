@@ -73,6 +73,7 @@ describeIntegration('PostgreSQL schema', () => {
           'transaction_requests',
           'sessions',
           'users',
+          'execution_intents',
         ]),
       );
     });
@@ -149,6 +150,8 @@ describeIntegration('PostgreSQL schema', () => {
       const columns = rows.map((row) => row.column_name);
 
       expect(columns).toContain('secret_hash');
+      expect(columns).toContain('scopes');
+      expect(columns).toContain('expires_at');
       expect(columns).not.toContain('secret');
     });
   });

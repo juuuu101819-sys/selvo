@@ -147,6 +147,29 @@ describe('InMemoryPersistenceDriver', () => {
     await expect(driver.healthCheck()).resolves.toBeUndefined();
     await expect(driver.close()).resolves.toBeUndefined();
   });
+
+  it('records an execution intent as a non-executable choice', async () => {
+    const stored = await driver.executionIntents.create({
+      id: 'eit_1',
+      organizationId: 'org_1',
+      requestId: 'req_1',
+      routeId: 'rte_1',
+      sourceAsset: 'USD',
+      destinationAsset: 'KRW',
+      amountMinorUnits: '10000000',
+      status: 'recorded',
+      executable: false,
+      submitted: false,
+      quoteExpiresAt: null,
+      actor: 'tester',
+      createdAt: '2026-03-01T09:00:00.000Z',
+    });
+    expect(stored.executable).toBe(false);
+    expect(stored.submitted).toBe(false);
+    const listed = await driver.executionIntents.listByOrganization('org_1');
+    expect(listed).toHaveLength(1);
+    await expect(driver.executionIntents.findById('eit_1', 'org_other')).resolves.toBeNull();
+  });
 });
 
 describe('createPersistenceDriver', () => {

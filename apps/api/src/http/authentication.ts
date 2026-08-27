@@ -53,6 +53,31 @@ export function registerAuthentication(app: FastifyInstance, authenticator: Auth
   });
 }
 
+/**
+ * Access log without secrets.
+ *
+ * Method, URL, status, request id, principal kind, organization id and a safe actor label
+ * (`apikey:` + prefix for machine callers). The raw API key and session token never appear.
+ */
+export function registerRequestLogging(app: FastifyInstance): void {
+  app.addHook('onResponse', (request, reply, done) => {
+    const principal = principalOf(request);
+    request.log.info(
+      {
+        method: request.method,
+        url: request.url,
+        statusCode: reply.statusCode,
+        requestId: request.id,
+        principalKind: principal.kind,
+        organizationId: principal.organizationId,
+        actor: principal.actor,
+      },
+      'request completed',
+    );
+    done();
+  });
+}
+
 function singleHeader(request: FastifyRequest, name: string): string | null {
   const value = request.headers[name];
   const first = Array.isArray(value) ? value[0] : value;

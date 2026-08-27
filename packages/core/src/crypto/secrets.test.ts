@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hashPassword, hashSecret, verifyPassword } from './secrets.js';
+import { hashPassword, hashSecret, secretsMatch, verifyPassword } from './secrets.js';
 
 describe('password hashing', () => {
   it('verifies a password against its hash and rejects a wrong one', async () => {
@@ -21,5 +21,13 @@ describe('hashSecret', () => {
     expect(digest).toHaveLength(64);
     expect(digest).toBe(hashSecret('mds_example'));
     expect(digest).not.toBe('mds_example');
+  });
+});
+
+describe('secretsMatch', () => {
+  it('accepts a presented secret against its hash and rejects a different one', () => {
+    const digest = hashSecret('mk_example_secret');
+    expect(secretsMatch('mk_example_secret', digest)).toBe(true);
+    expect(secretsMatch('mk_other_secret', digest)).toBe(false);
   });
 });

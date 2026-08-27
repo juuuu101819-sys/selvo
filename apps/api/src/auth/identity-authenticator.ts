@@ -1,6 +1,8 @@
 import {
   ANONYMOUS_PRINCIPAL,
+  SESSION_API_SCOPES,
   hashSecret,
+  secretsMatch,
   type AuthenticationAttempt,
   type Authenticator,
   type Clock,
@@ -64,6 +66,7 @@ export class IdentityAuthenticator implements Authenticator {
       subjectId: resolved.user.id,
       displayName: resolved.user.displayName,
       roles: [resolved.membership.role],
+      scopes: SESSION_API_SCOPES,
       actor: resolved.user.email,
       verified: true,
     };
@@ -78,7 +81,10 @@ export class IdentityAuthenticator implements Authenticator {
     if (key === null || key.revokedAt !== null) {
       return null;
     }
-    if (hashSecret(presented) !== key.secretHash) {
+    if (key.expiresAt !== null && key.expiresAt <= this.clock.nowIso()) {
+      return null;
+    }
+    if (!secretsMatch(presented, key.secretHash)) {
       return null;
     }
     const organization = await this.identity.findOrganization(key.organizationId);
@@ -93,6 +99,7 @@ export class IdentityAuthenticator implements Authenticator {
       subjectId: key.id,
       displayName: key.label,
       roles: ['service'],
+      scopes: key.scopes,
       actor: `apikey:${key.keyPrefix}`,
       verified: true,
     };

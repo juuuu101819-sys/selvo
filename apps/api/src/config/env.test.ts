@@ -11,6 +11,16 @@ describe('loadConfig', () => {
     expect(config.port).toBe(47_311);
   });
 
+  it('disables rate limiting in tests unless RATE_LIMIT_MAX is set', () => {
+    expect(loadConfig({}).rateLimit.enabled).toBe(true);
+    expect(loadConfig({ NODE_ENV: 'test' }).rateLimit.enabled).toBe(false);
+    expect(loadConfig({ NODE_ENV: 'test', RATE_LIMIT_MAX: '2' }).rateLimit).toEqual({
+      enabled: true,
+      windowMs: 60_000,
+      max: 2,
+    });
+  });
+
   it('reads all six scoring weights from the environment', () => {
     const config = loadConfig({
       ROUTE_WEIGHT_COST: '0.5',

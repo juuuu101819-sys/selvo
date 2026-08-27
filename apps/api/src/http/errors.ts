@@ -1,4 +1,4 @@
-import { ErrorCode, isAppError, type ErrorCodeValue } from '@meridian/core';
+import { ErrorCode, isAppError, RateLimitedError, type ErrorCodeValue } from '@meridian/core';
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 export interface ErrorResponseBody {
@@ -30,6 +30,13 @@ export function registerErrorHandling(app: FastifyInstance): void {
         );
       } else {
         request.log.error({ code: error.code, err: error }, 'Request failed with a defect');
+      }
+
+      if (error instanceof RateLimitedError) {
+        const retryAfter = error.details['retryAfterSeconds'];
+        if (typeof retryAfter === 'number') {
+          reply.header('Retry-After', String(retryAfter));
+        }
       }
 
       return reply.status(error.httpStatus).send({

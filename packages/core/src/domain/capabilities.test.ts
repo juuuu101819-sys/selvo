@@ -19,5 +19,7 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.routeGraph).toBe(true);
     expect(PLATFORM_CAPABILITIES.stablecoinRouting).toBe(true);
     expect(PLATFORM_CAPABILITIES.defiLiquidityRouting).toBe(true);
+    expect(PLATFORM_CAPABILITIES.financialRoutingApi).toBe(true);
+    expect(PLATFORM_CAPABILITIES.executionIntents).toBe(true);
   });
 });

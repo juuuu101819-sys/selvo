@@ -66,6 +66,10 @@ const envSchema = z
 
     /** Maximum comparison notional, as a guard against nonsense input. */
     MAX_COMPARISON_AMOUNT_MINOR_UNITS: z.string().regex(/^\d+$/).default('100000000000000'),
+
+    RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1_000).max(3_600_000).default(60_000),
+    /** When unset, tests disable the limiter. Set to enable it (including in NODE_ENV=test). */
+    RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(10_000).optional(),
   })
   .superRefine((env, ctx) => {
     if (env.DATABASE_DRIVER === 'postgres' && env.DATABASE_URL === undefined) {
@@ -98,6 +102,11 @@ export interface AppConfig {
   readonly providerTimeoutMs: number;
   readonly pricingDataDir: string | undefined;
   readonly maxAmountMinorUnits: string;
+  readonly rateLimit: {
+    readonly enabled: boolean;
+    readonly windowMs: number;
+    readonly max: number;
+  };
 }
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -153,6 +162,11 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     providerTimeoutMs: env.PROVIDER_TIMEOUT_MS,
     pricingDataDir: env.MERIDIAN_PRICING_DATA_DIR,
     maxAmountMinorUnits: env.MAX_COMPARISON_AMOUNT_MINOR_UNITS,
+    rateLimit: {
+      enabled: env.NODE_ENV !== 'test' || source['RATE_LIMIT_MAX'] !== undefined,
+      windowMs: env.RATE_LIMIT_WINDOW_MS,
+      max: env.RATE_LIMIT_MAX ?? 120,
+    },
   };
 }
 

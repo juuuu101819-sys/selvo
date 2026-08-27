@@ -99,6 +99,12 @@ export type {
   PersistenceDriver,
   StoredComparison,
 } from './repositories.js';
+export type {
+  ExecutionIntent,
+  ExecutionIntentRepository,
+  ExecutionIntentStatus,
+} from './execution-intent.js';
+export { EXECUTION_INTENT_STATUS } from './execution-intent.js';
 export {
   DEMO_MEMBERSHIP_ID,
   DEMO_ORGANIZATION_ID,
@@ -114,5 +120,5 @@ export {
   OTHER_USER_ID,
   OTHER_USER_PASSWORD,
 } from '../auth/demo-tenant.js';
-export { hashPassword, hashSecret, randomToken, verifyPassword } from '../crypto/secrets.js';
+export { hashPassword, hashSecret, randomToken, secretsMatch, verifyPassword } from '../crypto/secrets.js';
 export type { RouteProvider, SecretResolver } from './route-provider.js';

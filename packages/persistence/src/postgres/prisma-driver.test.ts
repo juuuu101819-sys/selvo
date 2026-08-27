@@ -116,6 +116,7 @@ describe('migrations', () => {
       'comparisons',
       'audit_logs',
       'sessions',
+      'execution_intents',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -170,6 +171,21 @@ describe('migrations', () => {
   it('stores only a hash of an API key secret', () => {
     expect(sql).toContain('"secret_hash"');
     expect(sql).not.toContain('"secret" TEXT');
+  });
+
+  it('stores API key scopes and expiry without a plaintext secret column', () => {
+    expect(sql).toContain('"scopes" TEXT[]');
+    expect(sql).toContain('"expires_at" TIMESTAMPTZ(3)');
+    expect(sql).toContain('"api_keys_scopes_known"');
+  });
+
+  it('records execution intents as non-executable recorded choices', () => {
+    expect(sql).toContain('CREATE TABLE "execution_intents"');
+    expect(sql).toContain('"execution_intents_status_recorded"');
+    expect(sql).toContain('"execution_intents_not_executable"');
+    expect(sql).toContain('"execution_intents_not_submitted"');
+    expect(sql).toContain('CHECK ("executable" = false)');
+    expect(sql).toContain('CHECK ("submitted" = false)');
   });
 
   /**

@@ -95,6 +95,14 @@ export {
   type DeFiRouteKind,
   type DeFiVenueKind,
 } from './defi-liquidity.js';
+export {
+  API_SCOPES,
+  DEFAULT_API_KEY_SCOPES,
+  SESSION_API_SCOPES,
+  isApiScope,
+  parseApiScopes,
+  type ApiScope,
+} from './api-scope.js';
 export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
 export {
   CONVERSION_KINDS,

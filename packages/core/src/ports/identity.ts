@@ -5,6 +5,8 @@
  * argument from the verified principal — never from the request body or a path the caller chose.
  */
 
+import type { ApiScope } from '../domain/api-scope.js';
+
 export type OrganizationRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type MembershipStatus = 'invited' | 'active' | 'suspended' | 'removed';
 export type RecordStatus = 'active' | 'suspended' | 'retired';
@@ -48,6 +50,8 @@ export interface IdentityApiKey {
   readonly keyPrefix: string;
   readonly secretHash: string;
   readonly label: string;
+  readonly scopes: readonly ApiScope[];
+  readonly expiresAt: string | null;
   readonly revokedAt: string | null;
 }
 
@@ -73,6 +77,8 @@ export interface PublicApiKey {
   readonly label: string;
   readonly createdAt: string;
   readonly lastUsedAt: string | null;
+  readonly expiresAt: string | null;
+  readonly scopes: readonly ApiScope[];
   readonly revokedAt: string | null;
 }
 
@@ -146,5 +152,8 @@ export interface IdentityStore {
     readonly secretHash: string;
     readonly label: string;
     readonly createdAt: string;
+    readonly scopes: readonly ApiScope[];
+    readonly expiresAt: string | null;
   }): Promise<void>;
+  revokeApiKey(id: string, organizationId: string, nowIso: string): Promise<boolean>;
 }
