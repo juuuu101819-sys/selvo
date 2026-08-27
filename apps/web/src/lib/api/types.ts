@@ -181,6 +181,7 @@ export interface MetaDto {
   readonly engineVersion: string;
   readonly routingEngineVersion?: string;
   readonly graphEngineVersion?: string;
+  readonly stablecoinRoutingEngineVersion?: string;
   readonly product: {
     readonly kind: string;
     readonly name: string;
@@ -207,6 +208,7 @@ export interface MetaDto {
     readonly defiExecution: boolean;
     readonly multiRailRouting: boolean;
     readonly routeGraph: boolean;
+    readonly stablecoinRouting: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -250,6 +252,14 @@ export interface MetaDto {
       readonly features: readonly string[];
     }[];
   };
+  readonly stablecoins?: readonly string[];
+  readonly chains?: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly quoting: string;
+    readonly connected: false;
+    readonly rpcUrl: null;
+  }[];
 }
 
 export interface Envelope<TData> {
@@ -577,3 +587,107 @@ export interface GraphSearchDto {
   readonly rejections: readonly { readonly reason: string; readonly detail: string }[];
   readonly explanation: string;
 }
+
+export interface ChainMetadataDto {
+  readonly id: string;
+  readonly namespace: string;
+  readonly reference: string;
+  readonly name: string;
+  readonly nativeAsset: string | null;
+  readonly testnet: boolean;
+  readonly quoting: 'available' | 'planned';
+  readonly connected: false;
+  readonly rpcUrl: null;
+}
+
+export interface StablecoinRouteDto {
+  readonly routeId: string;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly conversionKind: string;
+  readonly asset: {
+    readonly source: string;
+    readonly destination: string;
+  };
+  readonly chain: {
+    readonly source: ChainMetadataDto | null;
+    readonly destination: ChainMetadataDto | null;
+    readonly settlement: ChainMetadataDto | null;
+  };
+  readonly price: {
+    readonly indicated: string;
+    readonly mid: string;
+  };
+  readonly providerFee: AssetAmountJson;
+  readonly networkFee: AssetAmountJson;
+  readonly slippage: {
+    readonly bps: string;
+    readonly model: { readonly kind: string };
+  };
+  readonly liquidity: {
+    readonly availableDepthMinorUnits: string | null;
+    readonly venue: string | null;
+    readonly chain: ChainMetadataDto | null;
+  };
+  readonly estimatedSettlementTime: SettlementDto;
+  readonly expiration: string | null;
+  readonly estimatedReceiveAmount: AssetAmountJson;
+  readonly estimatedCost: AssetAmountJson;
+  readonly totalCostBps: string;
+  readonly hops: readonly string[];
+  readonly provider: {
+    readonly id: string;
+    readonly name: string;
+    readonly rail: string;
+    readonly railLabel: string;
+    readonly category: string;
+    readonly railFamily: string;
+  };
+  readonly explanation: string;
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly privateKeysGenerated: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+}
+
+export interface StablecoinRoutingDto {
+  readonly routingId: string;
+  readonly stablecoinRoutingEngineVersion: string;
+  readonly conversionKind: string;
+  readonly aiUsed: false;
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly privateKeysGenerated: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+  readonly routes: readonly StablecoinRouteDto[];
+  readonly recommendedRoute: StablecoinRouteDto | null;
+  readonly explanation: string;
+}
+
+export interface StablecoinCatalogDto {
+  readonly stablecoinRoutingEngineVersion: string;
+  readonly conversionKinds: readonly string[];
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly privateKeysGenerated: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+  readonly stablecoins: readonly {
+    readonly code: string;
+    readonly name: string;
+    readonly exponent: number;
+    readonly pegCurrency: string;
+    readonly issuer: string;
+    readonly defaultChain: ChainMetadataDto;
+    readonly chains: readonly (ChainMetadataDto & { readonly status: 'available' | 'planned' })[];
+    readonly custodiedByPlatform: false;
+  }[];
+  readonly chains: readonly ChainMetadataDto[];
+  readonly explanation: string;
+}
+

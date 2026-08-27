@@ -1,5 +1,6 @@
 import {
   ASSET_REGISTRY,
+  CHAIN_REGISTRY,
   CURRENCY_REGISTRY,
   DEFAULT_SCORING_WEIGHTS,
   INTERACTION_MODELS,
@@ -9,6 +10,7 @@ import {
   RAIL_REGISTRY,
   ROUTING_PIPELINE,
   SUPPORTED_CURRENCIES,
+  SUPPORTED_STABLECOINS,
   serializeFinancialProvider,
   type PersistenceDriver,
 } from '@meridian/core';
@@ -82,6 +84,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       engineVersion: container.engineVersion,
       routingEngineVersion: container.routingEngineVersion,
       graphEngineVersion: container.graphEngineVersion,
+      stablecoinRoutingEngineVersion: container.stablecoinRoutingEngineVersion,
       product: {
         kind: PRODUCT.kind,
         name: PRODUCT.name,
@@ -138,6 +141,14 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       rails: Object.values(RAIL_REGISTRY),
       currencies: SUPPORTED_CURRENCIES.map((code) => CURRENCY_REGISTRY[code]),
       assets: Object.values(ASSET_REGISTRY),
+      stablecoins: [...SUPPORTED_STABLECOINS],
+      chains: Object.values(CHAIN_REGISTRY).map((chain) => ({
+        id: chain.id,
+        name: chain.name,
+        quoting: chain.quoting,
+        connected: false,
+        rpcUrl: null,
+      })),
       providerCatalog: {
         categories: ['traditional', 'stablecoin', 'defi'],
         providers: container.financialProviders.all().map(serializeFinancialProvider),

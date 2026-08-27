@@ -244,6 +244,49 @@ Examples the demo graph can discover:
 
 An asset is never revisited on the same walk.
 
+## `GET /api/v1/stablecoins`
+
+Demo stablecoin catalog and chain metadata. Today: USDC and USDT. Each listing names a default
+settlement chain (CAIP-2) with `connected: false` and `rpcUrl: null`. Adding a stablecoin later is
+a registry row — this endpoint does not encode ticker-specific logic. `stablecoinRoutingEngineVersion`
+is **1.0.0**. Custody, wallets, private keys and execution flags are all `false`.
+
+## `POST /api/v1/stablecoin-routes`
+
+Stablecoin routing layer. Prices **fiat → stablecoin**, **stablecoin → fiat** and
+**stablecoin → stablecoin** only. Distinct from `POST /routes` (every rail) and `POST /comparisons`
+(fiat scoring). Cost math is the shared multi-rail cost engine; ranking is by indicative cost, then
+settlement time. No model is used. No chain is contacted.
+
+```jsonc
+{
+  "sourceAsset": "USD",
+  "destinationAsset": "USDC", // `targetAsset` accepted as a synonym
+  "amount": "10000.00"
+}
+```
+
+`organizationId` is taken from the principal. The schema is strict: `execute`, keys, wallets and
+beneficiary fields are rejected.
+
+Returns `201` with ranked `routes[]`. Each route carries:
+
+- `asset` — source and destination codes
+- `chain` — source, destination and settlement metadata (`connected` always false)
+- `price` — indicated and mid
+- `providerFee`, `networkFee`
+- `slippage` — bps plus the provider's model
+- `liquidity` — disclosed depth, venue, chain
+- `estimatedSettlementTime`
+- `expiration`
+
+Top-level flags `custody`, `connectedToMainnet`, `walletsCreated`, `privateKeysGenerated`,
+`executable` and `delegateExecution` are always `false`. `aiUsed` is always `false`.
+
+USD → KRW and USDC → ETH are **400** on this endpoint (wrong conversion kind). USDT → KRW is
+**422** (no demo provider prices it). USD 100,000 → KRW still returns **four** routes on
+`POST /comparisons`.
+
 ## `POST /api/v1/comparisons`
 
 Compares every eligible route for a transaction.

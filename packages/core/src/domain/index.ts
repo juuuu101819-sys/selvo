@@ -57,6 +57,29 @@ export {
   type AssetDefinition,
   type AssetKind,
 } from './asset.js';
+export {
+  CHAIN_IDS,
+  CHAIN_REGISTRY,
+  DEMO_SETTLEMENT_CHAIN_ID,
+  chainMetadata,
+  isChainId,
+  requireChainMetadata,
+  type ChainId,
+  type ChainMetadata,
+} from './chain.js';
+export {
+  STABLECOIN_CONVERSION_KINDS,
+  STABLECOIN_REGISTRY,
+  SUPPORTED_STABLECOINS,
+  assertStablecoinCorridor,
+  chainOfAsset,
+  chainsOfStablecoin,
+  isStablecoinAsset,
+  isStablecoinConversionKind,
+  stablecoinDefinition,
+  type StablecoinConversionKind,
+  type StablecoinDefinition,
+} from './stablecoin.js';
 export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
 export {
   CONVERSION_KINDS,

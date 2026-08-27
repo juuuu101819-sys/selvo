@@ -1,6 +1,7 @@
 export type {
   AppliedFeeDto,
   AssetAmountDto,
+  ChainMetadataDto,
   ComparisonDto,
   ComparisonInsightsDto,
   ComparisonRequestDto,
@@ -26,6 +27,10 @@ export type {
   RoutedAppliedFeeDto,
   RoutingCostBreakdownDto,
   SettlementDto,
+  StablecoinCatalogDto,
+  StablecoinRouteDto,
+  StablecoinRoutingDto,
+  StablecoinSlippageDto,
 } from './dto.js';
 export {
   serializeComparison,
@@ -37,4 +42,7 @@ export {
   serializeReplayResult,
   serializeRoute,
   serializeRouteGraph,
+  serializeStablecoinCatalog,
+  serializeStablecoinRoute,
+  serializeStablecoinRouting,
 } from './serialize.js';

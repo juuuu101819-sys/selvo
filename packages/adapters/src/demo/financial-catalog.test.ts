@@ -101,6 +101,21 @@ describe('Helios Ramp', () => {
     expect(offRamp.conversionKind).toBe('stablecoin_fiat');
   });
 
+  it('quotes USD → USDT from the same rate table, not a second code path', async () => {
+    const quote = await ramp.getQuote(
+      {
+        sourceAsset: 'USD',
+        targetAsset: 'USDT',
+        amountMinorUnits: '10000000',
+        requestedAt: clock.nowIso(),
+      },
+      context,
+    );
+    expect(quote.conversionKind).toBe('fiat_stablecoin');
+    expect(quote.executable).toBe(false);
+    expect(quote.indicatedRate).toBe('0.9992');
+  });
+
   it('quotes USDC → KRW as a demo off-ramp', async () => {
     const quote = await ramp.getQuote(
       {
@@ -115,6 +130,17 @@ describe('Helios Ramp', () => {
     expect(quote.executable).toBe(false);
     expect(quote.indicatedRate).toBe('1374.2');
     expect(quote.midMarketRate).toBe('1380');
+  });
+
+  it('does not price USDT → KRW — that corridor stays adapter data, not an engine special case', async () => {
+    expect(
+      ramp.supportsNormalized({
+        sourceAsset: 'USDT',
+        targetAsset: 'KRW',
+        amountMinorUnits: '1000000',
+        requestedAt: clock.nowIso(),
+      }),
+    ).toBe(false);
   });
 });
 

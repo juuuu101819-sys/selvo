@@ -65,3 +65,19 @@ export type {
   RoutingScoreComponents,
   ScoredMultiRailRoute,
 } from './routing-types.js';
+export { STABLECOIN_ROUTING_ENGINE_VERSION } from './stablecoin-config.js';
+export {
+  explainStablecoinRoute,
+  explainStablecoinRouting,
+  projectStablecoinRoute,
+} from './stablecoin-project.js';
+export {
+  StablecoinRouter,
+  type StablecoinRouterDependencies,
+  type StablecoinRoutingInput,
+} from './stablecoin-routing.js';
+export type {
+  StablecoinQuoteRequest,
+  StablecoinRoute,
+  StablecoinRouting,
+} from './stablecoin-types.js';

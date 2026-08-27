@@ -4,6 +4,7 @@ import {
   UnsupportedCorridorError,
   assetDefinition,
   conversionKindOf,
+  isStablecoinAsset,
   type AssetDefinition,
   type CurrencyCode,
   type FinancialProvider,
@@ -27,11 +28,14 @@ const PROFILE: ProviderCapabilityProfile = {
   rails: ['stablecoin_settlement'],
 };
 
-/** USDC per 1 unit of fiat (on-ramp offered rate). */
-const ON_RAMP: Readonly<Record<string, string>> = {
-  USD: '0.9994',
-  EUR: '1.0840',
-  GBP: '1.2680',
+/** Offered units of stablecoin per 1 unit of fiat. Keyed by stablecoin, then fiat — not by ticker in control flow. */
+const ON_RAMP: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  USDC: { USD: '0.9994', EUR: '1.0840', GBP: '1.2680' },
+  USDT: { USD: '0.9992', EUR: '1.0836', GBP: '1.2675' },
+};
+
+const KRW_OFF_RAMP: Readonly<Record<string, { readonly offered: string; readonly mid: string }>> = {
+  USDC: { offered: '1374.2', mid: '1380' },
 };
 
 const SETTLEMENT: SettlementEstimate = {
@@ -42,11 +46,20 @@ const SETTLEMENT: SettlementEstimate = {
   notes: 'Licensed partner on/off-ramp. Indicative; Meridian never holds the stablecoin.',
 };
 
+const KRW_SETTLEMENT: SettlementEstimate = {
+  p50Seconds: 1_200,
+  p95Seconds: 3_600,
+  businessDaysOnly: false,
+  cutoffUtc: null,
+  notes: 'Demo USDC → KRW off-ramp via a licensed partner. Indicative; Meridian never holds USDC.',
+};
+
 /**
  * Demo licensed-style stablecoin ramp.
  *
- * Quotes fiat ↔ USDC, including a demo USDC ↔ KRW off-ramp so the multi-rail
- * router can price Route C's last mile. It does not mint, burn, custody or pay out.
+ * Quotes fiat ↔ registered stablecoins (USDC and USDT today). Coverage is a rate table, not a
+ * branch in the routing engine: adding a stablecoin is a registry row plus a table row. It does
+ * not mint, burn, custody or pay out.
  */
 export class DemoStablecoinRampProvider implements FinancialProvider {
   readonly capability = 'financial' as const;
@@ -58,7 +71,7 @@ export class DemoStablecoinRampProvider implements FinancialProvider {
     modes: ['sandbox'],
     jurisdictions: ['*'],
     description:
-      'Demo fiat ↔ USDC on/off-ramp. Indicative quotes only; settlement is delegated to a licensed partner.',
+      'Demo fiat ↔ USDC/USDT on/off-ramp. Indicative quotes only; settlement is delegated to a licensed partner.',
     pricingVersion: 'demo-ramp-1',
   };
 
@@ -67,7 +80,7 @@ export class DemoStablecoinRampProvider implements FinancialProvider {
   }
 
   getSupportedAssets(): readonly AssetDefinition[] {
-    return ['USD', 'EUR', 'GBP', 'KRW', 'USDC']
+    return ['USD', 'EUR', 'GBP', 'KRW', 'USDC', 'USDT']
       .map((code) => ASSET_REGISTRY[code])
       .filter((asset): asset is AssetDefinition => asset !== undefined);
   }
@@ -116,9 +129,11 @@ export class DemoStablecoinRampProvider implements FinancialProvider {
       fees,
       settlement: settlementOf(request.sourceAsset, request.targetAsset),
       liquidity: {
-        availableDepthMinorUnits: null,
+        availableDepthMinorUnits: '20000000000000',
         venue: this.descriptor.name,
-        chainId: assetDefinition(request.targetAsset).chainId,
+        chainId: assetDefinition(
+          isStablecoinAsset(request.targetAsset) ? request.targetAsset : request.sourceAsset,
+        ).chainId,
       },
       slippage: { kind: 'none' },
       reliabilityScore: '0.982',
@@ -170,10 +185,10 @@ export class DemoStablecoinRampProvider implements FinancialProvider {
       throw new UnsupportedCorridorError(request.sourceAsset, request.targetAsset);
     }
     return {
-      availableDepthMinorUnits: null,
+      availableDepthMinorUnits: '20000000000000',
       venue: this.descriptor.name,
       chainId: assetDefinition(
-        request.targetAsset === 'USDC' ? request.targetAsset : request.sourceAsset,
+        isStablecoinAsset(request.targetAsset) ? request.targetAsset : request.sourceAsset,
       ).chainId,
     };
   }
@@ -190,17 +205,15 @@ export class DemoStablecoinRampProvider implements FinancialProvider {
 }
 
 function rateOf(source: string, target: string): string | null {
-  if (source === 'USDC' && target === 'KRW') {
-    return KRW_OFF_RAMP.offered;
+  const krw = krwRate(source, target);
+  if (krw !== null) {
+    return krw;
   }
-  if (source === 'KRW' && target === 'USDC') {
-    return invertRate(KRW_OFF_RAMP.offered);
+  if (isStablecoinAsset(target) && isCurrencyCode(source)) {
+    return ON_RAMP[target]?.[source] ?? null;
   }
-  if (target === 'USDC' && isCurrencyCode(source)) {
-    return ON_RAMP[source] ?? null;
-  }
-  if (source === 'USDC' && isCurrencyCode(target)) {
-    const onRamp = ON_RAMP[target];
+  if (isStablecoinAsset(source) && isCurrencyCode(target)) {
+    const onRamp = ON_RAMP[source]?.[target];
     return onRamp === undefined
       ? null
       : new Dec(1).div(new Dec(onRamp)).toSignificantDigits(12).toFixed();
@@ -208,12 +221,24 @@ function rateOf(source: string, target: string): string | null {
   return null;
 }
 
-function midOf(source: string, target: string): string {
-  if (source === 'USDC' && target === 'KRW') {
-    return KRW_OFF_RAMP.mid;
+function krwRate(source: string, target: string): string | null {
+  if (target === 'KRW' && isStablecoinAsset(source)) {
+    return KRW_OFF_RAMP[source]?.offered ?? null;
   }
-  if (source === 'KRW' && target === 'USDC') {
-    return invertRate(KRW_OFF_RAMP.mid);
+  if (source === 'KRW' && isStablecoinAsset(target)) {
+    const offered = KRW_OFF_RAMP[target]?.offered;
+    return offered === undefined ? null : invertRate(offered);
+  }
+  return null;
+}
+
+function midOf(source: string, target: string): string {
+  if (target === 'KRW' && isStablecoinAsset(source)) {
+    return KRW_OFF_RAMP[source]?.mid ?? rateOf(source, target) ?? '1';
+  }
+  if (source === 'KRW' && isStablecoinAsset(target)) {
+    const mid = KRW_OFF_RAMP[target]?.mid;
+    return mid === undefined ? (rateOf(source, target) ?? '1') : invertRate(mid);
   }
   if (source === 'USD' || target === 'USD') {
     return '1';
@@ -241,13 +266,3 @@ function networkFeeOf(target: string): NormalizedFee {
     rateBps: null,
   };
 }
-
-const KRW_OFF_RAMP = { offered: '1374.2', mid: '1380' } as const;
-
-const KRW_SETTLEMENT: SettlementEstimate = {
-  p50Seconds: 1_200,
-  p95Seconds: 3_600,
-  businessDaysOnly: false,
-  cutoffUtc: null,
-  notes: 'Demo USDC → KRW off-ramp via a licensed partner. Indicative; Meridian never holds USDC.',
-};

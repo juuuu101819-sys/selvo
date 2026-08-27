@@ -8,6 +8,7 @@ import { registerExecutionRoutes } from './executions.js';
 import { registerProviderCatalogRoutes } from './providers.js';
 import { registerRouteGraphRoutes } from './route-graph.js';
 import { registerRoutingRoutes } from './routing.js';
+import { registerStablecoinRoutes } from './stablecoin-routes.js';
 import {
   registerMetaRoutes,
   registerOperationalRoutes,
@@ -42,6 +43,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerComparisonRoutes(instance, container);
     registerRoutingRoutes(instance, container);
     registerRouteGraphRoutes(instance, container);
+    registerStablecoinRoutes(instance, container);
     registerProviderCatalogRoutes(instance, container);
     registerDashboardRoutes(instance, container);
     registerExecutionRoutes(instance, container);

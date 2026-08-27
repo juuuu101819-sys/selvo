@@ -197,7 +197,29 @@ A directed graph of assets and venues, with a constrained path finder:
 **Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
 AI-determined prices.
 
-## Phase 11 — AI agent payments _(not started, gated)_
+## Phase 11 — Stablecoin routing layer ✅ implemented
+
+A dedicated quoting surface for fiat ↔ stablecoin and stablecoin ↔ stablecoin, on top of the
+existing financial catalog. Demo assets: **USDC**, **USDT**. Adding a later stablecoin is a
+registry row plus adapter rates — `StablecoinRouter` never switches on ticker.
+
+- Conversion kinds: `fiat_stablecoin`, `stablecoin_fiat`, `stablecoin_stablecoin`
+- Quote fields: `asset`, `chain`, `price`, `providerFee`, `networkFee`, `slippage`, `liquidity`,
+  `estimatedSettlementTime`, `expiration`
+- Chain metadata (`CHAIN_REGISTRY`, CAIP-2). Ethereum is listed for quotes; `connected` is always
+  `false` and `rpcUrl` is always `null`. Base and Sepolia are reserved as planned.
+- Helios Ramp rate tables cover USDC and USDT vs USD/EUR/GBP; USDC → KRW remains the only KRW
+  off-ramp. USDT → KRW is still unsupported.
+- `GET /api/v1/stablecoins` and `POST /api/v1/stablecoin-routes`
+- `stablecoinRoutingEngineVersion` **1.0.0**, independent of comparison `2.0.0`, routing `1.0.0`
+  and graph `1.0.0`
+- Platform does not custody stablecoins. No mainnet connection, wallets, or private keys.
+- Comparison engine unchanged (four USD→KRW routes). Multi-rail scoring unchanged.
+
+**Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
+AI-determined prices.
+
+## Phase 12 — AI agent payments _(not started, gated)_
 
 Issue `ai_agent` principals that still act *for* an organization. Agents may request quotes and
 compare routes through the same API. Initiation remains delegated execution (Phase 7) and is

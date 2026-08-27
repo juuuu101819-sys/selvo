@@ -28,6 +28,14 @@ export function DashboardNav({ organizationName }: { organizationName: string })
             <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/rails" />}>
               Multi-rail
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
+              render={<Link href="/stablecoins" />}
+            >
+              Stablecoins
+            </Button>
             <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/" />}>
               Compare routes
             </Button>

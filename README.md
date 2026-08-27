@@ -44,7 +44,8 @@ npm run dev              # API on :47311, web app on :43117
 
 Then open <http://127.0.0.1:43117> to compare fiat routes, <http://127.0.0.1:43117/rails> for the
 multi-rail engine (tradfi, stablecoin and DeFi), <http://127.0.0.1:43117/graph> for multi-hop path
-discovery, or <http://127.0.0.1:43117/login> for the organization dashboard.
+discovery, <http://127.0.0.1:43117/stablecoins> for USDC/USDT routing, or
+<http://127.0.0.1:43117/login> for the organization dashboard.
 
 Local sandbox login (in-memory driver provisions this on API start; Postgres gets it from `npm run db:seed`):
 
@@ -78,6 +79,11 @@ curl -s -X POST http://127.0.0.1:47311/api/v1/route-graph/paths \
   -H 'content-type: application/json' \
   -d '{"sourceAsset":"USD","destinationAsset":"KRW","constraints":{"maxHops":3}}' \
   | jq '.data.paths[] | {hops, assets, cost: .totalCostBps}'
+
+curl -s -X POST http://127.0.0.1:47311/api/v1/stablecoin-routes \
+  -H 'content-type: application/json' \
+  -d '{"sourceAsset":"USD","destinationAsset":"USDC","amount":"10000.00"}' \
+  | jq '.data.routes[] | {asset, price: .price.indicated, provider: .provider.name, chain: .chain.destination.name}'
 ```
 
 ## Verifying a change
@@ -121,7 +127,8 @@ docs/
   PROVIDERS.md    Market data and provider interfaces, resilience, quote freshness.
   DATABASE.md     The data model, its invariants, and how to work with it locally.
   STACK.md        The chosen stack, the directory mapping, and the decisions behind them.
-  ROADMAP.md      Phase plan. Phases 1–4b, dashboard (2b), catalog (8), routing (9), graph (10).
+  ROADMAP.md      Phase plan. Phases 1–4b, dashboard (2b), catalog (8), routing (9), graph (10),
+                  stablecoin routing (11).
   COMPLIANCE.md   The boundaries, and how the code enforces them.
   API.md          Endpoint reference.
 ```

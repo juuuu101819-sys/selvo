@@ -76,6 +76,14 @@ export async function SiteHeader({
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/graph" />}>
             Graph
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/stablecoins" />}
+          >
+            Stablecoins
+          </Button>
         </div>
       </div>
     </header>

@@ -15,6 +15,8 @@ import type {
   MultiRailRoutingDto,
   ReplayResultDto,
   RouteGraphDto,
+  StablecoinCatalogDto,
+  StablecoinRoutingDto,
 } from './types';
 
 /**
@@ -281,6 +283,35 @@ export function discoverGraphPaths(
   return request<GraphSearchDto>({
     method: 'POST',
     path: '/api/v1/route-graph/paths',
+    body: input,
+    actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export function fetchStablecoins(
+  extras: { readonly authorization?: string | null } = {},
+): Promise<ApiResult<StablecoinCatalogDto>> {
+  return request<StablecoinCatalogDto>({
+    method: 'GET',
+    path: '/api/v1/stablecoins',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export interface CreateStablecoinRouteInput {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: string;
+}
+
+export function createStablecoinRoute(
+  input: CreateStablecoinRouteInput,
+  extras: { readonly actor?: string; readonly authorization?: string | null } = {},
+): Promise<ApiResult<StablecoinRoutingDto>> {
+  return request<StablecoinRoutingDto>({
+    method: 'POST',
+    path: '/api/v1/stablecoin-routes',
     body: input,
     actor: extras.actor ?? 'web-app',
     ...(extras.authorization ? { authorization: extras.authorization } : {}),

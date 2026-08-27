@@ -73,6 +73,9 @@ made. Nothing below rebuilds the application.
   (`routingEngineVersion` 1.0.0). Comparison scoring is unchanged.
 - `GET /api/v1/route-graph` and `POST /api/v1/route-graph/paths` walk a demo asset/venue graph
   (`graphEngineVersion` 1.0.0). Paths are not quotes and are never executable.
+- `GET /api/v1/stablecoins` and `POST /api/v1/stablecoin-routes` quote fiat ↔ stablecoin and
+  stablecoin ↔ stablecoin (`stablecoinRoutingEngineVersion` 1.0.0). Chain metadata is named, never
+  connected. No custody, wallets or keys.
 - Planned rails never expand into a comparison quote. Direct catalog quotes (ramps, AMM, aggregator)
   appear on `/routes` and `/provider-quotes`.
 

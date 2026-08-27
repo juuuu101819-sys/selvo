@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createComparison, createRoute, discoverGraphPaths, login, logout, replayComparison } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, GraphSearchDto, MultiRailRoutingDto, ReplayResultDto } from '@/lib/api/types';
+import { createComparison, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, replayComparison } from '@/lib/api/client';
+import type { ApiResult, ComparisonDto, GraphSearchDto, MultiRailRoutingDto, ReplayResultDto, StablecoinRoutingDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -77,6 +77,22 @@ export async function discoverGraphRoutes(input: {
           : { maxExpectedCostBps: input.maxExpectedCostBps.trim() }),
         ...(input.minLiquidity.trim() === '' ? {} : { minLiquidity: input.minLiquidity.trim() }),
       },
+    },
+    { actor: 'web-app', authorization },
+  );
+}
+
+export async function evaluateStablecoinRoutes(input: {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: string;
+}): Promise<ApiResult<StablecoinRoutingDto>> {
+  const authorization = await readSessionToken();
+  return createStablecoinRoute(
+    {
+      sourceAsset: input.sourceAsset,
+      destinationAsset: input.destinationAsset,
+      amount: input.amount,
     },
     { actor: 'web-app', authorization },
   );

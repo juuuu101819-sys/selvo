@@ -1,5 +1,6 @@
 import type {
   AppliedFee,
+  ChainMetadata,
   ComparisonInsights,
   CostBreakdown,
   ProviderFailure,
@@ -7,8 +8,16 @@ import type {
   RouteComparison,
   ScoredRoute,
 } from '../domain/index.js';
-import { RAIL_REGISTRY } from '../domain/index.js';
+import {
+  CHAIN_REGISTRY,
+  RAIL_REGISTRY,
+  STABLECOIN_CONVERSION_KINDS,
+  STABLECOIN_REGISTRY,
+  SUPPORTED_STABLECOINS,
+} from '../domain/index.js';
+import { STABLECOIN_ROUTING_ENGINE_VERSION } from '../engine/stablecoin-config.js';
 import type { MultiRailRouting, ScoredMultiRailRoute } from '../engine/routing-types.js';
+import type { StablecoinRoute, StablecoinRouting } from '../engine/stablecoin-types.js';
 import {
   GRAPH_ENGINE_VERSION,
   isAssetNode,
@@ -22,6 +31,7 @@ import { AssetAmount, Money, formatDecimal, type Decimal } from '../money/index.
 import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
 import type {
   AppliedFeeDto,
+  ChainMetadataDto,
   ComparisonDto,
   ComparisonInsightsDto,
   CostBreakdownDto,
@@ -37,6 +47,10 @@ import type {
   ReplayResultDto,
   RouteDto,
   RouteGraphDto,
+  StablecoinCatalogDto,
+  StablecoinRouteDto,
+  StablecoinRoutingDto,
+  StablecoinSlippageDto,
 } from './dto.js';
 
 const BPS_DECIMAL_PLACES = 4;
@@ -421,5 +435,154 @@ function serializeGraphEdge(edge: GraphEdge): GraphEdgeDto {
     liquidityAsset: edge.liquidityAsset,
     complianceEligible: edge.complianceEligible,
     executable: false,
+  };
+}
+
+export function serializeStablecoinCatalog(): StablecoinCatalogDto {
+  return {
+    stablecoinRoutingEngineVersion: STABLECOIN_ROUTING_ENGINE_VERSION,
+    conversionKinds: [...STABLECOIN_CONVERSION_KINDS],
+    custody: false,
+    connectedToMainnet: false,
+    walletsCreated: false,
+    privateKeysGenerated: false,
+    executable: false,
+    delegateExecution: false,
+    stablecoins: SUPPORTED_STABLECOINS.map((code) => {
+      const definition = STABLECOIN_REGISTRY[code]!;
+      return {
+        code: definition.code,
+        name: definition.name,
+        exponent: definition.exponent,
+        pegCurrency: definition.pegCurrency,
+        issuer: definition.issuer,
+        defaultChain: serializeChainMetadata(CHAIN_REGISTRY[definition.defaultChainId]),
+        chains: definition.chains.map((entry) => ({
+          ...serializeChainMetadata(CHAIN_REGISTRY[entry.chainId]),
+          status: entry.status,
+        })),
+        custodiedByPlatform: false as const,
+      };
+    }),
+    chains: Object.values(CHAIN_REGISTRY).map(serializeChainMetadata),
+    explanation:
+      'Demo USDC and USDT. Adding a stablecoin is a registry row plus adapter rates — routing ' +
+      'does not switch on ticker. Meridian never holds the token, connects to a chain, or creates a wallet.',
+  };
+}
+
+export function serializeStablecoinRouting(result: StablecoinRouting): StablecoinRoutingDto {
+  const routes = result.routes.map(serializeStablecoinRoute);
+  return {
+    routingId: result.routingId,
+    organizationId: result.organizationId,
+    createdAt: result.createdAt,
+    mode: result.mode,
+    stablecoinRoutingEngineVersion: result.stablecoinRoutingEngineVersion,
+    conversionKind: result.conversionKind,
+    aiUsed: false,
+    custody: false,
+    connectedToMainnet: false,
+    walletsCreated: false,
+    privateKeysGenerated: false,
+    executable: false,
+    delegateExecution: false,
+    request: {
+      sourceAsset: result.request.sourceAsset,
+      destinationAsset: result.request.destinationAsset,
+      amount: AssetAmount.ofMinorUnits(
+        result.request.sourceAsset,
+        result.request.amountMinorUnits,
+      ).toJSON(),
+      requestedAt: result.request.requestedAt,
+    },
+    routes,
+    recommendedRoute: result.recommendedRoute === null ? null : serializeStablecoinRoute(result.recommendedRoute),
+    providerFailures: result.providerFailures.map(serializeFailure),
+    explanation: result.explanation,
+  };
+}
+
+export function serializeStablecoinRoute(route: StablecoinRoute): StablecoinRouteDto {
+  return {
+    routeId: route.routeId,
+    rank: route.rank,
+    recommended: route.recommended,
+    conversionKind: route.conversionKind,
+    asset: { ...route.asset },
+    chain: {
+      source: serializeOptionalChain(route.chain.source),
+      destination: serializeOptionalChain(route.chain.destination),
+      settlement: serializeOptionalChain(route.chain.settlement),
+    },
+    price: {
+      indicated: route.price.indicated.toFixed(),
+      mid: route.price.mid.toFixed(),
+    },
+    providerFee: route.providerFee.toJSON(),
+    networkFee: route.networkFee.toJSON(),
+    slippage: serializeStablecoinSlippage(route.slippage),
+    liquidity: {
+      availableDepthMinorUnits: route.liquidity.availableDepthMinorUnits,
+      venue: route.liquidity.venue,
+      chain: serializeOptionalChain(route.liquidity.chain),
+    },
+    estimatedSettlementTime: route.estimatedSettlementTime,
+    expiration: route.expiration,
+    estimatedReceiveAmount: route.estimatedReceiveAmount.toJSON(),
+    estimatedCost: route.estimatedCost.toJSON(),
+    totalCostBps: fixed(route.totalCostBps, BPS_DECIMAL_PLACES),
+    hops: [...route.hops],
+    provider: {
+      id: route.provider.id,
+      name: route.provider.name,
+      rail: route.provider.rail,
+      railLabel: RAIL_REGISTRY[route.provider.rail].label,
+      category: route.provider.category,
+      railFamily: route.provider.railFamily,
+      licensing: route.provider.licensing,
+    },
+    explanation: route.explanation,
+    custody: false,
+    connectedToMainnet: false,
+    walletsCreated: false,
+    privateKeysGenerated: false,
+    executable: false,
+    delegateExecution: false,
+  };
+}
+
+function serializeStablecoinSlippage(slippage: StablecoinRoute['slippage']): StablecoinSlippageDto {
+  if (slippage.model.kind === 'none') {
+    return { bps: fixed(slippage.bps, BPS_DECIMAL_PLACES), model: { kind: 'none' } };
+  }
+  return {
+    bps: fixed(slippage.bps, BPS_DECIMAL_PLACES),
+    model: {
+      kind: 'tiered',
+      notionalCurrency: slippage.model.notionalCurrency,
+      tiers: slippage.model.tiers.map((tier) => ({
+        upToNotionalMinorUnits: tier.upToNotionalMinorUnits,
+        bps: tier.bps,
+      })),
+    },
+  };
+}
+
+function serializeOptionalChain(chain: ChainMetadata | null): ChainMetadataDto | null {
+  return chain === null ? null : serializeChainMetadata(chain);
+}
+
+function serializeChainMetadata(chain: ChainMetadata): ChainMetadataDto {
+  return {
+    id: chain.id,
+    namespace: chain.namespace,
+    reference: chain.reference,
+    name: chain.name,
+    nativeAsset: chain.nativeAsset,
+    testnet: chain.testnet,
+    quoting: chain.quoting,
+    connected: false,
+    rpcUrl: null,
   };
 }

@@ -81,6 +81,7 @@ describe('GET /v1/meta', () => {
       defiExecution: false,
       multiRailRouting: true,
       routeGraph: true,
+      stablecoinRouting: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,

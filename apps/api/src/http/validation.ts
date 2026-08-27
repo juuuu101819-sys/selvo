@@ -267,7 +267,12 @@ export const createRouteSchema = z
 
 export type CreateRouteBody = z.infer<typeof createRouteSchema>;
 
-export function resolveRouteRequest(body: CreateRouteBody): {
+export function resolveRouteRequest(body: {
+  readonly sourceAsset: string;
+  readonly destinationAsset?: string;
+  readonly targetAsset?: string;
+  readonly amount: string;
+}): {
   readonly sourceAsset: string;
   readonly destinationAsset: string;
   readonly amountMinorUnits: string;
@@ -284,6 +289,42 @@ export function resolveRouteRequest(body: CreateRouteBody): {
     amountMinorUnits: toAssetMinorUnits(sourceAsset, body.amount),
   };
 }
+
+/**
+ * Body of `POST /v1/stablecoin-routes`.
+ *
+ * Same pair and amount as `/routes`, without scoring weights: this layer ranks by indicative cost.
+ * `organizationId` is taken from the principal. `execute`, keys and beneficiary fields are rejected
+ * by `.strict()`.
+ */
+export const createStablecoinRouteSchema = z
+  .object({
+    sourceAsset: z.string().trim().min(2).max(16),
+    destinationAsset: z.string().trim().min(2).max(16).optional(),
+    targetAsset: z.string().trim().min(2).max(16).optional(),
+    amount: assetAmount,
+  })
+  .strict()
+  .refine((body) => (body.destinationAsset ?? body.targetAsset) !== undefined, {
+    message: 'either destinationAsset or targetAsset is required',
+    path: ['destinationAsset'],
+  })
+  .refine(
+    (body) =>
+      body.destinationAsset === undefined ||
+      body.targetAsset === undefined ||
+      body.destinationAsset === body.targetAsset,
+    {
+      message: 'destinationAsset and targetAsset must agree when both are supplied',
+      path: ['targetAsset'],
+    },
+  )
+  .refine((body) => body.sourceAsset !== (body.destinationAsset ?? body.targetAsset), {
+    message: 'sourceAsset and destinationAsset must differ',
+    path: ['destinationAsset'],
+  });
+
+export type CreateStablecoinRouteBody = z.infer<typeof createStablecoinRouteSchema>;
 
 const graphCostBps = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal string');
 

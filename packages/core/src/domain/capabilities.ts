@@ -38,6 +38,12 @@ export const PLATFORM_CAPABILITIES = {
    * quoting: edges carry indicative cost/liquidity metadata and are never executable.
    */
   routeGraph: true,
+  /**
+   * Stablecoin routing layer: fiat ↔ stablecoin and stablecoin ↔ stablecoin. Distinct from
+   * `multiRailRouting` (every rail) and `compareRoutes` (fiat). Quotes name an asset and chain;
+   * Meridian never holds the token, opens an RPC, or creates a wallet.
+   */
+  stablecoinRouting: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

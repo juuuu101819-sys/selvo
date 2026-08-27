@@ -14,6 +14,7 @@ backed by something in the code rather than by good intentions. Canonical produc
 | **No execution as principal**                                  | There is no outbound payment-initiation call anywhere in the codebase. `executeTransactions` and `operateAsPrincipal` are false. `POST /v1/executions` returns `501 EXECUTION_NOT_IMPLEMENTED`.                                        |
 | **No delegated execution yet**                                 | Distinct from principal trading: instructing a licensed partner is a future capability (`delegateExecution: false`). The 501 is the placeholder for that gate, not a missing feature. The refusal is audit-logged and tested.          |
 | **No DeFi execution**                                          | `defiExecution` is false. `defiQuotes` is true: a demo AMM/aggregator returns read-only depth. No adapter is registered as a `RouteProvider`. No swaps, wraps, bridges, keys or wallets. The route graph (`routeGraph: true`) walks indicative edges only; `executable` is always false. |
+| **No stablecoin custody**                                      | `stablecoinRouting` is true: quotes for USDC/USDT name a chain but never open an RPC. `holdCryptoAssets`, `holdPrivateKeys` and `controlCustomerWallets` remain false. There is no wallet, mint, burn or balance. |
 | **No AI-agent payment initiation**                             | `agentPayments` is false. `Principal.economicActor` may be `ai_agent` in the type system; no such principal is issued.                                                                                                                 |
 | **No stablecoin issuance**                                     | No minting, burning, reserve or attestation logic. `issueStablecoins` is false.                                                                                                                                                        |
 | **No regulated financial services without a licensed partner** | Every provider descriptor declares a `licensing` posture. Adapters are `unlicensed_sandbox` in Phase 1 and only register in `sandbox` mode. Booting in `production` mode with no licensed adapter configured is a fatal startup error. |
@@ -30,8 +31,9 @@ customer as an executable price.
 
 Financially meaningful events are appended to an immutable audit log with an actor, a timestamp
 and a payload: comparison requested, provider quote received, provider quote failed, comparison
-completed, comparison replayed, execution rejected. The audit repository exposes no update or
-delete operation.
+completed, comparison replayed, routing requested/completed/failed, graph requested/completed/failed,
+stablecoin routing requested/completed/failed, execution rejected. The audit repository exposes no
+update or delete operation.
 
 ## Data handling
 

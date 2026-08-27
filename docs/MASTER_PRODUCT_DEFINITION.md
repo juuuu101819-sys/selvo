@@ -46,10 +46,13 @@ Current rails: `bank_fx`, `payment_institution`, `liquidity_provider`. Planned: 
 
 ### 2. Stablecoin finance (`stablecoin`) — available
 
-Licensed on-ramp, off-ramp and stablecoin settlement. Fiat ↔ stablecoin conversion is priced as a
-route through a licensed partner. Meridian never holds the asset and does not issue stablecoins.
+Licensed on-ramp, off-ramp and stablecoin settlement. Fiat ↔ stablecoin and stablecoin ↔
+stablecoin conversion is priced as a route through a licensed or catalog partner. Demo assets
+today: USDC and USDT. Meridian never holds the asset, does not issue stablecoins, and does not
+connect to a chain.
 
-Current rail: `stablecoin_settlement`.
+Current rail: `stablecoin_settlement`. Dedicated HTTP: `GET /api/v1/stablecoins`,
+`POST /api/v1/stablecoin-routes`.
 
 ### 3. DeFi liquidity (`defi`) — planned
 
@@ -164,4 +167,6 @@ comparison UI, dashboard, or any execution path.
 quotes exist on the financial provider catalog. Multi-rail routing (`POST /api/v1/routes`) ranks
 those quotes deterministically; it does not execute them. The financial route graph
 (`GET /api/v1/route-graph`, `POST /api/v1/route-graph/paths`) discovers multi-hop conversions
-without pricing them or submitting them.
+without pricing them or submitting them. The stablecoin routing layer
+(`GET /api/v1/stablecoins`, `POST /api/v1/stablecoin-routes`) quotes USDC and USDT against fiat
+and against each other without holding the token or connecting to a chain.
