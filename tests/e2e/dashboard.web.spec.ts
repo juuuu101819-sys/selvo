@@ -34,7 +34,7 @@ test('rejects the wrong password without leaking whether the email exists', asyn
 test('opens the organization dashboard from the documented demo login', async ({ page }) => {
   await signIn(page);
 
-  await expect(page.getByText('Meridian Demo Trading Co')).toBeVisible();
+  await expect(page.getByText('Meridian Demo Trading Co').first()).toBeVisible();
   await expect(page.getByRole('region', { name: /Dashboard metrics/i })).toBeVisible();
   await expect(page.getByText('Total quoted volume')).toBeVisible();
   await expect(page.getByText('Estimated savings')).toBeVisible();

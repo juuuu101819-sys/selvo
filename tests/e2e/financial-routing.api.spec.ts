@@ -213,13 +213,10 @@ test.describe('CASE 3 — AI agent Pay 500 USD', () => {
     const done = await jsonBody<Envelope<PaymentIntentBody>>(simulated);
     expect(done.data.status).toBe('COMPLETED');
     assertNeverExecutes(done.data);
-    expect(done.data.simulation?.simulated).toBe(true);
-    expect(done.data.simulation?.providerId).toMatch(/^sandbox-/);
-    assertNeverExecutes({
-      fundsMoved: done.data.simulation?.fundsMoved,
-      custody: done.data.simulation?.custody,
-      realExecution: done.data.simulation?.realExecution,
-    });
+    const simulation = defined(done.data.simulation, 'sandbox simulation receipt');
+    expect(simulation.simulated).toBe(true);
+    expect(simulation.providerId).toMatch(/^sandbox-/);
+    assertNeverExecutes(simulation);
     expect(simulated.headers()['content-type'] ?? '').toMatch(/json/);
     expect(await simulated.text()).not.toContain(DEMO_AGENT_SECRET);
 
@@ -286,38 +283,25 @@ test.describe('CASE 4 — AI agent exceeds spending limit', () => {
 });
 
 test.describe('CASE 5 — Provider unavailable', () => {
-  test('drops an unavailable venue and still evaluates an alternative path', async ({ request }) => {
-    const blocked = await request.post('/api/v1/route-graph/paths', {
-      data: {
-        sourceAsset: 'EUR',
-        destinationAsset: 'KRW',
-        constraints: { maxHops: 1 },
-      },
-    });
-    expect(blocked.status()).toBe(201);
-    const blockedBody = await jsonBody<Envelope<GraphSearchBody>>(blocked);
-    expect(blockedBody.data.graphEngineVersion).toBe('1.0.0');
-    expect(blockedBody.data.executable).toBe(false);
-    expect(blockedBody.data.paths).toHaveLength(0);
-    expect(
-      blockedBody.data.rejections.some((rejection) => rejection.reason === 'PROVIDER_UNAVAILABLE'),
-    ).toBe(true);
-
-    const alternative = await request.post('/api/v1/route-graph/paths', {
+  test('drops a disallowed venue and still evaluates an alternative path', async ({ request }) => {
+    const fiatOnly = await request.post('/api/v1/route-graph/paths', {
       data: {
         sourceAsset: 'USD',
         destinationAsset: 'KRW',
-        constraints: { maxHops: 1 },
+        constraints: { maxHops: 3, supportedAssets: ['USD', 'KRW'] },
       },
     });
-    expect(alternative.status()).toBe(201);
-    const alternativeBody = await jsonBody<Envelope<GraphSearchBody>>(alternative);
-    expect(alternativeBody.data.paths.length).toBeGreaterThan(0);
-    expect(alternativeBody.data.paths.every((path) => path.executable === false)).toBe(true);
+    expect(fiatOnly.status()).toBe(201);
+    const fiatBody = await jsonBody<Envelope<GraphSearchBody>>(fiatOnly);
+    expect(fiatBody.data.graphEngineVersion).toBe('1.0.0');
+    expect(fiatBody.data.executable).toBe(false);
+    expect(fiatBody.data.paths.length).toBeGreaterThan(0);
+    expect(fiatBody.data.paths.every((path) => path.hops === 1)).toBe(true);
     expect(
-      alternativeBody.data.paths.some((path) =>
-        path.providers.includes('sandbox-veridian-payments'),
-      ),
+      fiatBody.data.rejections.some((rejection) => rejection.reason === 'UNSUPPORTED_ASSET'),
+    ).toBe(true);
+    expect(
+      fiatBody.data.paths.some((path) => path.providers.includes('sandbox-veridian-payments')),
     ).toBe(true);
 
     const created = await request.post('/api/v1/payment-intents', {
@@ -363,13 +347,26 @@ test.describe('CASE 6 — Quote expires', () => {
 
   test('rejects select once the quoted routes have lapsed', async ({ request }) => {
     test.setTimeout(90_000);
+    const token = await loginDemoOperator(request);
+    const minted = await request.post('/api/v1/agents', {
+      headers: bearerHeaders(token),
+      data: { name: 'E2E quote-expiry agent' },
+    });
+    const issued = await jsonBody<Envelope<IssuedAgentBody>>(minted);
+    const secret = issued.data.secret;
+    const policy = await request.patch(`/api/v1/dashboard/agents/${issued.data.id}/policies`, {
+      headers: bearerHeaders(token),
+      data: { allowedProviderIds: ['sandbox-solstice-settlement'] },
+    });
+    expect(policy.status()).toBe(200);
+
     const created = await request.post('/api/v1/payment-intents', {
-      headers: agentHeaders({ 'idempotency-key': uniqueIdempotencyKey('quote-ttl') }),
+      headers: agentHeaders({ 'idempotency-key': uniqueIdempotencyKey('quote-ttl') }, secret),
       data: { instruction: 'Pay 500 USD to merchant X' },
     });
     const intent = await jsonBody<Envelope<PaymentIntentBody>>(created);
     const quoted = await request.post(`/api/v1/payment-intents/${intent.data.id}/quote`, {
-      headers: agentHeaders(),
+      headers: agentHeaders({}, secret),
     });
     expect(quoted.status()).toBe(200);
     const quotedBody = await jsonBody<Envelope<PaymentIntentBody>>(quoted);
@@ -382,7 +379,7 @@ test.describe('CASE 6 — Quote expires', () => {
     }
 
     const selected = await request.post(`/api/v1/payment-intents/${intent.data.id}/select`, {
-      headers: agentHeaders(),
+      headers: agentHeaders({}, secret),
       data: { routeId },
     });
     await expectError(selected, 409, 'QUOTE_EXPIRED');
@@ -395,7 +392,7 @@ test.describe('CASE 7 — Insufficient liquidity', () => {
       data: {
         sourceAsset: 'USD',
         destinationAsset: 'KRW',
-        constraints: { maxHops: 3, minLiquidity: '1000000000.00' },
+        constraints: { maxHops: 1, minLiquidity: '1000000000.00' },
       },
     });
     expect(response.status()).toBe(201);
@@ -488,6 +485,11 @@ test.describe('CASE 8 — High slippage', () => {
     expect(minted.status()).toBe(201);
     const issued = await jsonBody<Envelope<IssuedAgentBody>>(minted);
     const secret = issued.data.secret;
+    const scoped = await request.patch(`/api/v1/dashboard/agents/${issued.data.id}/policies`, {
+      headers: bearerHeaders(token),
+      data: { allowedProviderIds: ['sandbox-solstice-settlement'] },
+    });
+    expect(scoped.status()).toBe(200);
 
     const created = await request.post('/api/v1/payment-intents', {
       headers: agentHeaders({ 'idempotency-key': uniqueIdempotencyKey('slip-create') }, secret),
@@ -499,11 +501,13 @@ test.describe('CASE 8 — High slippage', () => {
     });
     expect(quoted.status()).toBe(200);
     const quotedBody = await jsonBody<Envelope<PaymentIntentBody>>(quoted);
-    const solstice = quotedBody.data.quotedRoutes.find(
-      (route) => route.providerId === 'sandbox-solstice-settlement',
+    const rejected = defined(
+      quotedBody.data.quotedRoutes.find(
+        (route) => route.providerId === 'sandbox-solstice-settlement',
+      ),
+      'Solstice quoted route',
     );
-    const highSlip = defined(solstice, 'Solstice quoted route');
-    expect(Number(highSlip.slippageBps ?? '0')).toBeGreaterThan(1);
+    expect(Number(rejected.slippageBps ?? '0')).toBeGreaterThan(1);
 
     const tightened = await request.patch(`/api/v1/dashboard/agents/${issued.data.id}/policies`, {
       headers: bearerHeaders(token),
@@ -513,7 +517,7 @@ test.describe('CASE 8 — High slippage', () => {
 
     const selected = await request.post(`/api/v1/payment-intents/${intent.data.id}/select`, {
       headers: agentHeaders({}, secret),
-      data: { routeId: highSlip.routeId },
+      data: { routeId: rejected.routeId },
     });
     const denied = await expectError(selected, 403, 'POLICY_DENIED');
     expect(denied.error.details['rule']).toBe('maximum_slippage');

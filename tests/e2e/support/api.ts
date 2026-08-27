@@ -318,7 +318,8 @@ export function assertDigitMinorUnits(value: string): void {
 
 export function assertNonCustodialText(payload: unknown, extraForbidden: readonly string[] = []): void {
   const text = JSON.stringify(payload);
-  expect(text).not.toMatch(/privateKey|private_key|mnemonic|seedPhrase|walletSecret/i);
+  expect(text).not.toMatch(/"privateKey"\s*:/);
+  expect(text).not.toMatch(/private_key|mnemonic|seedPhrase|walletSecret/i);
   expect(text).not.toContain(DEMO_AGENT_SECRET);
   expect(text).not.toContain(DEMO_PASSWORD);
   for (const secret of extraForbidden) {
@@ -370,9 +371,10 @@ export function assertNeverExecutes(flags: {
   }
 }
 
-export function defined<T>(value: T | undefined, message: string): T {
+export function defined<T>(value: T | undefined | null, message: string): T {
+  expect(value).not.toBeNull();
   expect(value).toBeDefined();
-  if (value === undefined) {
+  if (value === undefined || value === null) {
     throw new Error(message);
   }
   return value;

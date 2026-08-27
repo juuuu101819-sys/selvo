@@ -18,7 +18,7 @@ export async function SiteHeader({
 
   return (
     <header className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/" className="flex items-center gap-3">
             <span
@@ -36,7 +36,7 @@ export async function SiteHeader({
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
           {mode !== null && (
             <Badge
               variant={mode === 'sandbox' ? 'secondary' : 'default'}
