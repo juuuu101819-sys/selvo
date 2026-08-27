@@ -26,6 +26,8 @@ import type {
   PaymentIntentDto,
   PaymentPolicyDto,
   PublicAgentDto,
+  NlInterpretDto,
+  NlRouteResultDto,
   RouteSearchDto,
   AssetCatalogEntryDto,
   CurrencyCatalogEntryDto,
@@ -520,5 +522,30 @@ export function simulatePaymentIntent(
     method: 'POST',
     path: `/api/v1/payment-intents/${encodeURIComponent(id)}/simulate`,
     authorization,
+  });
+}
+
+export function interpretAgentInstruction(
+  input: { readonly agentId: string; readonly instruction: string },
+  extras: { readonly authorization: string },
+): Promise<ApiResult<NlInterpretDto>> {
+  return request<NlInterpretDto>({
+    method: 'POST',
+    path: '/api/v1/agent/interpret',
+    body: input,
+    authorization: extras.authorization,
+  });
+}
+
+export function routeAgentInstruction(
+  input: { readonly agentId: string; readonly instruction: string },
+  extras: { readonly authorization: string; readonly idempotencyKey: string },
+): Promise<ApiResult<NlRouteResultDto>> {
+  return request<NlRouteResultDto>({
+    method: 'POST',
+    path: '/api/v1/agent/route',
+    body: input,
+    authorization: extras.authorization,
+    idempotencyKey: extras.idempotencyKey,
   });
 }

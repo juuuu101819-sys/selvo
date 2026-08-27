@@ -60,6 +60,7 @@ describe('Phase 14 capabilities', () => {
   it('enables agent payment infrastructure without turning on real execution or custody', () => {
     expect(PLATFORM_CAPABILITIES.agentPayments).toBe(true);
     expect(PLATFORM_CAPABILITIES.agentPaymentSimulation).toBe(true);
+    expect(PLATFORM_CAPABILITIES.agentNaturalLanguageRouting).toBe(true);
     expect(PLATFORM_CAPABILITIES.executeTransactions).toBe(false);
     expect(PLATFORM_CAPABILITIES.custodyFunds).toBe(false);
     expect(PLATFORM_CAPABILITIES.holdPrivateKeys).toBe(false);

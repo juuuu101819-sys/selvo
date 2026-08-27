@@ -47,6 +47,8 @@ export type {
   PublicAgentDto,
   QuotedRouteOptionDto,
   SimulatedExecutionReceiptDto,
+  StructuredNlPaymentIntentDto,
+  NlRouteResultDto,
 } from './dto.js';
 export {
   serializeComparison,
@@ -75,4 +77,6 @@ export {
   serializeWalletReference,
   serializeMerchant,
   serializePaymentPolicy,
+  serializeNlInterpretation,
+  serializeNlRouteResult,
 } from './serialize.js';

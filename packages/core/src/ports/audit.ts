@@ -37,6 +37,8 @@ export const AUDIT_EVENT_TYPES = [
   'payment.intent.failed',
   'payment.intent.expired',
   'payment.policy.denied',
+  'nl.intent.interpreted',
+  'nl.route.completed',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

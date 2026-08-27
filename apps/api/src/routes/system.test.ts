@@ -78,6 +78,7 @@ describe('GET /v1/meta', () => {
       issueStablecoins: false,
       agentPayments: true,
       agentPaymentSimulation: true,
+      agentNaturalLanguageRouting: true,
       defiQuotes: true,
       defiExecution: false,
       multiRailRouting: true,

@@ -800,3 +800,33 @@ export interface PaymentPolicyDto {
   readonly createdAt: string;
   readonly updatedAt: string;
 }
+
+export interface StructuredNlPaymentIntentDto {
+  readonly amount: AssetAmountDto;
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly recipient: string;
+  readonly optimizationPreference: string | null;
+  readonly instruction: string;
+  readonly interpreter: 'deterministic_parser';
+  readonly aiUsed: false;
+  readonly financialsComputedBy: 'routing_engine' | null;
+  readonly didNotCompute: readonly string[];
+}
+
+export interface NlRouteResultDto {
+  readonly interpretation: StructuredNlPaymentIntentDto;
+  readonly paymentIntent: PaymentIntentDto;
+  readonly selectedRoute: QuotedRouteOptionDto | null;
+  readonly executionIntent: ExecutionIntentDto;
+  readonly pipelineCompleted: readonly string[];
+  readonly interpreter: 'deterministic_parser';
+  readonly aiUsed: false;
+  readonly financialsComputedBy: 'routing_engine';
+  readonly didNotCompute: readonly string[];
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly realExecution: false;
+  readonly executable: false;
+  readonly submitted: false;
+}

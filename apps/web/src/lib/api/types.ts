@@ -206,6 +206,7 @@ export interface MetaDto {
     readonly issueStablecoins: boolean;
     readonly agentPayments: boolean;
     readonly agentPaymentSimulation?: boolean;
+    readonly agentNaturalLanguageRouting?: boolean;
     readonly defiQuotes: boolean;
     readonly defiExecution: boolean;
     readonly multiRailRouting: boolean;
@@ -941,5 +942,41 @@ export interface PaymentPolicyDto {
   readonly maxFeeBps: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
+}
+
+export interface StructuredNlPaymentIntentDto {
+  readonly amount: AssetAmountJson;
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly recipient: string;
+  readonly optimizationPreference: string | null;
+  readonly instruction: string;
+  readonly interpreter: 'deterministic_parser';
+  readonly aiUsed: false;
+  readonly financialsComputedBy: 'routing_engine' | null;
+  readonly didNotCompute: readonly string[];
+}
+
+export interface NlInterpretDto {
+  readonly interpretation: StructuredNlPaymentIntentDto;
+  readonly pipelineCompleted: readonly string[];
+  readonly aiUsed: false;
+}
+
+export interface NlRouteResultDto {
+  readonly interpretation: StructuredNlPaymentIntentDto;
+  readonly paymentIntent: PaymentIntentDto;
+  readonly selectedRoute: QuotedRouteOptionDto | null;
+  readonly executionIntent: ExecutionIntentDto;
+  readonly pipelineCompleted: readonly string[];
+  readonly interpreter: 'deterministic_parser';
+  readonly aiUsed: false;
+  readonly financialsComputedBy: 'routing_engine';
+  readonly didNotCompute: readonly string[];
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly realExecution: false;
+  readonly executable: false;
+  readonly submitted: false;
 }
 

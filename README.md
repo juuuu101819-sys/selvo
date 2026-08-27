@@ -61,7 +61,7 @@ Sandbox AI agent (hashed at provision; treat like the demo password — local on
 
 ```
 agent credential  mag_demo_agent01_sandbox_only_not_production
-instruction       Pay 500 USD to merchant X
+instruction       Pay 1,000 USD to this merchant using the cheapest compliant route.
 ```
 
 Dashboard pages (signed in): `/dashboard`, `/dashboard/quotes`, `/dashboard/transactions`,

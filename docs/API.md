@@ -135,6 +135,7 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "issueStablecoins": false,
   "agentPayments": true,
   "agentPaymentSimulation": true,
+  "agentNaturalLanguageRouting": true,
   "defiQuotes": true,
   "defiExecution": false,
   "multiRailRouting": true,
@@ -153,8 +154,10 @@ demos that are not in `providers`. `defiQuotes` is true; `defiLiquidityRouting` 
 `defiExecution` is false. `defiRoutingEngineVersion` is **1.0.0**. `financialRoutingApi` and
 `executionIntents` are true: `POST /api/v1/quote` and `POST /api/v1/routes/search` are the
 authenticated routing API; `transaction:create` records an intent, it does not pay.
-`agentPayments` and `agentPaymentSimulation` are true: agents may create payment intents and run
-the sandbox simulator. They still cannot move money. `POST /api/v1/executions` remains 501.
+`agentPayments`, `agentPaymentSimulation` and `agentNaturalLanguageRouting` are true: agents may
+create payment intents, interpret natural language into structured intent, and run the sandbox
+simulator. They still cannot move money. The NL parser does not compute rates, fees, slippage or
+settlement amounts. `POST /api/v1/executions` remains 501.
 
 ## `GET /api/v1/providers`
 
@@ -577,6 +580,28 @@ Create accepts `instruction` (e.g. `"Pay 500 USD to merchant X"`) and/or structu
 
 Simulate sets `COMPLETED` with `simulated: true` and `fundsMoved: false`. It does not call a real
 provider. `POST /api/v1/executions` is still 501.
+
+## AI agent natural-language routing
+
+The AI-facing layer. An LLM or agent may only interpret language; the deterministic routing engine
+prices the corridor.
+
+| Method | Path | Scope |
+| ------ | ---- | ----- |
+| POST | `/api/v1/agent/interpret` | `payment:create` |
+| POST | `/api/v1/agent/route` | `payment:create`, `payment:quote`, `payment:authorize` |
+
+```json
+{ "instruction": "Pay 1,000 USD to this merchant using the cheapest compliant route." }
+```
+
+`interpret` returns a structured intent (`optimizationPreference`: `LOWEST_COST` | `FASTEST` |
+`BALANCED` | `LOWEST_SLIPPAGE` | `HIGH_LIQUIDITY`) with `interpreter: "deterministic_parser"`,
+`aiUsed: false`, and `didNotCompute: ["exchange_rates", "fees", "slippage", "settlement_amounts"]`.
+
+`route` runs parser → policy → routing engine → provider quotes → selects the recommended route →
+records an execution intent (`status: recorded`, `executable: false`). It does not pay.
+`Idempotency-Key` is honoured on create. Policy denials are `403 POLICY_DENIED`.
 
 ## `GET /api/v1/dashboard/settings`
 

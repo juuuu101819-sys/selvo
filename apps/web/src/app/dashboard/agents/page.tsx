@@ -30,8 +30,9 @@ export default async function DashboardAgentsPage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">AI agent payments</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Create a payment intent from an instruction, quote routes, authorize, and simulate.
-          Completed means the sandbox simulator finished — funds never move.
+          Create a payment intent from natural language, quote routes, authorize, and simulate.
+          The parser only interprets intent. Completed means the sandbox simulator finished — funds
+          never move.
         </p>
       </div>
       <AgentPaymentsExplorer

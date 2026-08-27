@@ -11,6 +11,7 @@ import {
   type RoutePreference,
 } from '../domain/agent-payments.js';
 import { parsePayInstruction, resolveMerchant } from '../domain/payment-instruction.js';
+import { routePreferenceFromOptimization } from '../domain/optimization-preference.js';
 import { evaluatePaymentPolicy, filterRoutesByPolicy } from '../domain/payment-policy.js';
 import {
   IdempotencyConflictError,
@@ -89,7 +90,7 @@ export class AgentPaymentService {
       amountMinorUnits: resolved.amountMinorUnits,
       recipient: resolved.recipient,
       purpose: resolved.purpose,
-      routePreference: command.routePreference,
+      routePreference: resolved.routePreference,
       maxFeeBps: command.maxFeeBps,
       expiresAt: command.expiresAt ?? null,
     });
@@ -131,7 +132,7 @@ export class AgentPaymentService {
       amountMinorUnits: resolved.amountMinorUnits,
       recipient: resolved.recipient,
       purpose: resolved.purpose,
-      routePreference: command.routePreference,
+      routePreference: resolved.routePreference,
       maxFeeBps: command.maxFeeBps,
       expiresAt,
       status: 'CREATED',
@@ -656,6 +657,7 @@ function resolveCreateFields(
   readonly amountMinorUnits: string;
   readonly recipient: string;
   readonly purpose: string;
+  readonly routePreference: RoutePreference | null;
 } {
   const parsed =
     command.instruction === undefined ? null : parsePayInstruction(command.instruction, merchants);
@@ -700,12 +702,18 @@ function resolveCreateFields(
     command.instruction ??
     `Pay ${sourceAsset} to ${merchant.recipientCode}`;
 
+  const parsedPreference =
+    parsed?.optimizationPreference === null || parsed?.optimizationPreference === undefined
+      ? null
+      : routePreferenceFromOptimization(parsed.optimizationPreference);
+
   return {
     sourceAsset,
     destinationAsset,
     amountMinorUnits,
     recipient: merchant.recipientCode,
     purpose,
+    routePreference: command.routePreference ?? parsedPreference,
   };
 }
 

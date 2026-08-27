@@ -193,7 +193,9 @@ export {
 } from './agent-payments.js';
 export {
   parsePayInstruction,
+  interpretNaturalLanguagePayment,
   resolveMerchant,
+  toStructuredNlPaymentIntent,
   type ParsedPaymentInstruction,
 } from './payment-instruction.js';
 export {
@@ -202,3 +204,20 @@ export {
   filterRoutesByPolicy,
   type PolicyEvaluationInput,
 } from './payment-policy.js';
+export type { StructuredNlPaymentIntent } from './nl-intent.js';
+export {
+  NL_DID_NOT_COMPUTE,
+  NL_INTERPRETER,
+  NL_PIPELINE_STAGES,
+  OPTIMIZATION_PREFERENCES,
+  ROUTE_PREFERENCE_VALUES,
+  isOptimizationPreference,
+  isRoutePreferenceValue,
+  optimizationFromRoutePreference,
+  routePreferenceFromOptimization,
+  weightsForOptimizationPreference,
+  type NlDidNotCompute,
+  type NlPipelineStage,
+  type OptimizationPreference,
+  type RoutePreferenceValue,
+} from './optimization-preference.js';

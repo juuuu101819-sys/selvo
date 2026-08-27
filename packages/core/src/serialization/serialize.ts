@@ -39,6 +39,8 @@ import type {
   PaymentPolicy,
   PublicAgent,
 } from '../domain/agent-payments.js';
+import type { StructuredNlPaymentIntent } from '../domain/nl-intent.js';
+import type { NlRouteResult } from '../engine/nl-routing-service.js';
 import type { ExecutionIntent } from '../ports/execution-intent.js';
 import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
 import { isDeFiLiquiditySource } from '../ports/defi-liquidity.js';
@@ -60,6 +62,8 @@ import type {
   PaymentPolicyDto,
   PublicAgentDto,
   AgentWalletReferenceDto,
+  StructuredNlPaymentIntentDto,
+  NlRouteResultDto,
   FinancialProviderDto,
   FinancialQuoteDto,
   GraphEdgeDto,
@@ -914,5 +918,43 @@ export function serializePaymentPolicy(policy: PaymentPolicy): PaymentPolicyDto 
     dailySpendingAsset: policy.dailySpendingAsset,
     createdAt: policy.createdAt,
     updatedAt: policy.updatedAt,
+  };
+}
+
+export function serializeNlInterpretation(
+  intent: StructuredNlPaymentIntent,
+  financialsComputedBy: 'routing_engine' | null,
+): StructuredNlPaymentIntentDto {
+  return {
+    amount: { ...intent.amount },
+    sourceAsset: intent.sourceAsset,
+    destinationAsset: intent.destinationAsset,
+    recipient: intent.recipient,
+    optimizationPreference: intent.optimizationPreference,
+    instruction: intent.instruction,
+    interpreter: 'deterministic_parser',
+    aiUsed: false,
+    financialsComputedBy,
+    didNotCompute: [...intent.didNotCompute],
+  };
+}
+
+export function serializeNlRouteResult(result: NlRouteResult): NlRouteResultDto {
+  return {
+    interpretation: serializeNlInterpretation(result.interpretation, 'routing_engine'),
+    paymentIntent: serializePaymentIntent(result.paymentIntent),
+    selectedRoute:
+      result.selectedRoute === null ? null : { ...result.selectedRoute },
+    executionIntent: serializeExecutionIntent(result.executionIntent),
+    pipelineCompleted: [...result.pipelineCompleted],
+    interpreter: 'deterministic_parser',
+    aiUsed: false,
+    financialsComputedBy: 'routing_engine',
+    didNotCompute: [...result.didNotCompute],
+    fundsMoved: false,
+    custody: false,
+    realExecution: false,
+    executable: false,
+    submitted: false,
   };
 }

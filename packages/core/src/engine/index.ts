@@ -95,6 +95,15 @@ export {
   type CreatePaymentIntentCommand,
 } from './agent-payment-service.js';
 export {
+  NlRoutingService,
+  NL_INTERPRET_PIPELINE,
+  NL_ROUTE_PIPELINE,
+  type NlInterpretCommand,
+  type NlRouteCommand,
+  type NlRouteResult,
+  type NlRoutingServiceDependencies,
+} from './nl-routing-service.js';
+export {
   SANDBOX_SIMULATION_RECEIPT,
   SANDBOX_SIMULATOR_PROVIDER_ID,
   simulateSandboxExecution,

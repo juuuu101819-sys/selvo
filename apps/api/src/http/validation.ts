@@ -558,14 +558,23 @@ const feeBps = z
  */
 export const createPaymentIntentSchema = z
   .object({
-    instruction: z.string().trim().min(8).max(280).optional(),
+    instruction: z.string().trim().min(8).max(500).optional(),
     agentId: z.string().trim().min(1).max(128).optional(),
     sourceAsset: z.string().trim().min(2).max(16).optional(),
     destinationAsset: z.string().trim().min(2).max(16).optional(),
     amount: assetAmount.optional(),
     recipient: z.string().trim().min(1).max(80).optional(),
     purpose: z.string().trim().min(1).max(280).optional(),
-    routePreference: z.enum(['lowest_cost', 'fastest', 'recommended']).optional(),
+    routePreference: z
+      .enum([
+        'lowest_cost',
+        'fastest',
+        'recommended',
+        'balanced',
+        'lowest_slippage',
+        'high_liquidity',
+      ])
+      .optional(),
     maxFee: feeBps.optional(),
     maxFeeBps: feeBps.optional(),
     expiresAt: isoTimestamp.optional(),
@@ -595,4 +604,13 @@ export const selectPaymentRouteSchema = z
   .strict();
 
 export type SelectPaymentRouteBody = z.infer<typeof selectPaymentRouteSchema>;
+
+export const nlAgentInstructionSchema = z
+  .object({
+    instruction: z.string().trim().min(8).max(500),
+    agentId: z.string().trim().min(1).max(128).optional(),
+  })
+  .strict();
+
+export type NlAgentInstructionBody = z.infer<typeof nlAgentInstructionSchema>;
 

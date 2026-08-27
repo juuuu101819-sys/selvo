@@ -284,3 +284,39 @@ AI Agent → Financial Router → Financial Rail → External Provider
 - Interaction model `agent_business` available. Engine versions unchanged
 
 Treasury product comparison remains planned on the `treasury_product` rail.
+
+## Phase 15 — AI agent natural-language routing interface ✅ implemented
+
+AI agents (and LLM tools acting for them) send language. A deterministic parser interprets intent.
+The routing engine computes the financial result. The parser never calculates exchange rates, fees,
+slippage or settlement amounts.
+
+```
+Natural Language
+  → Intent Parser
+  → Structured Payment Intent
+  → Policy Engine
+  → Routing Engine
+  → Provider Quote
+  → Route Selection
+  → Execution Intent
+```
+
+Example: `"Pay 1,000 USD to this merchant using the cheapest compliant route."` becomes
+
+```json
+{
+  "amount": { "asset": "USD", "minorUnits": "100000", "decimal": "1000.00", "exponent": 2 },
+  "sourceAsset": "USD",
+  "destinationAsset": "KRW",
+  "recipient": "merchant-x",
+  "optimizationPreference": "LOWEST_COST"
+}
+```
+
+- Preferences: `LOWEST_COST`, `FASTEST`, `BALANCED`, `LOWEST_SLIPPAGE`, `HIGH_LIQUIDITY`
+- `POST /api/v1/agent/interpret` — parse only (`aiUsed: false`, `financialsComputedBy: null`)
+- `POST /api/v1/agent/route` — full pipeline through a recorded execution intent (`executable: false`)
+- Quotes still come from `MultiRailRouter` (version **1.0.0**). Comparison **2.0.0**, graph **1.0.0**,
+  stablecoin **1.0.0**, DeFi **1.0.0** unchanged
+- `agentNaturalLanguageRouting` true. `executeTransactions` stays false. `POST /executions` remains 501

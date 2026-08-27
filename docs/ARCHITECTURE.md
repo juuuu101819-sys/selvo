@@ -327,7 +327,19 @@ every variable; `.env*` is git-ignored.
 every API response carries `"mode": "sandbox"` plus a non-binding-quote disclaimer. Starting in
 `production` without licensed adapters configured is a startup error, not a silent fallback.
 
-## 12. Testing strategy
+## 12. AI agent natural-language routing
+
+```
+Natural Language → Intent Parser → Structured Payment Intent → Policy Engine
+  → Routing Engine → Provider Quote → Route Selection → Execution Intent
+```
+
+`POST /api/v1/agent/interpret` and `POST /api/v1/agent/route` are the AI-facing layer. The
+interpreter is a deterministic parser (`aiUsed: false`). It must not calculate exchange rates,
+fees, slippage or settlement amounts. Those come from `MultiRailRouter` (routing engine **1.0.0**).
+The recorded execution intent is never executable. `POST /executions` remains 501.
+
+## 13. Testing strategy
 
 - **Unit** (`packages/core`) — money arithmetic, rounding boundaries, currency exponents, fee
   application order, slippage tiers, cost derivation, scoring/normalisation edge cases,
@@ -344,11 +356,12 @@ every API response carries `"mode": "sandbox"` plus a non-binding-quote disclaim
   earlier in this project was exactly that class of bug, so the suite sends a bodyless POST with a
   JSON content type on purpose.
 
-## 13. Deliberately out of scope
+## 14. Deliberately out of scope
 
 No execution (principal or delegated), no custody of fiat or crypto, no wallets, no key management,
-no stablecoin issuance, no auth-provider integration, no on-chain execution, no AI-agent payment
-initiation. Read-only DeFi quotes exist on the financial catalog. `POST /v1/executions` exists and
+no stablecoin issuance, no auth-provider integration, no on-chain execution, no AI-agent real
+payment execution. Agents may interpret language and simulate. Read-only DeFi quotes exist on the
+financial catalog. `POST /v1/executions` exists and
 returns `501 EXECUTION_NOT_IMPLEMENTED` — a deliberate, tested, audited refusal rather than an absent
 endpoint, so the boundary is visible in the API surface itself.
 

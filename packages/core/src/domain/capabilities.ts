@@ -30,6 +30,12 @@ export const PLATFORM_CAPABILITIES = {
    */
   agentPaymentSimulation: true,
   /**
+   * AI-facing natural-language routing: interpret an instruction into a structured intent, then
+   * run policy + the deterministic routing engine. The interpreter never computes rates, fees,
+   * slippage or settlement amounts. Distinct from `executeTransactions`.
+   */
+  agentNaturalLanguageRouting: true,
+  /**
    * Read-only DeFi / multi-asset quotes via the financial provider catalog. Distinct from
    * `defiExecution`: a quote is not a swap.
    */

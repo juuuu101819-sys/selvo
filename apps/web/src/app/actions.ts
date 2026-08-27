@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent } from '@/lib/api/client';
+import type { ApiResult, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -252,7 +252,32 @@ export async function simulateAgentPaymentIntent(id: string): Promise<ApiResult<
   return simulatePaymentIntent(id, token);
 }
 
-function unauthenticatedPayment(): ApiResult<PaymentIntentDto> {
+export async function interpretAgentPaymentInstruction(input: {
+  readonly agentId: string;
+  readonly instruction: string;
+}): Promise<ApiResult<NlInterpretDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticatedPayment();
+  }
+  return interpretAgentInstruction(input, { authorization: token });
+}
+
+export async function routeAgentPaymentInstruction(input: {
+  readonly agentId: string;
+  readonly instruction: string;
+}): Promise<ApiResult<NlRouteResultDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticatedPayment();
+  }
+  return routeAgentInstruction(input, {
+    authorization: token,
+    idempotencyKey: `web-nl-${input.agentId}-${Date.now()}`,
+  });
+}
+
+function unauthenticatedPayment<T>(): ApiResult<T> {
   return {
     ok: false,
     failure: {

@@ -1,5 +1,11 @@
 import { createHash } from 'node:crypto';
 import type { ApiScope } from './api-scope.js';
+import {
+  isRoutePreferenceValue,
+  ROUTE_PREFERENCE_VALUES,
+  weightsForOptimizationPreference,
+  type RoutePreferenceValue,
+} from './optimization-preference.js';
 
 export const AGENT_STATUSES = ['active', 'suspended', 'retired'] as const;
 export type AgentStatus = (typeof AGENT_STATUSES)[number];
@@ -30,8 +36,8 @@ export type PaymentIntentStatus = (typeof PAYMENT_INTENT_STATUSES)[number];
 export const AGENT_WALLET_KINDS = ['external_account', 'external_wallet'] as const;
 export type AgentWalletKind = (typeof AGENT_WALLET_KINDS)[number];
 
-export const ROUTE_PREFERENCES = ['lowest_cost', 'fastest', 'recommended'] as const;
-export type RoutePreference = (typeof ROUTE_PREFERENCES)[number];
+export const ROUTE_PREFERENCES = ROUTE_PREFERENCE_VALUES;
+export type RoutePreference = RoutePreferenceValue;
 
 export const POLICY_RULES = [
   'maximum_transaction_amount',
@@ -57,7 +63,7 @@ export function isPaymentIntentStatus(value: unknown): value is PaymentIntentSta
 }
 
 export function isRoutePreference(value: unknown): value is RoutePreference {
-  return typeof value === 'string' && (ROUTE_PREFERENCES as readonly string[]).includes(value);
+  return isRoutePreferenceValue(value);
 }
 
 export function isAgentWalletKind(value: unknown): value is AgentWalletKind {
@@ -236,23 +242,5 @@ export function weightsForRoutePreference(
   readonly reliability: string;
   readonly settlementConfidence: string;
 } | null {
-  if (preference === 'lowest_cost') {
-    return {
-      cost: '1',
-      speed: '0',
-      liquidity: '0',
-      reliability: '0',
-      settlementConfidence: '0',
-    };
-  }
-  if (preference === 'fastest') {
-    return {
-      cost: '0',
-      speed: '1',
-      liquidity: '0',
-      reliability: '0',
-      settlementConfidence: '0',
-    };
-  }
-  return null;
+  return weightsForOptimizationPreference(preference);
 }
