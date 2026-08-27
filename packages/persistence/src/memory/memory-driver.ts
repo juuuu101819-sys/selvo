@@ -3,9 +3,13 @@ import {
   type AuditEvent,
   type AuditLogRepository,
   type ComparisonRepository,
+  type DashboardRepository,
+  type IdentityStore,
   type PersistenceDriver,
   type StoredComparison,
 } from '@meridian/core';
+import { InMemoryDashboardRepository } from './memory-dashboard.js';
+import { InMemoryIdentityStore } from './memory-identity.js';
 
 const DEFAULT_LIST_LIMIT = 50;
 
@@ -70,6 +74,23 @@ export class InMemoryComparisonRepository implements ComparisonRepository {
     return Promise.resolve(ordered.map((item) => structuredClone(item)));
   }
 
+  listByOrganization(
+    organizationId: string | null,
+    options: { limit?: number } = {},
+  ): Promise<readonly StoredComparison[]> {
+    const limit = options.limit ?? DEFAULT_LIST_LIMIT;
+    const ordered = [...this.byId.values()]
+      .filter((item) => (item.organizationId ?? null) === organizationId)
+      .sort(
+        (left, right) =>
+          right.createdAt.localeCompare(left.createdAt) ||
+          (this.sequenceById.get(right.comparisonId) ?? 0) -
+            (this.sequenceById.get(left.comparisonId) ?? 0),
+      )
+      .slice(0, limit);
+    return Promise.resolve(ordered.map((item) => structuredClone(item)));
+  }
+
   get size(): number {
     return this.byId.size;
   }
@@ -111,6 +132,8 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly kind = 'memory';
   readonly comparisons = new InMemoryComparisonRepository();
   readonly auditLog = new InMemoryAuditLogRepository();
+  readonly identity: IdentityStore = new InMemoryIdentityStore();
+  readonly dashboard: DashboardRepository = new InMemoryDashboardRepository();
 
   healthCheck(): Promise<void> {
     return Promise.resolve();

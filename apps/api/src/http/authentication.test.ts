@@ -15,8 +15,8 @@ afterAll(async () => {
 const COMPARISON = { sourceCurrency: 'USD', targetCurrency: 'KRW', amount: '100000.00' };
 
 /**
- * Phase 1 has no authentication. These tests pin down what that means precisely, so that turning
- * authentication on later is a visible change rather than a silent one.
+ * Public routes stay anonymous. A credential that cannot be verified is rejected rather than
+ * served as if it belonged to a tenant.
  */
 describe('anonymous authentication', () => {
   it('serves a request that presents no credential', async () => {
@@ -35,7 +35,11 @@ describe('anonymous authentication', () => {
       data: { authentication: { scheme: string; enforcing: boolean; principalKind: string } };
     }>().data.authentication;
 
-    expect(auth).toEqual({ scheme: 'anonymous', enforcing: false, principalKind: 'anonymous' });
+    expect(auth).toEqual({
+      scheme: 'session+api_key',
+      enforcing: true,
+      principalKind: 'anonymous',
+    });
   });
 
   describe('refusing to pretend', () => {
@@ -66,10 +70,10 @@ describe('anonymous authentication', () => {
         headers: { authorization: 'Bearer token' },
       });
 
-      expect(response.json<ApiError>().error.message).toMatch(/Retry without an Authorization/);
+      expect(response.json<ApiError>().error.message).toMatch(/could not be verified/);
       expect(response.json<ApiError>().error.details).toMatchObject({
-        scheme: 'anonymous',
-        enforcing: false,
+        scheme: 'session+api_key',
+        enforcing: true,
       });
     });
 

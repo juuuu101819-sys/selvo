@@ -29,4 +29,8 @@ describe('comparisonErrorTitle', () => {
   it('falls back without inventing a diagnosis', () => {
     expect(comparisonErrorTitle({ code: 'INTERNAL_ERROR', details: {} })).toBe('Comparison failed');
   });
+
+  it('names a missing credential as a sign-in problem', () => {
+    expect(comparisonErrorTitle({ code: 'UNAUTHENTICATED', details: {} })).toBe('Sign in required');
+  });
 });

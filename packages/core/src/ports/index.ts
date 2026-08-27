@@ -13,6 +13,36 @@ export {
   type Principal,
   type PrincipalKind,
 } from './authentication.js';
+export type {
+  CostPoint,
+  DashboardMetrics,
+  DashboardProviderUsage,
+  DashboardQuote,
+  DashboardRepository,
+  DashboardTransaction,
+  RecordTransactionInput,
+  SavingsByCurrency,
+  VolumeByCurrency,
+  VolumePoint,
+} from './dashboard.js';
+export type {
+  IdentityApiKey,
+  IdentityMembership,
+  IdentityOrganization,
+  IdentitySession,
+  IdentityStore,
+  IdentityUser,
+  IssuedSession,
+  MembershipStatus,
+  OrganizationRole,
+  PublicApiKey,
+  PublicMember,
+  RecordStatus,
+  ResolvedPrincipalRecord,
+  UpsertMembershipInput,
+  UpsertOrganizationInput,
+  UpsertUserInput,
+} from './identity.js';
 export { FixedClock, systemClock, type Clock } from './clock.js';
 export type { FXProvider, FXQuote, FXQuoteRequest } from './fx-provider.js';
 export { SequentialIdGenerator, uuidIdGenerator, type IdGenerator } from './id-generator.js';
@@ -53,4 +83,20 @@ export type {
   PersistenceDriver,
   StoredComparison,
 } from './repositories.js';
+export {
+  DEMO_MEMBERSHIP_ID,
+  DEMO_ORGANIZATION_ID,
+  DEMO_ORGANIZATION_NAME,
+  DEMO_ORGANIZATION_SLUG,
+  DEMO_USER_DISPLAY_NAME,
+  DEMO_USER_EMAIL,
+  DEMO_USER_ID,
+  DEMO_USER_PASSWORD,
+  OTHER_ORGANIZATION_ID,
+  OTHER_ORGANIZATION_NAME,
+  OTHER_USER_EMAIL,
+  OTHER_USER_ID,
+  OTHER_USER_PASSWORD,
+} from '../auth/demo-tenant.js';
+export { hashPassword, hashSecret, randomToken, verifyPassword } from '../crypto/secrets.js';
 export type { RouteProvider, SecretResolver } from './route-provider.js';

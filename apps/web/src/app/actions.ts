@@ -1,7 +1,14 @@
 'use server';
 
-import { createComparison, replayComparison } from '@/lib/api/client';
+import { redirect } from 'next/navigation';
+import { createComparison, login, logout, replayComparison } from '@/lib/api/client';
 import type { ApiResult, ComparisonDto, ReplayResultDto } from '@/lib/api/types';
+import {
+  clearSessionCookie,
+  readSessionToken,
+  safeDashboardPath,
+  writeSessionCookie,
+} from '@/lib/session';
 
 export interface CompareRoutesInput {
   readonly sourceCurrency: string;
@@ -20,6 +27,7 @@ export interface CompareRoutesInput {
  * person using the app.
  */
 export async function compareRoutes(input: CompareRoutesInput): Promise<ApiResult<ComparisonDto>> {
+  const authorization = await readSessionToken();
   return createComparison(
     {
       sourceCurrency: input.sourceCurrency,
@@ -30,11 +38,34 @@ export async function compareRoutes(input: CompareRoutesInput): Promise<ApiResul
       ...(input.rails.length > 0 ? { rails: [...input.rails] } : {}),
       weights: input.weights,
     },
-    'web-app',
+    { actor: 'web-app', authorization },
   );
 }
 
 /** Re-runs a stored comparison through the engine and reports whether it reproduced. */
 export async function verifyComparison(comparisonId: string): Promise<ApiResult<ReplayResultDto>> {
-  return replayComparison(comparisonId);
+  const authorization = await readSessionToken();
+  return replayComparison(comparisonId, authorization);
+}
+
+export async function signIn(
+  email: string,
+  password: string,
+  nextPath: string,
+): Promise<ApiResult<{ signedIn: true }>> {
+  const result = await login(email, password);
+  if (!result.ok) {
+    return result;
+  }
+  await writeSessionCookie(result.data.token, result.data.expiresAt);
+  redirect(safeDashboardPath(nextPath));
+}
+
+export async function signOut(): Promise<void> {
+  const token = await readSessionToken();
+  if (token !== null) {
+    await logout(token);
+  }
+  await clearSessionCookie();
+  redirect('/login');
 }

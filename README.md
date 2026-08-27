@@ -39,7 +39,19 @@ cp .env.example .env     # optional; every value has a working default
 npm run dev              # API on :47311, web app on :43117
 ```
 
-Then open <http://127.0.0.1:43117>.
+Then open <http://127.0.0.1:43117> to compare routes, or <http://127.0.0.1:43117/login> for the
+organization dashboard.
+
+Local sandbox login (in-memory driver provisions this on API start; Postgres gets it from `npm run db:seed`):
+
+```
+email     treasury@demo-trading.example.invalid
+password  MeridianDemo!2026
+```
+
+Dashboard pages (signed in): `/dashboard`, `/dashboard/quotes`, `/dashboard/transactions`,
+`/dashboard/providers`, `/dashboard/settings`. Each query is scoped to that organization; another
+tenant's quotes never appear.
 
 To run just one side:
 
@@ -79,10 +91,10 @@ Playwright tests that drive the built app over real HTTP.
 ```
 apps/
   api/            HTTP boundary. Fastify + Zod. Validation, error mapping, wiring.
-  web/            Next.js UI. Renders comparisons; holds no financial logic. The results page
-                  leads with the best route, then alternatives, then a cost comparison; quote
-                  expiry is a live countdown with a refresh once a price lapses; and the only
-                  forward action is "Continue with partner" — nothing implies execution.
+  web/            Next.js UI. Renders comparisons and the authenticated organization dashboard.
+                  The results page leads with the best route, then alternatives, then a cost
+                  comparison; quote expiry is a live countdown with a refresh once a price lapses;
+                  and the only forward action is "Continue with partner" — nothing implies execution.
 packages/
   core/           Pure domain: money, cost engine, scorer, ports, errors. No I/O.
   adapters/       RouteProvider implementations. Sandbox rails today, partners later.
@@ -99,7 +111,7 @@ docs/
   PROVIDERS.md    Market data and provider interfaces, resilience, quote freshness.
   DATABASE.md     The data model, its invariants, and how to work with it locally.
   STACK.md        The chosen stack, the directory mapping, and the decisions behind them.
-  ROADMAP.md      Phase plan. Phase 1 is what exists.
+  ROADMAP.md      Phase plan. Phases 1–4b and the organization dashboard (Phase 2b) are in place.
   COMPLIANCE.md   The boundaries, and how the code enforces them.
   API.md          Endpoint reference.
 ```
@@ -109,16 +121,20 @@ the financial logic testable without a server, a database or a network.
 
 ## Authentication
 
-Phase 1 has no authentication, and says so rather than implying otherwise. A request presenting an
-`Authorization` or `X-Api-Key` header is rejected with `401` instead of being quietly served as
-anonymous — a client that sent a token and got a `200` back would reasonably assume it was
-authenticated and scoped to its organization, when neither is true.
+The API verifies session tokens (`Authorization: Bearer mds_…`) and organization API keys
+(`X-Api-Key`). A missing credential is still served as anonymous on public routes (compare, meta,
+health). A credential that cannot be verified is rejected with `401` — never silently treated as
+anonymous.
 
-What is prepared is the architecture, because that is the part that is hard to retrofit: an
-`Authenticator` port resolving a credential to a `Principal` once per request, a tenant boundary
-(`organizationId`) on that principal, audit events attributed from it rather than from a header read
-at the call site, and `Organization` / `User` / `ApiKey` tables in the schema. SSO, SAML, SCIM and MFA
-are explicitly out of scope. See [docs/STACK.md](./docs/STACK.md).
+Dashboard routes require a verified principal with an `organizationId`. Every metrics, quote,
+transaction and settings query filters on that id in the store itself. Cross-tenant resource ids
+return `404`, not `403`, so callers cannot probe whether another organization's ids exist.
+
+Sessions last 12 hours. The web app stores the raw token in an httpOnly `meridian_session` cookie
+and forwards it to the API on the server; the two processes do not share a cookie domain.
+
+SSO, SAML, SCIM and MFA remain out of scope. See [docs/STACK.md](./docs/STACK.md) and
+[docs/API.md](./docs/API.md).
 
 ## Notes on the numbers
 
@@ -143,13 +159,14 @@ Every setting comes from the environment and is validated once at startup, so a 
 deployment fails immediately rather than surfacing as a strange 500. No secret is ever read from
 source. See [.env.example](./.env.example) for the full list; the ones that matter most:
 
-| Variable          | Default                  | Notes                                                               |
-| ----------------- | ------------------------ | ------------------------------------------------------------------- |
-| `PLATFORM_MODE`   | `sandbox`                | `production` requires a licensed partner adapter, or startup fails. |
-| `DATABASE_DRIVER` | `memory`                 | `postgres` requires `DATABASE_URL` and the migration applied.       |
-| `API_PORT`        | `47311`                  |                                                                     |
-| `WEB_PORT`        | `43117`                  |                                                                     |
-| `API_BASE_URL`    | `http://127.0.0.1:47311` | Where the web app's server-side calls go.                           |
+| Variable            | Default                  | Notes                                                               |
+| ------------------- | ------------------------ | ------------------------------------------------------------------- |
+| `PLATFORM_MODE`     | `sandbox`                | `production` requires a licensed partner adapter, or startup fails. |
+| `DATABASE_DRIVER`   | `memory`                 | `postgres` requires `DATABASE_URL` and the migration applied.       |
+| `API_PORT`          | `47311`                  |                                                                     |
+| `WEB_PORT`          | `43117`                  |                                                                     |
+| `API_BASE_URL`      | `http://127.0.0.1:47311` | Where the web app's server-side calls go.                           |
+| `SEED_DEMO_TENANTS` | unset (`true` in e2e)    | Force-provision the demo org when `NODE_ENV=test`.                  |
 
 To use PostgreSQL, set `DATABASE_URL`, run `npm run db:deploy` to apply `prisma/migrations`, then set
 `DATABASE_DRIVER=postgres`. `GET /ready` fails loudly if the schema is missing.
@@ -173,8 +190,8 @@ a settlement impossible.
 
 ## Status
 
-The route comparison MVP and the data model are in place, through the productised results page
-(Phase 4b). Later phases — authentication, live licensed-partner adapters, corridor analytics,
-and any execution work — are described in [docs/ROADMAP.md](./docs/ROADMAP.md) and wait for an
-explicit request. Execution in particular is gated on the checklist in
+The route comparison MVP, the data model, and the authenticated organization dashboard are in place
+(through roadmap Phase 4b and Phase 2b). Later phases — live licensed-partner adapters, corridor
+analytics, and any execution work — are described in [docs/ROADMAP.md](./docs/ROADMAP.md) and wait
+for an explicit request. Execution in particular is gated on the checklist in
 [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).

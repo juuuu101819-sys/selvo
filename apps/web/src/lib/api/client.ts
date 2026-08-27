@@ -1,8 +1,15 @@
 import type {
   ApiErrorBody,
   ApiResult,
+  AuthMeDto,
   ComparisonDto,
+  DashboardMetricsPayload,
+  DashboardProviderUsageDto,
+  DashboardQuoteDto,
+  DashboardSettingsDto,
+  DashboardTransactionDto,
   Envelope,
+  LoginDto,
   MetaDto,
   ReplayResultDto,
 } from './types';
@@ -14,6 +21,9 @@ import type {
  * of the browser bundle and means the browser never needs a CORS grant. Every call resolves to a
  * discriminated result rather than throwing, so the UI always has something concrete to render —
  * including when the API is simply not running.
+ *
+ * Organization-scoped routes take a session token and send it as `Authorization: Bearer`. The web
+ * app and API sit on different ports, so the httpOnly cookie is never sent to the API directly.
  */
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:47311';
@@ -28,6 +38,7 @@ interface RequestOptions {
   readonly path: string;
   readonly body?: unknown;
   readonly actor?: string;
+  readonly authorization?: string | null;
   readonly cache?: RequestCache;
 }
 
@@ -43,6 +54,7 @@ async function request<TData>(options: RequestOptions): Promise<ApiResult<TData>
         // announcing a JSON payload that is not there is simply untrue.
         ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
         'x-meridian-actor': options.actor ?? 'web-app',
+        ...(options.authorization ? { authorization: `Bearer ${options.authorization}` } : {}),
       },
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
       cache: options.cache ?? 'no-store',
@@ -94,8 +106,12 @@ async function request<TData>(options: RequestOptions): Promise<ApiResult<TData>
   return { ok: true, data: envelope.data, disclaimer: envelope.meta.disclaimer };
 }
 
-export function fetchMeta(): Promise<ApiResult<MetaDto>> {
-  return request<MetaDto>({ method: 'GET', path: '/api/v1/meta' });
+export function fetchMeta(authorization?: string | null): Promise<ApiResult<MetaDto>> {
+  return request<MetaDto>({
+    method: 'GET',
+    path: '/api/v1/meta',
+    ...(authorization ? { authorization } : {}),
+  });
 }
 
 export interface CreateComparisonInput {
@@ -112,19 +128,95 @@ export interface CreateComparisonInput {
 
 export function createComparison(
   input: CreateComparisonInput,
-  actor?: string,
+  extras: { readonly actor?: string; readonly authorization?: string | null } = {},
 ): Promise<ApiResult<ComparisonDto>> {
   return request<ComparisonDto>({
     method: 'POST',
     path: '/api/v1/comparisons',
     body: input,
-    ...(actor === undefined ? {} : { actor }),
+    actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
   });
 }
 
-export function replayComparison(comparisonId: string): Promise<ApiResult<ReplayResultDto>> {
+export function replayComparison(
+  comparisonId: string,
+  authorization?: string | null,
+): Promise<ApiResult<ReplayResultDto>> {
   return request<ReplayResultDto>({
     method: 'POST',
     path: `/api/v1/comparisons/${encodeURIComponent(comparisonId)}/replay`,
+    ...(authorization ? { authorization } : {}),
+  });
+}
+
+export function login(email: string, password: string): Promise<ApiResult<LoginDto>> {
+  return request<LoginDto>({
+    method: 'POST',
+    path: '/api/v1/auth/login',
+    body: { email, password },
+    actor: 'web-app',
+  });
+}
+
+export function logout(authorization: string): Promise<ApiResult<{ signedOut: boolean }>> {
+  return request<{ signedOut: boolean }>({
+    method: 'POST',
+    path: '/api/v1/auth/logout',
+    authorization,
+  });
+}
+
+export function fetchMe(authorization: string): Promise<ApiResult<AuthMeDto>> {
+  return request<AuthMeDto>({ method: 'GET', path: '/api/v1/auth/me', authorization });
+}
+
+export function fetchDashboardMetrics(
+  authorization: string,
+): Promise<ApiResult<DashboardMetricsPayload>> {
+  return request<DashboardMetricsPayload>({
+    method: 'GET',
+    path: '/api/v1/dashboard/metrics',
+    authorization,
+  });
+}
+
+export function fetchDashboardQuotes(
+  authorization: string,
+): Promise<ApiResult<{ quotes: readonly DashboardQuoteDto[] }>> {
+  return request<{ quotes: readonly DashboardQuoteDto[] }>({
+    method: 'GET',
+    path: '/api/v1/dashboard/quotes',
+    authorization,
+  });
+}
+
+export function fetchDashboardTransactions(
+  authorization: string,
+): Promise<ApiResult<{ transactions: readonly DashboardTransactionDto[] }>> {
+  return request<{ transactions: readonly DashboardTransactionDto[] }>({
+    method: 'GET',
+    path: '/api/v1/dashboard/transactions',
+    authorization,
+  });
+}
+
+export function fetchDashboardProviders(
+  authorization: string,
+): Promise<ApiResult<{ providers: readonly DashboardProviderUsageDto[] }>> {
+  return request<{ providers: readonly DashboardProviderUsageDto[] }>({
+    method: 'GET',
+    path: '/api/v1/dashboard/providers',
+    authorization,
+  });
+}
+
+export function fetchDashboardSettings(
+  authorization: string,
+): Promise<ApiResult<DashboardSettingsDto>> {
+  return request<DashboardSettingsDto>({
+    method: 'GET',
+    path: '/api/v1/dashboard/settings',
+    authorization,
   });
 }

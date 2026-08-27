@@ -19,7 +19,7 @@ import {
   type RouteProvider,
 } from '@meridian/core';
 import { createPersistenceDriver } from '@meridian/persistence';
-import { AnonymousAuthenticator } from './auth/anonymous-authenticator.js';
+import { IdentityAuthenticator } from './auth/identity-authenticator.js';
 import { disclaimerFor, type AppConfig } from './config/env.js';
 
 export interface AppContainer {
@@ -107,8 +107,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     pricingResolver,
   });
 
-  // Phase 2 swaps this for an authenticator backed by the Organization, User and ApiKey tables.
-  const authenticator: Authenticator = new AnonymousAuthenticator();
+  const authenticator: Authenticator = new IdentityAuthenticator(persistence.identity, clock);
 
   logger.info('Meridian container initialised', {
     mode: config.mode,

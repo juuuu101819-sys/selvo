@@ -3,9 +3,8 @@
  *
  * Two rules shape this file.
  *
- * First, **no credentials**. Provider rows carry only non-secret operational metadata: a display
- * name, a rail, corridor capabilities and a docs link. Real provider credentials are resolved from
- * the environment through the SecretResolver port and are never seeded, committed or stored.
+ * First, **no live secrets**. The demo user password is a documented sandbox credential, stored
+ * only as a scrypt hash. Provider credentials are never seeded, committed or stored.
  *
  * Second, **no hardcoded prices**. The demo quotes are not invented figures typed into a fixture:
  * the seed runs the real routing engine over the real sandbox adapters and persists what comes back.
@@ -23,11 +22,13 @@ import { randomUUID } from 'node:crypto';
 import { createSandboxAdapters } from '@meridian/adapters';
 import {
   CURRENCY_REGISTRY,
+  DEMO_USER_PASSWORD,
   ProviderRegistry,
   RepositoryAuditLogger,
   RouteComparisonService,
   RouteCostEngine,
   defaultScoringWeights,
+  hashPassword,
   isCurrencyCode,
   noopLogger,
   serializeComparison,
@@ -35,10 +36,7 @@ import {
   uuidIdGenerator,
   type RouteDto,
 } from '@meridian/core';
-import {
-  InMemoryPersistenceDriver,
-  PrismaPlatformPricingResolver,
-} from '@meridian/persistence';
+import { InMemoryPersistenceDriver, PrismaPlatformPricingResolver } from '@meridian/persistence';
 import { Prisma, PrismaClient, type $Enums } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -441,6 +439,8 @@ async function seedRoutes(providerIdBySlug: Map<string, string>): Promise<void> 
 }
 
 async function seedOrganization(): Promise<void> {
+  const passwordHash = await hashPassword(DEMO_USER_PASSWORD);
+
   await prisma.organization.upsert({
     where: { id: DEMO_ORGANIZATION_ID },
     create: {
@@ -463,10 +463,14 @@ async function seedOrganization(): Promise<void> {
       status: 'active',
       locale: 'en',
       timezone: 'Asia/Singapore',
-      // No credential is seeded. Authentication is not implemented; see docs/STACK.md.
-      passwordHash: null,
+      passwordHash,
+      passwordSetAt: new Date(),
     },
-    update: { displayName: 'Demo Treasury Operator' },
+    update: {
+      displayName: 'Demo Treasury Operator',
+      passwordHash,
+      passwordSetAt: new Date(),
+    },
   });
 
   await prisma.organizationMember.upsert({
@@ -842,6 +846,10 @@ async function report(): Promise<void> {
       `  quote legs            ${legs}`,
       `  fees                  ${fees}`,
       `  customer pricing      ${pricing}`,
+      '',
+      'Demo login (sandbox only):',
+      '  email     treasury@demo-trading.example.invalid',
+      '  password  MeridianDemo!2026',
       '',
     ].join('\n'),
   );

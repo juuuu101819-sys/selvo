@@ -33,17 +33,18 @@ execute transactions; see [COMPLIANCE.md](./COMPLIANCE.md).
 }
 ```
 
-| Code                                  | Status    | Meaning                                                                             |
-| ------------------------------------- | --------- | ----------------------------------------------------------------------------------- |
-| `VALIDATION_ERROR`                    | 400       | Request failed schema or amount validation.                                         |
-| `UNSUPPORTED_CURRENCY`                | 400       | Currency is outside the supported set.                                              |
+| Code                                  | Status    | Meaning                                                                                      |
+| ------------------------------------- | --------- | -------------------------------------------------------------------------------------------- |
+| `VALIDATION_ERROR`                    | 400       | Request failed schema or amount validation.                                                  |
+| `UNSUPPORTED_CURRENCY`                | 400       | Currency is outside the supported set.                                                       |
 | `UNSUPPORTED_CORRIDOR`                | 422       | No registered provider will price this request — the corridor, the amount, or a rail filter. |
-| `NO_ROUTES_AVAILABLE`                 | 422       | Providers were eligible but none returned a usable quote.                           |
-| `NOT_FOUND`                           | 404       | Unknown comparison, or unknown route.                                               |
-| `IDEMPOTENCY_CONFLICT`                | 409       | Idempotency key reused with a different payload.                                    |
-| `EXECUTION_NOT_IMPLEMENTED`           | 501       | Deliberate refusal to move money.                                                   |
-| `PROVIDER_TIMEOUT` / `PROVIDER_ERROR` | 504 / 502 | Upstream provider failed. Usually reported per-route in `providerFailures` instead. |
-| `INTERNAL_ERROR`                      | 500       | Unexpected defect. Details are never leaked.                                        |
+| `NO_ROUTES_AVAILABLE`                 | 422       | Providers were eligible but none returned a usable quote.                                    |
+| `NOT_FOUND`                           | 404       | Unknown comparison, quote, transaction — or one that belongs to another organization.        |
+| `UNAUTHENTICATED`                     | 401       | Missing or unverifiable session / API key.                                                   |
+| `IDEMPOTENCY_CONFLICT`                | 409       | Idempotency key reused with a different payload.                                             |
+| `EXECUTION_NOT_IMPLEMENTED`           | 501       | Deliberate refusal to move money.                                                            |
+| `PROVIDER_TIMEOUT` / `PROVIDER_ERROR` | 504 / 502 | Upstream provider failed. Usually reported per-route in `providerFailures` instead.          |
+| `INTERNAL_ERROR`                      | 500       | Unexpected defect. Details are never leaked.                                                 |
 
 **Money.** Amounts always serialise with the integer minor units as the authoritative value:
 
@@ -60,15 +61,18 @@ for the same reason — never JSON numbers.
 | ----------------------------- | --------- | ------------------------------------------------------------------------------------------ |
 | `Idempotency-Key`             | request   | 8–128 chars. Replays return the original comparison.                                       |
 | `X-Meridian-Actor`            | request   | Unverified attribution for the audit trail, used only while no credential can be verified. |
-| `Authorization` / `X-Api-Key` | request   | Rejected with `401` in Phase 1. See below.                                                 |
+| `Authorization` / `X-Api-Key` | request   | Session bearer (`mds_…`) or organization API key. Unverifiable credentials are `401`.      |
 | `X-Request-Id`                | response  | Correlates a response with its log and audit entries.                                      |
 | `Deprecation` / `Link`        | response  | Present on the legacy `/v1` prefix only.                                                   |
 
-**Authentication.** Phase 1 serves unauthenticated callers, and refuses to pretend otherwise: a
-request presenting an `Authorization` or `X-Api-Key` header is rejected with `401 UNAUTHENTICATED`
-rather than quietly served as anonymous. A client that sent a token and received `200` would
-reasonably conclude it was authenticated and its data scoped to its organization, when neither is
-true. `GET /api/v1/meta` reports the active scheme under `authentication`.
+**Authentication.** Public comparison, meta and health stay available without a credential. Presenting
+`Authorization: Bearer mds_…` or `X-Api-Key` authenticates a user or service principal whose
+`organizationId` scopes every dashboard query. A credential that cannot be verified is `401
+UNAUTHENTICATED`, never silently treated as anonymous. `GET /api/v1/meta` reports the active scheme
+under `authentication` (`session+api_key`, `enforcing: true`).
+
+Demo sandbox login: `treasury@demo-trading.example.invalid` / `MeridianDemo!2026`. Sessions last
+12 hours. Dashboard settings return API key **prefixes** only.
 
 ---
 
@@ -197,6 +201,52 @@ derivable at any later time regardless of what the market has done since.
 The append-only audit trail for one comparison: `comparison.requested`, one
 `provider.quote.received` or `provider.quote.failed` per provider, `comparison.completed`, and any
 `comparison.replayed` events.
+
+## `POST /api/v1/auth/login`
+
+```json
+{ "email": "treasury@demo-trading.example.invalid", "password": "MeridianDemo!2026" }
+```
+
+Returns `201` with `token`, `expiresAt`, `user`, `organization` and `role`. Unknown email and wrong
+password share one error message. The token is shown once; only its hash is stored.
+
+## `POST /api/v1/auth/logout`
+
+Revokes the session presented in `Authorization`. Idempotent for anonymous callers.
+
+## `GET /api/v1/auth/me`
+
+The verified principal's user, organization and role. `401` without a credential.
+
+## `GET /api/v1/dashboard/metrics`
+
+Organization-scoped totals and 30-day charts, computed from stored quotes and transaction requests:
+
+- total quoted volume (request notional, not quote notional)
+- estimated savings (recommended vs most expensive quote per request)
+- quote count
+- successful route requests
+- average route cost (bps of recommended quotes)
+- average settlement estimate (p50 of recommended quotes)
+
+`charts.volumeByDay`, `charts.costByDay` and `charts.providers` are the same store, filtered to this
+organization.
+
+## `GET /api/v1/dashboard/quotes`
+
+## `GET /api/v1/dashboard/quotes/:id`
+
+## `GET /api/v1/dashboard/transactions`
+
+## `GET /api/v1/dashboard/transactions/:id`
+
+## `GET /api/v1/dashboard/providers`
+
+## `GET /api/v1/dashboard/settings`
+
+Members and API key prefixes for this organization. Another tenant's rows are never selected. A
+foreign id is `404 NOT_FOUND`.
 
 ## `POST /api/v1/executions`
 

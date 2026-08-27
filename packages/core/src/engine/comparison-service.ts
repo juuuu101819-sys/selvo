@@ -242,6 +242,7 @@ export class RouteComparisonService {
       targetCurrency: request.targetCurrency,
       amountMinorUnits: request.amountMinorUnits,
       idempotencyKey: input.idempotencyKey,
+      organizationId: input.organizationId,
       snapshot,
       result: serializeComparison(comparison),
     });

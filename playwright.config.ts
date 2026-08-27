@@ -65,6 +65,7 @@ export default defineConfig({
         API_HOST: '127.0.0.1',
         LOG_LEVEL: 'warn',
         CORS_ORIGINS: WEB_BASE_URL,
+        SEED_DEMO_TENANTS: 'true',
       },
     },
     {

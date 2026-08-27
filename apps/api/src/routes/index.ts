@@ -1,7 +1,9 @@
 import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import type { AppContainer } from '../container.js';
 import { registerAuthentication } from '../http/authentication.js';
+import { registerAuthRoutes } from './auth.js';
 import { registerComparisonRoutes } from './comparisons.js';
+import { registerDashboardRoutes } from './dashboard.js';
 import { registerExecutionRoutes } from './executions.js';
 import {
   registerMetaRoutes,
@@ -33,7 +35,9 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerAuthentication(instance, container.authenticator);
     registerVersionedHealthRoute(instance);
     registerMetaRoutes(instance, container);
+    registerAuthRoutes(instance, container);
     registerComparisonRoutes(instance, container);
+    registerDashboardRoutes(instance, container);
     registerExecutionRoutes(instance, container);
   };
 

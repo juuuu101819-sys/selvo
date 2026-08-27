@@ -115,6 +115,7 @@ describe('migrations', () => {
       'fees',
       'comparisons',
       'audit_logs',
+      'sessions',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }

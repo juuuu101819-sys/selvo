@@ -215,3 +215,145 @@ export interface ApiFailure {
 export type ApiResult<TData> =
   | { readonly ok: true; readonly data: TData; readonly disclaimer: string }
   | { readonly ok: false; readonly failure: ApiFailure };
+
+export interface SessionUserDto {
+  readonly id: string | null;
+  readonly email: string | null;
+  readonly displayName: string;
+}
+
+export interface SessionOrganizationDto {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  readonly countryCode: string;
+}
+
+export interface LoginDto {
+  readonly token: string;
+  readonly expiresAt: string;
+  readonly user: { readonly id: string; readonly email: string; readonly displayName: string };
+  readonly organization: SessionOrganizationDto;
+  readonly role: string;
+}
+
+export interface AuthMeDto {
+  readonly kind: string;
+  readonly role: string | null;
+  readonly user: SessionUserDto;
+  readonly organization: SessionOrganizationDto;
+}
+
+export interface VolumeByCurrencyDto {
+  readonly currency: string;
+  readonly exponent: number;
+  readonly minorUnits: string;
+  readonly requestCount: number;
+}
+
+export interface SavingsByCurrencyDto {
+  readonly currency: string;
+  readonly exponent: number;
+  readonly minorUnits: string;
+}
+
+export interface DashboardMetricsDto {
+  readonly totalQuotedVolume: readonly VolumeByCurrencyDto[];
+  readonly estimatedSavings: readonly SavingsByCurrencyDto[];
+  readonly quoteCount: number;
+  readonly successfulRouteRequests: number;
+  readonly averageRouteCostBps: string | null;
+  readonly averageSettlementP50Seconds: number | null;
+}
+
+export interface VolumePointDto {
+  readonly date: string;
+  readonly currency: string;
+  readonly minorUnits: string;
+  readonly requestCount: number;
+}
+
+export interface CostPointDto {
+  readonly date: string;
+  readonly averageCostBps: string;
+  readonly quoteCount: number;
+}
+
+export interface DashboardProviderUsageDto {
+  readonly providerId: string;
+  readonly providerName: string;
+  readonly rail: string;
+  readonly quoteCount: number;
+  readonly recommendedCount: number;
+  readonly averageCostBps: string | null;
+  readonly averageSettlementP50Seconds: number | null;
+}
+
+export interface DashboardMetricsPayload {
+  readonly metrics: DashboardMetricsDto;
+  readonly charts: {
+    readonly volumeByDay: readonly VolumePointDto[];
+    readonly costByDay: readonly CostPointDto[];
+    readonly providers: readonly DashboardProviderUsageDto[];
+  };
+}
+
+export interface DashboardQuoteDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly transactionRequestId: string;
+  readonly providerId: string;
+  readonly providerName: string;
+  readonly rail: string;
+  readonly status: string;
+  readonly sourceCurrency: string;
+  readonly targetCurrency: string;
+  readonly amountMinorUnits: string;
+  readonly totalCostMinorUnits: string;
+  readonly totalCostBps: string;
+  readonly estimatedReceiveMinorUnits: string;
+  readonly benchmarkReceiveMinorUnits: string;
+  readonly settlementP50Seconds: number;
+  readonly quotedAt: string;
+  readonly expiresAt: string;
+  readonly isRecommended: boolean;
+  readonly rank: number | null;
+  readonly score: string | null;
+}
+
+export interface DashboardTransactionDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly reference: string | null;
+  readonly sourceCurrency: string;
+  readonly targetCurrency: string;
+  readonly amountMinorUnits: string;
+  readonly status: string;
+  readonly selectedQuoteId: string | null;
+  readonly createdAt: string;
+  readonly quoteCount: number;
+}
+
+export interface PublicMemberDto {
+  readonly userId: string;
+  readonly email: string;
+  readonly displayName: string;
+  readonly role: string;
+  readonly status: string;
+}
+
+export interface PublicApiKeyDto {
+  readonly id: string;
+  readonly keyPrefix: string;
+  readonly label: string;
+  readonly createdAt: string;
+  readonly lastUsedAt: string | null;
+  readonly revokedAt: string | null;
+}
+
+export interface DashboardSettingsDto {
+  readonly organization: SessionOrganizationDto | null;
+  readonly members: readonly PublicMemberDto[];
+  readonly apiKeys: readonly PublicApiKeyDto[];
+  readonly role: string | null;
+}

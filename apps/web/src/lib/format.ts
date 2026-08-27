@@ -13,6 +13,11 @@ export function formatMoney(money: MoneyJson): string {
   return `${formatMinorUnits(money.minorUnits, money.exponent)} ${money.currency}`;
 }
 
+/** Dashboard rows carry minor units and a currency code rather than a `MoneyJson` object. */
+export function formatQuotedAmount(minorUnits: string, currency: string, exponent: number): string {
+  return formatMoney({ minorUnits, currency, decimal: '', exponent });
+}
+
 export function formatAmountOnly(money: MoneyJson): string {
   return formatMinorUnits(money.minorUnits, money.exponent);
 }

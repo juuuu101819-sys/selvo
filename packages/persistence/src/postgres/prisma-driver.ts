@@ -6,6 +6,8 @@ import {
   type AuditEventType,
   type AuditLogRepository,
   type ComparisonRepository,
+  type DashboardRepository,
+  type IdentityStore,
   type JsonObject,
   type PersistenceDriver,
   type PlatformPricingResolver,
@@ -13,6 +15,8 @@ import {
 } from '@meridian/core';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaPlatformPricingResolver } from './prisma-pricing-resolver.js';
+import { PrismaDashboardRepository } from './prisma-dashboard.js';
+import { PrismaIdentityStore } from './prisma-identity.js';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const DEFAULT_LIST_LIMIT = 50;
@@ -43,6 +47,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly kind = 'postgres';
   readonly comparisons: ComparisonRepository;
   readonly auditLog: AuditLogRepository;
+  readonly identity: IdentityStore;
+  readonly dashboard: DashboardRepository;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -63,6 +69,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.client = new PrismaClient({ adapter });
     this.comparisons = new PrismaComparisonRepository(this.client);
     this.auditLog = new PrismaAuditLogRepository(this.client);
+    this.identity = new PrismaIdentityStore(this.client);
+    this.dashboard = new PrismaDashboardRepository(this.client);
     this.pricing = new PrismaPlatformPricingResolver(this.client);
   }
 
@@ -113,6 +121,7 @@ class PrismaComparisonRepository implements ComparisonRepository {
           // A string keeps the value exact all the way into the DECIMAL column.
           amountMinorUnits: new Prisma.Decimal(comparison.amountMinorUnits),
           idempotencyKey: comparison.idempotencyKey,
+          organizationId: comparison.organizationId ?? null,
           snapshot: comparison.snapshot as Prisma.InputJsonValue,
           result: comparison.result as Prisma.InputJsonValue,
         },
@@ -146,6 +155,20 @@ class PrismaComparisonRepository implements ComparisonRepository {
   async list(options: { limit?: number } = {}): Promise<readonly StoredComparison[]> {
     const rows = await this.query(() =>
       this.client.comparison.findMany({
+        orderBy: [{ createdAt: 'desc' }, { sequence: 'desc' }],
+        take: options.limit ?? DEFAULT_LIST_LIMIT,
+      }),
+    );
+    return rows.map(toStoredComparison);
+  }
+
+  async listByOrganization(
+    organizationId: string | null,
+    options: { limit?: number } = {},
+  ): Promise<readonly StoredComparison[]> {
+    const rows = await this.query(() =>
+      this.client.comparison.findMany({
+        where: { organizationId },
         orderBy: [{ createdAt: 'desc' }, { sequence: 'desc' }],
         take: options.limit ?? DEFAULT_LIST_LIMIT,
       }),
@@ -224,6 +247,7 @@ export interface ComparisonRow {
   readonly targetCurrency: string;
   readonly amountMinorUnits: { toFixed(decimalPlaces?: number): string };
   readonly idempotencyKey: string | null;
+  readonly organizationId?: string | null;
   readonly snapshot: unknown;
   readonly result: unknown;
 }
@@ -251,6 +275,7 @@ export function toStoredComparison(row: ComparisonRow): StoredComparison {
     // `toFixed(0)` and never `toNumber()`: a large minor-unit count exceeds the safe integer range.
     amountMinorUnits: row.amountMinorUnits.toFixed(0),
     idempotencyKey: row.idempotencyKey,
+    organizationId: row.organizationId ?? null,
     snapshot: row.snapshot,
     result: row.result,
   };

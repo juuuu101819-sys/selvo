@@ -103,14 +103,19 @@ as corridor currencies: `CURRENCY_REGISTRY`, which governs what the API will pri
 
 **`Organization`** — the tenant boundary every query is scoped by.
 
-**`User`** — a person. `passwordHash` is Argon2id and null until authentication is implemented; the
-plaintext is never stored, logged or selected into a DTO.
+**`User`** — a person. `passwordHash` is a tagged scrypt hash (the schema comment names Argon2id as
+the intended production KDF; scrypt needs no native addon, so local development stays installable).
+Plaintext is never stored, logged or selected into a DTO.
 
 **`OrganizationMember`** — membership with a role (`owner`/`admin`/`member`/`viewer`). Membership is
 its own record rather than a column on `User`, so one person can act for several businesses — a group
 treasury function or an external accountant, both normal in this market and painful to retrofit.
 
-**`ApiKey`** — machine credential, hash only.
+**`ApiKey`** — machine credential, hash only. Lookups go by `keyPrefix`; the secret is compared as a
+SHA-256 hash. The prefix is the only form returned to the dashboard.
+
+**`Session`** — a hashed session token (`mds_…`) bound to one user and one organization, with an
+expiry. Logout sets `revokedAt`. Raw tokens are never stored.
 
 ### Providers
 
@@ -252,8 +257,8 @@ request.
 
 Two rules shape the seed:
 
-- **No credentials.** Nothing in it is a real provider credential, and every hostname is
-  `example.invalid`.
+- **No live secrets.** Provider hostnames are `example.invalid`. The demo user password is the
+  documented sandbox credential, stored only as a scrypt hash.
 - **No hardcoded prices.** The demo quotes are not invented figures. The seed runs the real routing
   engine over the real sandbox adapters and persists what comes back, so the demo data stays honest
   as pricing evolves — and a schema that could not represent a real quote fails at seed time rather
@@ -271,8 +276,7 @@ The current seed produces, for USD 100,000 → KRW:
 ## Not yet wired
 
 The routing engine still prices from the file-based sandbox adapters, not from `Provider` and
-`ProviderCapability`, and the API does not yet write `TransactionRequest` or `Quote` rows — it
-persists `Comparison` snapshots. Reading provider capability from the database and persisting quotes
-through it is Phase 3 work; designing that write path now would have been speculative. The seed
-exercises the full model end to end in the meantime, which is what proves the schema can hold real
-engine output.
+`ProviderCapability`. The dashboard reads `TransactionRequest` and `Quote` rows scoped by
+`organizationId`. Live HTTP comparisons still persist `Comparison` snapshots; attaching those writes
+to the quote tables on every request is later work. The seed already exercises the full model end to
+end, which is what proves the schema can hold real engine output.

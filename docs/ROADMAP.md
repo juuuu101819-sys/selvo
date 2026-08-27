@@ -1,7 +1,7 @@
 # Meridian — Phase Roadmap
 
-Phases are implemented **one at a time, on explicit instruction only**. Phases 1–4b are in
-place. Later phases wait for an explicit request.
+Phases are implemented **one at a time, on explicit instruction only**. Phases 1–4b and Phase 2b
+(the organization dashboard) are in place. Later phases wait for an explicit request.
 
 ---
 
@@ -46,17 +46,23 @@ activity without a licensed partner.
   no credential of any kind.
 - Thirty-one integration tests against a real PostgreSQL, gated on `TEST_DATABASE_URL`.
 
-**Still excluded:** authentication is still architecture only, PostgreSQL is not yet the default
-driver, and nothing reads provider capability from the database yet.
+**Still excluded from Phase 2 itself:** PostgreSQL is not the default driver, and provider
+capability is still read from adapters rather than from the database (Phase 3).
 
-## Phase 2b — Authentication and multi-tenancy _(not started)_
+## Phase 2b — Authentication and B2B customer dashboard ✅ implemented
 
-Implement the authentication whose architecture Phase 1 prepared: verify API keys and session tokens
-against the `Organization`, `User` and `ApiKey` tables, scope every query by `organizationId`, and add
-per-tenant rate limits. Make PostgreSQL the default driver, with the database integration suite
-running in CI. Then comparison history and per-tenant audit retention.
+- Session login (`POST /api/v1/auth/login`) and API keys (`X-Api-Key`), resolved to a `Principal`
+  whose `organizationId` is the only tenant boundary handlers may use.
+- Dashboard routes: metrics (quoted volume, estimated savings, quote count, successful requests,
+  average route cost, average settlement), quotes, transactions, providers, settings.
+- Charts and totals are aggregated from already-scoped database rows — never from another
+  organization, and never from a request body `organizationId`.
+- Cross-tenant resource access returns `404`, not `403`.
+- Web app at `/login` and `/dashboard/*`, with an httpOnly session cookie forwarded to the API.
+- Documented demo tenant: `treasury@demo-trading.example.invalid` / `MeridianDemo!2026`.
+- Authorization tests covering two organizations and a service API key.
 
-Still excluded: enterprise SSO, SAML and SCIM.
+Still excluded: enterprise SSO, SAML, SCIM, MFA, and making PostgreSQL the default driver.
 
 ## Phase 3 — Market data and provider architecture ✅ implemented
 

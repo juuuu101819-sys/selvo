@@ -222,22 +222,16 @@ comparison (recorded in `providerErrors`) instead of failing the request.
 
 ## 10. Authentication
 
-Prepared, not implemented. The parts that are hard to retrofit exist now:
+Organization-scoped. The parts that were hard to retrofit in Phase 1 are now wired:
 
 - `Principal` carries `organizationId` (the tenant boundary), `subjectId`, `roles` and a `verified`
-  flag, so nothing downstream can mistake an unverified header for an identity.
-- The `Authenticator` port resolves a credential to a principal once per request, inside the
-  versioned API plugin. Handlers read the principal; they never parse headers themselves.
-- Audit events take their actor from the principal rather than from a header at the call site.
-- `Organization`, `User` and `ApiKey` are in the schema, storing only a hash of a key secret.
+  flag. Handlers read the principal; they never take `organizationId` from the request body.
+- `IdentityAuthenticator` accepts a session bearer (`mds_…`) or `X-Api-Key`, and still serves
+  callers with no credential as anonymous on public routes. An unverifiable credential is `401`.
+- Dashboard repositories filter by `organizationId` in the query. Cross-tenant ids return `404`.
+- `Session` rows store only a token hash. Passwords are tagged scrypt hashes.
 
-Phase 1 ships an authenticator that accepts callers presenting no credential and **rejects** any that
-do. Serving a bearer token as anonymous would let a client conclude it was authenticated and scoped
-to its organization when it was neither; failing closed means enabling real authentication later
-cannot silently downgrade anyone. Liveness and readiness are outside the authenticated plugin, so a
-probe cannot fail on an injected credential.
-
-Out of scope: SSO, SAML, SCIM, MFA, federated identity, password handling, session storage.
+Out of scope: SSO, SAML, SCIM, MFA, federated identity.
 
 ## 11. Configuration
 

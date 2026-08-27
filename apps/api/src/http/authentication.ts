@@ -41,8 +41,10 @@ export function registerAuthentication(app: FastifyInstance, authenticator: Auth
 
     if (principal === null) {
       throw new UnauthenticatedError(
-        'This deployment cannot verify credentials. Retry without an Authorization or X-Api-Key ' +
-          'header; requests are served as an unauthenticated caller.',
+        authenticator.enforcing
+          ? 'The credential could not be verified.'
+          : 'This deployment cannot verify credentials. Retry without an Authorization or X-Api-Key ' +
+              'header; requests are served as an unauthenticated caller.',
         { scheme: authenticator.scheme, enforcing: authenticator.enforcing },
       );
     }

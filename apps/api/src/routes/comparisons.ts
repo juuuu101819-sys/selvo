@@ -3,6 +3,7 @@ import {
   serializeComparison,
   serializeReplayResult,
   type ComparisonDto,
+  type Principal,
   type ReplayResultDto,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -74,7 +75,11 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
 
   app.get('/comparisons', async (request) => {
     const { limit } = parseOrThrow(listQuerySchema, request.query, 'query');
-    const stored = await container.persistence.comparisons.list({ limit });
+    const principal = principalOf(request);
+    const stored = await container.persistence.comparisons.listByOrganization(
+      principal.verified ? principal.organizationId : null,
+      { limit },
+    );
 
     return {
       data: stored.map((item) => ({
@@ -99,10 +104,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
 
   app.get('/comparisons/:comparisonId', async (request) => {
     const { comparisonId } = parseOrThrow(comparisonIdParamsSchema, request.params, 'params');
-    const stored = await container.persistence.comparisons.findById(comparisonId);
-    if (stored === null) {
-      throw new NotFoundError('Comparison', comparisonId);
-    }
+    const stored = await loadAccessibleComparison(request, container, comparisonId);
     // The stored result is the exact document produced when the comparison was made. Returning it
     // verbatim means a client re-reading a comparison sees the prices as quoted, not as they are
     // now — which is the whole point of persisting it.
@@ -111,6 +113,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
 
   app.post('/comparisons/:comparisonId/replay', async (request) => {
     const { comparisonId } = parseOrThrow(comparisonIdParamsSchema, request.params, 'params');
+    await loadAccessibleComparison(request, container, comparisonId);
     const result = await container.comparisons.replay(comparisonId, {
       actor: principalOf(request).actor,
       requestId: request.id,
@@ -120,10 +123,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
 
   app.get('/comparisons/:comparisonId/audit', async (request) => {
     const { comparisonId } = parseOrThrow(comparisonIdParamsSchema, request.params, 'params');
-    const stored = await container.persistence.comparisons.findById(comparisonId);
-    if (stored === null) {
-      throw new NotFoundError('Comparison', comparisonId);
-    }
+    await loadAccessibleComparison(request, container, comparisonId);
     const events = await container.persistence.auditLog.listByComparison(comparisonId);
 
     return {
@@ -136,4 +136,31 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       },
     };
   });
+}
+
+async function loadAccessibleComparison(
+  request: FastifyRequest,
+  container: AppContainer,
+  comparisonId: string,
+) {
+  const stored = await container.persistence.comparisons.findById(comparisonId);
+  if (
+    stored === null ||
+    !canAccessComparison(principalOf(request), stored.organizationId ?? null)
+  ) {
+    throw new NotFoundError('Comparison', comparisonId);
+  }
+  return stored;
+}
+
+/**
+ * A public (unauthenticated) comparison is readable by anyone who has its id.
+ * An organization-owned comparison is readable only by a verified principal of that tenant.
+ * Missing rows and other tenants both 404, so the endpoint cannot be used to enumerate ids.
+ */
+function canAccessComparison(principal: Principal, organizationId: string | null): boolean {
+  if (organizationId === null) {
+    return true;
+  }
+  return principal.verified && principal.organizationId === organizationId;
 }

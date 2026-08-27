@@ -11,17 +11,17 @@ target stack. What was added or changed is marked below.
 
 ## Stack
 
-| Layer                    | Choice                                            | Notes                                                                                              |
-| ------------------------ | ------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Frontend                 | Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui | App Router, component-based, server actions for API calls.                                         |
-| Backend                  | Fastify 5 in `apps/api`                           | A clearly separated backend module rather than Next.js route handlers — see below.                 |
-| API style                | REST, versioned at `/api/v1`                      | **Changed:** was `/v1`, which remains as a deprecated alias.                                       |
-| Database                 | PostgreSQL                                        | Driver selected by configuration; in-memory is the default for development and tests.              |
-| ORM                      | Prisma 7                                          | **Added.** Schema and migrations at `/prisma`, client behind the persistence ports.                |
-| Validation               | Zod 4                                             | Request schemas, environment schema, pricing dataset schema.                                       |
-| Unit / integration tests | Vitest 3                                          | Domain unit tests and in-process Fastify integration tests.                                        |
-| End-to-end tests         | Playwright                                        | **Added.** API contract, browser journey and mobile layout projects.                               |
-| Authentication           | Architecture only                                 | **Added.** `Authenticator` port, `Principal`, and the Organization / User / ApiKey schema. No SSO. |
+| Layer                    | Choice                                            | Notes                                                                                 |
+| ------------------------ | ------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Frontend                 | Next.js 16, TypeScript, Tailwind CSS 4, shadcn/ui | App Router, component-based, server actions for API calls.                            |
+| Backend                  | Fastify 5 in `apps/api`                           | A clearly separated backend module rather than Next.js route handlers — see below.    |
+| API style                | REST, versioned at `/api/v1`                      | **Changed:** was `/v1`, which remains as a deprecated alias.                          |
+| Database                 | PostgreSQL                                        | Driver selected by configuration; in-memory is the default for development and tests. |
+| ORM                      | Prisma 7                                          | **Added.** Schema and migrations at `/prisma`, client behind the persistence ports.   |
+| Validation               | Zod 4                                             | Request schemas, environment schema, pricing dataset schema.                          |
+| Unit / integration tests | Vitest 3                                          | Domain unit tests and in-process Fastify integration tests.                           |
+| End-to-end tests         | Playwright                                        | **Added.** API contract, browser journey and mobile layout projects.                  |
+| Authentication           | Sessions + API keys                               | Organization-scoped. No SSO. Passwords hashed with scrypt.                            |
 
 ## Directory structure
 
@@ -91,24 +91,20 @@ watching it.
 contract rather than the server's internals is what lets the two be versioned and released apart. The
 API's own integration tests are what hold the contract to its documented shape.
 
-### Authentication is prepared, not implemented
+### Authentication is organization-scoped
 
-What is hard to retrofit is not the login screen; it is a tenant boundary on every request, an
-authenticated actor on every audit event, and a single place where a credential becomes an identity.
-Those exist now:
+A credential becomes a `Principal` once per request, before any handler. Dashboard queries take
+`organizationId` from that principal and apply it in the store. The web app keeps the session token
+in an httpOnly cookie and sends `Authorization: Bearer` to the API — the two ports do not share
+cookies.
 
 - `Principal` carries `organizationId`, `subjectId`, `roles` and a `verified` flag.
-- The `Authenticator` port resolves a credential to a principal, once per request, before any handler.
-- `Organization`, `User` and `ApiKey` are in the schema. Only a hash of an API key secret is stored.
-- Audit events take their actor from the principal, not from a header read at the call site.
+- Session tokens (`mds_…`) are stored as SHA-256 hashes with a 12-hour TTL. Passwords use tagged
+  scrypt hashes.
+- API keys are looked up by a 16-character prefix; only the hash of the secret is stored.
+- Public comparison remains anonymous. A credential that cannot be verified is still a `401`.
 
-Phase 1 ships `AnonymousAuthenticator`, which accepts callers presenting no credential and **rejects
-any request that does** present one. That refusal is the point: a client that sends a bearer token and
-receives `200` would reasonably conclude it is authenticated and its data scoped to its organization,
-when neither is true. Failing closed on a credential the deployment cannot verify means switching
-real authentication on later cannot silently downgrade anyone.
-
-Deliberately absent: SSO, SAML, SCIM, MFA, federated identity, password handling and session storage.
+Deliberately absent: SSO, SAML, SCIM, MFA and federated identity.
 
 ## Known advisory
 

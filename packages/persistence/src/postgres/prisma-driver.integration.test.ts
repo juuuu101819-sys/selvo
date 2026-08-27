@@ -71,6 +71,7 @@ describeIntegration('PostgreSQL schema', () => {
           'quotes',
           'routes',
           'transaction_requests',
+          'sessions',
           'users',
         ]),
       );

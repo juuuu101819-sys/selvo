@@ -1,0 +1,263 @@
+import type {
+  CostPoint,
+  DashboardMetrics,
+  DashboardProviderUsage,
+  DashboardQuote,
+  DashboardRepository,
+  DashboardTransaction,
+  RecordTransactionInput,
+  VolumePoint,
+} from '@meridian/core';
+import { PersistenceError } from '@meridian/core';
+import { Prisma, type PrismaClient } from '@prisma/client';
+import {
+  aggregateCostByDay,
+  aggregateMetrics,
+  aggregateProviderUsage,
+  aggregateVolumeByDay,
+} from '../dashboard/aggregate.js';
+
+const DEFAULT_LIMIT = 50;
+
+export class PrismaDashboardRepository implements DashboardRepository {
+  constructor(private readonly client: PrismaClient) {}
+
+  async metrics(organizationId: string): Promise<DashboardMetrics> {
+    const [quotes, transactions] = await this.loadOrg(organizationId);
+    return aggregateMetrics(quotes, transactions);
+  }
+
+  async volumeByDay(organizationId: string, days: number): Promise<readonly VolumePoint[]> {
+    const transactions = await this.loadTransactions(organizationId);
+    return aggregateVolumeByDay(transactions, days, Date.now());
+  }
+
+  async costByDay(organizationId: string, days: number): Promise<readonly CostPoint[]> {
+    const quotes = await this.loadQuotes(organizationId);
+    return aggregateCostByDay(quotes, days, Date.now());
+  }
+
+  async quotesByProvider(organizationId: string): Promise<readonly DashboardProviderUsage[]> {
+    const quotes = await this.loadQuotes(organizationId);
+    return aggregateProviderUsage(quotes);
+  }
+
+  async listQuotes(
+    organizationId: string,
+    options: { readonly limit?: number } = {},
+  ): Promise<readonly DashboardQuote[]> {
+    const quotes = await this.loadQuotes(organizationId);
+    return quotes
+      .sort((left, right) => right.quotedAt.localeCompare(left.quotedAt))
+      .slice(0, options.limit ?? DEFAULT_LIMIT);
+  }
+
+  async getQuote(organizationId: string, quoteId: string): Promise<DashboardQuote | null> {
+    const row = await this.query(() =>
+      this.client.quote.findFirst({
+        where: { id: quoteId, organizationId },
+        include: { provider: true },
+      }),
+    );
+    return row === null ? null : toQuote(row);
+  }
+
+  async listTransactions(
+    organizationId: string,
+    options: { readonly limit?: number } = {},
+  ): Promise<readonly DashboardTransaction[]> {
+    const transactions = await this.loadTransactions(organizationId);
+    return transactions
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, options.limit ?? DEFAULT_LIMIT);
+  }
+
+  async getTransaction(organizationId: string, id: string): Promise<DashboardTransaction | null> {
+    const row = await this.query(() =>
+      this.client.transactionRequest.findFirst({
+        where: { id, organizationId },
+        include: { _count: { select: { quotes: true } } },
+      }),
+    );
+    return row === null ? null : toTransaction(row);
+  }
+
+  async recordTransaction(input: RecordTransactionInput): Promise<void> {
+    try {
+      await this.client.transactionRequest.upsert({
+        where: { id: input.id },
+        create: {
+          id: input.id,
+          organizationId: input.organizationId,
+          reference: input.reference,
+          sourceCurrency: input.sourceCurrency,
+          targetCurrency: input.targetCurrency,
+          amountMinorUnits: new Prisma.Decimal(input.amountMinorUnits),
+          status: input.status as never,
+          selectedQuoteId: input.selectedQuoteId,
+          createdAt: new Date(input.createdAt),
+        },
+        update: {
+          status: input.status as never,
+          selectedQuoteId: input.selectedQuoteId,
+        },
+      });
+    } catch (error) {
+      throw new PersistenceError(
+        'Failed to persist the transaction request.',
+        {},
+        { cause: error },
+      );
+    }
+  }
+
+  async recordQuote(input: DashboardQuote): Promise<void> {
+    try {
+      await this.client.quote.upsert({
+        where: { id: input.id },
+        create: {
+          id: input.id,
+          organizationId: input.organizationId,
+          transactionRequestId: input.transactionRequestId,
+          providerId: input.providerId,
+          status: input.status as never,
+          quotedAt: new Date(input.quotedAt),
+          expiresAt: new Date(input.expiresAt),
+          sourceCurrency: input.sourceCurrency,
+          targetCurrency: input.targetCurrency,
+          amountMinorUnits: new Prisma.Decimal(input.amountMinorUnits),
+          midMarketRate: new Prisma.Decimal('1'),
+          exchangeRate: new Prisma.Decimal('1'),
+          effectiveRate: new Prisma.Decimal('1'),
+          spreadBps: new Prisma.Decimal('0'),
+          totalFeeMinorUnits: new Prisma.Decimal('0'),
+          totalCostMinorUnits: new Prisma.Decimal(input.totalCostMinorUnits),
+          totalCostBps: new Prisma.Decimal(input.totalCostBps),
+          estimatedReceiveMinorUnits: new Prisma.Decimal(input.estimatedReceiveMinorUnits),
+          benchmarkReceiveMinorUnits: new Prisma.Decimal(input.benchmarkReceiveMinorUnits),
+          settlementP50Seconds: input.settlementP50Seconds,
+          settlementP95Seconds: input.settlementP50Seconds,
+          isRecommended: input.isRecommended,
+          rank: input.rank,
+          score: input.score === null ? null : new Prisma.Decimal(input.score),
+          pricingVersion: 'dashboard',
+        },
+        update: {
+          isRecommended: input.isRecommended,
+          rank: input.rank,
+        },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to persist the quote.', {}, { cause: error });
+    }
+  }
+
+  private async loadOrg(
+    organizationId: string,
+  ): Promise<readonly [readonly DashboardQuote[], readonly DashboardTransaction[]]> {
+    const [quotes, transactions] = await Promise.all([
+      this.loadQuotes(organizationId),
+      this.loadTransactions(organizationId),
+    ]);
+    return [quotes, transactions];
+  }
+
+  private async loadQuotes(organizationId: string): Promise<DashboardQuote[]> {
+    const rows = await this.query(() =>
+      this.client.quote.findMany({
+        where: { organizationId },
+        include: { provider: true },
+      }),
+    );
+    return rows.map(toQuote);
+  }
+
+  private async loadTransactions(organizationId: string): Promise<DashboardTransaction[]> {
+    const rows = await this.query(() =>
+      this.client.transactionRequest.findMany({
+        where: { organizationId },
+        include: { _count: { select: { quotes: true } } },
+      }),
+    );
+    return rows.map(toTransaction);
+  }
+
+  private async query<TResult>(run: () => Promise<TResult>): Promise<TResult> {
+    try {
+      return await run();
+    } catch (error) {
+      throw new PersistenceError('Failed to read dashboard records.', {}, { cause: error });
+    }
+  }
+}
+
+function toQuote(row: {
+  id: string;
+  organizationId: string;
+  transactionRequestId: string;
+  providerId: string;
+  status: string;
+  sourceCurrency: string;
+  targetCurrency: string;
+  amountMinorUnits: { toFixed(places?: number): string };
+  totalCostMinorUnits: { toFixed(places?: number): string };
+  totalCostBps: { toFixed(places?: number): string };
+  estimatedReceiveMinorUnits: { toFixed(places?: number): string };
+  benchmarkReceiveMinorUnits: { toFixed(places?: number): string };
+  settlementP50Seconds: number;
+  quotedAt: Date;
+  expiresAt: Date;
+  isRecommended: boolean;
+  rank: number | null;
+  score: { toFixed(places?: number): string } | null;
+  provider: { name: string; rail: string };
+}): DashboardQuote {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    transactionRequestId: row.transactionRequestId,
+    providerId: row.providerId,
+    providerName: row.provider.name,
+    rail: row.provider.rail,
+    status: row.status,
+    sourceCurrency: row.sourceCurrency,
+    targetCurrency: row.targetCurrency,
+    amountMinorUnits: row.amountMinorUnits.toFixed(0),
+    totalCostMinorUnits: row.totalCostMinorUnits.toFixed(0),
+    totalCostBps: row.totalCostBps.toFixed(4),
+    estimatedReceiveMinorUnits: row.estimatedReceiveMinorUnits.toFixed(0),
+    benchmarkReceiveMinorUnits: row.benchmarkReceiveMinorUnits.toFixed(0),
+    settlementP50Seconds: row.settlementP50Seconds,
+    quotedAt: row.quotedAt.toISOString(),
+    expiresAt: row.expiresAt.toISOString(),
+    isRecommended: row.isRecommended,
+    rank: row.rank,
+    score: row.score?.toFixed(2) ?? null,
+  };
+}
+
+function toTransaction(row: {
+  id: string;
+  organizationId: string;
+  reference: string | null;
+  sourceCurrency: string;
+  targetCurrency: string;
+  amountMinorUnits: { toFixed(places?: number): string };
+  status: string;
+  selectedQuoteId: string | null;
+  createdAt: Date;
+  _count: { quotes: number };
+}): DashboardTransaction {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    reference: row.reference,
+    sourceCurrency: row.sourceCurrency,
+    targetCurrency: row.targetCurrency,
+    amountMinorUnits: row.amountMinorUnits.toFixed(0),
+    status: row.status,
+    selectedQuoteId: row.selectedQuoteId,
+    createdAt: row.createdAt.toISOString(),
+    quoteCount: row._count.quotes,
+  };
+}

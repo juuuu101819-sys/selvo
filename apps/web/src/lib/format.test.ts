@@ -3,6 +3,7 @@ import {
   formatBps,
   formatMoney,
   formatPercent,
+  formatQuotedAmount,
   formatRate,
   formatReliability,
   formatSettlement,
@@ -44,6 +45,13 @@ describe('formatMoney', () => {
     expect(
       formatMoney({ currency: 'KRW', minorUnits: '9007199254740993', decimal: '', exponent: 0 }),
     ).toBe('9,007,199,254,740,993 KRW');
+  });
+});
+
+describe('formatQuotedAmount', () => {
+  it('formats dashboard rows the same way as MoneyJson', () => {
+    expect(formatQuotedAmount('10000000', 'USD', 2)).toBe('100,000.00 USD');
+    expect(formatQuotedAmount('138071533', 'KRW', 0)).toBe('138,071,533 KRW');
   });
 });
 

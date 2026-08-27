@@ -1,10 +1,9 @@
 /**
  * Authentication architecture.
  *
- * Prepared, not implemented. Phase 1 resolves every caller to {@link ANONYMOUS_PRINCIPAL}; the
- * point of defining the shape now is that the things which are hard to retrofit — a tenant
- * boundary on every request, an authenticated actor on every audit event, a single place where a
- * credential is turned into an identity — exist from the start.
+ * Session tokens and API keys are verified against the identity store. Callers that present no
+ * credential remain anonymous so the public comparison page keeps working. A credential that
+ * cannot be verified is rejected rather than quietly treated as anonymous.
  *
  * Deliberately out of scope: SSO, SAML, SCIM, MFA and federated identity. See docs/ROADMAP.md.
  */
@@ -15,9 +14,9 @@ export type PrincipalKind = (typeof PRINCIPAL_KINDS)[number];
 /**
  * Who is making a request.
  *
- * `organizationId` is the tenant boundary every future query is scoped by. It is nullable only
- * because Phase 1 has no tenants; once authentication is real, a null organization on a
- * business-data request is a bug rather than a valid state.
+ * `organizationId` is the tenant boundary every query is scoped by. It is nullable only for
+ * anonymous callers on the public comparison API. A null organization on a dashboard request is a
+ * bug rather than a valid state.
  */
 export interface Principal {
   readonly kind: PrincipalKind;

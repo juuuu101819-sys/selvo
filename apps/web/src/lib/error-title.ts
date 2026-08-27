@@ -30,6 +30,8 @@ export function comparisonErrorTitle(failure: {
     }
     case 'NO_ROUTES_AVAILABLE':
       return 'No provider could quote';
+    case 'UNAUTHENTICATED':
+      return 'Sign in required';
     default:
       return 'Comparison failed';
   }

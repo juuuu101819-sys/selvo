@@ -37,11 +37,15 @@ export function createPersistenceDriver(options: PersistenceOptions): Persistenc
   }
 }
 
+export { InMemoryDashboardRepository } from './memory/memory-dashboard.js';
+export { InMemoryIdentityStore } from './memory/memory-identity.js';
 export {
   InMemoryAuditLogRepository,
   InMemoryComparisonRepository,
   InMemoryPersistenceDriver,
 } from './memory/memory-driver.js';
+export { PrismaDashboardRepository } from './postgres/prisma-dashboard.js';
+export { PrismaIdentityStore } from './postgres/prisma-identity.js';
 export { PrismaPlatformPricingResolver } from './postgres/prisma-pricing-resolver.js';
 export {
   PrismaPersistenceDriver,

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import cors from '@fastify/cors';
 import { ValidationError, type Clock } from '@meridian/core';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { provisionDemoTenants } from './auth/provision-demo.js';
 import type { AppConfig } from './config/env.js';
 import { createContainer, type AppContainer } from './container.js';
 import { registerErrorHandling } from './http/errors.js';
@@ -74,6 +75,18 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
 
   registerErrorHandling(app);
   await registerRoutes(app, container);
+
+  // Tests provision tenants themselves. End-to-end and local sandbox set SEED_DEMO_TENANTS so the
+  // documented demo login exists even when NODE_ENV is test (Playwright's API process).
+  if (config.nodeEnv !== 'test' || process.env['SEED_DEMO_TENANTS'] === 'true') {
+    await provisionDemoTenants(
+      {
+        identity: container.persistence.identity,
+        dashboard: container.persistence.dashboard,
+      },
+      { seedDashboard: container.persistence.kind === 'memory' },
+    );
+  }
 
   app.addHook('onClose', async () => {
     await container.close();

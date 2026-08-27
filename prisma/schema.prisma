@@ -207,6 +207,7 @@ model Organization {
 
   members             OrganizationMember[]
   apiKeys             ApiKey[]
+  sessions            Session[]
   transactionRequests TransactionRequest[]
   quotes              Quote[]
   customerPricing     CustomerPricing[]
@@ -227,8 +228,7 @@ model User {
   emailVerifiedAt DateTime?    @map("email_verified_at") @db.Timestamptz(3)
   locale          String       @default("en") @db.VarChar(16)
   timezone        String       @default("UTC")
-  /// Argon2id hash. Null until authentication is implemented; the plaintext is never stored, never
-  /// logged, and never selected into a DTO.
+  /// scrypt (tagged) hash. Plaintext is never stored, never logged, and never selected into a DTO.
   passwordHash    String?      @map("password_hash")
   passwordSetAt   DateTime?    @map("password_set_at") @db.Timestamptz(3)
   lastSeenAt      DateTime?    @map("last_seen_at") @db.Timestamptz(3)
@@ -237,6 +237,7 @@ model User {
 
   memberships         OrganizationMember[]
   transactionRequests TransactionRequest[]
+  sessions            Session[]
 
   @@map("users")
 }
@@ -278,6 +279,26 @@ model ApiKey {
 
   @@index([organizationId])
   @@map("api_keys")
+}
+
+/// Browser or API session. Only a hash of the token is stored; the raw token is shown once.
+model Session {
+  id             String    @id
+  userId         String    @map("user_id")
+  organizationId String    @map("organization_id")
+  tokenHash      String    @unique @map("token_hash")
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  lastSeenAt     DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(3)
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([expiresAt])
+  @@map("sessions")
 }
 
 // ---------------------------------------------------------------------------
