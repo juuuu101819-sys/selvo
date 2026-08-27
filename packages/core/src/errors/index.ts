@@ -14,6 +14,8 @@ export const ErrorCode = {
   PROVIDER_TIMEOUT: 'PROVIDER_TIMEOUT',
   PROVIDER_ERROR: 'PROVIDER_ERROR',
   INVALID_PROVIDER_QUOTE: 'INVALID_PROVIDER_QUOTE',
+  QUOTE_EXPIRED: 'QUOTE_EXPIRED',
+  QUOTE_STALE: 'QUOTE_STALE',
   NOT_FOUND: 'NOT_FOUND',
   IDEMPOTENCY_CONFLICT: 'IDEMPOTENCY_CONFLICT',
   REPRODUCIBILITY_MISMATCH: 'REPRODUCIBILITY_MISMATCH',
@@ -187,6 +189,28 @@ export class InvalidProviderQuoteError extends AppError {
       ...details,
     });
   }
+}
+
+/**
+ * A provider's own expiry has passed.
+ *
+ * Distinct from {@link StaleQuoteError} because the remedy differs: an expired price means ask
+ * again, and a retry is likely to succeed.
+ */
+export class QuoteExpiredError extends AppError {
+  readonly code = ErrorCode.QUOTE_EXPIRED;
+  readonly httpStatus = 409;
+}
+
+/**
+ * A quote is older than the platform is willing to trust, or its timestamp is implausible.
+ *
+ * Not retryable: if a feed is lagging or a provider's clock is wrong, asking again immediately
+ * returns the same lagging price.
+ */
+export class StaleQuoteError extends AppError {
+  readonly code = ErrorCode.QUOTE_STALE;
+  readonly httpStatus = 503;
 }
 
 export class NotFoundError extends AppError {

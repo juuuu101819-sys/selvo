@@ -4,6 +4,7 @@ export * from './engine/index.js';
 export * from './errors/index.js';
 export * from './money/index.js';
 export * from './ports/index.js';
+export * from './quotes/index.js';
 export * from './reproducibility/index.js';
 export * from './serialization/index.js';
 export * from './testing/index.js';

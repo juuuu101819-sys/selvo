@@ -103,6 +103,7 @@ export type StubBehaviour =
 
 /** A `RouteProvider` whose behaviour is scripted, for exercising the orchestration paths. */
 export class StubRouteProvider implements RouteProvider {
+  readonly capability = 'route' as const;
   readonly descriptor: ProviderDescriptor;
   calls = 0;
 
