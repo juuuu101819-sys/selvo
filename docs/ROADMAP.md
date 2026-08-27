@@ -320,3 +320,28 @@ Example: `"Pay 1,000 USD to this merchant using the cheapest compliant route."` 
 - Quotes still come from `MultiRailRouter` (version **1.0.0**). Comparison **2.0.0**, graph **1.0.0**,
   stablecoin **1.0.0**, DeFi **1.0.0** unchanged
 - `agentNaturalLanguageRouting` true. `executeTransactions` stays false. `POST /executions` remains 501
+
+## Phase 16 — Non-custodial payment policy engine ✅ implemented
+
+The policy engine decides what an AI agent is allowed to request. It runs **before** route execution
+intent creation. A violation **fails closed**. Every decision (allow and deny) is audit-logged.
+
+```
+AI Agent → Payment Intent → Policy Engine → Route Engine → Quote → Authorization → Execution Intent
+```
+
+Rules: maximum transaction amount, daily transaction limit, allowed assets, allowed chains,
+allowed providers, allowed countries, allowed recipients, maximum fees, minimum route score,
+minimum liquidity, maximum slippage.
+
+Demo Agent A:
+
+- max transaction $1,000 (`100000` USD minor units)
+- daily limit $10,000 (`1000000`)
+- assets USD, USDC, KRW (KRW is required because Merchant X settles KRW)
+- providers `sandbox-veridian-payments`, `sandbox-solstice-settlement`
+- max slippage 0.5% (`50` bps)
+- empty allow-lists mean **none**, not all
+
+Missing policy, missing route score/slippage, or zero surviving quoted routes are `403 POLICY_DENIED`.
+`paymentPolicyEngine` is true. Engine versions unchanged. `POST /executions` remains 501.

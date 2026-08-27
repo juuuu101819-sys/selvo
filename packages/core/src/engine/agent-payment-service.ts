@@ -77,7 +77,13 @@ export class AgentPaymentService {
     const agent = await this.requireAgent(agentId, command.organizationId);
     const merchants = await this.deps.agentPayments.listMerchants(command.organizationId);
     const resolved = resolveCreateFields(command, merchants);
-    const policy = await this.requirePolicy(command.organizationId, agent.id);
+    const policy = await this.requirePolicy(
+      command.organizationId,
+      agent.id,
+      command.actor,
+      command.requestId,
+      null,
+    );
     const expiresAt = command.expiresAt ?? new Date(this.deps.clock.nowMs() + DEFAULT_INTENT_TTL_MS).toISOString();
     if (Date.parse(expiresAt) <= this.deps.clock.nowMs()) {
       throw new ValidationError('expiresAt must be in the future.', { expiresAt });
@@ -117,6 +123,7 @@ export class AgentPaymentService {
       maxFeeBps: command.maxFeeBps,
       selectedProviderId: null,
       selectedRouteCostBps: null,
+      selectedRoute: null,
       actor: command.actor,
       requestId: command.requestId,
       paymentIntentId: null,
@@ -206,7 +213,13 @@ export class AgentPaymentService {
       });
     }
 
-    const policy = await this.requirePolicy(intent.organizationId, intent.agentId);
+    const policy = await this.requirePolicy(
+      intent.organizationId,
+      intent.agentId,
+      input.actor,
+      input.requestId,
+      intent.id,
+    );
     await this.assertPolicy(policy, {
       amountMinorUnits: intent.amountMinorUnits,
       sourceAsset: intent.sourceAsset,
@@ -215,6 +228,7 @@ export class AgentPaymentService {
       maxFeeBps: intent.maxFeeBps,
       selectedProviderId: null,
       selectedRouteCostBps: null,
+      selectedRoute: null,
       actor: input.actor,
       requestId: input.requestId,
       paymentIntentId: intent.id,
@@ -244,17 +258,24 @@ export class AgentPaymentService {
       }
       const allowed = filterRoutesByPolicy(policy, quoting.maxFeeBps, quoted);
       if (allowed.length === 0) {
-        const providersRestricted = policy.allowedProviderIds.length > 0;
-        throw new PolicyDeniedError(
-          providersRestricted ? 'allowed_providers' : 'maximum_fee',
-          providersRestricted
-            ? 'No priced route uses a provider allowed by this agent policy.'
-            : 'Every priced route exceeds the maximum fee allowed by policy.',
+        const denied = new PolicyDeniedError(
+          'route_policy',
+          'No priced route satisfies this agent policy.',
           {
+            failClosed: true,
             pricedRouteCount: quoted.length,
             allowedRouteCount: 0,
           },
         );
+        await this.recordPolicyDecision({
+          allowed: false,
+          error: denied,
+          actor: input.actor,
+          requestId: input.requestId,
+          paymentIntentId: quoting.id,
+          providerId: null,
+        });
+        throw denied;
       }
 
       const ranked = allowed.map((route, index) => ({
@@ -290,7 +311,6 @@ export class AgentPaymentService {
       return quotedIntent;
     } catch (error) {
       if (error instanceof PolicyDeniedError) {
-        await this.recordPolicyDenied(error, input.actor, input.requestId, quoting.id);
         throw error;
       }
       const failed = await this.deps.agentPayments.updateIntent({
@@ -341,7 +361,13 @@ export class AgentPaymentService {
       });
     }
 
-    const policy = await this.requirePolicy(intent.organizationId, intent.agentId);
+    const policy = await this.requirePolicy(
+      intent.organizationId,
+      intent.agentId,
+      input.actor,
+      input.requestId,
+      intent.id,
+    );
     await this.assertPolicy(policy, {
       amountMinorUnits: intent.amountMinorUnits,
       sourceAsset: intent.sourceAsset,
@@ -350,6 +376,7 @@ export class AgentPaymentService {
       maxFeeBps: intent.maxFeeBps,
       selectedProviderId: selected.providerId,
       selectedRouteCostBps: selected.totalCostBps,
+      selectedRoute: selected,
       actor: input.actor,
       requestId: input.requestId,
       paymentIntentId: intent.id,
@@ -395,7 +422,13 @@ export class AgentPaymentService {
     this.assertQuoteFresh(intent);
 
     const selected = selectedRouteOf(intent);
-    const policy = await this.requirePolicy(intent.organizationId, intent.agentId);
+    const policy = await this.requirePolicy(
+      intent.organizationId,
+      intent.agentId,
+      input.actor,
+      input.requestId,
+      intent.id,
+    );
     await this.assertPolicy(policy, {
       amountMinorUnits: intent.amountMinorUnits,
       sourceAsset: intent.sourceAsset,
@@ -404,6 +437,7 @@ export class AgentPaymentService {
       maxFeeBps: intent.maxFeeBps,
       selectedProviderId: selected.providerId,
       selectedRouteCostBps: selected.totalCostBps,
+      selectedRoute: selected,
       actor: input.actor,
       requestId: input.requestId,
       paymentIntentId: intent.id,
@@ -451,6 +485,27 @@ export class AgentPaymentService {
     this.assertQuoteFresh(intent);
 
     const selected = selectedRouteOf(intent);
+    const policy = await this.requirePolicy(
+      intent.organizationId,
+      intent.agentId,
+      input.actor,
+      input.requestId,
+      intent.id,
+    );
+    await this.assertPolicy(policy, {
+      amountMinorUnits: intent.amountMinorUnits,
+      sourceAsset: intent.sourceAsset,
+      destinationAsset: intent.destinationAsset,
+      recipientCode: intent.recipient,
+      maxFeeBps: intent.maxFeeBps,
+      selectedProviderId: selected.providerId,
+      selectedRouteCostBps: selected.totalCostBps,
+      selectedRoute: selected,
+      actor: input.actor,
+      requestId: input.requestId,
+      paymentIntentId: intent.id,
+    });
+
     const pending = await this.deps.agentPayments.updateIntent({
       ...intent,
       status: 'EXECUTION_PENDING',
@@ -493,6 +548,55 @@ export class AgentPaymentService {
     return completed;
   }
 
+  /**
+   * Fail-closed gate immediately before an execution intent is recorded.
+   *
+   * The policy engine must run again here even if create/quote/select already passed: a route
+   * that later violates chain, country, score, liquidity or slippage still cannot proceed.
+   */
+  async gateExecutionIntent(input: {
+    readonly organizationId: string;
+    readonly agentId: string | null;
+    readonly paymentIntentId: string;
+    readonly actor: string;
+    readonly requestId: string;
+  }): Promise<{ readonly intent: PaymentIntent; readonly route: QuotedRouteOption }> {
+    const intent = await this.getIntent({
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      paymentIntentId: input.paymentIntentId,
+    });
+    if (intent.status !== 'ROUTED' && intent.status !== 'AUTHORIZED') {
+      throw new ValidationError(
+        `A payment intent in status ${intent.status} cannot record an execution intent.`,
+        { status: intent.status },
+      );
+    }
+    this.assertQuoteFresh(intent);
+    const route = selectedRouteOf(intent);
+    const policy = await this.requirePolicy(
+      intent.organizationId,
+      intent.agentId,
+      input.actor,
+      input.requestId,
+      intent.id,
+    );
+    await this.assertPolicy(policy, {
+      amountMinorUnits: intent.amountMinorUnits,
+      sourceAsset: intent.sourceAsset,
+      destinationAsset: intent.destinationAsset,
+      recipientCode: intent.recipient,
+      maxFeeBps: intent.maxFeeBps,
+      selectedProviderId: route.providerId,
+      selectedRouteCostBps: route.totalCostBps,
+      selectedRoute: route,
+      actor: input.actor,
+      requestId: input.requestId,
+      paymentIntentId: intent.id,
+    });
+    return { intent, route };
+  }
+
   async getIntent(input: {
     readonly organizationId: string;
     readonly agentId: string | null;
@@ -522,10 +626,29 @@ export class AgentPaymentService {
     return agent;
   }
 
-  private async requirePolicy(organizationId: string, agentId: string): Promise<PaymentPolicy> {
+  private async requirePolicy(
+    organizationId: string,
+    agentId: string,
+    actor: string,
+    requestId: string,
+    paymentIntentId: string | null,
+  ): Promise<PaymentPolicy> {
     const policy = await this.deps.agentPayments.findPolicyByAgent(organizationId, agentId);
     if (policy === null) {
-      throw new ValidationError('No payment policy is configured for this agent.', { agentId });
+      const error = new PolicyDeniedError(
+        'policy_required',
+        'No payment policy is configured for this agent.',
+        { failClosed: true, agentId },
+      );
+      await this.recordPolicyDecision({
+        allowed: false,
+        error,
+        actor,
+        requestId,
+        paymentIntentId,
+        providerId: null,
+      });
+      throw error;
     }
     return policy;
   }
@@ -588,6 +711,7 @@ export class AgentPaymentService {
       readonly maxFeeBps: string | null;
       readonly selectedProviderId: string | null;
       readonly selectedRouteCostBps: string | null;
+      readonly selectedRoute: QuotedRouteOption | null;
       readonly actor: string;
       readonly requestId: string;
       readonly paymentIntentId: string | null;
@@ -602,6 +726,7 @@ export class AgentPaymentService {
       toExclusive: window.end,
       statuses: DAILY_SPENDING_STATUSES,
     });
+    const providerId = input.selectedRoute?.providerId ?? input.selectedProviderId;
     try {
       evaluatePaymentPolicy(policy, {
         amountMinorUnits: input.amountMinorUnits,
@@ -611,40 +736,76 @@ export class AgentPaymentService {
         maxFeeBps: input.maxFeeBps,
         selectedProviderId: input.selectedProviderId,
         selectedRouteCostBps: input.selectedRouteCostBps,
+        selectedRoute: input.selectedRoute,
         dailySpentMinorUnits,
       });
     } catch (error) {
       if (error instanceof PolicyDeniedError) {
-        await this.recordPolicyDenied(
+        await this.recordPolicyDecision({
+          allowed: false,
           error,
-          input.actor,
-          input.requestId,
-          input.paymentIntentId,
-        );
+          actor: input.actor,
+          requestId: input.requestId,
+          paymentIntentId: input.paymentIntentId,
+          providerId,
+        });
       }
       throw error;
     }
+    await this.recordPolicyDecision({
+      allowed: true,
+      error: null,
+      actor: input.actor,
+      requestId: input.requestId,
+      paymentIntentId: input.paymentIntentId,
+      providerId,
+    });
   }
 
-  private async recordPolicyDenied(
-    error: PolicyDeniedError,
-    actor: string,
-    requestId: string,
-    paymentIntentId: string | null,
-  ): Promise<void> {
+  private async recordPolicyDecision(input: {
+    readonly allowed: boolean;
+    readonly error: PolicyDeniedError | null;
+    readonly actor: string;
+    readonly requestId: string;
+    readonly paymentIntentId: string | null;
+    readonly providerId: string | null;
+  }): Promise<void> {
+    let rule: string | null = null;
+    if (input.error !== null) {
+      const recorded = input.error.details['rule'];
+      rule = typeof recorded === 'string' ? recorded : '';
+    }
     const payload: JsonObject = {
-      rule: typeof error.details['rule'] === 'string' ? error.details['rule'] : '',
-      message: error.message,
-      ...(paymentIntentId === null ? {} : { paymentIntentId }),
+      allowed: input.allowed,
+      aiUsed: false,
+      failClosed: true,
+      ...(rule === null ? {} : { rule }),
+      ...(input.error === null ? {} : { message: input.error.message }),
+      ...(input.paymentIntentId === null ? {} : { paymentIntentId: input.paymentIntentId }),
     };
     await this.deps.auditLogger.record({
-      type: 'payment.policy.denied',
-      actor,
-      requestId,
+      type: 'payment.policy.evaluated',
+      actor: input.actor,
+      requestId: input.requestId,
       comparisonId: null,
-      providerId: null,
+      providerId: input.providerId,
       payload,
     });
+    if (input.error !== null) {
+      await this.deps.auditLogger.record({
+        type: 'payment.policy.denied',
+        actor: input.actor,
+        requestId: input.requestId,
+        comparisonId: null,
+        providerId: input.providerId,
+        payload: {
+          rule: rule ?? '',
+          message: input.error.message,
+          failClosed: true,
+          ...(input.paymentIntentId === null ? {} : { paymentIntentId: input.paymentIntentId }),
+        },
+      });
+    }
   }
 }
 
@@ -731,6 +892,11 @@ function toQuotedRouteOption(route: ScoredMultiRailRoute): QuotedRouteOption {
     rail: route.rail,
     totalCostBps: route.totalCostBps.toFixed(),
     expiresAt: route.quote.expiresAt,
+    routeScore: route.routeScore.toFixed(),
+    slippageBps: route.slippageBps.toFixed(),
+    liquidityHeadroom: route.liquidityHeadroom === null ? null : route.liquidityHeadroom.toFixed(),
+    chainId: route.quote.chainId,
+    jurisdictions: [...route.compliance.jurisdictions],
   };
 }
 

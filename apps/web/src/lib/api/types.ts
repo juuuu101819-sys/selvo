@@ -214,6 +214,7 @@ export interface MetaDto {
     readonly stablecoinRouting: boolean;
     readonly defiLiquidityRouting: boolean;
     readonly financialRoutingApi?: boolean;
+    readonly paymentPolicyEngine?: boolean;
     readonly executionIntents?: boolean;
   };
   readonly execution: {
@@ -863,6 +864,11 @@ export interface QuotedRouteOptionDto {
   readonly rail: string;
   readonly totalCostBps: string;
   readonly expiresAt: string | null;
+  readonly routeScore: string | null;
+  readonly slippageBps: string | null;
+  readonly liquidityHeadroom: string | null;
+  readonly chainId: string | null;
+  readonly jurisdictions: readonly string[];
 }
 
 export interface SimulatedExecutionReceiptDto {
@@ -939,7 +945,12 @@ export interface PaymentPolicyDto {
   readonly allowedAssets: readonly string[];
   readonly allowedRecipientCodes: readonly string[];
   readonly allowedProviderIds: readonly string[];
+  readonly allowedChainIds: readonly string[];
+  readonly allowedCountryCodes: readonly string[];
   readonly maxFeeBps: string;
+  readonly maxSlippageBps: string;
+  readonly minRouteScore: string;
+  readonly minLiquidityHeadroom: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
 }

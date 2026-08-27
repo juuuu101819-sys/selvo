@@ -86,6 +86,7 @@ describe('GET /v1/meta', () => {
       stablecoinRouting: true,
       defiLiquidityRouting: true,
       financialRoutingApi: true,
+      paymentPolicyEngine: true,
       executionIntents: true,
     });
     expect(body.execution).toMatchObject({

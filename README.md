@@ -62,6 +62,7 @@ Sandbox AI agent (hashed at provision; treat like the demo password — local on
 ```
 agent credential  mag_demo_agent01_sandbox_only_not_production
 instruction       Pay 1,000 USD to this merchant using the cheapest compliant route.
+policy            $1,000 per payment, $10,000/day, USD/USDC/KRW, 0.5% max slippage
 ```
 
 Dashboard pages (signed in): `/dashboard`, `/dashboard/quotes`, `/dashboard/transactions`,

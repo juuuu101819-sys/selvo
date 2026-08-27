@@ -197,7 +197,12 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
           allowedAssets: [...input.allowedAssets],
           allowedRecipientCodes: [...input.allowedRecipientCodes],
           allowedProviderIds: [...input.allowedProviderIds],
+          allowedChainIds: [...input.allowedChainIds],
+          allowedCountryCodes: [...input.allowedCountryCodes],
           maxFeeBps: new Prisma.Decimal(input.maxFeeBps),
+          maxSlippageBps: new Prisma.Decimal(input.maxSlippageBps),
+          minRouteScore: new Prisma.Decimal(input.minRouteScore),
+          minLiquidityHeadroom: new Prisma.Decimal(input.minLiquidityHeadroom),
           dailySpendingLimitMinorUnits: new Prisma.Decimal(input.dailySpendingLimitMinorUnits),
           dailySpendingAsset: input.dailySpendingAsset,
           createdAt: new Date(input.createdAt),
@@ -416,7 +421,12 @@ interface PolicyRow {
   readonly allowedAssets: readonly string[];
   readonly allowedRecipientCodes: readonly string[];
   readonly allowedProviderIds: readonly string[];
+  readonly allowedChainIds: readonly string[];
+  readonly allowedCountryCodes: readonly string[];
   readonly maxFeeBps: { toFixed(decimalPlaces?: number): string };
+  readonly maxSlippageBps: { toFixed(decimalPlaces?: number): string };
+  readonly minRouteScore: { toFixed(decimalPlaces?: number): string };
+  readonly minLiquidityHeadroom: { toFixed(decimalPlaces?: number): string };
   readonly dailySpendingLimitMinorUnits: { toFixed(decimalPlaces?: number): string };
   readonly dailySpendingAsset: string;
   readonly createdAt: Date;
@@ -521,7 +531,12 @@ function toPolicy(row: PolicyRow): PaymentPolicy {
     allowedAssets: [...row.allowedAssets],
     allowedRecipientCodes: [...row.allowedRecipientCodes],
     allowedProviderIds: [...row.allowedProviderIds],
+    allowedChainIds: [...row.allowedChainIds],
+    allowedCountryCodes: [...row.allowedCountryCodes],
     maxFeeBps: row.maxFeeBps.toFixed(),
+    maxSlippageBps: row.maxSlippageBps.toFixed(),
+    minRouteScore: row.minRouteScore.toFixed(),
+    minLiquidityHeadroom: row.minLiquidityHeadroom.toFixed(),
     dailySpendingLimitMinorUnits: row.dailySpendingLimitMinorUnits.toFixed(0),
     dailySpendingAsset: row.dailySpendingAsset,
     createdAt: row.createdAt.toISOString(),

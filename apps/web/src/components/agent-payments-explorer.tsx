@@ -117,12 +117,26 @@ export function AgentPaymentsExplorer({
           {policies.length === 0 ? (
             <p className="text-muted-foreground mt-2 text-xs">No payment policy configured.</p>
           ) : (
-            <ul className="mt-3 space-y-2 text-xs">
+            <ul className="mt-3 space-y-3 text-xs">
               {policies.map((policy) => (
-                <li key={policy.id}>
-                  Max {policy.maxTransactionAmountMinorUnits} minor units · daily{' '}
-                  {policy.dailySpendingLimitMinorUnits} {policy.dailySpendingAsset} · fee cap{' '}
-                  {policy.maxFeeBps} bps
+                <li key={policy.id} className="space-y-1">
+                  <p>
+                    Max {policy.maxTransactionAmountMinorUnits} minor units · daily{' '}
+                    {policy.dailySpendingLimitMinorUnits} {policy.dailySpendingAsset}
+                  </p>
+                  <p>
+                    Assets {policy.allowedAssets.join(', ') || 'none'} · recipients{' '}
+                    {policy.allowedRecipientCodes.join(', ') || 'none'}
+                  </p>
+                  <p>
+                    Providers {policy.allowedProviderIds.join(', ') || 'none'} · chains{' '}
+                    {policy.allowedChainIds.join(', ') || 'fiat only'} · countries{' '}
+                    {policy.allowedCountryCodes.join(', ') || 'none'}
+                  </p>
+                  <p>
+                    Fee cap {policy.maxFeeBps} bps · slippage {policy.maxSlippageBps} bps · min score{' '}
+                    {policy.minRouteScore} · min liquidity {policy.minLiquidityHeadroom}
+                  </p>
                 </li>
               ))}
             </ul>
@@ -136,8 +150,9 @@ export function AgentPaymentsExplorer({
           <p className="text-muted-foreground mt-1 text-xs">
             An instruction such as{' '}
             <code>Pay 1,000 USD to this merchant using the cheapest compliant route.</code> becomes
-            a structured intent. The parser never prices the payment. Quotes come from the routing
-            engine. Simulation never moves money.
+            a structured intent. The policy engine runs before quotes and before an execution intent
+            is recorded. A violation fails closed. The parser never prices the payment. Simulation
+            never moves money.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -309,6 +324,9 @@ export function AgentPaymentsExplorer({
               {intent.quotedRoutes.map((route) => (
                 <li key={route.routeId}>
                   {route.rank}. {route.providerName} · {route.rail} · {route.totalCostBps} bps
+                  {route.routeScore !== null ? ` · score ${route.routeScore}` : ''}
+                  {route.slippageBps !== null ? ` · slip ${route.slippageBps} bps` : ''}
+                  {route.chainId !== null ? ` · ${route.chainId}` : ''}
                   {route.recommended ? ' · recommended' : ''}
                 </li>
               ))}

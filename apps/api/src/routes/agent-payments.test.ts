@@ -1,5 +1,6 @@
 import {
   DEMO_AGENT_ID,
+  DEMO_AGENT_POLICY,
   DEMO_AGENT_SECRET,
   DEMO_ORGANIZATION_ID,
   DEMO_USER_EMAIL,
@@ -29,12 +30,21 @@ afterAll(async () => {
 
 interface PaymentIntentBody {
   readonly id: string;
+  readonly organizationId: string;
   readonly status: string;
   readonly recipient: string;
   readonly sourceAsset: string;
   readonly destinationAsset: string;
   readonly amount: { readonly minorUnits: string; readonly asset: string };
-  readonly quotedRoutes: readonly { readonly routeId: string; readonly providerId: string }[];
+  readonly quotedRoutes: readonly {
+    readonly routeId: string;
+    readonly providerId: string;
+    readonly routeScore: string | null;
+    readonly slippageBps: string | null;
+    readonly liquidityHeadroom: string | null;
+    readonly chainId: string | null;
+    readonly jurisdictions: readonly string[];
+  }[];
   readonly selectedRouteId: string | null;
   readonly fundsMoved: boolean;
   readonly custody: boolean;
@@ -121,8 +131,12 @@ describe('AI agent payment infrastructure', () => {
     const quotedBody = quoted.json<ApiEnvelope<PaymentIntentBody>>().data;
     expect(quotedBody.status).toBe('QUOTED');
     expect(quotedBody.quotedRoutes.length).toBeGreaterThan(0);
-    const routeId = quotedBody.quotedRoutes[0]?.routeId;
-    expect(routeId).toBeDefined();
+    const route = quotedBody.quotedRoutes[0];
+    expect(route?.routeId).toBeDefined();
+    expect(route?.routeScore).not.toBeNull();
+    expect(route?.slippageBps).not.toBeNull();
+    expect(route?.jurisdictions.length).toBeGreaterThan(0);
+    const routeId = route?.routeId;
 
     const selected = await harness.app.inject({
       method: 'POST',
@@ -208,6 +222,79 @@ describe('AI agent payment infrastructure', () => {
     expect(response.statusCode).toBe(403);
     expect(response.json<ApiError>().error.code).toBe('POLICY_DENIED');
     expect(response.json<ApiError>().error.details['rule']).toBe('maximum_transaction_amount');
+    const events = await harness.auditEvents();
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'payment.policy.denied' &&
+          event.payload['rule'] === 'maximum_transaction_amount' &&
+          event.payload['failClosed'] === true,
+      ),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'payment.policy.evaluated' &&
+          event.payload['allowed'] === false &&
+          event.payload['aiUsed'] === false &&
+          event.payload['failClosed'] === true,
+      ),
+    ).toBe(true);
+  });
+
+  it('publishes the Agent A policy and audits an allowed decision', async () => {
+    const listed = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/payment-policies`,
+      headers: agentHeaders(),
+    });
+    expect(listed.statusCode).toBe(200);
+    const policies = listed.json<
+      ApiEnvelope<{
+        policies: {
+          maxTransactionAmountMinorUnits: string;
+          dailySpendingLimitMinorUnits: string;
+          allowedAssets: readonly string[];
+          allowedProviderIds: readonly string[];
+          allowedChainIds: readonly string[];
+          allowedCountryCodes: readonly string[];
+          maxFeeBps: string;
+          maxSlippageBps: string;
+          minRouteScore: string;
+          minLiquidityHeadroom: string;
+        }[];
+      }>
+    >().data.policies;
+    expect(policies[0]).toMatchObject({
+      maxTransactionAmountMinorUnits: DEMO_AGENT_POLICY.maxTransactionAmountMinorUnits,
+      dailySpendingLimitMinorUnits: DEMO_AGENT_POLICY.dailySpendingLimitMinorUnits,
+      allowedAssets: [...DEMO_AGENT_POLICY.allowedAssets],
+      allowedProviderIds: [...DEMO_AGENT_POLICY.allowedProviderIds],
+      allowedChainIds: [...DEMO_AGENT_POLICY.allowedChainIds],
+      allowedCountryCodes: [...DEMO_AGENT_POLICY.allowedCountryCodes],
+      maxFeeBps: DEMO_AGENT_POLICY.maxFeeBps,
+      maxSlippageBps: DEMO_AGENT_POLICY.maxSlippageBps,
+      minRouteScore: DEMO_AGENT_POLICY.minRouteScore,
+      minLiquidityHeadroom: DEMO_AGENT_POLICY.minLiquidityHeadroom,
+    });
+
+    const created = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/payment-intents`,
+      headers: agentHeaders({ 'idempotency-key': 'agent-pay-1000-usd-at-cap' }),
+      payload: { instruction: 'Pay 1,000 USD to merchant X' },
+    });
+    expect(created.statusCode).toBe(201);
+    const events = await harness.auditEvents();
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'payment.policy.evaluated' &&
+          event.payload['allowed'] === true &&
+          event.payload['aiUsed'] === false &&
+          event.payload['failClosed'] === true,
+      ),
+    ).toBe(true);
   });
 
   it('denies a disallowed asset', async () => {

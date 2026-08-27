@@ -143,6 +143,7 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "stablecoinRouting": true,
   "defiLiquidityRouting": true,
   "financialRoutingApi": true,
+  "paymentPolicyEngine": true,
   "executionIntents": true
 }
 ```
@@ -157,7 +158,9 @@ authenticated routing API; `transaction:create` records an intent, it does not p
 `agentPayments`, `agentPaymentSimulation` and `agentNaturalLanguageRouting` are true: agents may
 create payment intents, interpret natural language into structured intent, and run the sandbox
 simulator. They still cannot move money. The NL parser does not compute rates, fees, slippage or
-settlement amounts. `POST /api/v1/executions` remains 501.
+settlement amounts. `paymentPolicyEngine` is true: every agent request is evaluated fail-closed
+before quotes, authorization, simulation, and execution-intent recording. `POST /api/v1/executions`
+remains 501.
 
 ## `GET /api/v1/providers`
 
@@ -576,7 +579,29 @@ payment scopes by default.
 
 Create accepts `instruction` (e.g. `"Pay 500 USD to merchant X"`) and/or structured fields, plus
 `Idempotency-Key`. Same key and payload replay the original intent; a different payload is
-`409 IDEMPOTENCY_CONFLICT`. Policy denials are `403 POLICY_DENIED`.
+`409 IDEMPOTENCY_CONFLICT`. Policy denials are `403 POLICY_DENIED` (distinct from `VALIDATION_ERROR`
+and `FORBIDDEN`).
+
+The policy engine evaluates, fail-closed:
+
+- maximum transaction amount
+- daily transaction limit
+- allowed assets
+- allowed chains (empty denies on-chain routes; fiat `chainId: null` is still allowed)
+- allowed providers (empty means none)
+- allowed countries (`*` means any; empty means none)
+- allowed recipients (empty means none)
+- maximum fees
+- minimum route score (missing score denies)
+- minimum liquidity (unknown headroom denies when the minimum is greater than 0)
+- maximum slippage (missing slippage denies)
+
+Every decision writes `payment.policy.evaluated` (`allowed`, `aiUsed: false`, `failClosed: true`).
+Denials also write `payment.policy.denied`. The engine runs at intent create, quote, select,
+authorize, simulate, and immediately before an execution intent is recorded.
+
+Quoted routes snapshot `routeScore`, `slippageBps`, `liquidityHeadroom`, `chainId`, and
+`jurisdictions` from the routing engine. The router itself is unchanged.
 
 Simulate sets `COMPLETED` with `simulated: true` and `fundsMoved: false`. It does not call a real
 provider. `POST /api/v1/executions` is still 501.
@@ -600,8 +625,9 @@ prices the corridor.
 `aiUsed: false`, and `didNotCompute: ["exchange_rates", "fees", "slippage", "settlement_amounts"]`.
 
 `route` runs parser → policy → routing engine → provider quotes → selects the recommended route →
-records an execution intent (`status: recorded`, `executable: false`). It does not pay.
-`Idempotency-Key` is honoured on create. Policy denials are `403 POLICY_DENIED`.
+gates the selected route through the policy engine again → records an execution intent
+(`status: recorded`, `executable: false`). It does not pay. `Idempotency-Key` is honoured on create.
+Policy denials are `403 POLICY_DENIED`.
 
 ## `GET /api/v1/dashboard/settings`
 

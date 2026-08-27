@@ -1,5 +1,6 @@
 import {
   DEFAULT_AGENT_SCOPES,
+  DEMO_AGENT_POLICY,
   NotFoundError,
   hashSecret,
   isRoutePreference,
@@ -135,13 +136,12 @@ export function registerAgentPaymentRoutes(
       id: uuidIdGenerator.generate('pol'),
       organizationId: principal.organizationId,
       agentId,
-      maxTransactionAmountMinorUnits: '1000000',
-      allowedAssets: ['USD', 'KRW'],
+      ...DEMO_AGENT_POLICY,
+      allowedAssets: [...DEMO_AGENT_POLICY.allowedAssets],
       allowedRecipientCodes: merchants.map((merchant) => merchant.recipientCode),
-      allowedProviderIds: [],
-      maxFeeBps: '500',
-      dailySpendingLimitMinorUnits: '2000000',
-      dailySpendingAsset: 'USD',
+      allowedProviderIds: [...DEMO_AGENT_POLICY.allowedProviderIds],
+      allowedChainIds: [...DEMO_AGENT_POLICY.allowedChainIds],
+      allowedCountryCodes: [...DEMO_AGENT_POLICY.allowedCountryCodes],
       createdAt: now,
     });
 

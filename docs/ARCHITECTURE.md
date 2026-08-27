@@ -339,6 +339,18 @@ interpreter is a deterministic parser (`aiUsed: false`). It must not calculate e
 fees, slippage or settlement amounts. Those come from `MultiRailRouter` (routing engine **1.0.0**).
 The recorded execution intent is never executable. `POST /executions` remains 501.
 
+## 12a. Non-custodial payment policy engine
+
+```
+AI Agent → Payment Intent → Policy Engine → Route Engine → Quote → Authorization → Execution Intent
+```
+
+`evaluatePaymentPolicy` is fail-closed. Empty asset, provider, recipient or country allow-lists
+mean none. Empty chain lists deny on-chain routes only. Missing score or slippage on a selected
+route denies. Every decision is audited (`payment.policy.evaluated`; denials also
+`payment.policy.denied`). `gateExecutionIntent` runs immediately before `executionIntents.create`.
+The routing engine versions are unchanged.
+
 ## 13. Testing strategy
 
 - **Unit** (`packages/core`) — money arithmetic, rounding boundaries, currency exponents, fee

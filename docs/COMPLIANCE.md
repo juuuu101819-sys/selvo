@@ -16,7 +16,7 @@ backed by something in the code rather than by good intentions. Canonical produc
 | **No delegated execution yet**                                 | Distinct from principal trading: instructing a licensed partner is a future capability (`delegateExecution: false`). The 501 is the placeholder for that gate, not a missing feature. The refusal is audit-logged and tested.          |
 | **No DeFi execution**                                          | `defiExecution` is false. `defiQuotes` and `defiLiquidityRouting` are true: demo DEX, AMM and aggregator venues return read-only quotes. No adapter is registered as a `RouteProvider`. No swaps, wraps, bridges, keys or wallets. `POST /api/v1/defi-routes` ranks quotes only; `executable` and `swapSubmitted` are always false. The route graph walks indicative edges only. |
 | **No stablecoin custody**                                      | `stablecoinRouting` is true: quotes for USDC/USDT name a chain but never open an RPC. `holdCryptoAssets`, `holdPrivateKeys` and `controlCustomerWallets` remain false. There is no wallet, mint, burn or balance. |
-| **No AI-agent real payment execution**                         | `agentPayments`, `agentPaymentSimulation` and `agentNaturalLanguageRouting` are true: agents create intents, interpret natural language, quote, authorize and run the sandbox simulator. The NL parser never computes rates, fees, slippage or settlement amounts. `COMPLETED` is simulated. `fundsMoved` stays false. Principals of kind `agent` (`mag_` credentials) still act *for* an organization. Wallet references are external handles; `controlledByPlatform` is always false. `POST /executions` remains 501. |
+| **No AI-agent real payment execution**                         | `agentPayments`, `agentPaymentSimulation`, `agentNaturalLanguageRouting` and `paymentPolicyEngine` are true: agents create intents, interpret natural language, quote, authorize and run the sandbox simulator. The policy engine is fail-closed and runs before an execution intent is recorded. The NL parser never computes rates, fees, slippage or settlement amounts. `COMPLETED` is simulated. `fundsMoved` stays false. Principals of kind `agent` (`mag_` credentials) still act *for* an organization. Wallet references are external handles; `controlledByPlatform` is always false. `POST /executions` remains 501. |
 | **No stablecoin issuance**                                     | No minting, burning, reserve or attestation logic. `issueStablecoins` is false.                                                                                                                                                        |
 | **No regulated financial services without a licensed partner** | Every provider descriptor declares a `licensing` posture. Adapters are `unlicensed_sandbox` in Phase 1 and only register in `sandbox` mode. Booting in `production` mode with no licensed adapter configured is a fatal startup error. |
 | **No investment guarantees**                                   | Every quote is marked indicative and non-binding. Responses carry `mode` and a disclaimer. Sandbox pricing is synthetic reference data.                                                                                                |
@@ -33,8 +33,10 @@ customer as an executable price.
 Financially meaningful events are appended to an immutable audit log with an actor, a timestamp
 and a payload: comparison requested, provider quote received, provider quote failed, comparison
 completed, comparison replayed, routing requested/completed/failed, graph requested/completed/failed,
-stablecoin routing requested/completed/failed, DeFi routing requested/completed/failed, execution rejected, execution intent recorded, API key issued/revoked. The audit repository exposes no
-update or delete operation.
+stablecoin routing requested/completed/failed, DeFi routing requested/completed/failed, execution
+rejected, execution intent recorded, API key issued/revoked, agent issued/revoked, payment intent
+lifecycle, `payment.policy.evaluated` (every allow and deny), `payment.policy.denied`, NL interpret
+and NL route completed. The audit repository exposes no update or delete operation.
 
 ## Data handling
 

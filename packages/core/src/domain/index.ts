@@ -202,6 +202,8 @@ export {
   evaluatePaymentPolicy,
   feeCapBps,
   filterRoutesByPolicy,
+  routeAllowedByPolicy,
+  type PolicyDecision,
   type PolicyEvaluationInput,
 } from './payment-policy.js';
 export type { StructuredNlPaymentIntent } from './nl-intent.js';

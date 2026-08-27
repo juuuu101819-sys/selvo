@@ -130,6 +130,10 @@ expiry. Logout sets `revokedAt`. Raw tokens are never stored.
 `submitted` are always false (CHECK constraints). Amounts are `DECIMAL(38,0)` minor units of the
 source asset ticker (`VARCHAR(16)`), not an ISO currency FK. No wallet, key or settlement columns.
 
+**`PaymentPolicy`** — fail-closed limits for one agent: max transaction and daily spending (minor
+units), allowed assets / recipients / providers / CAIP-2 chains / ISO country codes, max fee and
+slippage (bps), minimum route score, minimum liquidity headroom. Empty arrays mean none, not all.
+
 ### Providers
 
 **`Provider`** — the _operational_ registry: who exists, what they are licensed for, whether they are

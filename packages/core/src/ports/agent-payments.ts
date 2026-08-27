@@ -56,7 +56,12 @@ export interface CreatePaymentPolicyInput {
   readonly allowedAssets: readonly string[];
   readonly allowedRecipientCodes: readonly string[];
   readonly allowedProviderIds: readonly string[];
+  readonly allowedChainIds: readonly string[];
+  readonly allowedCountryCodes: readonly string[];
   readonly maxFeeBps: string;
+  readonly maxSlippageBps: string;
+  readonly minRouteScore: string;
+  readonly minLiquidityHeadroom: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
   readonly createdAt: string;

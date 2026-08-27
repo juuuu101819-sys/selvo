@@ -70,6 +70,11 @@ export const PLATFORM_CAPABILITIES = {
    */
   financialRoutingApi: true,
   /**
+   * Deterministic non-custodial payment policy engine for AI agents. Fail closed.
+   * Distinct from `executeTransactions`.
+   */
+  paymentPolicyEngine: true,
+  /**
    * `transaction:create` writes an execution intent (`status: recorded`). Never a submitted
    * payment, swap or payout.
    */

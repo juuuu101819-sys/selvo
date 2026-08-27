@@ -61,6 +61,7 @@ describe('Phase 14 capabilities', () => {
     expect(PLATFORM_CAPABILITIES.agentPayments).toBe(true);
     expect(PLATFORM_CAPABILITIES.agentPaymentSimulation).toBe(true);
     expect(PLATFORM_CAPABILITIES.agentNaturalLanguageRouting).toBe(true);
+    expect(PLATFORM_CAPABILITIES.paymentPolicyEngine).toBe(true);
     expect(PLATFORM_CAPABILITIES.executeTransactions).toBe(false);
     expect(PLATFORM_CAPABILITIES.custodyFunds).toBe(false);
     expect(PLATFORM_CAPABILITIES.holdPrivateKeys).toBe(false);

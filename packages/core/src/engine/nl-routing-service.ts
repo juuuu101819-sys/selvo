@@ -156,15 +156,20 @@ export class NlRoutingService {
       });
     }
 
-    const selectedRoute =
-      selected.quotedRoutes.find((route) => route.routeId === selected.selectedRouteId) ??
-      selected.quotedRoutes.find((route) => route.recommended) ??
-      null;
-    if (selected.selectedRouteId === null || selectedRoute === null) {
+    if (selected.selectedRouteId === null) {
       throw new ValidationError('The routing engine returned no selectable route.', {
         paymentIntentId: selected.id,
       });
     }
+
+    const gated = await this.deps.agentPayments.gateExecutionIntent({
+      organizationId: command.organizationId,
+      agentId: command.actorAgentId,
+      paymentIntentId: selected.id,
+      actor: command.actor,
+      requestId: command.requestId,
+    });
+    const selectedRoute = gated.route;
 
     const existingExecutions = await this.deps.executionIntents.listByOrganization(
       command.organizationId,

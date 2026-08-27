@@ -35,3 +35,22 @@ export const DEMO_MERCHANT_ID = 'mrc_demo_merchant_x';
 export const DEMO_MERCHANT_CODE = 'merchant-x';
 export const DEMO_MERCHANT_NAME = 'Merchant X';
 export const DEMO_PAYMENT_POLICY_ID = 'pol_demo_treasury';
+
+/** Demo Agent A policy — $1,000 per payment, $10,000/day, 0.5% slippage, two sandbox providers. */
+export const DEMO_AGENT_POLICY = {
+  maxTransactionAmountMinorUnits: '100000',
+  dailySpendingLimitMinorUnits: '1000000',
+  dailySpendingAsset: 'USD',
+  allowedAssets: ['USD', 'USDC', 'KRW'] as const,
+  allowedRecipientCodes: [DEMO_MERCHANT_CODE] as const,
+  allowedProviderIds: [
+    'sandbox-veridian-payments',
+    'sandbox-solstice-settlement',
+  ] as const,
+  allowedChainIds: ['eip155:1'] as const,
+  allowedCountryCodes: ['*'] as const,
+  maxFeeBps: '500',
+  maxSlippageBps: '50',
+  minRouteScore: '0',
+  minLiquidityHeadroom: '0',
+} as const;

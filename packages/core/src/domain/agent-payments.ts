@@ -40,12 +40,19 @@ export const ROUTE_PREFERENCES = ROUTE_PREFERENCE_VALUES;
 export type RoutePreference = RoutePreferenceValue;
 
 export const POLICY_RULES = [
+  'policy_required',
   'maximum_transaction_amount',
-  'allowed_assets',
-  'allowed_recipients',
-  'allowed_providers',
-  'maximum_fee',
   'daily_spending_limit',
+  'allowed_assets',
+  'allowed_chains',
+  'allowed_providers',
+  'allowed_countries',
+  'allowed_recipients',
+  'maximum_fee',
+  'minimum_route_score',
+  'minimum_liquidity',
+  'maximum_slippage',
+  'route_policy',
 ] as const;
 export type PolicyRule = (typeof POLICY_RULES)[number];
 
@@ -146,9 +153,19 @@ export interface PaymentPolicy {
   /** Empty means none — never "all assets". At least one asset must be listed. */
   readonly allowedAssets: readonly string[];
   readonly allowedRecipientCodes: readonly string[];
-  /** Empty means any catalog provider that can price the corridor. */
+  /** Empty means none — fail closed. */
   readonly allowedProviderIds: readonly string[];
+  /** CAIP-2 chain ids. Empty denies on-chain routes; fiat (`chainId: null`) is still allowed. */
+  readonly allowedChainIds: readonly string[];
+  /** ISO 3166-1 alpha-2, or `*` for any. Empty means none — fail closed. */
+  readonly allowedCountryCodes: readonly string[];
   readonly maxFeeBps: string;
+  /** 0.5% is `50`. */
+  readonly maxSlippageBps: string;
+  /** 0–100. Missing route score fails closed. */
+  readonly minRouteScore: string;
+  /** Liquidity headroom as a multiple of notional. Unknown headroom fails closed when this is > 0. */
+  readonly minLiquidityHeadroom: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
   readonly createdAt: string;
@@ -164,6 +181,13 @@ export interface QuotedRouteOption {
   readonly rail: string;
   readonly totalCostBps: string;
   readonly expiresAt: string | null;
+  /** 0–100 composite from the routing engine. Missing → policy fails closed. */
+  readonly routeScore: string | null;
+  readonly slippageBps: string | null;
+  /** Multiple of notional. Null means unknown — fail closed when a minimum is set. */
+  readonly liquidityHeadroom: string | null;
+  readonly chainId: string | null;
+  readonly jurisdictions: readonly string[];
 }
 
 export interface SimulatedExecutionReceipt {

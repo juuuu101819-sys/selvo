@@ -410,7 +410,7 @@ model Merchant {
   @@map("merchants")
 }
 
-/// Spending controls for one agent. Empty allow-lists mean none, not all.
+/// Spending controls for one agent. Empty allow-lists mean none, not all. The engine fails closed.
 model PaymentPolicy {
   id                              String   @id
   organizationId                  String   @map("organization_id")
@@ -419,7 +419,12 @@ model PaymentPolicy {
   allowedAssets                   String[] @map("allowed_assets")
   allowedRecipientCodes           String[] @map("allowed_recipient_codes")
   allowedProviderIds              String[] @map("allowed_provider_ids")
+  allowedChainIds                 String[] @map("allowed_chain_ids")
+  allowedCountryCodes             String[] @map("allowed_country_codes")
   maxFeeBps                       Decimal  @map("max_fee_bps") @db.Decimal(12, 4)
+  maxSlippageBps                  Decimal  @map("max_slippage_bps") @db.Decimal(12, 4)
+  minRouteScore                   Decimal  @map("min_route_score") @db.Decimal(12, 4)
+  minLiquidityHeadroom            Decimal  @map("min_liquidity_headroom") @db.Decimal(12, 4)
   dailySpendingLimitMinorUnits    Decimal  @map("daily_spending_limit_minor_units") @db.Decimal(38, 0)
   dailySpendingAsset              String   @map("daily_spending_asset") @db.VarChar(16)
   createdAt                       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)

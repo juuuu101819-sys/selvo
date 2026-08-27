@@ -131,7 +131,9 @@ Interaction models:
 | AI Agent → AI Agent   | planned   |
 
 Today's product includes sandbox agent payments. Agent payment *execution* is not implemented; the
-simulator never moves money. Agents must not be able to settle through this platform until
+simulator never moves money. A fail-closed policy engine limits what an agent may request (amount,
+assets, chains, providers, countries, recipients, fees, score, liquidity, slippage) before an
+execution intent is recorded. Agents must not be able to settle through this platform until
 delegation exists and is licensed.
 
 ---
