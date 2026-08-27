@@ -79,7 +79,10 @@ Playwright tests that drive the built app over real HTTP.
 ```
 apps/
   api/            HTTP boundary. Fastify + Zod. Validation, error mapping, wiring.
-  web/            Next.js UI. Renders comparisons; holds no financial logic.
+  web/            Next.js UI. Renders comparisons; holds no financial logic. The results page
+                  leads with the best route, then alternatives, then a cost comparison; quote
+                  expiry is a live countdown with a refresh once a price lapses; and the only
+                  forward action is "Continue with partner" — nothing implies execution.
 packages/
   core/           Pure domain: money, cost engine, scorer, ports, errors. No I/O.
   adapters/       RouteProvider implementations. Sandbox rails today, partners later.

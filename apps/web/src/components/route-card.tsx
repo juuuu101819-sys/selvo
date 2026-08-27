@@ -2,7 +2,9 @@
 
 import { ChevronDown, Clock, Coins, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
+import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
+import { QuoteExpiryBadge } from '@/components/quote-expiry';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -43,6 +45,7 @@ export function RouteCard({ route }: { route: RouteDto }) {
                   Recommended
                 </Badge>
               )}
+              <QuoteExpiryBadge expiresAt={route.quote.expiresAt} />
             </div>
             {route.quote.intermediaryAsset !== null && (
               <p className="text-muted-foreground text-xs">
@@ -105,7 +108,10 @@ export function RouteCard({ route }: { route: RouteDto }) {
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <ScoreBar score={route.score} />
+          <div className="flex flex-wrap items-center gap-3">
+            <ScoreBar score={route.score} />
+            <ContinueWithPartner providerName={route.provider.name} variant="outline" />
+          </div>
           <button
             type="button"
             onClick={() => setShowBreakdown((open) => !open)}

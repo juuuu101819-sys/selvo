@@ -1,66 +1,84 @@
 'use client';
 
-import { AlertTriangle, TrendingDown } from 'lucide-react';
+import { AlertTriangle, RefreshCw, TimerOff } from 'lucide-react';
+import { BestRoute } from '@/components/best-route';
+import { CostComparison } from '@/components/cost-comparison';
+import { QuoteExpiryBadge, useQuoteExpiry } from '@/components/quote-expiry';
 import { RouteCard } from '@/components/route-card';
 import { VerifyReproducibility } from '@/components/verify-reproducibility';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import type { ComparisonDto } from '@/lib/api/types';
-import { formatMoney, formatPercent, formatSettlement, formatTimestamp } from '@/lib/format';
+import { formatTimestamp } from '@/lib/format';
+import { earliestExpiry } from '@/lib/quote-expiry';
 
+/**
+ * The results, in the order a customer uses them: the best route to act on, the alternatives that
+ * justify it, the cost comparison that shows how far apart they are, and the details underneath
+ * each for anyone who wants to argue with a number.
+ */
 export function ComparisonResult({
   comparison,
   disclaimer,
+  onRefresh,
+  refreshing,
 }: {
   comparison: ComparisonDto;
   disclaimer: string;
+  onRefresh: () => void;
+  refreshing: boolean;
 }) {
-  const recommended = comparison.routes.find((route) => route.recommended);
+  const best = comparison.routes.find((route) => route.recommended) ?? comparison.routes[0];
+  const alternatives = comparison.routes.filter((route) => route !== best);
+
+  // The comparison is only as fresh as its shortest-lived quote: once one price is gone, the
+  // ranking was computed against something nobody can get any more.
+  const comparisonExpiry = useQuoteExpiry(
+    earliestExpiry(comparison.routes.map((route) => route.quote.expiresAt)),
+  );
 
   return (
-    <section className="space-y-4" aria-label="Route comparison results">
-      {recommended !== undefined && (
-        <div className="rounded-xl border border-emerald-600/40 bg-emerald-600/5 p-4 sm:p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-            Recommended route
-          </p>
-          <h2 className="mt-1 text-lg font-semibold">
-            {recommended.provider.name}
-            <span className="text-muted-foreground font-normal">
-              {' '}
-              · {recommended.provider.railLabel}
-            </span>
-          </h2>
-          <p className="mt-2 text-sm">
-            {formatMoney(comparison.request.amount)} arrives as{' '}
-            <strong className="tabular-nums">{formatMoney(recommended.deliveredAmount)}</strong> for
-            an all-in cost of{' '}
-            <strong className="tabular-nums">{formatPercent(recommended.totalCostPercent)}</strong>,
-            settling in{' '}
-            <strong>
-              {formatSettlement(
-                recommended.settlement.p50Seconds,
-                recommended.settlement.businessDaysOnly,
-              )}
-            </strong>
-            .
-          </p>
-
-          {comparison.insights?.savingsVsBankFx !== null &&
-            comparison.insights?.savingsVsBankFx !== undefined && (
-              <p className="mt-2 flex items-center gap-1.5 text-sm text-emerald-800 dark:text-emerald-300">
-                <TrendingDown className="size-4 shrink-0" aria-hidden />
-                Saves {formatMoney(comparison.insights.savingsVsBankFx)} against the cheapest
-                traditional bank route.
-              </p>
-            )}
-        </div>
+    <section className="space-y-6" aria-label="Route comparison results">
+      {comparisonExpiry.state === 'expired' && (
+        <Alert variant="destructive">
+          <TimerOff aria-hidden />
+          <AlertTitle>These quotes have expired</AlertTitle>
+          <AlertDescription>
+            <p>
+              At least one provider&rsquo;s price has lapsed, so this ranking no longer reflects
+              what you can get. Refresh to compare live quotes.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-2"
+              onClick={onRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
+              {refreshing ? 'Refreshing…' : 'Refresh quotes'}
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
 
-      <div className="space-y-3">
-        {comparison.routes.map((route) => (
-          <RouteCard key={route.routeId} route={route} />
-        ))}
-      </div>
+      {best !== undefined && <BestRoute route={best} />}
+
+      {alternatives.length > 0 && (
+        <section aria-label="Alternative routes" className="space-y-3">
+          <h2 className="text-sm font-semibold">
+            Alternative routes
+            <span className="text-muted-foreground ml-2 font-normal">
+              ranked by the same scoring, shown for the comparison
+            </span>
+          </h2>
+          {alternatives.map((route) => (
+            <RouteCard key={route.routeId} route={route} />
+          ))}
+        </section>
+      )}
+
+      <CostComparison comparison={comparison} />
 
       {comparison.providerFailures.length > 0 && (
         <Alert variant="default">
@@ -82,10 +100,15 @@ export function ComparisonResult({
       )}
 
       <footer className="border-border/60 space-y-3 rounded-xl border border-dashed p-4 text-xs">
-        <VerifyReproducibility
-          comparisonId={comparison.comparisonId}
-          fingerprint={comparison.fingerprint}
-        />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <VerifyReproducibility
+            comparisonId={comparison.comparisonId}
+            fingerprint={comparison.fingerprint}
+          />
+          <QuoteExpiryBadge
+            expiresAt={earliestExpiry(comparison.routes.map((route) => route.quote.expiresAt))}
+          />
+        </div>
         <dl className="text-muted-foreground grid gap-1 sm:grid-cols-2">
           <div className="flex gap-1">
             <dt>Comparison</dt>
@@ -101,9 +124,11 @@ export function ComparisonResult({
           </div>
           <div className="flex gap-1">
             <dt>Weights</dt>
-            <dd className="font-mono">
-              cost {comparison.scoringWeights.cost} · speed {comparison.scoringWeights.speed} ·
-              reliability {comparison.scoringWeights.reliability}
+            <dd className="truncate font-mono">
+              {Object.entries(comparison.scoringWeights)
+                .filter(([, value]) => Number(value) > 0)
+                .map(([key, value]) => `${key} ${value}`)
+                .join(' · ')}
             </dd>
           </div>
         </dl>

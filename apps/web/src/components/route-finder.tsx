@@ -72,7 +72,12 @@ export function RouteFinder({ meta }: { meta: MetaDto }) {
       {!isPending && state.kind === 'idle' && <EmptyState />}
       {!isPending && state.kind === 'error' && <ErrorState failure={state.failure} />}
       {!isPending && state.kind === 'success' && (
-        <ComparisonResult comparison={state.comparison} disclaimer={state.disclaimer} />
+        <ComparisonResult
+          comparison={state.comparison}
+          disclaimer={state.disclaimer}
+          onRefresh={submit}
+          refreshing={isPending}
+        />
       )}
     </div>
   );

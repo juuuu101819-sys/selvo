@@ -86,6 +86,20 @@ caching. Read-only pricing only; no money movement.
   claiming reproducibility it cannot demonstrate.
 - The mathematics documented formally in [QUOTE_ENGINE.md](./QUOTE_ENGINE.md).
 
+## Phase 4b — Route comparison UI, productised ✅ implemented
+
+- The results page follows the order a customer uses it: transaction input, a best-route hero with
+  every figure needed to act (rate, provider fee, platform fee, total cost, receive amount,
+  settlement time, quote expiry), the alternatives that justify it, a cost-comparison chart, and
+  expandable details under each route for anyone arguing with a number.
+- Quote expiration is a live state, not a timestamp: a ticking countdown per quote, an amber warning
+  in the final twenty seconds, and an expired banner with a refresh action once the shortest-lived
+  quote lapses — because a ranking computed against a lapsed price is no longer a ranking.
+- "Continue with partner" is the only forward action, opening an honest dialog about the
+  non-custodial position. No control implies execution, and a test asserts none exists.
+- Formatting and expiry classification are pure functions with their own unit suite, so the
+  financial display contract fails faster than a browser run.
+
 ## Phase 5 — Live provider adapters _(not started)_
 
 Replace sandbox pricing with real read-only quote APIs from licensed partners: per-adapter

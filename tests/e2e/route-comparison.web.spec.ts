@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 /**
- * The one journey the product exists for: describe a transaction, get ranked routes.
+ * The one journey the product exists for: describe a transaction, get a best route with the
+ * alternatives that justify it.
  *
  * Assertions go through accessible roles and visible text rather than CSS selectors, so the suite
  * survives styling changes and fails only when the behaviour a user relies on actually breaks.
@@ -10,7 +11,7 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
 
-test('compares routes for the worked example and recommends the best one', async ({ page }) => {
+test('compares routes for the worked example, best route first', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Find the best financial route/i })).toBeVisible();
   await expect(page.getByText('No comparison yet')).toBeVisible();
 
@@ -19,35 +20,64 @@ test('compares routes for the worked example and recommends the best one', async
   const results = page.getByRole('region', { name: /Route comparison results/i });
   await expect(results).toBeVisible();
 
-  // Four sandbox rails price USD/KRW.
-  const routeCards = results.locator('article');
-  await expect(routeCards).toHaveCount(4);
+  // Hierarchy: the best route leads, alternatives follow, then the cost comparison.
+  const best = page.getByRole('article', { name: /Best route/i });
+  await expect(best).toBeVisible();
+  await expect(best).toContainText('Solstice Settlement');
+  await expect(best).toContainText('0.34%');
 
-  await expect(page.getByText('Recommended route')).toBeVisible();
-  await expect(results.getByText('Solstice Settlement').first()).toBeVisible();
+  const alternatives = page.getByRole('region', { name: /Alternative routes/i });
+  await expect(alternatives.locator('article')).toHaveCount(3);
+  await expect(alternatives.locator('article').last()).toContainText('Northgate Bank');
+  await expect(alternatives.locator('article').last()).toContainText('0.72%');
 
-  // The bank route is the most expensive, so it ranks last.
-  await expect(routeCards.last()).toContainText('Northgate Bank');
-  await expect(routeCards.first()).toContainText('0.34%');
-  await expect(routeCards.last()).toContainText('0.72%');
+  await expect(page.getByRole('region', { name: /Cost comparison/i })).toBeVisible();
+});
+
+test('shows every figure needed to act, without expanding anything', async ({ page }) => {
+  await page.getByRole('button', { name: /Compare routes/i }).click();
+  const best = page.getByRole('article', { name: /Best route/i });
+
+  // The brief's field list for the best route, verbatim.
+  await expect(best).toContainText('Exchange rate');
+  await expect(best).toContainText('Provider fee');
+  await expect(best).toContainText('Platform fee');
+  await expect(best).toContainText('Estimated total cost');
+  await expect(best).toContainText('Beneficiary receives');
+  await expect(best).toContainText('Settlement time');
+  await expect(best).toContainText('Quote expires');
+  await expect(best.getByText(/Quote valid/)).toBeVisible();
 });
 
 test('shows a cost breakdown that names where the money went', async ({ page }) => {
   await page.getByRole('button', { name: /Compare routes/i }).click();
 
-  const firstCard = page
-    .getByRole('region', { name: /Route comparison results/i })
-    .locator('article')
-    .first();
-  await firstCard.getByRole('button', { name: /Show cost breakdown/i }).click();
+  const best = page.getByRole('article', { name: /Best route/i });
+  await best.getByRole('button', { name: /Show route details/i }).click();
 
-  // Addressed as row headers: the card also carries a "total cost" caption above the percentage,
-  // so plain text matching is ambiguous.
   for (const row of ['FX spread', 'Sending fees', 'Receiving fees', 'Expected slippage']) {
-    await expect(firstCard.getByRole('rowheader', { name: new RegExp(row) })).toBeVisible();
+    await expect(best.getByRole('rowheader', { name: new RegExp(row) })).toBeVisible();
   }
-  await expect(firstCard.getByRole('rowheader', { name: 'Total cost' })).toBeVisible();
-  await expect(firstCard.getByText(/Pricing version/i)).toBeVisible();
+  await expect(best.getByRole('rowheader', { name: 'Total cost' })).toBeVisible();
+  await expect(best.getByText(/Pricing version/i)).toBeVisible();
+});
+
+test('offers the partner hand-off and never an execute button', async ({ page }) => {
+  await page.getByRole('button', { name: /Compare routes/i }).click();
+
+  // No control anywhere implies Meridian moves money.
+  await expect(page.getByRole('button', { name: /^Execute/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Send money/i })).toHaveCount(0);
+
+  const best = page.getByRole('article', { name: /Best route/i });
+  await best.getByRole('button', { name: /Continue with partner/i }).click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText(/Transact directly with Solstice Settlement/i);
+  await expect(dialog).toContainText(/does not hold funds/i);
+  // Both the footer button and the corner X are named Close; the footer one is first in the DOM.
+  await dialog.getByRole('button', { name: /Close/i }).first().click();
+  await expect(dialog).not.toBeVisible();
 });
 
 test('verifies that a stored comparison replays to the same result', async ({ page }) => {
@@ -62,40 +92,33 @@ test('scores purely on cost when asked to optimise for cost', async ({ page }) =
   await page.getByRole('button', { name: /Compare routes/i }).click();
 
   const results = page.getByRole('region', { name: /Route comparison results/i });
-  const firstCard = results.locator('article').first();
+  const best = page.getByRole('article', { name: /Best route/i });
 
-  // With all the weight on cost, the cheapest route is by definition a perfect score.
-  await expect(firstCard).toContainText('Recommended');
-  await expect(firstCard.getByRole('meter', { name: /Route score/i })).toHaveAttribute(
-    'aria-valuenow',
-    '100',
-  );
-  await expect(results).toContainText('cost 1 · speed 0 ·');
+  await expect(best).toContainText('Recommended');
+  await expect(best).toContainText('score 100');
+  // Zero-weight factors are omitted from the footer rather than rendered as noise.
+  await expect(results).toContainText('cost 1');
+  await expect(results.locator('footer')).not.toContainText('speed');
 });
 
 test('prioritises settlement time when asked to optimise for speed', async ({ page }) => {
   await page.getByRole('button', { name: 'Fastest settlement' }).click();
   await page.getByRole('button', { name: /Compare routes/i }).click();
 
-  const firstCard = page
-    .getByRole('region', { name: /Route comparison results/i })
-    .locator('article')
-    .first();
-
-  // The stablecoin rail settles in five minutes, an order of magnitude faster than the rest.
-  await expect(firstCard).toContainText('Solstice Settlement');
-  await expect(firstCard).toContainText('5 min');
+  const best = page.getByRole('article', { name: /Best route/i });
+  await expect(best).toContainText('Solstice Settlement');
+  await expect(best).toContainText('5 min');
 });
 
 test('restricts the comparison to a selected rail', async ({ page }) => {
   await page.getByRole('button', { name: 'Bank FX', exact: true }).click();
   await page.getByRole('button', { name: /Compare routes/i }).click();
 
-  const routeCards = page
-    .getByRole('region', { name: /Route comparison results/i })
-    .locator('article');
-  await expect(routeCards).toHaveCount(1);
-  await expect(routeCards.first()).toContainText('Northgate Bank');
+  const best = page.getByRole('article', { name: /Best route/i });
+  await expect(best).toContainText('Northgate Bank');
+  // A single route needs no alternatives section and no comparison chart.
+  await expect(page.getByRole('region', { name: /Alternative routes/i })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: /Cost comparison/i })).toHaveCount(0);
 });
 
 test('explains an amount that no provider will price', async ({ page }) => {
@@ -112,7 +135,6 @@ test('explains an amount that no provider will price', async ({ page }) => {
 test('adapts amount validation to the selected currency', async ({ page }) => {
   await page.getByRole('button', { name: /Swap currencies/i }).click();
 
-  // The won has no minor unit, so the form says so and the API rejects a fractional amount.
   await expect(page.getByText(/KRW has no minor unit/i)).toBeVisible();
 
   await page.getByLabel('You send').fill('138000000');
