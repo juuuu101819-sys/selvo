@@ -214,3 +214,73 @@ export function resolveProviderQuoteRequest(body: CreateProviderQuoteBody): {
     amountMinorUnits: toAssetMinorUnits(sourceAsset, body.amount),
   };
 }
+
+const routingWeight = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal string');
+
+/**
+ * Body of `POST /v1/routes`.
+ *
+ * `organizationId` is taken from the principal, never the body. `execute`, keys and beneficiary
+ * details are rejected by `.strict()`.
+ */
+export const createRouteSchema = z
+  .object({
+    sourceAsset: z.string().trim().min(2).max(16),
+    destinationAsset: z.string().trim().min(2).max(16).optional(),
+    targetAsset: z.string().trim().min(2).max(16).optional(),
+    amount: assetAmount,
+    preferences: z
+      .object({
+        weights: z
+          .object({
+            cost: routingWeight,
+            speed: routingWeight,
+            liquidity: routingWeight,
+            reliability: routingWeight,
+            settlementConfidence: routingWeight,
+          })
+          .strict()
+          .optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict()
+  .refine((body) => (body.destinationAsset ?? body.targetAsset) !== undefined, {
+    message: 'either destinationAsset or targetAsset is required',
+    path: ['destinationAsset'],
+  })
+  .refine(
+    (body) =>
+      body.destinationAsset === undefined ||
+      body.targetAsset === undefined ||
+      body.destinationAsset === body.targetAsset,
+    {
+      message: 'destinationAsset and targetAsset must agree when both are supplied',
+      path: ['targetAsset'],
+    },
+  )
+  .refine((body) => body.sourceAsset !== (body.destinationAsset ?? body.targetAsset), {
+    message: 'sourceAsset and destinationAsset must differ',
+    path: ['destinationAsset'],
+  });
+
+export type CreateRouteBody = z.infer<typeof createRouteSchema>;
+
+export function resolveRouteRequest(body: CreateRouteBody): {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amountMinorUnits: string;
+} {
+  const destination = body.destinationAsset ?? body.targetAsset;
+  if (destination === undefined) {
+    throw new ValidationError('A destination asset is required.', {});
+  }
+  const sourceAsset = assertAssetCode(body.sourceAsset);
+  const destinationAsset = assertAssetCode(destination);
+  return {
+    sourceAsset,
+    destinationAsset,
+    amountMinorUnits: toAssetMinorUnits(sourceAsset, body.amount),
+  };
+}

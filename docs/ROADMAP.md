@@ -161,11 +161,29 @@ A normalised `FinancialProvider` contract sits beside the existing `RouteProvide
 
 **Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials.
 
-## Phase 9 — AI agent payments _(not started, gated)_
+## Phase 9 — Multi-rail routing engine ✅ implemented
+
+One normalised engine evaluates Traditional Finance, stablecoin and DeFi quotes:
+
+- Input: `{ sourceAsset, destinationAsset, amount, organizationId, preferences }`
+- Economics computed dynamically: exchange rate, provider / platform / network / gas fees, spread,
+  slippage, liquidity, settlement time, reliability, availability, compliance eligibility metadata
+- Configurable, explainable scores: cost 45%, speed 20%, liquidity 15%, reliability 10%,
+  settlement confidence 10%
+- Output: `routes[]`, `recommendedRoute`, `routeScore`, `estimatedCost`,
+  `estimatedReceiveAmount`, `estimatedSettlementTime`, `routeExplanation`
+- `POST /api/v1/routes`. Demo providers only. AI does not determine any financial figure.
+- Comparison engine unchanged (`ENGINE_VERSION` 2.0.0, four USD→KRW routes)
+- Route D (USD → stablecoin → DEX liquidity → KRW) is declared as planned, not composed
+
+**Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
+AI-determined prices.
+
+## Phase 10 — AI agent payments _(not started, gated)_
 
 Issue `ai_agent` principals that still act *for* an organization. Agents may request quotes and
 compare routes through the same API. Initiation remains delegated execution (Phase 7) and is
 gated on the same compliance bar. No agent wallets, no agent custody, no agent-to-agent settlement
-on this platform.
+on this platform. Agents never compute route economics — they consume `POST /api/v1/routes`.
 
 Treasury product comparison remains planned on the `treasury_product` rail.

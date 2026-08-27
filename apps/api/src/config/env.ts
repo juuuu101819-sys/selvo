@@ -1,8 +1,11 @@
 import {
   ConfigurationError,
+  DEFAULT_ROUTING_WEIGHTS,
   DEFAULT_SCORING_WEIGHTS,
   PLATFORM_MODES,
+  parseRoutingWeights,
   parseScoringWeights,
+  type SerializedRoutingWeights,
   type SerializedScoringWeights,
 } from '@meridian/core';
 import { PERSISTENCE_DRIVERS } from '@meridian/persistence';
@@ -49,6 +52,13 @@ const envSchema = z
     ROUTE_WEIGHT_SLIPPAGE: decimalString.default(DEFAULT_SCORING_WEIGHTS.slippage),
     ROUTE_WEIGHT_LIQUIDITY: decimalString.default(DEFAULT_SCORING_WEIGHTS.liquidity),
     ROUTE_WEIGHT_RISK: decimalString.default(DEFAULT_SCORING_WEIGHTS.risk),
+    ROUTING_WEIGHT_COST: decimalString.default(DEFAULT_ROUTING_WEIGHTS.cost),
+    ROUTING_WEIGHT_SPEED: decimalString.default(DEFAULT_ROUTING_WEIGHTS.speed),
+    ROUTING_WEIGHT_LIQUIDITY: decimalString.default(DEFAULT_ROUTING_WEIGHTS.liquidity),
+    ROUTING_WEIGHT_RELIABILITY: decimalString.default(DEFAULT_ROUTING_WEIGHTS.reliability),
+    ROUTING_WEIGHT_SETTLEMENT_CONFIDENCE: decimalString.default(
+      DEFAULT_ROUTING_WEIGHTS.settlementConfidence,
+    ),
     PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(4_000),
 
     /** Overrides the bundled sandbox pricing dataset. */
@@ -84,6 +94,7 @@ export interface AppConfig {
     readonly ssl: boolean;
   };
   readonly weights: SerializedScoringWeights;
+  readonly routingWeights: SerializedRoutingWeights;
   readonly providerTimeoutMs: number;
   readonly pricingDataDir: string | undefined;
   readonly maxAmountMinorUnits: string;
@@ -112,6 +123,15 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   // Surfaces a bad weight set as a startup failure rather than a per-request 400.
   parseScoringWeights(weights);
 
+  const routingWeights = {
+    cost: env.ROUTING_WEIGHT_COST,
+    speed: env.ROUTING_WEIGHT_SPEED,
+    liquidity: env.ROUTING_WEIGHT_LIQUIDITY,
+    reliability: env.ROUTING_WEIGHT_RELIABILITY,
+    settlementConfidence: env.ROUTING_WEIGHT_SETTLEMENT_CONFIDENCE,
+  };
+  parseRoutingWeights(routingWeights);
+
   return {
     nodeEnv: env.NODE_ENV,
     mode: env.PLATFORM_MODE,
@@ -129,6 +149,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       ssl: env.DATABASE_SSL,
     },
     weights,
+    routingWeights,
     providerTimeoutMs: env.PROVIDER_TIMEOUT_MS,
     pricingDataDir: env.MERIDIAN_PRICING_DATA_DIR,
     maxAmountMinorUnits: env.MAX_COMPARISON_AMOUNT_MINOR_UNITS,

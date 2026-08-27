@@ -42,7 +42,8 @@ cp .env.example .env     # optional; every value has a working default
 npm run dev              # API on :47311, web app on :43117
 ```
 
-Then open <http://127.0.0.1:43117> to compare routes, or <http://127.0.0.1:43117/login> for the
+Then open <http://127.0.0.1:43117> to compare fiat routes, <http://127.0.0.1:43117/rails> for the
+multi-rail engine (tradfi, stablecoin and DeFi), or <http://127.0.0.1:43117/login> for the
 organization dashboard.
 
 Local sandbox login (in-memory driver provisions this on API start; Postgres gets it from `npm run db:seed`):
@@ -72,6 +73,11 @@ curl -s http://127.0.0.1:47311/api/v1/health
 curl -s -X POST http://127.0.0.1:47311/api/v1/comparisons \
   -H 'content-type: application/json' \
   -d '{"sourceCurrency":"USD","targetCurrency":"KRW","amount":"100000.00"}' | jq '.data.routes[] | {rank, provider: .provider.name, cost: .totalCostPercent}'
+
+curl -s -X POST http://127.0.0.1:47311/api/v1/routes \
+  -H 'content-type: application/json' \
+  -d '{"sourceAsset":"USD","destinationAsset":"KRW","amount":"100000.00"}' \
+  | jq '.data | {recommended: .recommendedRoute.provider.name, score: .routeScore, explanation: .routeExplanation}'
 ```
 
 ## Verifying a change

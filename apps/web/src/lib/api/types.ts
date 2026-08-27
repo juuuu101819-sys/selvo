@@ -179,6 +179,7 @@ export interface RailDto {
 export interface MetaDto {
   readonly mode: string;
   readonly engineVersion: string;
+  readonly routingEngineVersion?: string;
   readonly product: {
     readonly kind: string;
     readonly name: string;
@@ -203,6 +204,7 @@ export interface MetaDto {
     readonly agentPayments: boolean;
     readonly defiQuotes: boolean;
     readonly defiExecution: boolean;
+    readonly multiRailRouting: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -418,4 +420,87 @@ export interface DashboardSettingsDto {
   readonly members: readonly PublicMemberDto[];
   readonly apiKeys: readonly PublicApiKeyDto[];
   readonly role: string | null;
+}
+
+export interface AssetAmountJson {
+  readonly asset: string;
+  readonly minorUnits: string;
+  readonly decimal: string;
+  readonly exponent: number;
+}
+
+export interface MultiRailRouteDto {
+  readonly routeId: string;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly available: true;
+  readonly hops: readonly string[];
+  readonly provider: {
+    readonly id: string;
+    readonly name: string;
+    readonly rail: string;
+    readonly railLabel: string;
+    readonly category: string;
+    readonly railFamily: string;
+    readonly licensing: string;
+  };
+  readonly conversionKind: string;
+  readonly sendAmount: AssetAmountJson;
+  readonly estimatedReceiveAmount: AssetAmountJson;
+  readonly estimatedCost: AssetAmountJson;
+  readonly totalCostBps: string;
+  readonly indicatedRate: string;
+  readonly midMarketRate: string;
+  readonly reliabilityScore: string;
+  readonly settlementConfidence: string;
+  readonly estimatedSettlementTime: SettlementDto;
+  readonly routeScore: string;
+  readonly scoreComponents: {
+    readonly cost: string;
+    readonly speed: string;
+    readonly liquidity: string;
+    readonly reliability: string;
+    readonly settlementConfidence: string;
+  };
+  readonly routeExplanation: string;
+  readonly executable: false;
+  readonly breakdown: {
+    readonly providerFee: AssetAmountJson;
+    readonly platformFee: AssetAmountJson;
+    readonly networkFee: AssetAmountJson;
+    readonly gasFee: AssetAmountJson;
+    readonly spreadCost: AssetAmountJson;
+    readonly slippageCost: AssetAmountJson;
+  };
+  readonly compliance: {
+    readonly eligible: boolean;
+    readonly kycRequired: boolean;
+    readonly executable: false;
+    readonly notes: string;
+  };
+}
+
+export interface MultiRailRoutingDto {
+  readonly routingId: string;
+  readonly routingEngineVersion: string;
+  readonly aiUsed: false;
+  readonly routes: readonly MultiRailRouteDto[];
+  readonly recommendedRoute: MultiRailRouteDto | null;
+  readonly routeScore: string | null;
+  readonly estimatedCost: AssetAmountJson | null;
+  readonly estimatedReceiveAmount: AssetAmountJson | null;
+  readonly estimatedSettlementTime: SettlementDto | null;
+  readonly routeExplanation: string;
+  readonly plannedRoutes: readonly {
+    readonly hops: readonly string[];
+    readonly status: string;
+    readonly explanation: string;
+  }[];
+  readonly scoringWeights: {
+    readonly cost: string;
+    readonly speed: string;
+    readonly liquidity: string;
+    readonly reliability: string;
+    readonly settlementConfidence: string;
+  };
 }

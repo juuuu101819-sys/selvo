@@ -28,6 +28,11 @@ export const PLATFORM_CAPABILITIES = {
   defiQuotes: true,
   /** On-chain swaps, wraps or bridging. Depth analysis may be added as read-only later. */
   defiExecution: false,
+  /**
+   * Multi-rail routing engine: tradfi, stablecoin and DeFi quotes ranked with one deterministic
+   * scorer. Distinct from `compareRoutes`, which remains the fiat comparison engine.
+   */
+  multiRailRouting: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

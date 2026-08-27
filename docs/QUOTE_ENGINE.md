@@ -325,3 +325,57 @@ Reporting that as reproducible would be the most misleading answer available.
 Tests: `quote-engine.test.ts` (edge cases, platform fee arithmetic, determinism),
 `cost-engine.test.ts` (cost model), `route-scorer.test.ts` (scoring), `platform-pricing.test.ts`
 (rule resolution), `apps/api/src/routes/quote-engine.test.ts` (over HTTP).
+
+---
+
+## Multi-rail routing engine (version 1.0.0)
+
+Independent of the comparison engine above. Do not bump `ENGINE_VERSION` when this engine changes.
+
+**Input**
+
+```jsonc
+{
+  "sourceAsset": "USD",
+  "destinationAsset": "KRW",
+  "amount": "100000.00",
+  "organizationId": "org_...", // from the principal, never the body
+  "preferences": { "weights": { "cost": "0.45", "speed": "0.20", "liquidity": "0.15", "reliability": "0.10", "settlementConfidence": "0.10" } }
+}
+```
+
+**Cost** uses the same identity as §1, expressed in assets rather than ISO currencies:
+
+$$B = \lfloor S \times M \rfloor,\quad
+D = \lfloor ((S - F_{src} - F_{plat}) \times O \times (1 - s)) \rfloor - F_{dst},\quad
+T = B - D$$
+
+Network and gas fees are fee lines (`code` contains `network` or `gas`), not a second cost model.
+
+**Score** (defaults sum to 1):
+
+| Factor                 | Weight | Normalisation                                      |
+| ---------------------- | ------ | -------------------------------------------------- |
+| Cost                   | 45%    | min-max, lower is better                           |
+| Speed                  | 20%    | min-max on p50 seconds, lower is better            |
+| Liquidity              | 15%    | absolute; undisclosed depth scores as unconstrained |
+| Reliability            | 10%    | provider `0..1`                                    |
+| Settlement confidence  | 10%    | `tightness × cutoffFactor × calendarFactor`        |
+
+Settlement confidence is **not** speed. Tightness is `clamp(1 − (p95 − p50) / 2 days)`. A cutoff
+raises confidence; business-days-only lowers it.
+
+No rail family is assumed cheaper. Ranking is score, then cost, then p50, then route id.
+
+`routeExplanation` is a template over those components. **No model computes a price or a score.**
+
+Route D (fiat → stablecoin → DEX → fiat) is listed under `plannedRoutes` and is not composed.
+
+| Concern                 | File                                               |
+| ----------------------- | -------------------------------------------------- |
+| Asset amounts           | `packages/core/src/money/asset-amount.ts`          |
+| Routing cost            | `packages/core/src/engine/routing-cost.ts`         |
+| Routing score           | `packages/core/src/engine/routing-scorer.ts`       |
+| Explanation             | `packages/core/src/engine/routing-explanation.ts`  |
+| Orchestration           | `packages/core/src/engine/routing-engine.ts`       |
+| HTTP                    | `apps/api/src/routes/routing.ts`                   |

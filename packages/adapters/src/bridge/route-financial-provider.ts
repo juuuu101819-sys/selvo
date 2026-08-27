@@ -172,6 +172,7 @@ function toNormalizedQuote(quote: ProviderQuote, request: NormalizedQuoteRequest
       chainId: null,
     },
     slippage: quote.slippage,
+    reliabilityScore: quote.reliabilityScore,
     executable: false,
     chainId: null,
     metadata: {

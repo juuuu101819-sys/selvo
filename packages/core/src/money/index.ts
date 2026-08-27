@@ -21,4 +21,5 @@ export {
   type RoundingMode,
 } from './decimal.js';
 export { Money, type MoneyJson } from './money.js';
+export { AssetAmount, type AssetAmountJson } from './asset-amount.js';
 export { Rate, type RateJson } from './rate.js';

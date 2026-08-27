@@ -2,11 +2,16 @@ import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet }
 import {
   ENGINE_VERSION,
   FinancialProviderRegistry,
+  MultiRailCostEngine,
+  MultiRailRouter,
   ProviderRegistry,
+  ROUTING_ENGINE_VERSION,
   RepositoryAuditLogger,
   RouteComparisonService,
   RouteCostEngine,
+  defaultRoutingWeights,
   noPlatformPricingResolver,
+  parseRoutingWeights,
   parseScoringWeights,
   systemClock,
   uuidIdGenerator,
@@ -30,6 +35,7 @@ export interface AppContainer {
   readonly registry: ProviderRegistry;
   readonly financialProviders: FinancialProviderRegistry;
   readonly comparisons: RouteComparisonService;
+  readonly routing: MultiRailRouter;
   readonly auditLogger: AuditLogger;
   readonly authenticator: Authenticator;
   readonly disclaimer: string;
@@ -41,6 +47,7 @@ export interface AppContainer {
   } | null;
   readonly providers: readonly ProviderDescriptor[];
   readonly engineVersion: string;
+  readonly routingEngineVersion: string;
   /** Where negotiated commercial terms come from, or `"none"` when none are configured. */
   readonly pricingResolverKind: string;
   close(): Promise<void>;
@@ -113,11 +120,28 @@ export function createContainer(options: ContainerOptions): AppContainer {
     pricingResolver,
   });
 
+  const routing = new MultiRailRouter({
+    mode: config.mode,
+    registry: financialProviders,
+    costEngine: new MultiRailCostEngine(),
+    defaultWeights:
+      config.routingWeights === undefined
+        ? defaultRoutingWeights()
+        : parseRoutingWeights(config.routingWeights),
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+    logger,
+    providerTimeoutMs: config.providerTimeoutMs,
+    pricingResolver,
+  });
+
   const authenticator: Authenticator = new IdentityAuthenticator(persistence.identity, clock);
 
   logger.info('Meridian container initialised', {
     mode: config.mode,
     engineVersion: ENGINE_VERSION,
+    routingEngineVersion: ROUTING_ENGINE_VERSION,
     persistenceDriver: persistence.kind,
     providerCount: registry.all().length,
     financialProviderCount: financialProviders.all().length,
@@ -132,6 +156,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     registry,
     financialProviders,
     comparisons,
+    routing,
     auditLogger,
     authenticator,
     disclaimer: disclaimerFor(config.mode),
@@ -146,6 +171,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
           },
     providers: registry.descriptors(),
     engineVersion: ENGINE_VERSION,
+    routingEngineVersion: ROUTING_ENGINE_VERSION,
     pricingResolverKind: pricingResolver === noPlatformPricingResolver ? 'none' : persistence.kind,
     close: () => persistence.close(),
   };

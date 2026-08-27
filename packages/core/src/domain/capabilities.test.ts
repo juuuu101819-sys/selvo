@@ -15,5 +15,6 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.agentPayments).toBe(false);
     expect(PLATFORM_CAPABILITIES.defiQuotes).toBe(true);
     expect(PLATFORM_CAPABILITIES.defiExecution).toBe(false);
+    expect(PLATFORM_CAPABILITIES.multiRailRouting).toBe(true);
   });
 });

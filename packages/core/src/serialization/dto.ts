@@ -188,6 +188,7 @@ export interface NormalizedQuoteDto {
     readonly chainId: string | null;
   };
   readonly slippage: { readonly kind: string };
+  readonly reliabilityScore: string;
   readonly executable: false;
   readonly chainId: string | null;
   readonly metadata: Readonly<Record<string, unknown>>;
@@ -205,4 +206,132 @@ export interface FinancialProviderDto {
   readonly description: string;
   readonly supportedAssets: readonly string[];
   readonly supportedCurrencies: readonly string[];
+}
+
+export interface AssetAmountDto {
+  readonly asset: string;
+  readonly minorUnits: string;
+  readonly decimal: string;
+  readonly exponent: number;
+}
+
+export interface RoutedAppliedFeeDto {
+  readonly code: string;
+  readonly label: string;
+  readonly side: FeeSide;
+  readonly kind: 'fixed' | 'proportional';
+  readonly bucket: 'provider' | 'platform' | 'network' | 'gas' | 'other';
+  readonly chargedBy: 'provider' | 'platform';
+  readonly asset: string;
+  readonly amount: AssetAmountDto;
+  readonly rateBps: string | null;
+}
+
+export interface RoutingCostBreakdownDto {
+  readonly appliedFees: readonly RoutedAppliedFeeDto[];
+  readonly providerFee: AssetAmountDto;
+  readonly platformFee: AssetAmountDto;
+  readonly networkFee: AssetAmountDto;
+  readonly gasFee: AssetAmountDto;
+  readonly spreadCost: AssetAmountDto;
+  readonly slippageCost: AssetAmountDto;
+  readonly roundingAdjustment: AssetAmountDto;
+  readonly totalCost: AssetAmountDto;
+}
+
+export interface ComplianceEligibilityDto {
+  readonly eligible: true;
+  readonly conversionKind: string;
+  readonly railFamily: string;
+  readonly category: string;
+  readonly licensing: ProviderLicensing;
+  readonly jurisdictions: readonly string[];
+  readonly kycRequired: boolean;
+  readonly sanctionsScreeningRequired: boolean;
+  readonly executable: false;
+  readonly notes: string;
+}
+
+export interface PlannedRouteDto {
+  readonly id: string;
+  readonly hops: readonly string[];
+  readonly status: 'planned';
+  readonly explanation: string;
+}
+
+export interface MultiRailRouteDto {
+  readonly routeId: string;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly available: true;
+  readonly hops: readonly string[];
+  readonly provider: {
+    readonly id: string;
+    readonly name: string;
+    readonly rail: RailType;
+    readonly railLabel: string;
+    readonly category: string;
+    readonly railFamily: string;
+    readonly licensing: ProviderLicensing;
+    readonly pricingVersion: string;
+  };
+  readonly conversionKind: string;
+  readonly sendAmount: AssetAmountDto;
+  readonly estimatedReceiveAmount: AssetAmountDto;
+  readonly estimatedCost: AssetAmountDto;
+  readonly benchmarkAmount: AssetAmountDto;
+  readonly indicatedRate: string;
+  readonly midMarketRate: string;
+  readonly slippageAdjustedRate: string;
+  readonly effectiveRate: string;
+  readonly totalCostBps: string;
+  readonly spreadBps: string;
+  readonly slippageBps: string;
+  readonly liquidityHeadroom: string | null;
+  readonly reliabilityScore: string;
+  readonly settlementConfidence: string;
+  readonly estimatedSettlementTime: SettlementDto;
+  readonly breakdown: RoutingCostBreakdownDto;
+  readonly compliance: ComplianceEligibilityDto;
+  readonly routeScore: string;
+  readonly scoreComponents: {
+    readonly cost: string;
+    readonly speed: string;
+    readonly liquidity: string;
+    readonly reliability: string;
+    readonly settlementConfidence: string;
+  };
+  readonly routeExplanation: string;
+  readonly executable: false;
+}
+
+export interface MultiRailRoutingDto {
+  readonly routingId: string;
+  readonly organizationId: string | null;
+  readonly createdAt: string;
+  readonly mode: PlatformMode;
+  readonly routingEngineVersion: string;
+  readonly aiUsed: false;
+  readonly request: {
+    readonly sourceAsset: string;
+    readonly destinationAsset: string;
+    readonly amount: AssetAmountDto;
+    readonly requestedAt: string;
+  };
+  readonly scoringWeights: {
+    readonly cost: string;
+    readonly speed: string;
+    readonly liquidity: string;
+    readonly reliability: string;
+    readonly settlementConfidence: string;
+  };
+  readonly routes: readonly MultiRailRouteDto[];
+  readonly recommendedRoute: MultiRailRouteDto | null;
+  readonly routeScore: string | null;
+  readonly estimatedCost: AssetAmountDto | null;
+  readonly estimatedReceiveAmount: AssetAmountDto | null;
+  readonly estimatedSettlementTime: SettlementDto | null;
+  readonly routeExplanation: string;
+  readonly plannedRoutes: readonly PlannedRouteDto[];
+  readonly providerFailures: readonly ProviderFailureDto[];
 }

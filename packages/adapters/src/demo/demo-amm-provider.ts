@@ -120,7 +120,7 @@ export class DemoAmmProvider implements FinancialProvider {
       amountMinorUnits: request.amountMinorUnits,
       indicatedRate: pair.offered,
       midMarketRate: pair.mid,
-      fees: [{ ...POOL_FEE, asset: request.sourceAsset }],
+      fees: [...ammFees(request.sourceAsset, request.targetAsset)],
       settlement: SETTLEMENT,
       liquidity: depthOf(request.sourceAsset),
       slippage: {
@@ -131,6 +131,7 @@ export class DemoAmmProvider implements FinancialProvider {
           { upToNotionalMinorUnits: null, bps: '18' },
         ],
       },
+      reliabilityScore: '0.961',
       executable: false,
       chainId: assetDefinition(request.sourceAsset).chainId,
       metadata: {
@@ -179,7 +180,7 @@ export class DemoAmmProvider implements FinancialProvider {
   ): Promise<readonly NormalizedFee[]> {
     await Promise.resolve();
     this.assertSupported(request);
-    return [{ ...POOL_FEE, asset: request.sourceAsset }];
+    return [...ammFees(request.sourceAsset, request.targetAsset)];
   }
 
   async getLiquidityInfo(
@@ -220,4 +221,27 @@ function depthOf(source: string): LiquidityInfo {
     venue: 'Meridian Pool',
     chainId: assetDefinition(source).chainId,
   };
+}
+
+function ammFees(source: string, target: string): readonly NormalizedFee[] {
+  return [
+    { ...POOL_FEE, asset: source },
+    {
+      code: 'gas',
+      label: 'Estimated network gas',
+      side: 'destination',
+      kind: 'fixed',
+      asset: target,
+      amountMinorUnits: gasMinorUnits(target),
+      rateBps: null,
+    },
+  ];
+}
+
+function gasMinorUnits(asset: string): string {
+  if (asset === 'ETH') {
+    return '20000000000000';
+  }
+  const exponent = assetDefinition(asset).exponent;
+  return new Dec(10).pow(exponent).times('0.05').toFixed(0);
 }

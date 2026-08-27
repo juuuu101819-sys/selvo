@@ -8,7 +8,8 @@ import type {
   ScoredRoute,
 } from '../domain/index.js';
 import { RAIL_REGISTRY } from '../domain/index.js';
-import { Money, type Decimal } from '../money/index.js';
+import type { MultiRailRouting, ScoredMultiRailRoute } from '../engine/routing-types.js';
+import { AssetAmount, Money, type Decimal } from '../money/index.js';
 import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
 import type {
   AppliedFeeDto,
@@ -16,6 +17,8 @@ import type {
   ComparisonInsightsDto,
   CostBreakdownDto,
   FinancialProviderDto,
+  MultiRailRouteDto,
+  MultiRailRoutingDto,
   NormalizedQuoteDto,
   ProviderFailureDto,
   ReplayResultDto,
@@ -178,6 +181,7 @@ export function serializeNormalizedQuote(quote: NormalizedQuote): NormalizedQuot
     settlement: quote.settlement,
     liquidity: quote.liquidity,
     slippage: { kind: quote.slippage.kind },
+    reliabilityScore: quote.reliabilityScore,
     executable: false,
     chainId: quote.chainId,
     metadata: quote.metadata,
@@ -204,4 +208,105 @@ export function serializeFinancialProvider(provider: FinancialProvider): Financi
 /** Derived percentages are rounded for presentation only; the authoritative figure is the Money. */
 function fixed(value: Decimal, decimalPlaces: number): string {
   return value.toDecimalPlaces(decimalPlaces).toFixed();
+}
+
+export function serializeMultiRailRouting(result: MultiRailRouting): MultiRailRoutingDto {
+  const routes = result.routes.map(serializeMultiRailRoute);
+  const recommended = result.recommendedRoute === null ? null : serializeMultiRailRoute(result.recommendedRoute);
+  return {
+    routingId: result.routingId,
+    organizationId: result.organizationId,
+    createdAt: result.createdAt,
+    mode: result.mode,
+    routingEngineVersion: result.routingEngineVersion,
+    aiUsed: false,
+    request: {
+      sourceAsset: result.request.sourceAsset,
+      destinationAsset: result.request.destinationAsset,
+      amount: AssetAmount.ofMinorUnits(
+        result.request.sourceAsset,
+        result.request.amountMinorUnits,
+      ).toJSON(),
+      requestedAt: result.request.requestedAt,
+    },
+    scoringWeights: result.scoringWeights,
+    routes,
+    recommendedRoute: recommended,
+    routeScore: result.routeScore === null ? null : fixed(result.routeScore, 2),
+    estimatedCost: result.estimatedCost === null ? null : result.estimatedCost.toJSON(),
+    estimatedReceiveAmount:
+      result.estimatedReceiveAmount === null ? null : result.estimatedReceiveAmount.toJSON(),
+    estimatedSettlementTime: result.estimatedSettlementTime,
+    routeExplanation: result.routeExplanation,
+    plannedRoutes: result.plannedRoutes.map((route) => ({ ...route })),
+    providerFailures: result.providerFailures.map(serializeFailure),
+  };
+}
+
+export function serializeMultiRailRoute(route: ScoredMultiRailRoute): MultiRailRouteDto {
+  return {
+    routeId: route.routeId,
+    rank: route.rank,
+    recommended: route.recommended,
+    available: true,
+    hops: [...route.hops],
+    provider: {
+      id: route.provider.id,
+      name: route.provider.name,
+      rail: route.rail,
+      railLabel: RAIL_REGISTRY[route.rail].label,
+      category: route.category,
+      railFamily: route.railFamily,
+      licensing: route.provider.licensing,
+      pricingVersion: route.provider.pricingVersion,
+    },
+    conversionKind: route.conversionKind,
+    sendAmount: route.sendAmount.toJSON(),
+    estimatedReceiveAmount: route.deliveredAmount.toJSON(),
+    estimatedCost: route.totalCost.toJSON(),
+    benchmarkAmount: route.benchmarkAmount.toJSON(),
+    indicatedRate: route.indicatedRate.toFixed(),
+    midMarketRate: route.midMarketRate.toFixed(),
+    slippageAdjustedRate: route.slippageAdjustedRate.toFixed(),
+    effectiveRate: route.effectiveRate.toFixed(),
+    totalCostBps: fixed(route.totalCostBps, BPS_DECIMAL_PLACES),
+    spreadBps: fixed(route.spreadBps, BPS_DECIMAL_PLACES),
+    slippageBps: fixed(route.slippageBps, BPS_DECIMAL_PLACES),
+    liquidityHeadroom: route.liquidityHeadroom === null ? null : route.liquidityHeadroom.toFixed(),
+    reliabilityScore: route.reliabilityScore.toFixed(),
+    settlementConfidence: route.settlementConfidence.toFixed(),
+    estimatedSettlementTime: route.settlement,
+    breakdown: {
+      appliedFees: route.breakdown.appliedFees.map((fee) => ({
+        code: fee.code,
+        label: fee.label,
+        side: fee.side,
+        kind: fee.kind,
+        bucket: fee.bucket,
+        chargedBy: fee.chargedBy,
+        asset: fee.asset,
+        amount: fee.amount.toJSON(),
+        rateBps: fee.rateBps === null ? null : fee.rateBps.toFixed(),
+      })),
+      providerFee: route.breakdown.providerFee.toJSON(),
+      platformFee: route.breakdown.platformFee.toJSON(),
+      networkFee: route.breakdown.networkFee.toJSON(),
+      gasFee: route.breakdown.gasFee.toJSON(),
+      spreadCost: route.breakdown.spreadCost.toJSON(),
+      slippageCost: route.breakdown.slippageCost.toJSON(),
+      roundingAdjustment: route.breakdown.roundingAdjustment.toJSON(),
+      totalCost: route.breakdown.totalCost.toJSON(),
+    },
+    compliance: { ...route.compliance, jurisdictions: [...route.compliance.jurisdictions] },
+    routeScore: fixed(route.routeScore, 2),
+    scoreComponents: {
+      cost: route.scoreComponents.cost.toFixed(),
+      speed: route.scoreComponents.speed.toFixed(),
+      liquidity: route.scoreComponents.liquidity.toFixed(),
+      reliability: route.scoreComponents.reliability.toFixed(),
+      settlementConfidence: route.scoreComponents.settlementConfidence.toFixed(),
+    },
+    routeExplanation: route.routeExplanation,
+    executable: false,
+  };
 }

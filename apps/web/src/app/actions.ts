@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createComparison, login, logout, replayComparison } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, ReplayResultDto } from '@/lib/api/types';
+import { createComparison, createRoute, login, logout, replayComparison } from '@/lib/api/client';
+import type { ApiResult, ComparisonDto, MultiRailRoutingDto, ReplayResultDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -42,7 +42,21 @@ export async function compareRoutes(input: CompareRoutesInput): Promise<ApiResul
   );
 }
 
-/** Re-runs a stored comparison through the engine and reports whether it reproduced. */
+export async function evaluateRoutes(input: {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: string;
+}): Promise<ApiResult<MultiRailRoutingDto>> {
+  const authorization = await readSessionToken();
+  return createRoute(
+    {
+      sourceAsset: input.sourceAsset,
+      destinationAsset: input.destinationAsset,
+      amount: input.amount,
+    },
+    { actor: 'web-app', authorization },
+  );
+}
 export async function verifyComparison(comparisonId: string): Promise<ApiResult<ReplayResultDto>> {
   const authorization = await readSessionToken();
   return replayComparison(comparisonId, authorization);

@@ -80,6 +80,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       version: SERVICE_VERSION,
       mode: container.config.mode,
       engineVersion: container.engineVersion,
+      routingEngineVersion: container.routingEngineVersion,
       product: {
         kind: PRODUCT.kind,
         name: PRODUCT.name,
@@ -120,6 +121,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       persistenceDriver: container.persistence.kind,
       pricing: container.pricing,
       defaultScoringWeights: container.config.weights,
+      defaultRoutingWeights: container.config.routingWeights,
       platformDefaultScoringWeights: DEFAULT_SCORING_WEIGHTS,
       providerTimeoutMs: container.config.providerTimeoutMs,
       providers: container.providers.map((provider) => ({

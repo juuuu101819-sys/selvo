@@ -162,6 +162,46 @@ Indicative quote from one catalog provider. Not a comparison, and never executab
 currencies. The schema is strict: `execute`, `privateKey`, `wallet` and beneficiary fields are
 rejected. `data.executable` is always `false`.
 
+## `POST /api/v1/routes`
+
+Multi-rail routing engine. Evaluates Traditional Finance, stablecoin and DeFi quotes with one
+deterministic scorer. Distinct from `POST /comparisons`, which remains the fiat comparison engine
+(`ENGINE_VERSION` 2.0.0). This engine is `routingEngineVersion` **1.0.0**. No model is used for
+any figure.
+
+```jsonc
+{
+  "sourceAsset": "USD",
+  "destinationAsset": "KRW", // `targetAsset` accepted as a synonym
+  "amount": "100000.00",
+  "preferences": {
+    "weights": {
+      // optional; must sum to exactly 1
+      "cost": "0.45",
+      "speed": "0.20",
+      "liquidity": "0.15",
+      "reliability": "0.10",
+      "settlementConfidence": "0.10"
+    }
+  }
+}
+```
+
+`organizationId` is taken from the authenticated principal, never the body. The schema is strict:
+`execute`, keys and beneficiary fields are rejected.
+
+Returns `201` with:
+
+- `routes[]` — ranked best-first, each with hops, economics, score components and `routeExplanation`
+- `recommendedRoute` — the rank-1 route
+- `routeScore`, `estimatedCost`, `estimatedReceiveAmount`, `estimatedSettlementTime`,
+  `routeExplanation` — echoed from the recommendation
+- `plannedRoutes` — Route D (fiat → stablecoin → DEX → fiat) is declared, not composed
+- `aiUsed: false`
+
+USD 100,000 → KRW still returns **four** routes on `POST /comparisons`. The routing engine may
+return those same wrapped rails plus catalog-only venues when the corridor is on-chain or a ramp.
+
 ## `POST /api/v1/comparisons`
 
 Compares every eligible route for a transaction.

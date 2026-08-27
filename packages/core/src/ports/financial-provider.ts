@@ -58,6 +58,8 @@ export interface NormalizedQuote extends ProviderQuoteEnvelope {
   readonly settlement: SettlementEstimate;
   readonly liquidity: LiquidityInfo;
   readonly slippage: SlippageModel;
+  /** Historical settlement success rate, `0`..`1`, as a decimal string. */
+  readonly reliabilityScore: string;
   /** Always false. Meridian never holds keys or submits a transaction. */
   readonly executable: false;
   readonly chainId: string | null;

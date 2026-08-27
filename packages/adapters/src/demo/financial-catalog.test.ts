@@ -100,6 +100,22 @@ describe('Helios Ramp', () => {
     );
     expect(offRamp.conversionKind).toBe('stablecoin_fiat');
   });
+
+  it('quotes USDC → KRW as a demo off-ramp', async () => {
+    const quote = await ramp.getQuote(
+      {
+        sourceAsset: 'USDC',
+        targetAsset: 'KRW',
+        amountMinorUnits: '1000000000',
+        requestedAt: clock.nowIso(),
+      },
+      context,
+    );
+    expect(quote.conversionKind).toBe('stablecoin_fiat');
+    expect(quote.executable).toBe(false);
+    expect(quote.indicatedRate).toBe('1374.2');
+    expect(quote.midMarketRate).toBe('1380');
+  });
 });
 
 describe('Meridian Pool AMM', () => {

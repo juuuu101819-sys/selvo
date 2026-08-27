@@ -69,7 +69,10 @@ made. Nothing below rebuilds the application.
   capabilities, and `execution.delegated: false`.
 - `POST /api/v1/comparisons` accepts optional `railFamilies`, intersected with `rails`. A filter
   that names only planned rails (for example DeFi-only) is **400**, not a silent empty quote.
-- Planned rails never expand into a quote.
+- `POST /api/v1/routes` ranks tradfi, stablecoin and DeFi quotes with a separate engine
+  (`routingEngineVersion` 1.0.0). Comparison scoring is unchanged.
+- Planned rails never expand into a comparison quote. Direct catalog quotes (ramps, AMM, aggregator)
+  appear on `/routes` and `/provider-quotes`.
 
 ---
 

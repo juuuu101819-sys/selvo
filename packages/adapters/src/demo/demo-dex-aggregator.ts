@@ -114,7 +114,7 @@ export class DemoDexAggregatorProvider implements FinancialProvider {
       amountMinorUnits: request.amountMinorUnits,
       indicatedRate: pair.offered,
       midMarketRate: pair.mid,
-      fees: [aggregatorFee(request.sourceAsset)],
+      fees: [...aggregatorFees(request.sourceAsset, request.targetAsset)],
       settlement: SETTLEMENT,
       liquidity: {
         availableDepthMinorUnits: new Dec(10)
@@ -125,6 +125,7 @@ export class DemoDexAggregatorProvider implements FinancialProvider {
         chainId: assetDefinition(request.sourceAsset).chainId,
       },
       slippage: { kind: 'none' },
+      reliabilityScore: '0.968',
       executable: false,
       chainId: assetDefinition(request.sourceAsset).chainId,
       metadata: {
@@ -152,7 +153,7 @@ export class DemoDexAggregatorProvider implements FinancialProvider {
   ): Promise<readonly NormalizedFee[]> {
     await Promise.resolve();
     this.assertSupported(request);
-    return [aggregatorFee(request.sourceAsset)];
+    return [...aggregatorFees(request.sourceAsset, request.targetAsset)];
   }
 
   async getLiquidityInfo(
@@ -192,6 +193,21 @@ function pairOf(source: string, target: string): PairRate | undefined {
   return PAIRS[`${source}/${target}`];
 }
 
+function aggregatorFees(source: string, target: string): readonly NormalizedFee[] {
+  return [
+    aggregatorFee(source),
+    {
+      code: 'gas',
+      label: 'Estimated network gas',
+      side: 'destination',
+      kind: 'fixed',
+      asset: target,
+      amountMinorUnits: gasMinorUnits(target),
+      rateBps: null,
+    },
+  ];
+}
+
 function aggregatorFee(source: string): NormalizedFee {
   return {
     code: 'aggregator_fee',
@@ -202,4 +218,12 @@ function aggregatorFee(source: string): NormalizedFee {
     amountMinorUnits: null,
     rateBps: '3',
   };
+}
+
+function gasMinorUnits(asset: string): string {
+  if (asset === 'ETH') {
+    return '15000000000000';
+  }
+  const exponent = assetDefinition(asset).exponent;
+  return new Dec(10).pow(exponent).times('0.04').toFixed(0);
 }

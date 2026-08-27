@@ -25,6 +25,9 @@ export function DashboardNav({ organizationName }: { organizationName: string })
             Signed in to <span className="text-foreground font-medium">{organizationName}</span>
           </p>
           <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" render={<Link href="/rails" />}>
+              Multi-rail
+            </Button>
             <Button variant="ghost" size="sm" render={<Link href="/" />}>
               Compare routes
             </Button>

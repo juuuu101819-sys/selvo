@@ -7,8 +7,14 @@ import type {
   SettlementEstimate,
   SlippageModel,
 } from '../domain/index.js';
+import type { ConversionKind } from '../domain/conversion.js';
 import type { CurrencyCode } from '../money/index.js';
-import type { ProviderContext, RouteProvider } from '../ports/index.js';
+import type {
+  NormalizedFee,
+  NormalizedQuote,
+  ProviderContext,
+  RouteProvider,
+} from '../ports/index.js';
 
 /**
  * Test builders. Shipped with the package so the API integration tests and future adapter
@@ -83,6 +89,61 @@ export function buildProviderQuote(overrides: ProviderQuoteOverrides = {}): Prov
     ...(overrides.liquidity === undefined ? {} : { liquidity: overrides.liquidity }),
     ...(overrides.risk === undefined ? {} : { risk: overrides.risk }),
     raw: {},
+  };
+}
+
+export interface NormalizedQuoteOverrides {
+  readonly providerId?: string;
+  readonly sourceAsset?: string;
+  readonly targetAsset?: string;
+  readonly amountMinorUnits?: string;
+  readonly conversionKind?: ConversionKind;
+  readonly indicatedRate?: string;
+  readonly midMarketRate?: string | null;
+  readonly fees?: readonly NormalizedFee[];
+  readonly settlement?: Partial<SettlementEstimate>;
+  readonly reliabilityScore?: string;
+  readonly liquidityDepth?: string | null;
+  readonly slippage?: SlippageModel;
+  readonly intermediaryAsset?: string | null;
+}
+
+export function buildNormalizedQuote(overrides: NormalizedQuoteOverrides = {}): NormalizedQuote {
+  const sourceAsset = overrides.sourceAsset ?? 'USD';
+  const targetAsset = overrides.targetAsset ?? 'KRW';
+  return {
+    providerId: overrides.providerId ?? 'test-provider',
+    timestamp: '2026-01-01T00:00:00.000Z',
+    expiresAt: '2026-01-01T00:02:00.000Z',
+    quoteReference: 'test-quote',
+    conversionKind: overrides.conversionKind ?? 'fiat_fiat',
+    sourceAsset,
+    targetAsset,
+    amountMinorUnits: overrides.amountMinorUnits ?? '10000000',
+    indicatedRate: overrides.indicatedRate ?? '1290',
+    midMarketRate: overrides.midMarketRate === undefined ? '1300' : overrides.midMarketRate,
+    fees: overrides.fees ?? [],
+    settlement: {
+      p50Seconds: 3_600,
+      p95Seconds: 7_200,
+      businessDaysOnly: false,
+      cutoffUtc: null,
+      notes: null,
+      ...overrides.settlement,
+    },
+    liquidity: {
+      availableDepthMinorUnits: overrides.liquidityDepth ?? null,
+      venue: 'test',
+      chainId: null,
+    },
+    slippage: overrides.slippage ?? { kind: 'none' },
+    reliabilityScore: overrides.reliabilityScore ?? '0.99',
+    executable: false,
+    chainId: null,
+    metadata:
+      overrides.intermediaryAsset === undefined
+        ? {}
+        : { intermediaryAsset: overrides.intermediaryAsset },
   };
 }
 

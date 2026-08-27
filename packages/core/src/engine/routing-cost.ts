@@ -1,0 +1,524 @@
+import type { ProviderCapabilityProfile } from '../domain/provider-catalog.js';
+import type { ProviderDescriptor } from '../domain/provider.js';
+import type { SettlementEstimate, SlippageModel } from '../domain/quote.js';
+import { categoryOfRail } from '../domain/provider-catalog.js';
+import { familyOf } from '../domain/rail.js';
+import { InvalidAmountError, InvalidProviderQuoteError } from '../errors/index.js';
+import {
+  Dec,
+  type Decimal,
+  Rounding,
+  type RoundingMode,
+  bpsToRatio,
+  ratioToBps,
+  toDecimal,
+} from '../money/index.js';
+import { AssetAmount } from '../money/asset-amount.js';
+import type { NormalizedFee, NormalizedQuote } from '../ports/financial-provider.js';
+import { spreadBpsOf } from './platform-pricing.js';
+import type {
+  ComplianceEligibility,
+  PricedMultiRailRoute,
+  RoutedAppliedFee,
+  RoutingCostBreakdown,
+  RoutingFeeBucket,
+} from './routing-types.js';
+
+const USD_PEGGED = new Set(['USD', 'USDC', 'USDT']);
+
+export interface RoutingPlatformCharge {
+  readonly markupBps: Decimal;
+  readonly discountBps: Decimal;
+}
+
+export const NO_ROUTING_PLATFORM_CHARGE: RoutingPlatformCharge = {
+  markupBps: new Dec(0),
+  discountBps: new Dec(0),
+};
+
+/**
+ * Prices one normalised quote against the mid-market benchmark.
+ *
+ * Same identity as {@link RouteCostEngine}:
+ *
+ * ```text
+ *   benchmark = send × mid
+ *   delivered = ((send − sourceFees − platformFees) × indicatedRate × (1 − slippage)) − destFees
+ *   totalCost = benchmark − delivered
+ * ```
+ *
+ * Asset-aware: USDC and ETH are first-class, not stuffed into ISO currency codes. Pure: no I/O,
+ * no clock, no model.
+ */
+export class MultiRailCostEngine {
+  price(
+    quote: NormalizedQuote,
+    provider: ProviderDescriptor,
+    capabilities: ProviderCapabilityProfile,
+    platform: RoutingPlatformCharge = NO_ROUTING_PLATFORM_CHARGE,
+  ): PricedMultiRailRoute {
+    const source = quote.sourceAsset;
+    const dest = quote.targetAsset;
+    const sendAmount = AssetAmount.ofMinorUnits(source, quote.amountMinorUnits);
+    if (!sendAmount.isPositive()) {
+      throw new InvalidAmountError('Send amount must be greater than zero.', {
+        amountMinorUnits: quote.amountMinorUnits,
+      });
+    }
+
+    const indicatedRate = toDecimal(quote.indicatedRate);
+    if (!indicatedRate.isFinite() || indicatedRate.lessThanOrEqualTo(0)) {
+      throw new InvalidProviderQuoteError(
+        quote.providerId,
+        'indicatedRate must be a positive finite decimal',
+        { indicatedRate: quote.indicatedRate },
+      );
+    }
+
+    const midMarketRate = toDecimal(quote.midMarketRate ?? quote.indicatedRate);
+    if (!midMarketRate.isFinite() || midMarketRate.lessThanOrEqualTo(0)) {
+      throw new InvalidProviderQuoteError(
+        quote.providerId,
+        'midMarketRate must be a positive finite decimal',
+        { midMarketRate: quote.midMarketRate },
+      );
+    }
+
+    const quotedSpreadBps = spreadBpsOf(midMarketRate, indicatedRate);
+    const spreadBps = quotedSpreadBps.minus(platform.discountBps);
+    const offeredRate = platform.discountBps.isZero()
+      ? indicatedRate
+      : midMarketRate.times(new Dec(1).minus(bpsToRatio(spreadBps)));
+
+    const benchmarkAmount = applyRate(sendAmount, dest, midMarketRate, Rounding.DOWN);
+    if (!benchmarkAmount.isPositive()) {
+      throw new InvalidAmountError(
+        'Send amount is too small to produce a non-zero benchmark in the destination asset.',
+        { sendAmount: sendAmount.toString(), destinationAsset: dest },
+      );
+    }
+
+    const sourceFees = applyFees({
+      fees: quote.fees,
+      side: 'source',
+      base: sendAmount,
+      quote,
+      midMarketRate,
+    });
+    const platformFees = applyPlatformFees(platform, sendAmount);
+    const convertible = sendAmount.subtract(sourceFees.total).subtract(platformFees.total);
+    if (!convertible.isPositive()) {
+      throw new InvalidAmountError(
+        `Fees meet or exceed the ${sendAmount.toString()} send amount.`,
+        {
+          providerId: quote.providerId,
+          sendAmount: sendAmount.toJSON(),
+        },
+      );
+    }
+
+    const slippageBps = resolveSlippageBps(quote.slippage, sendAmount, quote, midMarketRate);
+    const slippageRetention = new Dec(1).minus(bpsToRatio(slippageBps));
+    if (slippageRetention.lessThanOrEqualTo(0)) {
+      throw new InvalidProviderQuoteError(
+        quote.providerId,
+        'slippage of 10,000 bps or more would consume the entire notional',
+        { slippageBps: slippageBps.toFixed() },
+      );
+    }
+    const slippageAdjustedRate = offeredRate.times(slippageRetention);
+    const grossConverted = applyRate(convertible, dest, slippageAdjustedRate, Rounding.DOWN);
+
+    const destinationFees = applyFees({
+      fees: quote.fees,
+      side: 'destination',
+      base: grossConverted,
+      quote,
+      midMarketRate,
+    });
+    const deliveredAmount = grossConverted.subtract(destinationFees.total);
+    if (deliveredAmount.isNegative()) {
+      throw new InvalidAmountError(
+        `Destination fees exceed the converted amount of ${grossConverted.toString()}.`,
+        { providerId: quote.providerId },
+      );
+    }
+
+    const totalCost = benchmarkAmount.subtract(deliveredAmount);
+    const totalCostBps = ratioToBps(totalCost.toDecimal().div(benchmarkAmount.toDecimal()));
+    const applied = [...sourceFees.fees, ...platformFees.fees, ...destinationFees.fees];
+    const breakdown = buildBreakdown({
+      dest,
+      applied,
+      sourceFeeTotal: sourceFees.total,
+      platformFeeTotal: platformFees.total,
+      destinationFeeTotal: destinationFees.total,
+      convertible,
+      midMarketRate,
+      offeredRate,
+      slippageAdjustedRate,
+      totalCost,
+    });
+
+    const reliabilityScore = toDecimal(quote.reliabilityScore);
+    const hops = hopsOf(quote, provider);
+    const railFamily = familyOf(provider.rail);
+    const category = capabilities.category;
+
+    return {
+      routeId: `${quote.providerId}:${provider.rail}`,
+      available: true,
+      hops,
+      provider,
+      rail: provider.rail,
+      railFamily,
+      category,
+      conversionKind: quote.conversionKind,
+      quote,
+      sendAmount,
+      deliveredAmount,
+      benchmarkAmount,
+      indicatedRate: offeredRate,
+      midMarketRate,
+      slippageAdjustedRate,
+      effectiveRate: effectiveRateOf(sendAmount, deliveredAmount),
+      totalCost,
+      totalCostBps,
+      spreadBps,
+      slippageBps,
+      liquidityHeadroom: liquidityHeadroom(quote, sendAmount),
+      reliabilityScore,
+      settlementConfidence: settlementConfidenceOf(quote.settlement),
+      settlement: quote.settlement,
+      slippage: quote.slippage,
+      breakdown,
+      compliance: complianceOf(quote, provider, capabilities),
+    };
+  }
+}
+
+/**
+ * How confident the engine is that settlement will land inside the published window.
+ *
+ * Distinct from speed: a slow bank with a tight p50/p95 band and a cutoff can outscore a fast
+ * venue whose 95th percentile is many times its median. Absolute tail (p95 − p50) is used rather
+ * than the ratio, so a 12s/60s DEX quote is not punished relative to a 1-day/2-day bank wire.
+ *
+ *   tightness = clamp(1 − (p95 − p50) / 2 days, 0, 1)
+ *   confidence = tightness × (cutoff ? 1 : 0.92) × (business-days-only ? 0.88 : 1)
+ */
+export function settlementConfidenceOf(settlement: SettlementEstimate): Decimal {
+  const tail = Math.max(settlement.p95Seconds - settlement.p50Seconds, 0);
+  const twoDays = 2 * 86_400;
+  const tightness = clampUnit(new Dec(1).minus(new Dec(tail).div(twoDays)));
+  const cutoffFactor = settlement.cutoffUtc === null ? new Dec('0.92') : new Dec(1);
+  const calendarFactor = settlement.businessDaysOnly ? new Dec('0.88') : new Dec(1);
+  return clampUnit(tightness.times(cutoffFactor).times(calendarFactor));
+}
+
+export function hopsOf(quote: NormalizedQuote, provider: ProviderDescriptor): readonly string[] {
+  const intermediary = quote.metadata['intermediaryAsset'];
+  if (typeof intermediary === 'string' && intermediary.trim() !== '') {
+    return [quote.sourceAsset, provider.name, intermediary, quote.targetAsset];
+  }
+  return [quote.sourceAsset, provider.name, quote.targetAsset];
+}
+
+function applyRate(
+  amount: AssetAmount,
+  destAsset: string,
+  rate: Decimal,
+  rounding: RoundingMode,
+): AssetAmount {
+  return AssetAmount.fromDecimal(destAsset, amount.toDecimal().times(rate), rounding);
+}
+
+function effectiveRateOf(send: AssetAmount, delivered: AssetAmount): Decimal {
+  if (send.isZero()) {
+    throw new InvalidAmountError('Cannot compute an effective rate from a zero send amount.', {});
+  }
+  return delivered.toDecimal().div(send.toDecimal());
+}
+
+function applyFees(input: {
+  fees: readonly NormalizedFee[];
+  side: 'source' | 'destination';
+  base: AssetAmount;
+  quote: NormalizedQuote;
+  midMarketRate: Decimal;
+}): { fees: readonly RoutedAppliedFee[]; total: AssetAmount } {
+  const { fees, side, base, quote, midMarketRate } = input;
+  const applied: RoutedAppliedFee[] = [];
+
+  for (const fee of fees) {
+    if (fee.side !== side) {
+      continue;
+    }
+    const bucket = bucketOf(fee);
+    const chargedBy = bucket === 'platform' ? 'platform' : 'provider';
+
+    if (fee.kind === 'fixed') {
+      if (fee.amountMinorUnits === null) {
+        throw new InvalidProviderQuoteError(
+          quote.providerId,
+          `fixed fee "${fee.code}" is missing amountMinorUnits`,
+        );
+      }
+      const declared = AssetAmount.ofMinorUnits(fee.asset, fee.amountMinorUnits);
+      applied.push({
+        code: fee.code,
+        label: fee.label,
+        side,
+        kind: 'fixed',
+        bucket,
+        chargedBy,
+        asset: base.asset,
+        amount: convertWithinQuote({
+          amount: declared,
+          targetAsset: base.asset,
+          quote,
+          midMarketRate,
+        }),
+        rateBps: null,
+      });
+      continue;
+    }
+
+    if (fee.rateBps === null) {
+      throw new InvalidProviderQuoteError(
+        quote.providerId,
+        `proportional fee "${fee.code}" is missing rateBps`,
+      );
+    }
+    const rateBps = toDecimal(fee.rateBps);
+    applied.push({
+      code: fee.code,
+      label: fee.label,
+      side,
+      kind: 'proportional',
+      bucket,
+      chargedBy,
+      asset: base.asset,
+      amount: base.multiplyByRatio(bpsToRatio(rateBps), Rounding.HALF_UP),
+      rateBps,
+    });
+  }
+
+  return {
+    fees: applied,
+    total: AssetAmount.sum(
+      base.asset,
+      applied.map((fee) => fee.amount),
+    ),
+  };
+}
+
+function applyPlatformFees(
+  platform: RoutingPlatformCharge,
+  sendAmount: AssetAmount,
+): { fees: readonly RoutedAppliedFee[]; total: AssetAmount } {
+  if (platform.markupBps.isZero()) {
+    return { fees: [], total: AssetAmount.zero(sendAmount.asset) };
+  }
+  const fee: RoutedAppliedFee = {
+    code: 'platform_markup',
+    label: 'Meridian platform fee',
+    side: 'source',
+    kind: 'proportional',
+    bucket: 'platform',
+    chargedBy: 'platform',
+    asset: sendAmount.asset,
+    amount: sendAmount.multiplyByRatio(bpsToRatio(platform.markupBps), Rounding.HALF_UP),
+    rateBps: platform.markupBps,
+  };
+  return { fees: [fee], total: fee.amount };
+}
+
+function convertWithinQuote(input: {
+  amount: AssetAmount;
+  targetAsset: string;
+  quote: NormalizedQuote;
+  midMarketRate: Decimal;
+}): AssetAmount {
+  const { amount, targetAsset, quote, midMarketRate } = input;
+  if (amount.asset === targetAsset) {
+    return amount;
+  }
+  if (amount.asset === quote.sourceAsset && targetAsset === quote.targetAsset) {
+    return applyRate(amount, targetAsset, midMarketRate, Rounding.HALF_UP);
+  }
+  if (amount.asset === quote.targetAsset && targetAsset === quote.sourceAsset) {
+    return applyRate(amount, targetAsset, new Dec(1).div(midMarketRate), Rounding.HALF_UP);
+  }
+  if (USD_PEGGED.has(amount.asset) && USD_PEGGED.has(targetAsset)) {
+    return AssetAmount.fromDecimal(targetAsset, amount.toDecimal(), Rounding.HALF_UP);
+  }
+  throw new InvalidProviderQuoteError(
+    quote.providerId,
+    `fee is denominated in ${amount.asset}, which is outside the quoted corridor`,
+    { asset: amount.asset, requiredAsset: targetAsset },
+  );
+}
+
+function resolveSlippageBps(
+  model: SlippageModel,
+  sendAmount: AssetAmount,
+  quote: NormalizedQuote,
+  midMarketRate: Decimal,
+): Decimal {
+  if (model.kind === 'none') {
+    return new Dec(0);
+  }
+
+  const notional = convertWithinQuote({
+    amount: sendAmount,
+    targetAsset: model.notionalCurrency,
+    quote,
+    midMarketRate,
+  });
+
+  for (const tier of model.tiers) {
+    if (tier.upToNotionalMinorUnits === null) {
+      return toDecimal(tier.bps);
+    }
+    if (notional.minorUnits <= BigInt(tier.upToNotionalMinorUnits)) {
+      return toDecimal(tier.bps);
+    }
+  }
+
+  throw new InvalidProviderQuoteError(
+    quote.providerId,
+    'no slippage tier covers the requested notional',
+    { notional: notional.toJSON() },
+  );
+}
+
+function liquidityHeadroom(quote: NormalizedQuote, sendAmount: AssetAmount): Decimal | null {
+  const depth = quote.liquidity.availableDepthMinorUnits;
+  if (depth == null || sendAmount.isZero()) {
+    return null;
+  }
+  return new Dec(depth).div(new Dec(sendAmount.minorUnits.toString()));
+}
+
+function buildBreakdown(input: {
+  dest: string;
+  applied: readonly RoutedAppliedFee[];
+  sourceFeeTotal: AssetAmount;
+  platformFeeTotal: AssetAmount;
+  destinationFeeTotal: AssetAmount;
+  convertible: AssetAmount;
+  midMarketRate: Decimal;
+  offeredRate: Decimal;
+  slippageAdjustedRate: Decimal;
+  totalCost: AssetAmount;
+}): RoutingCostBreakdown {
+  const {
+    dest,
+    applied,
+    platformFeeTotal,
+    convertible,
+    midMarketRate,
+    offeredRate,
+    slippageAdjustedRate,
+    totalCost,
+  } = input;
+
+  const toDest = (amount: AssetAmount): AssetAmount =>
+    amount.asset === dest ? amount : applyRate(amount, dest, midMarketRate, Rounding.HALF_UP);
+
+  const platformFeeCost = toDest(platformFeeTotal);
+  const spreadCost = AssetAmount.fromDecimal(
+    dest,
+    convertible.toDecimal().times(midMarketRate.minus(offeredRate)),
+    Rounding.HALF_UP,
+  );
+  const slippageCost = AssetAmount.fromDecimal(
+    dest,
+    convertible.toDecimal().times(offeredRate.minus(slippageAdjustedRate)),
+    Rounding.HALF_UP,
+  );
+
+  const networkFee = AssetAmount.sum(
+    dest,
+    applied.filter((fee) => fee.bucket === 'network').map((fee) => toDest(fee.amount)),
+  );
+  const gasFee = AssetAmount.sum(
+    dest,
+    applied.filter((fee) => fee.bucket === 'gas').map((fee) => toDest(fee.amount)),
+  );
+  const providerOnly = AssetAmount.sum(
+    dest,
+    applied
+      .filter((fee) => fee.bucket === 'provider' || fee.bucket === 'other')
+      .map((fee) => toDest(fee.amount)),
+  );
+
+  const attributed = AssetAmount.sum(dest, [
+    providerOnly,
+    platformFeeCost,
+    networkFee,
+    gasFee,
+    spreadCost,
+    slippageCost,
+  ]);
+
+  return {
+    appliedFees: applied,
+    providerFee: providerOnly,
+    platformFee: platformFeeCost,
+    networkFee,
+    gasFee,
+    spreadCost,
+    slippageCost,
+    roundingAdjustment: totalCost.subtract(attributed),
+    totalCost,
+  };
+}
+
+function bucketOf(fee: NormalizedFee): RoutingFeeBucket {
+  const code = fee.code.toLowerCase();
+  if (code.includes('gas')) return 'gas';
+  if (code.includes('network')) return 'network';
+  if (code.includes('platform')) return 'platform';
+  if (
+    code.includes('provider') ||
+    code.includes('ramp') ||
+    code.includes('pool') ||
+    code.includes('aggregator') ||
+    code.includes('spread') ||
+    code.includes('fee')
+  ) {
+    return 'provider';
+  }
+  return 'other';
+}
+
+function complianceOf(
+  quote: NormalizedQuote,
+  provider: ProviderDescriptor,
+  capabilities: ProviderCapabilityProfile,
+): ComplianceEligibility {
+  const kycRequired =
+    capabilities.features.includes('on_off_ramp') || provider.licensing === 'licensed_partner';
+  return {
+    eligible: true,
+    conversionKind: quote.conversionKind,
+    railFamily: familyOf(provider.rail),
+    category: capabilities.category ?? categoryOfRail(provider.rail),
+    licensing: provider.licensing,
+    jurisdictions: provider.jurisdictions,
+    kycRequired,
+    sanctionsScreeningRequired: capabilities.category !== 'defi',
+    executable: false,
+    notes:
+      'Indicative only. Meridian does not execute, custody, or hold keys. Settlement is delegated ' +
+      'to a licensed or authorized provider when that capability exists.',
+  };
+}
+
+function clampUnit(value: Decimal): Decimal {
+  if (value.lessThan(0)) return new Dec(0);
+  if (value.greaterThan(1)) return new Dec(1);
+  return value;
+}

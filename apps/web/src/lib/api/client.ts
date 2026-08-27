@@ -11,6 +11,7 @@ import type {
   Envelope,
   LoginDto,
   MetaDto,
+  MultiRailRoutingDto,
   ReplayResultDto,
 } from './types';
 
@@ -218,5 +219,33 @@ export function fetchDashboardSettings(
     method: 'GET',
     path: '/api/v1/dashboard/settings',
     authorization,
+  });
+}
+
+export interface CreateRouteInput {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: string;
+  readonly preferences?: {
+    readonly weights: {
+      readonly cost: string;
+      readonly speed: string;
+      readonly liquidity: string;
+      readonly reliability: string;
+      readonly settlementConfidence: string;
+    };
+  };
+}
+
+export function createRoute(
+  input: CreateRouteInput,
+  extras: { readonly actor?: string; readonly authorization?: string | null } = {},
+): Promise<ApiResult<MultiRailRoutingDto>> {
+  return request<MultiRailRoutingDto>({
+    method: 'POST',
+    path: '/api/v1/routes',
+    body: input,
+    actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
   });
 }

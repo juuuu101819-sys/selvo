@@ -79,6 +79,7 @@ describe('GET /v1/meta', () => {
       agentPayments: false,
       defiQuotes: true,
       defiExecution: false,
+      multiRailRouting: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,

@@ -60,6 +60,9 @@ export async function SiteHeader({
                 Sign in
               </Button>
             ))}
+          <Button variant="ghost" size="sm" render={<Link href="/rails" />}>
+            Multi-rail
+          </Button>
         </div>
       </div>
     </header>
