@@ -210,7 +210,8 @@ export interface PaymentIntentFingerprintInput {
   readonly purpose: string;
   readonly routePreference: RoutePreference | null;
   readonly maxFeeBps: string | null;
-  readonly expiresAt: string;
+  /** Client-supplied expiry only. Server-generated TTLs are excluded so replays match. */
+  readonly expiresAt: string | null;
 }
 
 export function paymentIntentFingerprint(input: PaymentIntentFingerprintInput): string {

@@ -23,19 +23,36 @@ describe('sandbox simulator', () => {
 });
 
 describe('payment intent fingerprint', () => {
+  const base = {
+    agentId: 'agt_1',
+    sourceAsset: 'USD',
+    destinationAsset: 'KRW',
+    amountMinorUnits: '50000',
+    recipient: 'merchant-x',
+    purpose: 'invoice',
+    routePreference: 'lowest_cost' as const,
+    maxFeeBps: '40',
+    expiresAt: null,
+  };
+
   it('is stable for identical payloads', () => {
     const payload = {
-      agentId: 'agt_1',
-      sourceAsset: 'USD',
-      destinationAsset: 'KRW',
-      amountMinorUnits: '50000',
-      recipient: 'merchant-x',
-      purpose: 'invoice',
-      routePreference: 'lowest_cost' as const,
-      maxFeeBps: '40',
+      ...base,
       expiresAt: '2026-03-01T10:00:00.000Z',
     };
     expect(paymentIntentFingerprint(payload)).toBe(paymentIntentFingerprint(payload));
+  });
+
+  it('does not change when only a server-generated TTL would differ', () => {
+    expect(paymentIntentFingerprint(base)).toBe(paymentIntentFingerprint({ ...base }));
+  });
+
+  it('changes when the client supplies a different expiry', () => {
+    expect(
+      paymentIntentFingerprint({ ...base, expiresAt: '2026-03-01T10:00:00.000Z' }),
+    ).not.toBe(
+      paymentIntentFingerprint({ ...base, expiresAt: '2026-03-01T11:00:00.000Z' }),
+    );
   });
 });
 

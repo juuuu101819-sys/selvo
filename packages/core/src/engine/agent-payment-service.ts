@@ -91,7 +91,7 @@ export class AgentPaymentService {
       purpose: resolved.purpose,
       routePreference: command.routePreference,
       maxFeeBps: command.maxFeeBps,
-      expiresAt,
+      expiresAt: command.expiresAt ?? null,
     });
 
     if (command.idempotencyKey !== null) {
@@ -152,26 +152,43 @@ export class AgentPaymentService {
       updatedAt: now,
     };
 
-    const stored = await this.deps.agentPayments.createIntent(intent);
-    await this.deps.auditLogger.record({
-      type: 'payment.intent.created',
-      actor: command.actor,
-      requestId: command.requestId,
-      comparisonId: null,
-      providerId: null,
-      payload: {
-        paymentIntentId: stored.id,
-        agentId: stored.agentId,
-        recipient: stored.recipient,
-        sourceAsset: stored.sourceAsset,
-        destinationAsset: stored.destinationAsset,
-        amountMinorUnits: stored.amountMinorUnits,
-        fundsMoved: false,
-        custody: false,
-        realExecution: false,
-      },
-    });
-    return stored;
+    try {
+      const stored = await this.deps.agentPayments.createIntent(intent);
+      await this.deps.auditLogger.record({
+        type: 'payment.intent.created',
+        actor: command.actor,
+        requestId: command.requestId,
+        comparisonId: null,
+        providerId: null,
+        payload: {
+          paymentIntentId: stored.id,
+          agentId: stored.agentId,
+          recipient: stored.recipient,
+          sourceAsset: stored.sourceAsset,
+          destinationAsset: stored.destinationAsset,
+          amountMinorUnits: stored.amountMinorUnits,
+          fundsMoved: false,
+          custody: false,
+          realExecution: false,
+        },
+      });
+      return stored;
+    } catch (error) {
+      if (
+        error instanceof IdempotencyConflictError &&
+        command.idempotencyKey !== null
+      ) {
+        const raced = await this.deps.agentPayments.findIntentByIdempotencyKey(
+          command.organizationId,
+          agent.id,
+          command.idempotencyKey,
+        );
+        if (raced !== null && raced.payloadFingerprint === fingerprint) {
+          return raced;
+        }
+      }
+      throw error;
+    }
   }
 
   async quoteIntent(input: {

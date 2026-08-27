@@ -158,6 +158,28 @@ describe('AI agent payment infrastructure', () => {
     expect(simulated.body).not.toContain(DEMO_AGENT_SECRET);
   });
 
+  it('replays an identical idempotent create after the clock advances', async () => {
+    const created = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/payment-intents`,
+      headers: agentHeaders({ 'idempotency-key': 'agent-pay-clock-replay' }),
+      payload: { instruction: 'Pay 500 USD to merchant X' },
+    });
+    expect(created.statusCode).toBe(201);
+    const originalId = created.json<ApiEnvelope<PaymentIntentBody>>().data.id;
+
+    harness.clock.advance(5_000);
+
+    const replay = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/payment-intents`,
+      headers: agentHeaders({ 'idempotency-key': 'agent-pay-clock-replay' }),
+      payload: { instruction: 'Pay 500 USD to merchant X' },
+    });
+    expect(replay.statusCode).toBe(201);
+    expect(replay.json<ApiEnvelope<PaymentIntentBody>>().data.id).toBe(originalId);
+  });
+
   it('returns 404 rather than 403 for another organization\'s payment intent', async () => {
     const created = await harness.app.inject({
       method: 'POST',
