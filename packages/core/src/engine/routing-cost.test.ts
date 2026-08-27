@@ -102,6 +102,33 @@ describe('MultiRailCostEngine', () => {
 
     expect(route.hops).toEqual(['USD', 'Solstice Settlement', 'USDC', 'KRW']);
   });
+
+  it('prices ETH → USDC when slippage is notionally USD', () => {
+    const route = engine.price(
+      buildNormalizedQuote({
+        sourceAsset: 'ETH',
+        targetAsset: 'USDC',
+        conversionKind: 'crypto_stablecoin',
+        amountMinorUnits: '1000000000000000000',
+        indicatedRate: '3492',
+        midMarketRate: '3500',
+        slippage: {
+          kind: 'tiered',
+          notionalCurrency: 'USD',
+          tiers: [
+            { upToNotionalMinorUnits: '10000000', bps: '4' },
+            { upToNotionalMinorUnits: null, bps: '18' },
+          ],
+        },
+      }),
+      buildProviderDescriptor({ id: 'amm', name: 'Pool', rail: 'dex_liquidity' }),
+      defaultProfileForRail('dex_liquidity'),
+    );
+
+    expect(route.deliveredAmount.asset).toBe('USDC');
+    expect(route.deliveredAmount.isPositive()).toBe(true);
+    expect(route.breakdown.slippageCost.isPositive()).toBe(true);
+  });
 });
 
 describe('settlementConfidenceOf', () => {

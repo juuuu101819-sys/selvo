@@ -353,6 +353,22 @@ function convertWithinQuote(input: {
   if (USD_PEGGED.has(amount.asset) && USD_PEGGED.has(targetAsset)) {
     return AssetAmount.fromDecimal(targetAsset, amount.toDecimal(), Rounding.HALF_UP);
   }
+  // ETH → USDC with a USD slippage notional: convert along the quoted pair, then peg.
+  if (USD_PEGGED.has(targetAsset)) {
+    if (amount.asset === quote.sourceAsset && USD_PEGGED.has(quote.targetAsset)) {
+      const alongQuote = applyRate(amount, quote.targetAsset, midMarketRate, Rounding.HALF_UP);
+      return convertWithinQuote({ ...input, amount: alongQuote });
+    }
+    if (amount.asset === quote.targetAsset && USD_PEGGED.has(quote.sourceAsset)) {
+      const alongQuote = applyRate(
+        amount,
+        quote.sourceAsset,
+        new Dec(1).div(midMarketRate),
+        Rounding.HALF_UP,
+      );
+      return convertWithinQuote({ ...input, amount: alongQuote });
+    }
+  }
   throw new InvalidProviderQuoteError(
     quote.providerId,
     `fee is denominated in ${amount.asset}, which is outside the quoted corridor`,

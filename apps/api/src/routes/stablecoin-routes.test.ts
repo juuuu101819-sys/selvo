@@ -167,6 +167,7 @@ describe('POST /api/v1/stablecoin-routes', () => {
     expect(data.routes.map((item) => item.provider.id).sort()).toEqual([
       'demo-horizon-aggregator',
       'demo-meridian-pool',
+      'demo-ridgeline-dex',
     ]);
     expect(data.routes.every((item) => item.asset.destination === 'USDT')).toBe(true);
   });

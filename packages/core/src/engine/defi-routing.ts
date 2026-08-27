@@ -148,15 +148,52 @@ export class DefiRouter {
       });
     }
 
-    const priced = quotes.map(({ quote, provider }) => ({
-      priced: this.deps.costEngine.price(
-        quote,
-        provider.descriptor,
-        provider.getCapabilities(),
-        NO_ROUTING_PLATFORM_CHARGE,
-      ),
-      provider,
-    }));
+    const priced: { priced: ReturnType<MultiRailCostEngine['price']>; provider: FinancialProvider }[] =
+      [];
+    for (const entry of quotes) {
+      try {
+        priced.push({
+          priced: this.deps.costEngine.price(
+            entry.quote,
+            entry.provider.descriptor,
+            entry.provider.getCapabilities(),
+            NO_ROUTING_PLATFORM_CHARGE,
+          ),
+          provider: entry.provider,
+        });
+      } catch (error) {
+        const appError = toAppError(error);
+        this.deps.logger.warn('DeFi-layer provider quote failed cost conversion', {
+          providerId: entry.provider.descriptor.id,
+          code: appError.code,
+          message: appError.message,
+        });
+        failures.push({
+          providerId: entry.provider.descriptor.id,
+          rail: entry.provider.descriptor.rail,
+          code: appError.code,
+          message: appError.message,
+          failedAt: this.deps.clock.nowIso(),
+        });
+      }
+    }
+
+    if (priced.length === 0) {
+      await this.deps.auditLogger.record({
+        type: 'routing.defi.failed',
+        actor: input.actor,
+        requestId: input.requestId,
+        comparisonId: null,
+        providerId: null,
+        payload: {
+          routingId,
+          reason: 'every provider failed to quote',
+        } satisfies JsonObject,
+      });
+      throw new UnsupportedCorridorError(input.sourceAsset, input.destinationAsset, {
+        amount: AssetAmount.ofMinorUnits(input.sourceAsset, input.amountMinorUnits).toString(),
+      });
+    }
     priced.sort((left, right) => {
       const cost = left.priced.totalCostBps.comparedTo(right.priced.totalCostBps);
       if (cost !== 0) {
