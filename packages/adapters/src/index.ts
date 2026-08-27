@@ -1,3 +1,4 @@
+export { FXRouteProvider, type FXRouteProviderOptions } from './bridge/fx-route-provider.js';
 export {
   checkProviderContract,
   type ContractCheckOptions,
@@ -19,7 +20,37 @@ export type {
   SandboxProviderProfile,
 } from './data/schema.js';
 export { referenceRatesSchema, sandboxPricingSchema } from './data/schema.js';
+export {
+  DemoFXProvider,
+  DemoMarketDataProvider,
+  createDemoMarketDataStack,
+  type DemoFXProviderOptions,
+  type DemoMarketDataProviderOptions,
+  type DemoMarketDataStack,
+  type DemoMarketDataStackOptions,
+} from './demo/index.js';
+export { InMemoryQuoteRecorder } from './recording/in-memory-quote-recorder.js';
 export { StaticReferenceRateSource, type ReferenceRateSource } from './reference-rates.js';
+export {
+  withResilientFX,
+  withResilientMarketData,
+  type ResilienceOptions,
+} from './resilience/decorators.js';
+export {
+  attemptContext,
+  executeProviderCall,
+  type ProviderCallOptions,
+  type ProviderCallResult,
+  type ResilienceDependencies,
+} from './resilience/execute.js';
+export {
+  DEFAULT_RESILIENCE_POLICY,
+  DEFAULT_RETRY_POLICY,
+  backoffDelayMs,
+  isRetryable,
+  type ResiliencePolicy,
+  type RetryPolicy,
+} from './resilience/policy.js';
 export {
   DataDrivenSandboxProvider,
   createSandboxAdapters,

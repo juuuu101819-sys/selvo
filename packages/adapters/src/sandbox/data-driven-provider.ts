@@ -7,6 +7,7 @@ import {
   Money,
   type ProviderContext,
   type ProviderDescriptor,
+  type ProviderHealth,
   type ProviderQuote,
   ProviderError,
   type QuoteRequest,
@@ -50,6 +51,7 @@ type Assessment =
  * exactly the job a live partner adapter will have.
  */
 export class DataDrivenSandboxProvider implements RouteProvider {
+  readonly capability = 'route' as const;
   readonly descriptor: ProviderDescriptor;
   private readonly profile: SandboxProviderProfile;
   private readonly rates: ReferenceRateSource;
@@ -77,6 +79,24 @@ export class DataDrivenSandboxProvider implements RouteProvider {
 
   supports(request: QuoteRequest): boolean {
     return this.assess(request).ok;
+  }
+
+  /**
+   * Reports on dataset coverage rather than a network path.
+   *
+   * A static dataset has nothing to reach, so pretending to check connectivity would produce a
+   * health signal that is always green and therefore worthless. What can genuinely fail here is the
+   * reference data being absent, and that is what this checks.
+   */
+  probe(context: ProviderContext): Promise<ProviderHealth> {
+    const covered = this.rates.currencies.length;
+    return Promise.resolve({
+      providerId: this.descriptor.id,
+      state: covered > 1 ? ('up' as const) : ('down' as const),
+      checkedAt: context.clock.nowIso(),
+      latencyMs: 0,
+      detail: `${this.profile.profiles.length} pricing profiles, ${covered} currencies covered`,
+    });
   }
 
   fetchQuote(request: QuoteRequest, context: ProviderContext): Promise<ProviderQuote> {
