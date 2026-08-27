@@ -1,4 +1,10 @@
-import { ConfigurationError, PLATFORM_MODES, parseScoringWeights } from '@meridian/core';
+import {
+  ConfigurationError,
+  DEFAULT_SCORING_WEIGHTS,
+  PLATFORM_MODES,
+  parseScoringWeights,
+  type SerializedScoringWeights,
+} from '@meridian/core';
 import { PERSISTENCE_DRIVERS } from '@meridian/persistence';
 import { z } from 'zod';
 
@@ -35,9 +41,14 @@ const envSchema = z
       .default('false')
       .transform((value) => value === 'true'),
 
-    ROUTE_WEIGHT_COST: decimalString.default('0.6'),
-    ROUTE_WEIGHT_SPEED: decimalString.default('0.3'),
-    ROUTE_WEIGHT_RELIABILITY: decimalString.default('0.1'),
+    // Defaults taken from the engine rather than repeated here, so the running service and the
+    // platform default cannot drift apart.
+    ROUTE_WEIGHT_COST: decimalString.default(DEFAULT_SCORING_WEIGHTS.cost),
+    ROUTE_WEIGHT_SPEED: decimalString.default(DEFAULT_SCORING_WEIGHTS.speed),
+    ROUTE_WEIGHT_RELIABILITY: decimalString.default(DEFAULT_SCORING_WEIGHTS.reliability),
+    ROUTE_WEIGHT_SLIPPAGE: decimalString.default(DEFAULT_SCORING_WEIGHTS.slippage),
+    ROUTE_WEIGHT_LIQUIDITY: decimalString.default(DEFAULT_SCORING_WEIGHTS.liquidity),
+    ROUTE_WEIGHT_RISK: decimalString.default(DEFAULT_SCORING_WEIGHTS.risk),
     PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(4_000),
 
     /** Overrides the bundled sandbox pricing dataset. */
@@ -72,7 +83,7 @@ export interface AppConfig {
     readonly maxConnections: number;
     readonly ssl: boolean;
   };
-  readonly weights: { readonly cost: string; readonly speed: string; readonly reliability: string };
+  readonly weights: SerializedScoringWeights;
   readonly providerTimeoutMs: number;
   readonly pricingDataDir: string | undefined;
   readonly maxAmountMinorUnits: string;
@@ -94,6 +105,9 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     cost: env.ROUTE_WEIGHT_COST,
     speed: env.ROUTE_WEIGHT_SPEED,
     reliability: env.ROUTE_WEIGHT_RELIABILITY,
+    slippage: env.ROUTE_WEIGHT_SLIPPAGE,
+    liquidity: env.ROUTE_WEIGHT_LIQUIDITY,
+    risk: env.ROUTE_WEIGHT_RISK,
   };
   // Surfaces a bad weight set as a startup failure rather than a per-request 400.
   parseScoringWeights(weights);

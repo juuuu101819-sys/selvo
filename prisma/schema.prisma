@@ -602,7 +602,7 @@ model Fee {
   label            String
   side             FeeSide
   kind             FeeKind
-  chargedBy        FeeCharger @default(provider)
+  chargedBy        FeeCharger @default(provider) @map("charged_by")
   currency         String     @db.VarChar(3)
   amountMinorUnits Decimal    @map("amount_minor_units") @db.Decimal(38, 0)
   /// Rate applied, for a proportional fee, in basis points.

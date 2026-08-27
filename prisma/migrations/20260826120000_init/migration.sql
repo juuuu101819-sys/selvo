@@ -285,7 +285,7 @@ CREATE TABLE "fees" (
     "label" TEXT NOT NULL,
     "side" "FeeSide" NOT NULL,
     "kind" "FeeKind" NOT NULL,
-    "chargedBy" "FeeCharger" NOT NULL DEFAULT 'provider',
+    "charged_by" "FeeCharger" NOT NULL DEFAULT 'provider',
     "currency" VARCHAR(3) NOT NULL,
     "amount_minor_units" DECIMAL(38,0) NOT NULL,
     "rate_bps" DECIMAL(12,4),

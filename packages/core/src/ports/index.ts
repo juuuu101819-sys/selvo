@@ -23,6 +23,12 @@ export type {
 } from './liquidity-provider.js';
 export { noopLogger, type LogContext, type LogLevel, type Logger } from './logger.js';
 export type { MarketDataProvider, MarketRate, MarketRateRequest } from './market-data.js';
+export {
+  StaticPlatformPricingResolver,
+  noPlatformPricingResolver,
+  type PlatformPricingResolver,
+  type PricingRuleQuery,
+} from './platform-pricing-resolver.js';
 export type { PaymentProvider, PaymentQuote, PaymentQuoteRequest } from './payment-provider.js';
 export {
   PROVIDER_CAPABILITIES,

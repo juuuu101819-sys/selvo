@@ -3,13 +3,24 @@ export {
   type ComparisonInput,
   type RouteComparisonServiceDependencies,
 } from './comparison-service.js';
-export { RouteCostEngine } from './cost-engine.js';
+export { RouteCostEngine, type PricingOptions } from './cost-engine.js';
+export {
+  NO_PLATFORM_PRICING,
+  effectiveSpreadBps,
+  selectPricingRule,
+  spreadBpsOf,
+  toPlatformPricing,
+} from './platform-pricing.js';
 export {
   DEFAULT_SCORING_WEIGHTS,
   ENGINE_VERSION,
+  LIQUIDITY_COMFORT_MULTIPLE,
+  NEUTRAL_RISK_SCORE,
+  SCORING_FACTORS,
   defaultScoringWeights,
   parseScoringWeights,
   serializeScoringWeights,
+  type ScoringFactor,
   type ScoringWeights,
   type ScoringWeightsInput,
   type SerializedScoringWeights,

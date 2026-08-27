@@ -125,16 +125,45 @@ describe('RouteScorer', () => {
     expect(scored[0]?.provider.id).toBe('stablecoin');
   });
 
-  it('gives every route the neutral component value when the set ties', () => {
+  it('scores identical routes identically and breaks the tie deterministically', () => {
     const identical: readonly Candidate[] = [
       { providerId: 'a', rail: 'bank_fx', offeredRate: '1295', p50Seconds: 600, reliability: '1' },
       { providerId: 'b', rail: 'bank_fx', offeredRate: '1295', p50Seconds: 600, reliability: '1' },
     ];
     const scored = new RouteScorer(defaultScoringWeights()).score(identical.map(priceCandidate));
 
-    expect(scored.map((route) => route.score.toFixed())).toEqual(['100', '100']);
-    // A tie is broken deterministically by route id, never by response order.
+    // Every relative factor ties, so each gets the neutral value and the scores are equal.
+    expect(scored[0]?.score.equals(scored[1]?.score ?? new Dec(-1))).toBe(true);
+    // A tie is broken by route id, never by the order responses arrived in.
     expect(scored.map((route) => route.routeId)).toEqual(['a:bank_fx', 'b:bank_fx']);
+    expect(scored.map((route) => route.rank)).toEqual([1, 2]);
+  });
+
+  it('reaches 100 only when every weighted factor is at its best', () => {
+    // Cost and speed alone: both tie, so both normalise to the neutral best.
+    const costAndSpeed = parseScoringWeights({ cost: '0.5', speed: '0.5', reliability: '0' });
+    const identical: readonly Candidate[] = [
+      { providerId: 'a', rail: 'bank_fx', offeredRate: '1295', p50Seconds: 600, reliability: '1' },
+      { providerId: 'b', rail: 'bank_fx', offeredRate: '1295', p50Seconds: 600, reliability: '1' },
+    ];
+
+    const scored = new RouteScorer(costAndSpeed).score(identical.map(priceCandidate));
+    expect(scored.map((route) => route.score.toFixed())).toEqual(['100', '100']);
+  });
+
+  it('does not award full marks for a risk signal the platform has not gathered', () => {
+    // The sandbox quotes carry no risk metadata, so risk scores neutrally rather than perfectly.
+    const riskOnly = parseScoringWeights({
+      cost: '0',
+      speed: '0',
+      reliability: '0',
+      risk: '1',
+    });
+    const scored = new RouteScorer(riskOnly).score([
+      priceCandidate(BRIEF_CANDIDATES[0] as Candidate),
+    ]);
+
+    expect(scored[0]?.score.toFixed()).toBe('75');
   });
 
   it('breaks a score tie by cost, then settlement time, then route id', () => {

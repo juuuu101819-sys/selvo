@@ -136,9 +136,12 @@ describe('POST /v1/comparisons', () => {
     it('reports the scoring weights that produced the ranking', async () => {
       const { payload } = await createComparison();
       expect(payload.data.scoringWeights).toEqual({
-        cost: '0.6',
-        speed: '0.3',
+        cost: '0.45',
+        speed: '0.25',
         reliability: '0.1',
+        slippage: '0.08',
+        liquidity: '0.05',
+        risk: '0.07',
       });
     });
 
@@ -177,6 +180,9 @@ describe('POST /v1/comparisons', () => {
         cost: '0',
         speed: '0',
         reliability: '1',
+        slippage: '0',
+        liquidity: '0',
+        risk: '0',
       });
     });
 

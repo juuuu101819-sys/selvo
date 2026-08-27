@@ -1,8 +1,13 @@
 import type { Decimal, Money, Rate } from '../money/index.js';
+import type { PlatformPricing } from './platform-pricing.js';
 import type { FeeComponent, FeeSide } from './fees.js';
 import type { ProviderDescriptor } from './provider.js';
 import type { ProviderQuote, SettlementEstimate } from './quote.js';
 import type { RailType } from './rail.js';
+
+/** Who levies a charge. Kept distinct from `side` so a platform markup is never mistaken for a
+ * provider charge when a customer disputes a number. */
+export type FeeCharger = 'provider' | 'platform';
 
 /** A fee component after it has been resolved to a concrete amount for this transfer. */
 export interface AppliedFee {
@@ -10,6 +15,7 @@ export interface AppliedFee {
   readonly label: string;
   readonly side: FeeSide;
   readonly kind: FeeComponent['kind'];
+  readonly chargedBy: FeeCharger;
   readonly amount: Money;
   /** Populated for proportional fees so the customer can see the rate that was applied. */
   readonly rateBps: Decimal | null;
@@ -26,8 +32,16 @@ export interface AppliedFee {
  */
 export interface CostBreakdown {
   readonly appliedFees: readonly AppliedFee[];
-  /** Source-side fees expressed in the destination currency at the mid-market rate. */
+  /** Provider source-side fees expressed in the destination currency at the mid-market rate. */
   readonly sourceFeeCost: Money;
+  /**
+   * The platform's own charge, valued the same way and reported separately.
+   *
+   * Separate from `sourceFeeCost` because a customer is entitled to see what Meridian took as
+   * distinct from what the provider took, and because netting the two would make the platform's
+   * margin unauditable.
+   */
+  readonly platformFeeCost: Money;
   readonly destinationFeeCost: Money;
   /** Cost of the gap between the mid-market rate and the offered rate. */
   readonly fxSpreadCost: Money;
@@ -58,10 +72,21 @@ export interface PricedRoute {
   /** `benchmarkAmount - deliveredAmount`, in the destination currency. */
   readonly totalCost: Money;
   readonly totalCostBps: Decimal;
+  /** Provider spread over mid-market actually applied, after any negotiated discount. */
+  readonly spreadBps: Decimal;
   readonly slippageBps: Decimal;
   readonly breakdown: CostBreakdown;
   readonly settlement: SettlementEstimate;
   readonly reliabilityScore: Decimal;
+  /** The commercial terms applied, so a customer-specific price can be explained later. */
+  readonly platformPricing: PlatformPricing;
+  /**
+   * Disclosed depth as a multiple of the requested notional, or `null` where the rail has no
+   * meaningful depth to publish.
+   */
+  readonly liquidityHeadroom: Decimal | null;
+  /** Counterparty and settlement risk, normalised to `0`..`1` where 1 is safest. */
+  readonly riskScore: Decimal;
 }
 
 /** The normalised `0`..`1` inputs behind a route's score, exposed so a ranking can be explained. */
@@ -69,6 +94,9 @@ export interface ScoreComponents {
   readonly cost: Decimal;
   readonly speed: Decimal;
   readonly reliability: Decimal;
+  readonly slippage: Decimal;
+  readonly liquidity: Decimal;
+  readonly risk: Decimal;
 }
 
 export interface ScoredRoute extends PricedRoute {

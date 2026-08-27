@@ -40,7 +40,63 @@ describe('scoring weights', () => {
     expect(serializeScoringWeights(defaultScoringWeights())).toEqual(DEFAULT_SCORING_WEIGHTS);
   });
 
-  it('defaults to cost-weighted scoring', () => {
-    expect(DEFAULT_SCORING_WEIGHTS).toEqual({ cost: '0.6', speed: '0.3', reliability: '0.1' });
+  it('defaults to cost-weighted scoring across all six factors', () => {
+    expect(DEFAULT_SCORING_WEIGHTS).toEqual({
+      cost: '0.45',
+      speed: '0.25',
+      reliability: '0.1',
+      slippage: '0.08',
+      liquidity: '0.05',
+      risk: '0.07',
+    });
+  });
+
+  it('weights cost above every other factor combined with speed', () => {
+    const weights = defaultScoringWeights();
+    const soft = weights.reliability
+      .plus(weights.slippage)
+      .plus(weights.liquidity)
+      .plus(weights.risk);
+
+    // The soft factors break ties between close routes; they must not override a cheaper one.
+    expect(weights.cost.greaterThan(soft)).toBe(true);
+  });
+
+  /**
+   * The three factors added in engine 2.0.0 default to zero, so a weight set written against the
+   * earlier three-factor engine still sums to 1 and still means what it did.
+   */
+  it('accepts a three-factor weight set from the earlier engine', () => {
+    const weights = parseScoringWeights({ cost: '0.6', speed: '0.3', reliability: '0.1' });
+
+    expect(weights.slippage.isZero()).toBe(true);
+    expect(weights.liquidity.isZero()).toBe(true);
+    expect(weights.risk.isZero()).toBe(true);
+  });
+
+  it('accepts a full six-factor weight set', () => {
+    expect(() =>
+      parseScoringWeights({
+        cost: '0.3',
+        speed: '0.2',
+        reliability: '0.2',
+        slippage: '0.1',
+        liquidity: '0.1',
+        risk: '0.1',
+      }),
+    ).not.toThrow();
+  });
+
+  it('rejects a six-factor set that does not sum to 1', () => {
+    expect(() =>
+      parseScoringWeights({
+        cost: '0.3',
+        speed: '0.2',
+        reliability: '0.2',
+        slippage: '0.1',
+        liquidity: '0.1',
+        risk: '0.5',
+      }),
+    ).toThrow(ValidationError);
   });
 });

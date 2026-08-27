@@ -42,6 +42,7 @@ export {
   InMemoryComparisonRepository,
   InMemoryPersistenceDriver,
 } from './memory/memory-driver.js';
+export { PrismaPlatformPricingResolver } from './postgres/prisma-pricing-resolver.js';
 export {
   PrismaPersistenceDriver,
   toAuditEvent,

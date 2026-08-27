@@ -35,7 +35,10 @@ import {
   uuidIdGenerator,
   type RouteDto,
 } from '@meridian/core';
-import { InMemoryPersistenceDriver } from '@meridian/persistence';
+import {
+  InMemoryPersistenceDriver,
+  PrismaPlatformPricingResolver,
+} from '@meridian/persistence';
 import { Prisma, PrismaClient, type $Enums } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
@@ -568,9 +571,13 @@ async function seedDemoComparison(providerIdBySlug: Map<string, string>): Promis
     comparisons: memory.comparisons,
     logger: noopLogger,
     providerTimeoutMs: 5_000,
+    // The real resolver against the terms seeded above, so the demo quotes carry the platform fee
+    // the demo organization actually negotiated rather than none.
+    pricingResolver: new PrismaPlatformPricingResolver(prisma),
   });
 
   const comparison = await service.compare({
+    organizationId: DEMO_ORGANIZATION_ID,
     sourceCurrency: 'USD',
     targetCurrency: 'KRW',
     amountMinorUnits: '10000000', // USD 100,000.00
@@ -659,7 +666,8 @@ async function seedDemoComparison(providerIdBySlug: Map<string, string>): Promis
         rank: route.rank,
         isRecommended: route.recommended,
         pricingVersion: route.quote.pricingVersion,
-        customerPricingId: 'cpr_demo_usd_krw',
+        // Whichever term the resolver actually selected, not an assumption about which one it was.
+        customerPricingId: route.platformPricing.ruleId,
         providerMetadata: {
           adapterId: route.provider.id,
           railLabel: route.provider.railLabel,
@@ -701,9 +709,9 @@ function spreadBpsOf(route: RouteDto): Prisma.Decimal {
 }
 
 function totalFeeMinorUnits(route: RouteDto): Prisma.Decimal {
-  return new Prisma.Decimal(route.breakdown.sourceFeeCost.minorUnits).plus(
-    route.breakdown.destinationFeeCost.minorUnits,
-  );
+  return new Prisma.Decimal(route.breakdown.sourceFeeCost.minorUnits)
+    .plus(route.breakdown.platformFeeCost.minorUnits)
+    .plus(route.breakdown.destinationFeeCost.minorUnits);
 }
 
 function feeRows(route: RouteDto): Prisma.FeeCreateWithoutQuoteInput[] {
@@ -713,7 +721,9 @@ function feeRows(route: RouteDto): Prisma.FeeCreateWithoutQuoteInput[] {
     label: fee.label,
     side: fee.side,
     kind: fee.kind,
-    chargedBy: 'provider' as const,
+    // Carried through from the engine rather than assumed: a platform markup must never be recorded
+    // as a provider charge.
+    chargedBy: fee.chargedBy,
     // Nested creates address the relation, not the foreign-key scalar, so an unknown currency code
     // fails here rather than at the database.
     currencyRef: { connect: { code: fee.amount.currency } },

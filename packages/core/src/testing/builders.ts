@@ -50,6 +50,8 @@ export interface ProviderQuoteOverrides {
   readonly reliabilityScore?: string;
   readonly intermediaryAsset?: string | null;
   readonly pricingVersion?: string;
+  readonly liquidity?: ProviderQuote['liquidity'];
+  readonly risk?: ProviderQuote['risk'];
 }
 
 export function buildProviderQuote(overrides: ProviderQuoteOverrides = {}): ProviderQuote {
@@ -76,6 +78,10 @@ export function buildProviderQuote(overrides: ProviderQuoteOverrides = {}): Prov
     reliabilityScore: overrides.reliabilityScore ?? '0.99',
     intermediaryAsset: overrides.intermediaryAsset ?? null,
     pricingVersion: overrides.pricingVersion ?? 'test-1',
+    // Optional metadata: forwarded only when supplied, so the common case stays a quote that
+    // discloses neither depth nor risk — which is what most rails actually do.
+    ...(overrides.liquidity === undefined ? {} : { liquidity: overrides.liquidity }),
+    ...(overrides.risk === undefined ? {} : { risk: overrides.risk }),
     raw: {},
   };
 }

@@ -1,4 +1,4 @@
-import { ConfigurationError } from '@meridian/core';
+import { ConfigurationError, DEFAULT_SCORING_WEIGHTS } from '@meridian/core';
 import { describe, expect, it } from 'vitest';
 import { disclaimerFor, loadConfig } from './env.js';
 
@@ -11,14 +11,38 @@ describe('loadConfig', () => {
     expect(config.port).toBe(47_311);
   });
 
-  it('reads the scoring weights from the environment', () => {
+  it('reads all six scoring weights from the environment', () => {
     const config = loadConfig({
       ROUTE_WEIGHT_COST: '0.5',
-      ROUTE_WEIGHT_SPEED: '0.4',
+      ROUTE_WEIGHT_SPEED: '0.2',
       ROUTE_WEIGHT_RELIABILITY: '0.1',
+      ROUTE_WEIGHT_SLIPPAGE: '0.1',
+      ROUTE_WEIGHT_LIQUIDITY: '0.05',
+      ROUTE_WEIGHT_RISK: '0.05',
     });
 
-    expect(config.weights).toEqual({ cost: '0.5', speed: '0.4', reliability: '0.1' });
+    expect(config.weights).toEqual({
+      cost: '0.5',
+      speed: '0.2',
+      reliability: '0.1',
+      slippage: '0.1',
+      liquidity: '0.05',
+      risk: '0.05',
+    });
+  });
+
+  it('defaults every weight to the engine default, so the two cannot drift', () => {
+    expect(loadConfig({}).weights).toEqual(DEFAULT_SCORING_WEIGHTS);
+  });
+
+  /**
+   * Overriding some weights and not others changes the sum, which would silently rescale every
+   * score. Failing at startup is the only safe response.
+   */
+  it('rejects a partial override that no longer sums to one', () => {
+    expect(() => loadConfig({ ROUTE_WEIGHT_COST: '0.5', ROUTE_WEIGHT_SPEED: '0.4' })).toThrow(
+      /sum to exactly 1/,
+    );
   });
 
   it('fails at startup on weights that do not sum to one', () => {

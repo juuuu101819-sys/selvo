@@ -8,9 +8,11 @@ import {
   type ComparisonRepository,
   type JsonObject,
   type PersistenceDriver,
+  type PlatformPricingResolver,
   type StoredComparison,
 } from '@meridian/core';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaPlatformPricingResolver } from './prisma-pricing-resolver.js';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const DEFAULT_LIST_LIMIT = 50;
@@ -41,6 +43,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly kind = 'postgres';
   readonly comparisons: ComparisonRepository;
   readonly auditLog: AuditLogRepository;
+  /** Negotiated commercial terms, read from `customer_pricing`. */
+  readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
 
   constructor(options: PrismaDriverOptions) {
@@ -59,6 +63,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.client = new PrismaClient({ adapter });
     this.comparisons = new PrismaComparisonRepository(this.client);
     this.auditLog = new PrismaAuditLogRepository(this.client);
+    this.pricing = new PrismaPlatformPricingResolver(this.client);
   }
 
   /**

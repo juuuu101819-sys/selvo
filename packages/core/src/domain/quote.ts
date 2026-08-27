@@ -69,6 +69,30 @@ export interface ProviderQuote {
   readonly intermediaryAsset: string | null;
   /** Version of the pricing dataset or upstream contract that produced this quote. */
   readonly pricingVersion: string;
+  /**
+   * Depth the provider will fill at this price, where the rail has a meaningful notion of it.
+   *
+   * Optional because most rails do not: a bank's FX desk or a payment institution's payout network
+   * has no order book to publish. Absent depth means "not a constraint", not "no liquidity".
+   */
+  readonly liquidity?:
+    | {
+        /** In minor units of `sourceCurrency`. */
+        readonly availableDepthMinorUnits: string | null;
+      }
+    | undefined;
+  /**
+   * Counterparty and settlement risk signals, where the provider or an internal model supplies them.
+   *
+   * Optional, and scored neutrally when absent — a provider is not penalised for a signal the
+   * platform has not yet gathered about it.
+   */
+  readonly risk?:
+    | {
+        readonly settlementRiskBps: string | null;
+        readonly jurisdictionRisk: 'low' | 'medium' | 'high' | null;
+      }
+    | undefined;
   /** Verbatim upstream payload, persisted for audit and dispute resolution. */
   readonly raw: JsonObject;
 }

@@ -1,5 +1,6 @@
 import type { SerializedScoringWeights } from '../engine/engine-config.js';
 import type { Decimal, Money } from '../money/index.js';
+import type { PlatformPricingRule } from './platform-pricing.js';
 import type { PlatformMode, ProviderDescriptor } from './provider.js';
 import type { ProviderQuote, QuoteRequest } from './quote.js';
 import type { ProviderFailure, ScoredRoute } from './route.js';
@@ -17,7 +18,16 @@ export interface ComparisonSnapshot {
   readonly snapshotVersion: typeof SNAPSHOT_VERSION;
   readonly engineVersion: string;
   readonly mode: PlatformMode;
+  readonly organizationId: string | null;
   readonly request: QuoteRequest;
+  /**
+   * The commercial terms in force when the comparison was made.
+   *
+   * Captured rather than re-queried on replay: a customer's pricing changes over time, and a replay
+   * that resolved today's terms against last quarter's quotes would produce a number that never
+   * existed.
+   */
+  readonly pricingRules: readonly PlatformPricingRule[];
   readonly weights: SerializedScoringWeights;
   /** Provider quotes exactly as received, sorted by provider id for a stable hash. */
   readonly quotes: readonly ProviderQuote[];
@@ -59,12 +69,20 @@ export interface RouteComparison {
   readonly providerFailures: readonly ProviderFailure[];
 }
 
+/** Why a replay did not reproduce the original. */
+export type ReplayDivergence = 'fingerprint_mismatch' | 'engine_version_changed';
+
 /** Outcome of recomputing a stored comparison. */
 export interface ReplayResult {
   readonly comparisonId: string;
   readonly reproducible: boolean;
+  /** Null when the replay reproduced the original exactly. */
+  readonly divergence: ReplayDivergence | null;
   readonly originalFingerprint: string;
   readonly replayedFingerprint: string;
+  /** Engine that produced the stored comparison, and the one that replayed it. */
+  readonly originalEngineVersion: string;
+  readonly replayEngineVersion: string;
   readonly replayedAt: string;
   readonly comparison: RouteComparison;
 }

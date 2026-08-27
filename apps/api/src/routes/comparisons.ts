@@ -14,6 +14,7 @@ import {
   idempotencyKeySchema,
   listQuerySchema,
   parseOrThrow,
+  resolveTargetCurrency,
   toMinorUnits,
 } from '../http/validation.js';
 
@@ -49,8 +50,11 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       parseOrThrow(idempotencyKeySchema, request.headers['idempotency-key'], 'headers') ?? null;
 
     const comparison = await container.comparisons.compare({
+      // Taken from the authenticated principal, never from the request body: a caller must not be
+      // able to select which organization's negotiated pricing they are quoted on.
+      organizationId: principalOf(request).organizationId,
       sourceCurrency: body.sourceCurrency,
-      targetCurrency: body.targetCurrency,
+      targetCurrency: resolveTargetCurrency(body),
       amountMinorUnits: toMinorUnits(
         body.sourceCurrency,
         body.amount,

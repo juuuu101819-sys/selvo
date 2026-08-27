@@ -3,6 +3,7 @@ import type {
   CostBreakdown,
   FeeComponent,
   FeeSide,
+  PlatformPricing,
   PricedRoute,
   ProviderDescriptor,
   ProviderQuote,
@@ -20,13 +21,25 @@ import {
   bpsToRatio,
   ratioToBps,
 } from '../money/index.js';
+import { NEUTRAL_RISK_SCORE } from './engine-config.js';
+import {
+  NO_PLATFORM_PRICING,
+  effectiveSpreadBps,
+  retentionRatio,
+  spreadBpsOf,
+} from './platform-pricing.js';
 import { assertValidProviderQuote } from './quote-validation.js';
+
+export interface PricingOptions {
+  /** Negotiated commercial terms for the organization, already resolved for this route. */
+  readonly platformPricing?: PlatformPricing | undefined;
+}
 
 /**
  * Turns one provider's pricing primitives into a fully priced route.
  *
- * The engine is a pure function of `(request, quote)`. It performs no I/O, reads no clock and
- * holds no state, which is what makes a comparison reproducible from a stored snapshot.
+ * The engine is a pure function of `(request, quote, provider, options)`. It performs no I/O, reads
+ * no clock and holds no state, which is what makes a comparison reproducible from a stored snapshot.
  *
  * Cost is measured against the **mid-market benchmark**, not against the provider's own rate:
  *
@@ -41,8 +54,14 @@ import { assertValidProviderQuote } from './quote-validation.js';
  * relative to each provider's own rate would make the most expensive route look free.
  */
 export class RouteCostEngine {
-  price(request: QuoteRequest, quote: ProviderQuote, provider: ProviderDescriptor): PricedRoute {
+  price(
+    request: QuoteRequest,
+    quote: ProviderQuote,
+    provider: ProviderDescriptor,
+    options: PricingOptions = {},
+  ): PricedRoute {
     assertValidProviderQuote(quote, request);
+    const platformPricing = options.platformPricing ?? NO_PLATFORM_PRICING;
 
     const source = request.sourceCurrency;
     const target = request.targetCurrency;
@@ -54,7 +73,15 @@ export class RouteCostEngine {
     }
 
     const midMarketRate = Rate.of(source, target, quote.midMarketRate);
-    const offeredRate = Rate.of(source, target, quote.offeredRate);
+    const quotedRate = Rate.of(source, target, quote.offeredRate);
+
+    // A negotiated discount improves the rate by narrowing the provider's spread. Applied before
+    // anything else, because every downstream figure is derived from the rate the customer gets.
+    const quotedSpreadBps = spreadBpsOf(midMarketRate.value, quotedRate.value);
+    const spreadBps = effectiveSpreadBps(quotedSpreadBps, platformPricing.discountBps);
+    const offeredRate = platformPricing.discountBps.isZero()
+      ? quotedRate
+      : Rate.of(source, target, midMarketRate.value.times(retentionRatio(spreadBps)));
 
     // 1. Mid-market benchmark: the cost-free reference every route is measured against.
     const benchmarkAmount = midMarketRate.applyTo(sendAmount, Rounding.DOWN);
@@ -65,7 +92,8 @@ export class RouteCostEngine {
       );
     }
 
-    // 2. Source-side fees reduce the notional that actually gets converted.
+    // 2. Source-side fees reduce the notional that actually gets converted. The platform's own
+    //    charge is computed separately from the provider's so the two never get netted together.
     const sourceFees = this.applyFees({
       components: quote.fees.components,
       side: 'source',
@@ -73,15 +101,17 @@ export class RouteCostEngine {
       providerId: quote.providerId,
       midMarketRate,
     });
-    const convertibleAmount = sendAmount.subtract(sourceFees.total);
+    const platformFees = this.applyPlatformFees(platformPricing, sendAmount);
+    const convertibleAmount = sendAmount.subtract(sourceFees.total).subtract(platformFees.total);
     if (!convertibleAmount.isPositive()) {
       throw new InvalidAmountError(
-        `Provider "${quote.providerId}" charges fees of ${sourceFees.total.toString()}, which ` +
-          `meets or exceeds the ${sendAmount.toString()} send amount.`,
+        `Fees of ${sourceFees.total.add(platformFees.total).toString()} meet or exceed the ` +
+          `${sendAmount.toString()} send amount.`,
         {
           providerId: quote.providerId,
           sendAmount: sendAmount.toJSON(),
-          sourceFees: sourceFees.total.toJSON(),
+          providerFees: sourceFees.total.toJSON(),
+          platformFees: platformFees.total.toJSON(),
         },
       );
     }
@@ -129,8 +159,9 @@ export class RouteCostEngine {
 
     const breakdown = this.buildBreakdown({
       target,
-      appliedFees: [...sourceFees.fees, ...destinationFees.fees],
+      appliedFees: [...sourceFees.fees, ...platformFees.fees, ...destinationFees.fees],
       sourceFeeTotal: sourceFees.total,
+      platformFeeTotal: platformFees.total,
       destinationFeeTotal: destinationFees.total,
       convertibleAmount,
       midMarketRate,
@@ -153,10 +184,14 @@ export class RouteCostEngine {
       effectiveRate: Rate.effective(sendAmount, deliveredAmount),
       totalCost,
       totalCostBps,
+      spreadBps,
       slippageBps,
       breakdown,
       settlement: quote.settlement,
       reliabilityScore: new Dec(quote.reliabilityScore),
+      platformPricing,
+      liquidityHeadroom: this.liquidityHeadroom(quote, sendAmount),
+      riskScore: this.riskScore(quote),
     };
   }
 
@@ -182,6 +217,7 @@ export class RouteCostEngine {
           label: component.label,
           side,
           kind: 'fixed',
+          chargedBy: 'provider',
           amount: this.convertWithinCorridor({
             amount: declared,
             targetCurrency: base.currency,
@@ -211,6 +247,7 @@ export class RouteCostEngine {
         label: component.label,
         side,
         kind: 'proportional',
+        chargedBy: 'provider',
         amount: bounded,
         rateBps: new Dec(component.rateBps),
         capped: !bounded.equals(computed),
@@ -224,6 +261,97 @@ export class RouteCostEngine {
         fees.map((fee) => fee.amount),
       ),
     };
+  }
+
+  /**
+   * Resolves the platform's own charge into fee components.
+   *
+   * Modelled as explicit fees rather than folded into the rate. A platform that takes its margin
+   * inside the spread is doing exactly what this product exists to expose in other people's pricing,
+   * so taking it visibly is the only defensible choice.
+   */
+  private applyPlatformFees(
+    pricing: PlatformPricing,
+    sendAmount: Money,
+  ): { fees: readonly AppliedFee[]; total: Money } {
+    const fees: AppliedFee[] = [];
+
+    if (!pricing.markupBps.isZero()) {
+      fees.push({
+        code: 'platform_markup',
+        label: 'Meridian platform fee',
+        side: 'source',
+        kind: 'proportional',
+        chargedBy: 'platform',
+        amount: sendAmount.multiplyByRatio(bpsToRatio(pricing.markupBps), Rounding.HALF_UP),
+        rateBps: pricing.markupBps,
+        capped: false,
+      });
+    }
+
+    if (pricing.flatFee !== null && !pricing.flatFee.isZero()) {
+      fees.push({
+        code: 'platform_fee',
+        label: 'Meridian transaction fee',
+        side: 'source',
+        kind: 'fixed',
+        chargedBy: 'platform',
+        amount: pricing.flatFee,
+        rateBps: null,
+        capped: false,
+      });
+    }
+
+    return {
+      fees,
+      total: Money.sum(
+        sendAmount.currency,
+        fees.map((fee) => fee.amount),
+      ),
+    };
+  }
+
+  /**
+   * Disclosed depth as a multiple of the requested notional.
+   *
+   * `null` where the provider published none. That is the common case and is not a defect: a bank's
+   * FX desk or a payment institution's payout network has no order book. Absent depth means "not a
+   * constraint", and the scorer treats it that way rather than penalising a rail for a concept that
+   * does not apply to it.
+   */
+  private liquidityHeadroom(quote: ProviderQuote, sendAmount: Money): Decimal | null {
+    const depth = quote.liquidity?.availableDepthMinorUnits;
+    if (depth == null || sendAmount.isZero()) {
+      return null;
+    }
+    return new Dec(depth).div(new Dec(sendAmount.minorUnits.toString()));
+  }
+
+  /**
+   * Counterparty and settlement risk, normalised so 1 is safest.
+   *
+   * Two signals, combined multiplicatively so a serious concern on either cannot be averaged away by
+   * a clean score on the other. A provider that supplies neither is scored neutrally: penalising
+   * silence would rank an unmeasured provider below a measured mediocre one, which the platform has
+   * no evidence for.
+   */
+  private riskScore(quote: ProviderQuote): Decimal {
+    const risk = quote.risk;
+    if (risk === undefined) {
+      return NEUTRAL_RISK_SCORE;
+    }
+
+    const jurisdictionFactor =
+      risk.jurisdictionRisk === null
+        ? NEUTRAL_RISK_SCORE
+        : JURISDICTION_RISK_FACTORS[risk.jurisdictionRisk];
+
+    const settlementFactor =
+      risk.settlementRiskBps === null
+        ? NEUTRAL_RISK_SCORE
+        : clampUnit(new Dec(1).minus(bpsToRatio(new Dec(risk.settlementRiskBps))));
+
+    return clampUnit(jurisdictionFactor.times(settlementFactor));
   }
 
   /**
@@ -305,6 +433,7 @@ export class RouteCostEngine {
     target: CurrencyCode;
     appliedFees: readonly AppliedFee[];
     sourceFeeTotal: Money;
+    platformFeeTotal: Money;
     destinationFeeTotal: Money;
     convertibleAmount: Money;
     midMarketRate: Rate;
@@ -316,6 +445,7 @@ export class RouteCostEngine {
       target,
       appliedFees,
       sourceFeeTotal,
+      platformFeeTotal,
       destinationFeeTotal,
       convertibleAmount,
       midMarketRate,
@@ -326,6 +456,7 @@ export class RouteCostEngine {
 
     const notional = convertibleAmount.toDecimal();
     const sourceFeeCost = midMarketRate.applyTo(sourceFeeTotal, Rounding.HALF_UP);
+    const platformFeeCost = midMarketRate.applyTo(platformFeeTotal, Rounding.HALF_UP);
     const fxSpreadCost = Money.fromDecimal(
       target,
       notional.times(midMarketRate.value.minus(offeredRate.value)),
@@ -339,6 +470,7 @@ export class RouteCostEngine {
 
     const attributed = Money.sum(target, [
       sourceFeeCost,
+      platformFeeCost,
       destinationFeeTotal,
       fxSpreadCost,
       slippageCost,
@@ -347,6 +479,7 @@ export class RouteCostEngine {
     return {
       appliedFees,
       sourceFeeCost,
+      platformFeeCost,
       destinationFeeCost: destinationFeeTotal,
       fxSpreadCost,
       slippageCost,
@@ -354,4 +487,22 @@ export class RouteCostEngine {
       totalCost,
     };
   }
+}
+
+/**
+ * Jurisdiction risk factors.
+ *
+ * Explicit constants rather than a formula, because the mapping is a policy decision that a
+ * compliance function owns and should be able to read without inferring it from arithmetic.
+ */
+const JURISDICTION_RISK_FACTORS: Readonly<Record<'low' | 'medium' | 'high', Decimal>> = {
+  low: new Dec(1),
+  medium: new Dec('0.85'),
+  high: new Dec('0.6'),
+};
+
+function clampUnit(value: Decimal): Decimal {
+  if (value.lessThan(0)) return new Dec(0);
+  if (value.greaterThan(1)) return new Dec(1);
+  return value;
 }

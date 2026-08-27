@@ -8,6 +8,7 @@ import {
   UnsupportedCorridorError,
   ValidationError,
 } from '../errors/index.js';
+import { fingerprint } from '../reproducibility/index.js';
 import {
   FixedClock,
   SequentialIdGenerator,
@@ -521,5 +522,161 @@ describe('RouteComparisonService', () => {
 
   it('cannot be constructed with a registry that has no providers', () => {
     expect(() => buildService([])).toThrow(ConfigurationError);
+  });
+});
+
+describe('expired quotes at ingestion', () => {
+  /** A provider whose quote is already dead on arrival — its TTL passed before the fan-out ended. */
+  const deadOnArrival = new StubRouteProvider(
+    { id: 'dead-on-arrival', rail: 'payment_institution' },
+    {
+      kind: 'quote',
+      quote: buildProviderQuote({
+        providerId: 'dead-on-arrival',
+        rail: 'payment_institution',
+        quotedAt: '2026-03-01T08:59:00.000Z',
+        expiresAt: '2026-03-01T08:59:30.000Z',
+      }),
+    },
+  );
+
+  it('degrades the comparison rather than ranking a price nobody can transact on', async () => {
+    const { service } = buildService([BANK, deadOnArrival]);
+    const comparison = await service.compare(input());
+
+    expect(comparison.routes.map((route) => route.provider.id)).toEqual(['bank']);
+    expect(comparison.providerFailures[0]).toMatchObject({
+      providerId: 'dead-on-arrival',
+      code: 'QUOTE_EXPIRED',
+    });
+  });
+
+  it('evidences the dead quote as received before rejecting it', async () => {
+    const { service, audit } = buildService([deadOnArrival, BANK]);
+    await service.compare(input());
+
+    const received = audit
+      .typesFor('provider.quote.received')
+      .filter((event) => event.providerId === 'dead-on-arrival');
+    const failed = audit
+      .typesFor('provider.quote.failed')
+      .filter((event) => event.providerId === 'dead-on-arrival');
+
+    expect(received).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0]?.payload['code']).toBe('QUOTE_EXPIRED');
+  });
+
+  it('rejects a quote timestamped implausibly far in the future as stale', async () => {
+    const skewed = new StubRouteProvider(
+      { id: 'skewed-clock' },
+      {
+        kind: 'quote',
+        quote: buildProviderQuote({
+          providerId: 'skewed-clock',
+          quotedAt: '2026-03-01T10:00:00.000Z',
+          expiresAt: '2026-03-01T11:00:00.000Z',
+        }),
+      },
+    );
+    const { service } = buildService([BANK, skewed]);
+    const comparison = await service.compare(input());
+
+    expect(comparison.providerFailures[0]).toMatchObject({
+      providerId: 'skewed-clock',
+      code: 'QUOTE_STALE',
+    });
+  });
+
+  it('fails the whole comparison only when every quote arrives expired', async () => {
+    const { service } = buildService([deadOnArrival]);
+
+    await expect(service.compare(input())).rejects.toThrow(NoRoutesAvailableError);
+  });
+
+  it('exempts a quote that states no expiry, since there is nothing to assess', async () => {
+    const openEnded = new StubRouteProvider(
+      { id: 'open-ended' },
+      {
+        kind: 'quote',
+        quote: buildProviderQuote({ providerId: 'open-ended', expiresAt: null }),
+      },
+    );
+    const { service } = buildService([openEnded]);
+    const comparison = await service.compare(input());
+
+    expect(comparison.routes).toHaveLength(1);
+  });
+
+  /**
+   * The check must never reach the snapshot path. A replay prices quotes that are weeks past their
+   * expiry by design — that is the whole point of storing the snapshot.
+   */
+  it('still replays a snapshot whose quotes have long since expired', async () => {
+    const harness = buildService([BANK, FX_PROVIDER, STABLECOIN]);
+    const comparison = await harness.service.compare(input());
+
+    // A month passes; every quote in the snapshot is now far beyond its TTL.
+    harness.clock.advance(30 * 24 * 3_600 * 1_000);
+
+    const replay = await harness.service.replay(comparison.comparisonId, {
+      actor: 'auditor',
+      requestId: null,
+    });
+
+    expect(replay.reproducible).toBe(true);
+    expect(replay.comparison.routes).toHaveLength(3);
+    expect(replay.comparison.providerFailures).toEqual([]);
+  });
+});
+
+describe('replaying a snapshot from before platform pricing existed', () => {
+  /**
+   * Stored comparisons from engine 1.x have no organizationId and no pricingRules field at all —
+   * not empty values, absent keys. A replay must treat that as "no terms applied", not crash, and
+   * must report the engine change honestly rather than claiming reproduction.
+   */
+  it('tolerates the missing fields and reports the engine divergence', async () => {
+    const harness = buildService([BANK, FX_PROVIDER, STABLECOIN]);
+    const comparison = await harness.service.compare(input());
+    const stored = harness.repository.saved.find(
+      (item) => item.comparisonId === comparison.comparisonId,
+    );
+    expect(stored).toBeDefined();
+
+    // Reshape the stored snapshot to the 1.x form: strip the fields that did not exist then.
+    const legacySnapshot = { ...(stored?.snapshot as Record<string, unknown>) };
+    delete legacySnapshot['organizationId'];
+    delete legacySnapshot['pricingRules'];
+    legacySnapshot['engineVersion'] = '1.0.0';
+    legacySnapshot['snapshotVersion'] = 1;
+
+    const legacyStored = {
+      ...(stored as NonNullable<typeof stored>),
+      comparisonId: 'cmp_legacy_v1',
+      idempotencyKey: null,
+      engineVersion: '1.0.0',
+      snapshot: legacySnapshot,
+      // A real 1.x row carries the hash of its own snapshot, so the fixture must too.
+      fingerprint: fingerprint(legacySnapshot),
+    };
+    await harness.repository.save(legacyStored);
+
+    const replay = await harness.service.replay('cmp_legacy_v1', {
+      actor: 'auditor',
+      requestId: null,
+    });
+
+    // The calculation must complete, price every route, and charge no platform fee.
+    expect(replay.comparison.routes.length).toBeGreaterThan(0);
+    for (const route of replay.comparison.routes) {
+      expect(route.breakdown.platformFeeCost.isZero()).toBe(true);
+      expect(route.platformPricing.ruleId).toBeNull();
+    }
+
+    // Honest reporting: the inputs hash identically, but a different engine computed the numbers.
+    expect(replay.divergence).toBe('engine_version_changed');
+    expect(replay.reproducible).toBe(false);
+    expect(replay.originalEngineVersion).toBe('1.0.0');
   });
 });

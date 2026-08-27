@@ -5,6 +5,7 @@ import {
   RepositoryAuditLogger,
   RouteComparisonService,
   RouteCostEngine,
+  noPlatformPricingResolver,
   parseScoringWeights,
   systemClock,
   uuidIdGenerator,
@@ -13,6 +14,7 @@ import {
   type Clock,
   type Logger,
   type PersistenceDriver,
+  type PlatformPricingResolver,
   type ProviderDescriptor,
   type RouteProvider,
 } from '@meridian/core';
@@ -37,6 +39,8 @@ export interface AppContainer {
   } | null;
   readonly providers: readonly ProviderDescriptor[];
   readonly engineVersion: string;
+  /** Where negotiated commercial terms come from, or `"none"` when none are configured. */
+  readonly pricingResolverKind: string;
   close(): Promise<void>;
 }
 
@@ -81,6 +85,14 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
   });
 
+  // Negotiated terms come from the store when one can supply them. With the in-memory driver there
+  // are no customers and therefore no terms, so the platform charges nothing rather than inventing a
+  // default fee — quoting a markup nobody agreed to would be worse than quoting none.
+  const pricingResolver: PlatformPricingResolver =
+    'pricing' in persistence && persistence.pricing !== undefined
+      ? (persistence.pricing as PlatformPricingResolver)
+      : noPlatformPricingResolver;
+
   const comparisons = new RouteComparisonService({
     mode: config.mode,
     registry,
@@ -92,6 +104,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     comparisons: persistence.comparisons,
     logger,
     providerTimeoutMs: config.providerTimeoutMs,
+    pricingResolver,
   });
 
   // Phase 2 swaps this for an authenticator backed by the Organization, User and ApiKey tables.
@@ -126,6 +139,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
           },
     providers: registry.descriptors(),
     engineVersion: ENGINE_VERSION,
+    pricingResolverKind: pricingResolver === noPlatformPricingResolver ? 'none' : persistence.kind,
     close: () => persistence.close(),
   };
 }

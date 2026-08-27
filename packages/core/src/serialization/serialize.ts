@@ -25,6 +25,7 @@ const PERCENT_DECIMAL_PLACES = 4;
 export function serializeComparison(comparison: RouteComparison): ComparisonDto {
   return {
     comparisonId: comparison.comparisonId,
+    organizationId: comparison.snapshot.organizationId,
     createdAt: comparison.createdAt,
     mode: comparison.mode,
     engineVersion: comparison.engineVersion,
@@ -51,8 +52,11 @@ export function serializeReplayResult(result: ReplayResult): ReplayResultDto {
   return {
     comparisonId: result.comparisonId,
     reproducible: result.reproducible,
+    divergence: result.divergence,
     originalFingerprint: result.originalFingerprint,
     replayedFingerprint: result.replayedFingerprint,
+    originalEngineVersion: result.originalEngineVersion,
+    replayEngineVersion: result.replayEngineVersion,
     replayedAt: result.replayedAt,
     comparison: serializeComparison(result.comparison),
   };
@@ -89,8 +93,17 @@ export function serializeRoute(route: ScoredRoute): RouteDto {
     totalCost: route.totalCost.toJSON(),
     totalCostBps: fixed(route.totalCostBps, BPS_DECIMAL_PLACES),
     totalCostPercent: fixed(route.totalCostBps.div(100), PERCENT_DECIMAL_PLACES),
+    spreadBps: fixed(route.spreadBps, BPS_DECIMAL_PLACES),
     slippageBps: fixed(route.slippageBps, BPS_DECIMAL_PLACES),
     reliabilityScore: route.reliabilityScore.toFixed(),
+    riskScore: fixed(route.riskScore, 6),
+    liquidityHeadroom: route.liquidityHeadroom === null ? null : fixed(route.liquidityHeadroom, 6),
+    platformPricing: {
+      ruleId: route.platformPricing.ruleId,
+      markupBps: route.platformPricing.markupBps.toFixed(),
+      discountBps: route.platformPricing.discountBps.toFixed(),
+      flatFee: route.platformPricing.flatFee?.toJSON() ?? null,
+    },
     settlement: { ...route.settlement },
     breakdown: serializeBreakdown(route.breakdown),
     score: route.score.toFixed(2),
@@ -98,6 +111,9 @@ export function serializeRoute(route: ScoredRoute): RouteDto {
       cost: fixed(route.scoreComponents.cost, 6),
       speed: fixed(route.scoreComponents.speed, 6),
       reliability: fixed(route.scoreComponents.reliability, 6),
+      slippage: fixed(route.scoreComponents.slippage, 6),
+      liquidity: fixed(route.scoreComponents.liquidity, 6),
+      risk: fixed(route.scoreComponents.risk, 6),
     },
   };
 }
@@ -106,6 +122,7 @@ function serializeBreakdown(breakdown: CostBreakdown): CostBreakdownDto {
   return {
     appliedFees: breakdown.appliedFees.map(serializeAppliedFee),
     sourceFeeCost: breakdown.sourceFeeCost.toJSON(),
+    platformFeeCost: breakdown.platformFeeCost.toJSON(),
     destinationFeeCost: breakdown.destinationFeeCost.toJSON(),
     fxSpreadCost: breakdown.fxSpreadCost.toJSON(),
     slippageCost: breakdown.slippageCost.toJSON(),
@@ -120,6 +137,7 @@ function serializeAppliedFee(fee: AppliedFee): AppliedFeeDto {
     label: fee.label,
     side: fee.side,
     kind: fee.kind,
+    chargedBy: fee.chargedBy,
     amount: fee.amount.toJSON(),
     rateBps: fee.rateBps === null ? null : fee.rateBps.toFixed(),
     capped: fee.capped,

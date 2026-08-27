@@ -19,7 +19,7 @@ describe('GET /health', () => {
     expect(response.json()).toMatchObject({
       status: 'ok',
       mode: 'sandbox',
-      engineVersion: '1.0.0',
+      engineVersion: '2.0.0',
     });
   });
 });

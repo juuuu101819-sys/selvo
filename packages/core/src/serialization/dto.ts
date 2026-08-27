@@ -14,6 +14,8 @@ export interface AppliedFeeDto {
   readonly label: string;
   readonly side: FeeSide;
   readonly kind: 'fixed' | 'proportional';
+  /** Whether the provider or the platform levied this charge. */
+  readonly chargedBy: 'provider' | 'platform';
   readonly amount: MoneyJson;
   readonly rateBps: string | null;
   readonly capped: boolean;
@@ -22,6 +24,7 @@ export interface AppliedFeeDto {
 export interface CostBreakdownDto {
   readonly appliedFees: readonly AppliedFeeDto[];
   readonly sourceFeeCost: MoneyJson;
+  readonly platformFeeCost: MoneyJson;
   readonly destinationFeeCost: MoneyJson;
   readonly fxSpreadCost: MoneyJson;
   readonly slippageCost: MoneyJson;
@@ -71,8 +74,18 @@ export interface RouteDto {
   readonly totalCost: MoneyJson;
   readonly totalCostBps: string;
   readonly totalCostPercent: string;
+  readonly spreadBps: string;
   readonly slippageBps: string;
   readonly reliabilityScore: string;
+  readonly riskScore: string;
+  /** Disclosed depth as a multiple of the notional, or `null` where the rail publishes none. */
+  readonly liquidityHeadroom: string | null;
+  readonly platformPricing: {
+    readonly ruleId: string | null;
+    readonly markupBps: string;
+    readonly discountBps: string;
+    readonly flatFee: MoneyJson | null;
+  };
   readonly settlement: SettlementDto;
   readonly breakdown: CostBreakdownDto;
   readonly score: string;
@@ -80,6 +93,9 @@ export interface RouteDto {
     readonly cost: string;
     readonly speed: string;
     readonly reliability: string;
+    readonly slippage: string;
+    readonly liquidity: string;
+    readonly risk: string;
   };
 }
 
@@ -110,6 +126,7 @@ export interface ComparisonInsightsDto {
 
 export interface ComparisonDto {
   readonly comparisonId: string;
+  readonly organizationId: string | null;
   readonly createdAt: string;
   readonly mode: PlatformMode;
   readonly engineVersion: string;
@@ -123,14 +140,21 @@ export interface ComparisonDto {
     readonly cost: string;
     readonly speed: string;
     readonly reliability: string;
+    readonly slippage: string;
+    readonly liquidity: string;
+    readonly risk: string;
   };
 }
 
 export interface ReplayResultDto {
   readonly comparisonId: string;
   readonly reproducible: boolean;
+  /** Why it diverged, when it did. */
+  readonly divergence: 'fingerprint_mismatch' | 'engine_version_changed' | null;
   readonly originalFingerprint: string;
   readonly replayedFingerprint: string;
+  readonly originalEngineVersion: string;
+  readonly replayEngineVersion: string;
   readonly replayedAt: string;
   readonly comparison: ComparisonDto;
 }

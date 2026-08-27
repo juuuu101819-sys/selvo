@@ -1,6 +1,9 @@
 import type {
   ComparisonInsights,
   ComparisonSnapshot,
+  PlatformPricing,
+  PlatformPricingRule,
+  ReplayDivergence,
   PlatformMode,
   PricedRoute,
   ProviderDescriptor,
@@ -22,15 +25,21 @@ import {
   isAppError,
   toAppError,
 } from '../errors/index.js';
-import { Dec, Money, type CurrencyCode } from '../money/index.js';
+import { Dec, Money, Rate, type CurrencyCode } from '../money/index.js';
 import type {
   AuditLogger,
   Clock,
   ComparisonRepository,
   IdGenerator,
   Logger,
+  PlatformPricingResolver,
   RouteProvider,
 } from '../ports/index.js';
+import {
+  DEFAULT_FRESHNESS_POLICY,
+  assertQuoteUsable,
+  type FreshnessPolicy,
+} from '../quotes/quote-freshness.js';
 import { fingerprint } from '../reproducibility/index.js';
 import { serializeComparison } from '../serialization/index.js';
 import type { RouteCostEngine } from './cost-engine.js';
@@ -41,10 +50,19 @@ import {
   parseScoringWeights,
   serializeScoringWeights,
 } from './engine-config.js';
+import { NO_PLATFORM_PRICING, selectPricingRule, toPlatformPricing } from './platform-pricing.js';
 import type { ProviderRegistry } from './provider-registry.js';
 import { RouteScorer } from './route-scorer.js';
 
 export interface ComparisonInput {
+  /**
+   * The organization the comparison is for.
+   *
+   * Nullable while authentication is unimplemented; once it is, an absent organization on a priced
+   * request is a defect rather than a valid state. Determines which negotiated commercial terms
+   * apply, so two customers can be quoted different prices from identical provider input.
+   */
+  readonly organizationId: string | null;
   readonly sourceCurrency: CurrencyCode;
   readonly targetCurrency: CurrencyCode;
   /** Send amount in integer minor units of the source currency. */
@@ -69,6 +87,13 @@ export interface RouteComparisonServiceDependencies {
   readonly comparisons: ComparisonRepository;
   readonly logger: Logger;
   readonly providerTimeoutMs: number;
+  /** Optional: an unconfigured platform charges nothing. */
+  readonly pricingResolver?: PlatformPricingResolver | undefined;
+  /**
+   * Bounds on how old or near-expiry a quote may be when it is admitted to a comparison. Defaults
+   * to {@link DEFAULT_FRESHNESS_POLICY}. Applied at ingestion only, never during a replay.
+   */
+  readonly freshnessPolicy?: FreshnessPolicy | undefined;
 }
 
 type QuoteOutcome =
@@ -105,6 +130,8 @@ export class RouteComparisonService {
         });
       }
     }
+
+    const pricingRules = await this.loadPricingRules(input);
 
     const request: QuoteRequest = {
       sourceCurrency: input.sourceCurrency,
@@ -191,7 +218,9 @@ export class RouteComparisonService {
       snapshotVersion: SNAPSHOT_VERSION,
       engineVersion: ENGINE_VERSION,
       mode: this.deps.mode,
+      organizationId: input.organizationId,
       request,
+      pricingRules,
       weights: serializeScoringWeights(weights),
       quotes: sortById(quotes, (quote) => quote.providerId),
       providers: sortById(descriptors, (descriptor) => descriptor.id),
@@ -249,7 +278,17 @@ export class RouteComparisonService {
       comparisonId: stored.comparisonId,
       createdAt: stored.createdAt,
     });
-    const reproducible = replayed.fingerprint === stored.fingerprint;
+    const fingerprintMatches = replayed.fingerprint === stored.fingerprint;
+    // A snapshot made by a different engine version can hash identically while producing different
+    // numbers, because the fingerprint covers the inputs and the engine's own version but not its
+    // arithmetic. Reporting that as reproducible would be the most misleading answer available.
+    const engineMatches = snapshot.engineVersion === ENGINE_VERSION;
+    const reproducible = fingerprintMatches && engineMatches;
+    const divergence: ReplayDivergence | null = !fingerprintMatches
+      ? 'fingerprint_mismatch'
+      : engineMatches
+        ? null
+        : 'engine_version_changed';
     const replayedAt = this.deps.clock.nowIso();
 
     await this.deps.auditLogger.record({
@@ -260,24 +299,36 @@ export class RouteComparisonService {
       providerId: null,
       payload: {
         reproducible,
+        divergence,
         originalFingerprint: stored.fingerprint,
         replayedFingerprint: replayed.fingerprint,
+        originalEngineVersion: snapshot.engineVersion,
+        replayEngineVersion: ENGINE_VERSION,
       },
     });
 
-    if (!reproducible) {
+    if (divergence === 'fingerprint_mismatch') {
       this.deps.logger.error('Comparison replay produced a different fingerprint', {
         comparisonId,
         originalFingerprint: stored.fingerprint,
         replayedFingerprint: replayed.fingerprint,
+      });
+    } else if (divergence === 'engine_version_changed') {
+      this.deps.logger.warn('Comparison replayed under a different engine version', {
+        comparisonId,
+        originalEngineVersion: snapshot.engineVersion,
+        replayEngineVersion: ENGINE_VERSION,
       });
     }
 
     return {
       comparisonId,
       reproducible,
+      divergence,
       originalFingerprint: stored.fingerprint,
       replayedFingerprint: replayed.fingerprint,
+      originalEngineVersion: snapshot.engineVersion,
+      replayEngineVersion: ENGINE_VERSION,
       replayedAt,
       comparison: replayed,
     };
@@ -324,7 +375,11 @@ export class RouteComparisonService {
         continue;
       }
       try {
-        priced.push(this.deps.costEngine.price(snapshot.request, quote, descriptor));
+        priced.push(
+          this.deps.costEngine.price(snapshot.request, quote, descriptor, {
+            platformPricing: this.resolvePricingFor(snapshot, quote, descriptor),
+          }),
+        );
       } catch (error) {
         const appError = toAppError(error);
         this.deps.logger.warn('Failed to price provider quote', {
@@ -358,6 +413,75 @@ export class RouteComparisonService {
       insights: this.buildInsights(routes),
       providerFailures: [...identity.providerFailures, ...pricingFailures],
     };
+  }
+
+  /**
+   * Fetches the organization's candidate terms once per comparison.
+   *
+   * A failure here degrades to charging nothing rather than failing the comparison: the customer
+   * still gets a usable answer, and under-charging is the safer direction to fail in. It is logged at
+   * error level because silently forgoing revenue is not something to discover from a ledger.
+   */
+  private async loadPricingRules(input: ComparisonInput): Promise<readonly PlatformPricingRule[]> {
+    const resolver = this.deps.pricingResolver;
+    if (resolver === undefined || input.organizationId === null) {
+      return [];
+    }
+
+    try {
+      return await resolver.rulesFor({
+        organizationId: input.organizationId,
+        sourceCurrency: input.sourceCurrency,
+        targetCurrency: input.targetCurrency,
+        at: this.deps.clock.nowIso(),
+      });
+    } catch (error) {
+      this.deps.logger.error('Could not load platform pricing; quoting without a platform fee', {
+        organizationId: input.organizationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Selects the term that applies to one route.
+   *
+   * Pure, and driven entirely by the snapshot, so a replay resolves exactly the terms that were in
+   * force when the comparison was made rather than whatever is current.
+   */
+  private resolvePricingFor(
+    snapshot: ComparisonSnapshot,
+    quote: ProviderQuote,
+    descriptor: ProviderDescriptor,
+  ): PlatformPricing {
+    // Read defensively rather than trusting the type: snapshots stored by engine 1.x predate both
+    // fields, and they arrive here straight from persistence without validation. Treating an absent
+    // field as "no terms" is what those comparisons meant; anything stricter silently unpriced every
+    // route in a legacy replay, which is how this line earned its test.
+    const organizationId = snapshot.organizationId ?? null;
+    const pricingRules = snapshot.pricingRules ?? [];
+    if (organizationId === null || pricingRules.length === 0) {
+      return NO_PLATFORM_PRICING;
+    }
+
+    const rule = selectPricingRule(pricingRules, {
+      organizationId,
+      sourceCurrency: snapshot.request.sourceCurrency,
+      targetCurrency: snapshot.request.targetCurrency,
+      rail: quote.rail,
+      providerId: descriptor.id,
+      at: snapshot.request.requestedAt,
+    });
+
+    return toPlatformPricing(rule, {
+      sourceCurrency: snapshot.request.sourceCurrency,
+      midMarketRate: Rate.of(
+        snapshot.request.sourceCurrency,
+        snapshot.request.targetCurrency,
+        quote.midMarketRate,
+      ),
+    });
   }
 
   private buildInsights(routes: readonly ScoredRoute[]): ComparisonInsights | null {
@@ -438,6 +562,12 @@ export class RouteComparisonService {
         },
       });
 
+      // Freshness is checked here, at ingestion, and deliberately nowhere near the snapshot
+      // computation: a replay prices quotes that are weeks old by design, whereas admitting an
+      // already-expired quote into a live comparison would rank a price nobody can transact on.
+      // Checked after the received-event above, so a quote that arrived dead is still evidenced.
+      this.assertQuoteCurrent(quote);
+
       return { ok: true, quote, descriptor: provider.descriptor };
     } catch (error) {
       const appError = toAppError(error);
@@ -471,6 +601,36 @@ export class RouteComparisonService {
         clearTimeout(timer);
       }
     }
+  }
+
+  /**
+   * Rejects a quote that is already unusable at the moment it arrives.
+   *
+   * Expiry, staleness and implausible clock skew all end the same way — the quote becomes a
+   * per-provider failure and the comparison degrades — but they keep their distinct error codes,
+   * because the operational responses differ: an expired quote means the provider's TTL is shorter
+   * than our fan-out latency, a stale one means an adapter is serving cached prices, and a skewed
+   * one means somebody's clock is wrong.
+   *
+   * A quote with no stated expiry is exempt entirely: the freshness model reasons about the window
+   * between issue and expiry, and without an expiry there is no window to assess. Every current
+   * adapter stamps one; this tolerance exists for the engine-facing contract, where `expiresAt` is
+   * nullable.
+   */
+  private assertQuoteCurrent(quote: ProviderQuote): void {
+    if (quote.expiresAt === null) {
+      return;
+    }
+    assertQuoteUsable(
+      {
+        providerId: quote.providerId,
+        timestamp: quote.quotedAt,
+        expiresAt: quote.expiresAt,
+        quoteReference: quote.quoteReference,
+      },
+      this.deps.clock.nowMs(),
+      this.deps.freshnessPolicy ?? DEFAULT_FRESHNESS_POLICY,
+    );
   }
 
   private assertValidCorridor(input: ComparisonInput): void {

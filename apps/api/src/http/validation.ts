@@ -27,17 +27,48 @@ const weight = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal
 export const createComparisonSchema = z
   .object({
     sourceCurrency: currencyCode,
-    targetCurrency: currencyCode,
+    /**
+     * The receiving currency.
+     *
+     * `destinationCurrency` is accepted as a synonym because both names are in common use for the
+     * same concept, and rejecting a request over the choice of word would be pedantry rather than
+     * validation. Exactly one must be supplied.
+     */
+    targetCurrency: currencyCode.optional(),
+    destinationCurrency: currencyCode.optional(),
     /** Send amount in major units, e.g. `"100000.00"`. */
     amount: decimalAmount,
     rails: z.array(z.enum(RAIL_TYPES)).min(1).max(RAIL_TYPES.length).optional(),
     weights: z.object({ cost: weight, speed: weight, reliability: weight }).strict().optional(),
   })
   .strict()
-  .refine((body) => body.sourceCurrency !== body.targetCurrency, {
+  .refine((body) => (body.targetCurrency ?? body.destinationCurrency) !== undefined, {
+    message: 'either targetCurrency or destinationCurrency is required',
+    path: ['targetCurrency'],
+  })
+  .refine(
+    (body) =>
+      body.targetCurrency === undefined ||
+      body.destinationCurrency === undefined ||
+      body.targetCurrency === body.destinationCurrency,
+    {
+      message: 'targetCurrency and destinationCurrency must agree when both are supplied',
+      path: ['destinationCurrency'],
+    },
+  )
+  .refine((body) => body.sourceCurrency !== (body.targetCurrency ?? body.destinationCurrency), {
     message: 'sourceCurrency and targetCurrency must differ',
     path: ['targetCurrency'],
   });
+
+/** Resolves the receiving currency from either accepted field name. */
+export function resolveTargetCurrency(body: CreateComparisonBody): CurrencyCode {
+  const target = body.targetCurrency ?? body.destinationCurrency;
+  if (target === undefined) {
+    throw new ValidationError('A receiving currency is required.', {});
+  }
+  return target;
+}
 
 export type CreateComparisonBody = z.infer<typeof createComparisonSchema>;
 
