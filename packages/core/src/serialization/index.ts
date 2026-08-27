@@ -49,6 +49,11 @@ export type {
   SimulatedExecutionReceiptDto,
   StructuredNlPaymentIntentDto,
   NlRouteResultDto,
+  MonetizationReportDto,
+  MonetizationEventDto,
+  MonetizationTotalsDto,
+  MonetizationBreakdownRowDto,
+  MonetizationWorkedExampleDto,
 } from './dto.js';
 export {
   serializeComparison,
@@ -79,4 +84,5 @@ export {
   serializePaymentPolicy,
   serializeNlInterpretation,
   serializeNlRouteResult,
+  serializeMonetizationReport,
 } from './serialize.js';

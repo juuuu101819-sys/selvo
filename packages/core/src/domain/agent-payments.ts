@@ -188,6 +188,10 @@ export interface QuotedRouteOption {
   readonly liquidityHeadroom: string | null;
   readonly chainId: string | null;
   readonly jurisdictions: readonly string[];
+  /** Platform routing fee in source-asset minor units. */
+  readonly platformFeeMinorUnits: string | null;
+  /** Provider fees in source-asset minor units. */
+  readonly providerFeeMinorUnits: string | null;
 }
 
 export interface SimulatedExecutionReceipt {

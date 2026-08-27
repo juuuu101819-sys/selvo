@@ -27,8 +27,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
           <p className="flex items-start gap-1.5">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span>
-              Meridian is non-custodial. The dashboard reports stored quotes and never holds
-              customer funds, executes transactions, or issues stablecoins.
+              Meridian is non-custodial. The dashboard reports stored quotes and quoted platform
+              revenue; it never holds customer funds, executes transactions, or issues stablecoins.
             </span>
           </p>
         </div>

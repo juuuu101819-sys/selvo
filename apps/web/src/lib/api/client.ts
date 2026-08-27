@@ -12,6 +12,7 @@ import type {
   GraphSearchDto,
   LoginDto,
   MetaDto,
+  MonetizationReportDto,
   MultiRailRoutingDto,
   ReplayResultDto,
   RouteGraphDto,
@@ -238,6 +239,16 @@ export function fetchDashboardSettings(
   return request<DashboardSettingsDto>({
     method: 'GET',
     path: '/api/v1/dashboard/settings',
+    authorization,
+  });
+}
+
+export function fetchDashboardRevenue(
+  authorization: string,
+): Promise<ApiResult<MonetizationReportDto>> {
+  return request<MonetizationReportDto>({
+    method: 'GET',
+    path: '/api/v1/dashboard/revenue',
     authorization,
   });
 }

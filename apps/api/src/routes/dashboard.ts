@@ -1,4 +1,4 @@
-import { NotFoundError } from '@meridian/core';
+import { NotFoundError, serializeMonetizationReport } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppContainer } from '../container.js';
@@ -85,6 +85,12 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
       principal.organizationId,
     );
     return envelope(request, { providers });
+  });
+
+  app.get('/dashboard/revenue', async (request) => {
+    const principal = requireOrganization(request);
+    const report = await container.persistence.dashboard.revenue(principal.organizationId);
+    return envelope(request, serializeMonetizationReport(report));
   });
 
   app.get('/dashboard/settings', async (request) => {

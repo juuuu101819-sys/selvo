@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { DashboardCharts } from '@/components/dashboard/charts';
 import { MetricsGrid } from '@/components/dashboard/metrics-grid';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
@@ -42,6 +43,13 @@ export default async function DashboardOverviewPage() {
             costByDay={charts.costByDay}
             providers={charts.providers}
           />
+          <p className="text-muted-foreground text-sm">
+            Quoted platform fees, partner commission and take rate live on{' '}
+            <Link href="/dashboard/revenue" className="text-foreground underline underline-offset-4">
+              Revenue
+            </Link>
+            . Those figures are attributed, not collected.
+          </p>
         </>
       )}
     </div>

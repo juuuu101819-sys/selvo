@@ -5,9 +5,12 @@ import type {
   DashboardQuote,
   DashboardRepository,
   DashboardTransaction,
+  MonetizationEvent,
+  MonetizationReport,
   RecordTransactionInput,
   VolumePoint,
 } from '@meridian/core';
+import { aggregateMonetization } from '@meridian/core';
 import {
   aggregateCostByDay,
   aggregateMetrics,
@@ -26,6 +29,7 @@ const DEFAULT_LIMIT = 50;
 export class InMemoryDashboardRepository implements DashboardRepository {
   private readonly quotes = new Map<string, DashboardQuote>();
   private readonly transactions = new Map<string, DashboardTransaction>();
+  private readonly monetization = new Map<string, MonetizationEvent>();
 
   metrics(organizationId: string): Promise<DashboardMetrics> {
     return Promise.resolve(
@@ -107,6 +111,36 @@ export class InMemoryDashboardRepository implements DashboardRepository {
       });
     }
     return Promise.resolve();
+  }
+
+  recordMonetizationEvent(event: MonetizationEvent): Promise<void> {
+    this.monetization.set(event.id, {
+      ...event,
+      fundsMoved: false,
+      custody: false,
+      realExecution: false,
+    });
+    return Promise.resolve();
+  }
+
+  listMonetizationEvents(
+    organizationId: string,
+    options: { readonly limit?: number } = {},
+  ): Promise<readonly MonetizationEvent[]> {
+    const limit = options.limit ?? DEFAULT_LIMIT;
+    const ordered = [...this.monetization.values()]
+      .filter((event) => event.organizationId === organizationId)
+      .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+      .slice(0, limit)
+      .map((event) => structuredClone(event));
+    return Promise.resolve(ordered);
+  }
+
+  revenue(organizationId: string): Promise<MonetizationReport> {
+    const events = [...this.monetization.values()].filter(
+      (event) => event.organizationId === organizationId,
+    );
+    return Promise.resolve(aggregateMonetization(events, { organizationId }));
   }
 
   private quotesFor(organizationId: string): DashboardQuote[] {

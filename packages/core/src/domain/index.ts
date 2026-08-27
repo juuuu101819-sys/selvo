@@ -223,3 +223,20 @@ export {
   type OptimizationPreference,
   type RoutePreferenceValue,
 } from './optimization-preference.js';
+export {
+  DEFAULT_PARTNER_COMMISSION_BPS,
+  MONETIZATION_TRANSACTION_TYPES,
+  MONETIZATION_WORKED_EXAMPLE,
+  REVENUE_SOURCES,
+  REVENUE_SOURCE_LABELS,
+  isMonetizationTransactionType,
+  isRevenueSource,
+  revenueSourceForRail,
+  type MonetizationBreakdownRow,
+  type MonetizationEvent,
+  type MonetizationReport,
+  type MonetizationTotals,
+  type MonetizationTransactionType,
+  type MonetizationWorkedExample,
+  type RevenueSource,
+} from './monetization.js';

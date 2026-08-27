@@ -40,6 +40,7 @@ export const AUDIT_EVENT_TYPES = [
   'payment.policy.evaluated',
   'nl.intent.interpreted',
   'nl.route.completed',
+  'monetization.recorded',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

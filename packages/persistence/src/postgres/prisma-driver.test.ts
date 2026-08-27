@@ -123,6 +123,7 @@ describe('migrations', () => {
           'merchants',
           'payment_policies',
           'payment_intents',
+          'monetization_events',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -209,6 +210,15 @@ describe('migrations', () => {
     expect(sql).toContain('CHECK ("real_execution" = false)');
     expect(sql).not.toContain('"private_key"');
     expect(sql).not.toContain('"seed"');
+  });
+
+  it('stores monetization events as quoted fees, never settlements', () => {
+    expect(sql).toContain('CREATE TABLE "monetization_events"');
+    expect(sql).toContain('"monetization_events_funds_moved_false"');
+    expect(sql).toContain('"monetization_events_custody_false"');
+    expect(sql).toContain('"monetization_events_real_execution_false"');
+    expect(sql).toContain('"tpv_minor_units" DECIMAL(38, 0)');
+    expect(sql).toContain('"platform_revenue_minor_units" DECIMAL(38, 0)');
   });
 
   /**

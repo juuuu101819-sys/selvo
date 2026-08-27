@@ -40,4 +40,65 @@ describe('InMemoryDashboardRepository tenancy', () => {
     expect((await store.metrics('org_a')).quoteCount).toBe(1);
     expect((await store.metrics('org_b')).quoteCount).toBe(1);
   });
+
+  it('aggregates monetization only for the requested organization', async () => {
+    const store = new InMemoryDashboardRepository();
+    await store.recordMonetizationEvent({
+      id: 'mon_a',
+      organizationId: 'org_a',
+      occurredAt: '2026-03-20T12:00:00.000Z',
+      transactionType: 'fiat_comparison',
+      revenueSource: 'traditional_fx_routing_fee',
+      rail: 'bank_fx',
+      providerId: 'bank',
+      providerName: 'Northgate Bank',
+      currency: 'USD',
+      asset: 'USD',
+      destinationAsset: 'KRW',
+      agentId: null,
+      tpvMinorUnits: '10000000',
+      providerCostMinorUnits: '30000',
+      platformRevenueMinorUnits: '20000',
+      partnerCommissionMinorUnits: '5000',
+      grossProfitMinorUnits: '15000',
+      takeRateBps: '20.0000',
+      fundsMoved: false,
+      custody: false,
+      realExecution: false,
+    });
+    await store.recordMonetizationEvent({
+      id: 'mon_secret',
+      organizationId: 'org_b',
+      occurredAt: '2026-03-20T12:00:00.000Z',
+      transactionType: 'fiat_comparison',
+      revenueSource: 'traditional_fx_routing_fee',
+      rail: 'bank_fx',
+      providerId: 'bank',
+      providerName: 'Northgate Bank',
+      currency: 'USD',
+      asset: 'USD',
+      destinationAsset: 'EUR',
+      agentId: null,
+      tpvMinorUnits: '99999900',
+      providerCostMinorUnits: '1',
+      platformRevenueMinorUnits: '888888',
+      partnerCommissionMinorUnits: '0',
+      grossProfitMinorUnits: '888888',
+      takeRateBps: '88.9000',
+      fundsMoved: false,
+      custody: false,
+      realExecution: false,
+    });
+
+    const report = await store.revenue('org_a');
+    expect(report.summary.platformRevenueMinorUnits).toBe('20000');
+    expect(report.summary.grossProfitMinorUnits).toBe('15000');
+    expect(report.events.map((event) => event.id)).toEqual(['mon_a']);
+    expect((await store.listMonetizationEvents('org_a')).map((event) => event.id)).toEqual([
+      'mon_a',
+    ]);
+    expect(await store.revenue('org_b')).toMatchObject({
+      summary: { platformRevenueMinorUnits: '888888' },
+    });
+  });
 });

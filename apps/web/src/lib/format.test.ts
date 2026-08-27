@@ -7,6 +7,8 @@ import {
   formatRate,
   formatReliability,
   formatSettlement,
+  formatTakeRate,
+  sharePercent,
 } from './format';
 
 /**
@@ -52,6 +54,23 @@ describe('formatQuotedAmount', () => {
   it('formats dashboard rows the same way as MoneyJson', () => {
     expect(formatQuotedAmount('10000000', 'USD', 2)).toBe('100,000.00 USD');
     expect(formatQuotedAmount('138071533', 'KRW', 0)).toBe('138,071,533 KRW');
+  });
+});
+
+describe('sharePercent', () => {
+  it('computes a bar width from integer minor units without floats', () => {
+    expect(sharePercent('15000', '20000')).toBe('75.00');
+    expect(sharePercent('1', '3')).toBe('33.33');
+    expect(sharePercent('0', '20000')).toBe('0.00');
+    expect(sharePercent('50', '0')).toBe('0.00');
+  });
+});
+
+describe('formatTakeRate', () => {
+  it('renders a null take rate for zero-TPV subscriptions', () => {
+    expect(formatTakeRate(null)).toBe('—');
+    expect(formatTakeRate('20.0000')).toBe('20 bps');
+    expect(formatTakeRate('42.1546')).toBe('42.1546 bps');
   });
 });
 

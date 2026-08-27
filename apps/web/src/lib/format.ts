@@ -26,6 +26,30 @@ export function formatQuotedAmount(minorUnits: string, currency: string, exponen
   return formatMoney({ minorUnits, currency, decimal: '', exponent });
 }
 
+/** Integer share of `part` in `total`, as a percentage with two decimal places. Truncates. */
+export function sharePercent(partMinorUnits: string, totalMinorUnits: string): string {
+  const part = BigInt(partMinorUnits);
+  const total = BigInt(totalMinorUnits);
+  if (total === 0n) {
+    return '0.00';
+  }
+  const negative = part < 0n;
+  const absPart = part < 0n ? -part : part;
+  const scaled = (absPart * 10000n) / total;
+  const whole = scaled / 100n;
+  const fraction = (scaled % 100n).toString().padStart(2, '0');
+  return `${negative ? '-' : ''}${whole.toString()}.${fraction}`;
+}
+
+export function formatTakeRate(bps: string | null): string {
+  if (bps === null) {
+    return '—';
+  }
+  const [whole = '0', fraction = ''] = bps.split('.');
+  const trimmedFraction = fraction.replace(/0+$/, '');
+  return trimmedFraction === '' ? `${whole} bps` : `${whole}.${trimmedFraction} bps`;
+}
+
 export function formatAmountOnly(money: MoneyJson): string {
   return formatMinorUnits(money.minorUnits, money.exponent);
 }

@@ -351,6 +351,15 @@ route denies. Every decision is audited (`payment.policy.evaluated`; denials als
 `payment.policy.denied`). `gateExecutionIntent` runs immediately before `executionIntents.create`.
 The routing engine versions are unchanged.
 
+## 12b. Multi-rail monetization engine
+
+`priceMonetization` extends the existing provider/platform fee split. Amounts are integer minor
+units. Partner commission defaults to 25% of platform revenue (`Rounding.DOWN`, capped at platform
+revenue). Gross profit is platform revenue minus that payout. Take rate is platform revenue / TPV
+in basis points, or null when TPV is zero (subscriptions). Events are attributed by rail, provider,
+currency, asset, organization, AI agent, transaction type, revenue source and date. Quoted fees
+only: `fundsMoved` is always false. `GET /api/v1/dashboard/revenue` is org-scoped.
+
 ## 13. Testing strategy
 
 - **Unit** (`packages/core`) — money arithmetic, rounding boundaries, currency exponents, fee

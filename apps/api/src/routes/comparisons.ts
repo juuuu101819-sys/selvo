@@ -10,6 +10,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
+import { recordComparisonMonetization } from '../monetization/record.js';
 import {
   comparisonIdParamsSchema,
   createComparisonSchema,
@@ -66,6 +67,14 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       rails: resolveRequestedRails(body),
       weights: body.weights ?? null,
       idempotencyKey,
+      actor: principalOf(request).actor,
+      requestId: request.id,
+    });
+
+    await recordComparisonMonetization({
+      comparison,
+      dashboard: container.persistence.dashboard,
+      auditLogger: container.auditLogger,
       actor: principalOf(request).actor,
       requestId: request.id,
     });

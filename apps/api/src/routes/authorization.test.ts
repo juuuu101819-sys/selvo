@@ -207,6 +207,77 @@ describe('organization authorization', () => {
     expect(again.statusCode).toBe(401);
   });
 
+  it('rejects revenue without a credential', async () => {
+    const response = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/dashboard/revenue`,
+    });
+    expect(response.statusCode).toBe(401);
+    expect(response.json<ApiError>().error.code).toBe('UNAUTHENTICATED');
+  });
+
+  it('returns the $100k monetization identity for the demo tenant and hides the other org', async () => {
+    const demoToken = await login(DEMO_USER_EMAIL, DEMO_USER_PASSWORD);
+    const demo = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/dashboard/revenue`,
+      headers: { authorization: `Bearer ${demoToken}` },
+    });
+    expect(demo.statusCode).toBe(200);
+    const body = demo.json<{
+      data: {
+        fundsMoved: boolean;
+        summary: {
+          tpvMinorUnits: string;
+          platformRevenueMinorUnits: string;
+          partnerCommissionMinorUnits: string;
+          grossProfitMinorUnits: string;
+        };
+        events: readonly {
+          id: string;
+          platformRevenueMinorUnits: string;
+          organizationId: string;
+        }[];
+        byRevenueSource: readonly { key: string }[];
+        workedExample: { tpvMinorUnits: string; grossProfitMinorUnits: string };
+      };
+    }>().data;
+    expect(body.fundsMoved).toBe(false);
+    expect(body.workedExample.tpvMinorUnits).toBe('10000000');
+    expect(body.workedExample.grossProfitMinorUnits).toBe('15000');
+    const example = body.events.find((event) => event.id === 'mon_demo_fx_100k');
+    expect(example?.platformRevenueMinorUnits).toBe('20000');
+    expect(body.events.some((event) => event.id === 'mon_other_secret')).toBe(false);
+    expect(body.events.some((event) => event.platformRevenueMinorUnits === '888888')).toBe(false);
+    expect(body.events.every((event) => event.organizationId === DEMO_ORGANIZATION_ID)).toBe(true);
+    const sources = new Set(body.byRevenueSource.map((row) => row.key));
+    expect(sources.has('traditional_fx_routing_fee')).toBe(true);
+    expect(sources.has('payment_routing_fee')).toBe(true);
+    expect(sources.has('stablecoin_routing_fee')).toBe(true);
+    expect(sources.has('defi_routing_fee')).toBe(true);
+    expect(sources.has('liquidity_routing_fee')).toBe(true);
+    expect(sources.has('partner_referral_commission')).toBe(true);
+    expect(sources.has('enterprise_api_subscription')).toBe(true);
+    expect(sources.has('ai_agent_payment_fee')).toBe(true);
+    expect(sources.has('enterprise_volume_pricing')).toBe(true);
+
+    const otherToken = await login(OTHER_USER_EMAIL, OTHER_USER_PASSWORD);
+    const other = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/dashboard/revenue`,
+      headers: { authorization: `Bearer ${otherToken}` },
+    });
+    expect(other.statusCode).toBe(200);
+    const otherBody = other.json<{
+      data: { events: readonly { id: string; platformRevenueMinorUnits: string }[] };
+    }>().data;
+    expect(otherBody.events.some((event) => event.id === 'mon_other_secret')).toBe(true);
+    expect(otherBody.events.some((event) => event.id === 'mon_demo_fx_100k')).toBe(false);
+    expect(otherBody.events.some((event) => event.platformRevenueMinorUnits === '888888')).toBe(
+      true,
+    );
+  });
+
   it('still serves the public comparison page anonymously', async () => {
     const response = await harness.app.inject({
       method: 'POST',

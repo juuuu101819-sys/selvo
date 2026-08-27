@@ -5,10 +5,19 @@ import type {
   DashboardQuote,
   DashboardRepository,
   DashboardTransaction,
+  MonetizationEvent,
+  MonetizationReport,
+  MonetizationTransactionType,
   RecordTransactionInput,
+  RevenueSource,
   VolumePoint,
 } from '@meridian/core';
-import { PersistenceError } from '@meridian/core';
+import {
+  PersistenceError,
+  aggregateMonetization,
+  isMonetizationTransactionType,
+  isRevenueSource,
+} from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
   aggregateCostByDay,
@@ -152,6 +161,84 @@ export class PrismaDashboardRepository implements DashboardRepository {
     }
   }
 
+  async recordMonetizationEvent(event: MonetizationEvent): Promise<void> {
+    try {
+      await this.client.monetizationEvent.upsert({
+        where: { id: event.id },
+        create: {
+          id: event.id,
+          organizationId: event.organizationId,
+          occurredAt: new Date(event.occurredAt),
+          transactionType: event.transactionType,
+          revenueSource: event.revenueSource,
+          rail: event.rail,
+          providerId: event.providerId,
+          providerName: event.providerName,
+          currency: event.currency,
+          asset: event.asset,
+          destinationAsset: event.destinationAsset,
+          agentId: event.agentId,
+          tpvMinorUnits: new Prisma.Decimal(event.tpvMinorUnits),
+          providerCostMinorUnits: new Prisma.Decimal(event.providerCostMinorUnits),
+          platformRevenueMinorUnits: new Prisma.Decimal(event.platformRevenueMinorUnits),
+          partnerCommissionMinorUnits: new Prisma.Decimal(event.partnerCommissionMinorUnits),
+          grossProfitMinorUnits: new Prisma.Decimal(event.grossProfitMinorUnits),
+          takeRateBps: event.takeRateBps === null ? null : new Prisma.Decimal(event.takeRateBps),
+          fundsMoved: false,
+          custody: false,
+          realExecution: false,
+        },
+        update: {
+          occurredAt: new Date(event.occurredAt),
+          transactionType: event.transactionType,
+          revenueSource: event.revenueSource,
+          rail: event.rail,
+          providerId: event.providerId,
+          providerName: event.providerName,
+          currency: event.currency,
+          asset: event.asset,
+          destinationAsset: event.destinationAsset,
+          agentId: event.agentId,
+          tpvMinorUnits: new Prisma.Decimal(event.tpvMinorUnits),
+          providerCostMinorUnits: new Prisma.Decimal(event.providerCostMinorUnits),
+          platformRevenueMinorUnits: new Prisma.Decimal(event.platformRevenueMinorUnits),
+          partnerCommissionMinorUnits: new Prisma.Decimal(event.partnerCommissionMinorUnits),
+          grossProfitMinorUnits: new Prisma.Decimal(event.grossProfitMinorUnits),
+          takeRateBps: event.takeRateBps === null ? null : new Prisma.Decimal(event.takeRateBps),
+          fundsMoved: false,
+          custody: false,
+          realExecution: false,
+        },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to persist the monetization event.', {}, { cause: error });
+    }
+  }
+
+  async listMonetizationEvents(
+    organizationId: string,
+    options: { readonly limit?: number } = {},
+  ): Promise<readonly MonetizationEvent[]> {
+    const rows = await this.query(() =>
+      this.client.monetizationEvent.findMany({
+        where: { organizationId },
+        orderBy: { occurredAt: 'desc' },
+        take: options.limit ?? DEFAULT_LIMIT,
+      }),
+    );
+    return rows.map(toMonetizationEvent);
+  }
+
+  async revenue(organizationId: string): Promise<MonetizationReport> {
+    const rows = await this.query(() =>
+      this.client.monetizationEvent.findMany({
+        where: { organizationId },
+        orderBy: { occurredAt: 'desc' },
+      }),
+    );
+    return aggregateMonetization(rows.map(toMonetizationEvent), { organizationId });
+  }
+
   private async loadOrg(
     organizationId: string,
   ): Promise<readonly [readonly DashboardQuote[], readonly DashboardTransaction[]]> {
@@ -259,5 +346,58 @@ function toTransaction(row: {
     selectedQuoteId: row.selectedQuoteId,
     createdAt: row.createdAt.toISOString(),
     quoteCount: row._count.quotes,
+  };
+}
+
+function toMonetizationEvent(row: {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly occurredAt: Date;
+  readonly transactionType: string;
+  readonly revenueSource: string;
+  readonly rail: string | null;
+  readonly providerId: string | null;
+  readonly providerName: string | null;
+  readonly currency: string;
+  readonly asset: string;
+  readonly destinationAsset: string | null;
+  readonly agentId: string | null;
+  readonly tpvMinorUnits: { toFixed(decimalPlaces?: number): string };
+  readonly providerCostMinorUnits: { toFixed(decimalPlaces?: number): string };
+  readonly platformRevenueMinorUnits: { toFixed(decimalPlaces?: number): string };
+  readonly partnerCommissionMinorUnits: { toFixed(decimalPlaces?: number): string };
+  readonly grossProfitMinorUnits: { toFixed(decimalPlaces?: number): string };
+  readonly takeRateBps: { toFixed(decimalPlaces?: number): string } | null;
+}): MonetizationEvent {
+  const transactionType: MonetizationTransactionType = isMonetizationTransactionType(
+    row.transactionType,
+  )
+    ? row.transactionType
+    : 'fiat_comparison';
+  const revenueSource: RevenueSource = isRevenueSource(row.revenueSource)
+    ? row.revenueSource
+    : 'traditional_fx_routing_fee';
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    occurredAt: row.occurredAt.toISOString(),
+    transactionType,
+    revenueSource,
+    rail: row.rail,
+    providerId: row.providerId,
+    providerName: row.providerName,
+    currency: row.currency,
+    asset: row.asset,
+    destinationAsset: row.destinationAsset,
+    agentId: row.agentId,
+    tpvMinorUnits: row.tpvMinorUnits.toFixed(0),
+    providerCostMinorUnits: row.providerCostMinorUnits.toFixed(0),
+    platformRevenueMinorUnits: row.platformRevenueMinorUnits.toFixed(0),
+    partnerCommissionMinorUnits: row.partnerCommissionMinorUnits.toFixed(0),
+    grossProfitMinorUnits: row.grossProfitMinorUnits.toFixed(0),
+    takeRateBps: row.takeRateBps === null ? null : row.takeRateBps.toFixed(4),
+    fundsMoved: false,
+    custody: false,
+    realExecution: false,
   };
 }

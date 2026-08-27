@@ -220,6 +220,7 @@ model Organization {
   merchants           Merchant[]
   paymentPolicies     PaymentPolicy[]
   paymentIntents      PaymentIntent[]
+  monetizationEvents  MonetizationEvent[]
 
   @@map("organizations")
 }
@@ -473,6 +474,39 @@ model PaymentIntent {
   @@index([organizationId, createdAt])
   @@index([organizationId, agentId, createdAt])
   @@map("payment_intents")
+}
+
+/// Quoted (never settled) monetization ledger. Amounts are minor units. fundsMoved is always false.
+model MonetizationEvent {
+  id                            String   @id
+  organizationId                String   @map("organization_id")
+  occurredAt                    DateTime @map("occurred_at") @db.Timestamptz(3)
+  transactionType               String   @map("transaction_type")
+  revenueSource                 String   @map("revenue_source")
+  rail                          String?
+  providerId                    String?  @map("provider_id")
+  providerName                  String?  @map("provider_name")
+  currency                      String   @db.VarChar(16)
+  asset                         String   @db.VarChar(16)
+  destinationAsset              String?  @map("destination_asset") @db.VarChar(16)
+  agentId                       String?  @map("agent_id")
+  tpvMinorUnits                 Decimal  @map("tpv_minor_units") @db.Decimal(38, 0)
+  providerCostMinorUnits        Decimal  @map("provider_cost_minor_units") @db.Decimal(38, 0)
+  platformRevenueMinorUnits     Decimal  @map("platform_revenue_minor_units") @db.Decimal(38, 0)
+  partnerCommissionMinorUnits   Decimal  @map("partner_commission_minor_units") @db.Decimal(38, 0)
+  grossProfitMinorUnits         Decimal  @map("gross_profit_minor_units") @db.Decimal(38, 0)
+  takeRateBps                   Decimal? @map("take_rate_bps") @db.Decimal(12, 4)
+  fundsMoved                    Boolean  @default(false) @map("funds_moved")
+  custody                       Boolean  @default(false)
+  realExecution                 Boolean  @default(false) @map("real_execution")
+  createdAt                     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, occurredAt(sort: Desc)])
+  @@index([organizationId, revenueSource])
+  @@index([organizationId, rail])
+  @@map("monetization_events")
 }
 
 // ---------------------------------------------------------------------------

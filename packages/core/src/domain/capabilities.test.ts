@@ -24,5 +24,6 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.financialRoutingApi).toBe(true);
     expect(PLATFORM_CAPABILITIES.paymentPolicyEngine).toBe(true);
     expect(PLATFORM_CAPABILITIES.executionIntents).toBe(true);
+    expect(PLATFORM_CAPABILITIES.multiRailMonetization).toBe(true);
   });
 });

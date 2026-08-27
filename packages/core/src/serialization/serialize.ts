@@ -8,6 +8,7 @@ import type {
   RouteComparison,
   ScoredRoute,
 } from '../domain/index.js';
+import type { MonetizationEvent, MonetizationReport } from '../domain/monetization.js';
 import {
   ASSET_REGISTRY,
   CHAIN_REGISTRY,
@@ -82,6 +83,8 @@ import type {
   StablecoinRouteDto,
   StablecoinRoutingDto,
   StablecoinSlippageDto,
+  MonetizationReportDto,
+  MonetizationEventDto,
 } from './dto.js';
 
 const BPS_DECIMAL_PLACES = 4;
@@ -961,5 +964,49 @@ export function serializeNlRouteResult(result: NlRouteResult): NlRouteResultDto 
     realExecution: false,
     executable: false,
     submitted: false,
+  };
+}
+
+export function serializeMonetizationReport(report: MonetizationReport): MonetizationReportDto {
+  return {
+    summary: { ...report.summary },
+    byRail: report.byRail.map((row) => ({ ...row })),
+    byProvider: report.byProvider.map((row) => ({ ...row })),
+    byCurrency: report.byCurrency.map((row) => ({ ...row })),
+    byAsset: report.byAsset.map((row) => ({ ...row })),
+    byOrganization: report.byOrganization.map((row) => ({ ...row })),
+    byAgent: report.byAgent.map((row) => ({ ...row })),
+    byTransactionType: report.byTransactionType.map((row) => ({ ...row })),
+    byRevenueSource: report.byRevenueSource.map((row) => ({ ...row })),
+    byDate: report.byDate.map((row) => ({ ...row })),
+    events: report.events.map(serializeMonetizationEvent),
+    workedExample: { ...report.workedExample },
+    fundsMoved: false,
+  };
+}
+
+function serializeMonetizationEvent(event: MonetizationEvent): MonetizationEventDto {
+  return {
+    id: event.id,
+    organizationId: event.organizationId,
+    occurredAt: event.occurredAt,
+    transactionType: event.transactionType,
+    revenueSource: event.revenueSource,
+    rail: event.rail,
+    providerId: event.providerId,
+    providerName: event.providerName,
+    currency: event.currency,
+    asset: event.asset,
+    destinationAsset: event.destinationAsset,
+    agentId: event.agentId,
+    tpvMinorUnits: event.tpvMinorUnits,
+    providerCostMinorUnits: event.providerCostMinorUnits,
+    platformRevenueMinorUnits: event.platformRevenueMinorUnits,
+    partnerCommissionMinorUnits: event.partnerCommissionMinorUnits,
+    grossProfitMinorUnits: event.grossProfitMinorUnits,
+    takeRateBps: event.takeRateBps,
+    fundsMoved: false,
+    custody: false,
+    realExecution: false,
   };
 }

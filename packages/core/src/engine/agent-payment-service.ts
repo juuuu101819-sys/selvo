@@ -31,6 +31,7 @@ import type {
   IdGenerator,
 } from '../ports/index.js';
 import { simulateSandboxExecution } from './sandbox-simulator.js';
+import { convertDestMinorToSource } from './monetization-engine.js';
 import type { MultiRailRouter } from './routing-engine.js';
 import type { ScoredMultiRailRoute } from './routing-types.js';
 
@@ -897,7 +898,33 @@ function toQuotedRouteOption(route: ScoredMultiRailRoute): QuotedRouteOption {
     liquidityHeadroom: route.liquidityHeadroom === null ? null : route.liquidityHeadroom.toFixed(),
     chainId: route.quote.chainId,
     jurisdictions: [...route.compliance.jurisdictions],
+    platformFeeMinorUnits: feeInSource(
+      route.breakdown.platformFee,
+      route.sendAmount,
+      route.midMarketRate,
+    ),
+    providerFeeMinorUnits: feeInSource(
+      route.breakdown.providerFee,
+      route.sendAmount,
+      route.midMarketRate,
+    ),
   };
+}
+
+function feeInSource(
+  amount: { readonly asset: string; readonly minorUnits: bigint },
+  send: { readonly asset: string },
+  midMarketRate: { toFixed(): string },
+): string {
+  if (amount.asset === send.asset) {
+    return amount.minorUnits.toString();
+  }
+  return convertDestMinorToSource({
+    destMinorUnits: amount.minorUnits.toString(),
+    destAsset: amount.asset,
+    sourceAsset: send.asset,
+    midMarketRate: midMarketRate.toFixed(),
+  });
 }
 
 function earliestExpiry(routes: readonly QuotedRouteOption[]): string | null {

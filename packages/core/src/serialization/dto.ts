@@ -714,6 +714,8 @@ export interface QuotedRouteOptionDto {
   readonly liquidityHeadroom: string | null;
   readonly chainId: string | null;
   readonly jurisdictions: readonly string[];
+  readonly platformFeeMinorUnits: string | null;
+  readonly providerFeeMinorUnits: string | null;
 }
 
 export interface SimulatedExecutionReceiptDto {
@@ -839,4 +841,81 @@ export interface NlRouteResultDto {
   readonly realExecution: false;
   readonly executable: false;
   readonly submitted: false;
+}
+
+export interface MonetizationTotalsDto {
+  readonly eventCount: number;
+  readonly tpvMinorUnits: string;
+  readonly grossRevenueMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string | null;
+  readonly currency: string;
+  readonly exponent: number;
+}
+
+export interface MonetizationBreakdownRowDto {
+  readonly key: string;
+  readonly label: string;
+  readonly eventCount: number;
+  readonly tpvMinorUnits: string;
+  readonly grossRevenueMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string | null;
+}
+
+export interface MonetizationEventDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly occurredAt: string;
+  readonly transactionType: string;
+  readonly revenueSource: string;
+  readonly rail: string | null;
+  readonly providerId: string | null;
+  readonly providerName: string | null;
+  readonly currency: string;
+  readonly asset: string;
+  readonly destinationAsset: string | null;
+  readonly agentId: string | null;
+  readonly tpvMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string | null;
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly realExecution: false;
+}
+
+export interface MonetizationWorkedExampleDto {
+  readonly tpvMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string;
+  readonly currency: string;
+  readonly description: string;
+}
+
+export interface MonetizationReportDto {
+  readonly summary: MonetizationTotalsDto;
+  readonly byRail: readonly MonetizationBreakdownRowDto[];
+  readonly byProvider: readonly MonetizationBreakdownRowDto[];
+  readonly byCurrency: readonly MonetizationBreakdownRowDto[];
+  readonly byAsset: readonly MonetizationBreakdownRowDto[];
+  readonly byOrganization: readonly MonetizationBreakdownRowDto[];
+  readonly byAgent: readonly MonetizationBreakdownRowDto[];
+  readonly byTransactionType: readonly MonetizationBreakdownRowDto[];
+  readonly byRevenueSource: readonly MonetizationBreakdownRowDto[];
+  readonly byDate: readonly MonetizationBreakdownRowDto[];
+  readonly events: readonly MonetizationEventDto[];
+  readonly workedExample: MonetizationWorkedExampleDto;
+  readonly fundsMoved: false;
 }

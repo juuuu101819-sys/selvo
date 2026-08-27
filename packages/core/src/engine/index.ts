@@ -95,6 +95,16 @@ export {
   type CreatePaymentIntentCommand,
 } from './agent-payment-service.js';
 export {
+  aggregateMonetization,
+  buildMonetizationEvent,
+  convertDestMinorToSource,
+  monetizationFromQuotedAgentRoute,
+  monetizationFromRecommendedFiatRoute,
+  priceMonetization,
+  type MonetizationComputation,
+  type MonetizationPriceInput,
+} from './monetization-engine.js';
+export {
   NlRoutingService,
   NL_INTERPRET_PIPELINE,
   NL_ROUTE_PIPELINE,

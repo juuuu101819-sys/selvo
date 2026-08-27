@@ -216,6 +216,7 @@ export interface MetaDto {
     readonly financialRoutingApi?: boolean;
     readonly paymentPolicyEngine?: boolean;
     readonly executionIntents?: boolean;
+    readonly multiRailMonetization?: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -441,6 +442,83 @@ export interface DashboardSettingsDto {
   readonly members: readonly PublicMemberDto[];
   readonly apiKeys: readonly PublicApiKeyDto[];
   readonly role: string | null;
+}
+
+export interface MonetizationTotalsDto {
+  readonly eventCount: number;
+  readonly tpvMinorUnits: string;
+  readonly grossRevenueMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string | null;
+  readonly currency: string;
+  readonly exponent: number;
+}
+
+export interface MonetizationBreakdownRowDto {
+  readonly key: string;
+  readonly label: string;
+  readonly eventCount: number;
+  readonly tpvMinorUnits: string;
+  readonly grossRevenueMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string | null;
+}
+
+export interface MonetizationEventDto {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly occurredAt: string;
+  readonly transactionType: string;
+  readonly revenueSource: string;
+  readonly rail: string | null;
+  readonly providerId: string | null;
+  readonly providerName: string | null;
+  readonly currency: string;
+  readonly asset: string;
+  readonly destinationAsset: string | null;
+  readonly agentId: string | null;
+  readonly tpvMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string | null;
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly realExecution: false;
+}
+
+export interface MonetizationWorkedExampleDto {
+  readonly tpvMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossProfitMinorUnits: string;
+  readonly takeRateBps: string;
+  readonly currency: string;
+  readonly description: string;
+}
+
+export interface MonetizationReportDto {
+  readonly summary: MonetizationTotalsDto;
+  readonly byRail: readonly MonetizationBreakdownRowDto[];
+  readonly byProvider: readonly MonetizationBreakdownRowDto[];
+  readonly byCurrency: readonly MonetizationBreakdownRowDto[];
+  readonly byAsset: readonly MonetizationBreakdownRowDto[];
+  readonly byOrganization: readonly MonetizationBreakdownRowDto[];
+  readonly byAgent: readonly MonetizationBreakdownRowDto[];
+  readonly byTransactionType: readonly MonetizationBreakdownRowDto[];
+  readonly byRevenueSource: readonly MonetizationBreakdownRowDto[];
+  readonly byDate: readonly MonetizationBreakdownRowDto[];
+  readonly events: readonly MonetizationEventDto[];
+  readonly workedExample: MonetizationWorkedExampleDto;
+  readonly fundsMoved: false;
 }
 
 export interface AssetAmountJson {
@@ -864,11 +942,13 @@ export interface QuotedRouteOptionDto {
   readonly rail: string;
   readonly totalCostBps: string;
   readonly expiresAt: string | null;
-  readonly routeScore: string | null;
-  readonly slippageBps: string | null;
-  readonly liquidityHeadroom: string | null;
-  readonly chainId: string | null;
-  readonly jurisdictions: readonly string[];
+  readonly routeScore?: string | null;
+  readonly slippageBps?: string | null;
+  readonly liquidityHeadroom?: string | null;
+  readonly chainId?: string | null;
+  readonly jurisdictions?: readonly string[];
+  readonly platformFeeMinorUnits?: string | null;
+  readonly providerFeeMinorUnits?: string | null;
 }
 
 export interface SimulatedExecutionReceiptDto {

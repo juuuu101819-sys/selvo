@@ -79,6 +79,11 @@ export const PLATFORM_CAPABILITIES = {
    * payment, swap or payout.
    */
   executionIntents: true,
+  /**
+   * Multi-rail monetization: TPV, platform revenue, provider cost, partner commission, gross
+   * profit and take rate on quoted activity. Decimal only. Distinct from `executeTransactions`.
+   */
+  multiRailMonetization: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

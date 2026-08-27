@@ -26,6 +26,10 @@ export type {
   VolumePoint,
 } from './dashboard.js';
 export type {
+  MonetizationEvent,
+  MonetizationReport,
+} from '../domain/monetization.js';
+export type {
   IdentityApiKey,
   IdentityMembership,
   IdentityOrganization,
@@ -139,5 +143,6 @@ export {
   OTHER_USER_ID,
   OTHER_USER_PASSWORD,
 } from '../auth/demo-tenant.js';
+export { demoMonetizationEvents } from '../auth/demo-monetization.js';
 export { hashPassword, hashSecret, randomToken, secretsMatch, verifyPassword } from '../crypto/secrets.js';
 export type { RouteProvider, SecretResolver } from './route-provider.js';

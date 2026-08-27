@@ -1,4 +1,5 @@
 import {
+  demoMonetizationEvents,
   DEMO_AGENT_CREDENTIAL_ID,
   DEMO_AGENT_ID,
   DEMO_AGENT_NAME,
@@ -226,6 +227,33 @@ async function seedDashboardActivity(dashboard: DashboardRepository): Promise<vo
     isRecommended: true,
     rank: 1,
     score: '10',
+  });
+
+  for (const event of demoMonetizationEvents(Date.now())) {
+    await dashboard.recordMonetizationEvent(event);
+  }
+  await dashboard.recordMonetizationEvent({
+    id: 'mon_other_secret',
+    organizationId: OTHER_ORGANIZATION_ID,
+    occurredAt: '2026-03-20T12:00:00.000Z',
+    transactionType: 'fiat_comparison',
+    revenueSource: 'traditional_fx_routing_fee',
+    rail: 'bank_fx',
+    providerId: 'sandbox-northgate-bank',
+    providerName: 'Northgate Bank',
+    currency: 'USD',
+    asset: 'USD',
+    destinationAsset: 'EUR',
+    agentId: null,
+    tpvMinorUnits: '99999900',
+    providerCostMinorUnits: '1',
+    platformRevenueMinorUnits: '888888',
+    partnerCommissionMinorUnits: '0',
+    grossProfitMinorUnits: '888888',
+    takeRateBps: '88.9000',
+    fundsMoved: false,
+    custody: false,
+    realExecution: false,
   });
 }
 

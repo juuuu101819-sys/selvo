@@ -345,3 +345,40 @@ Demo Agent A:
 
 Missing policy, missing route score/slippage, or zero surviving quoted routes are `403 POLICY_DENIED`.
 `paymentPolicyEngine` is true. Engine versions unchanged. `POST /executions` remains 501.
+
+## Phase 17 — Multi-rail monetization engine ✅ implemented
+
+Extends the existing fee split (provider vs platform) with a quoted revenue ledger. Arithmetic is
+Decimal/`bigint` only. Nothing here collects funds.
+
+Revenue sources (closed set):
+
+1. Traditional FX routing fee
+2. Payment routing fee
+3. Stablecoin routing fee
+4. DeFi routing fee
+5. Liquidity routing fee
+6. Partner referral commission
+7. Enterprise API subscription
+8. AI agent payment fee
+9. Enterprise volume pricing
+
+Identity on a $100,000 send:
+
+| Concept | Amount |
+|---|---|
+| TPV | $100,000 |
+| Provider cost | $300 |
+| Platform routing fee / gross revenue | $200 |
+| Partner commission | $50 (25% of platform revenue) |
+| Gross profit / net platform contribution | $150 |
+| Take rate | 20 bps |
+
+`grossRevenue = platformRevenue`. Partner commission is a payout from platform revenue, not a second
+customer charge. Subscriptions have TPV 0 and a null take rate. Analytics break down by rail,
+provider, currency, asset, organization, AI agent, transaction type, revenue source and date.
+
+`GET /api/v1/dashboard/revenue` is organization-scoped. The demo tenant is seeded with every source,
+including the $100k example. `multiRailMonetization` is true. Engine versions unchanged.
+`POST /executions` remains 501.
+

@@ -49,6 +49,8 @@ function quoted(overrides: Partial<QuotedRouteOption> = {}): QuotedRouteOption {
     liquidityHeadroom: '4',
     chainId: null,
     jurisdictions: ['*'],
+    platformFeeMinorUnits: '100',
+    providerFeeMinorUnits: '400',
     ...overrides,
   };
 }

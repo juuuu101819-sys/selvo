@@ -85,6 +85,7 @@ Organization ──┬── OrganizationMember ── User
                ├── ExecutionIntent
                ├── Agent ── AgentCredential / AgentWalletReference / PaymentPolicy / PaymentIntent
                ├── Merchant
+               ├── MonetizationEvent
                └── AuditLog
 ```
 
@@ -133,6 +134,11 @@ source asset ticker (`VARCHAR(16)`), not an ISO currency FK. No wallet, key or s
 **`PaymentPolicy`** — fail-closed limits for one agent: max transaction and daily spending (minor
 units), allowed assets / recipients / providers / CAIP-2 chains / ISO country codes, max fee and
 slippage (bps), minimum route score, minimum liquidity headroom. Empty arrays mean none, not all.
+
+**`MonetizationEvent`** — quoted (never settled) revenue ledger. Amounts are `DECIMAL(38,0)` minor
+units of the event currency. `funds_moved`, `custody` and `real_execution` are CHECK-constrained to
+false. Partner commission is stored on each event; take rate is null when TPV is zero. Queries are
+always scoped by `organization_id`.
 
 ### Providers
 
@@ -271,8 +277,9 @@ an unbuilt clone fails to resolve `@meridian/*`, and the fix is to run `npm run 
 
 It loads: 7 fiat currencies (USD, KRW, EUR, JPY, SGD, HKD, GBP) plus one demo stablecoin for
 intermediary legs; 4 demo providers with 156 corridor capabilities and 156 routes; a demo
-organization with an owner; 3 overlapping customer pricing rules; and one priced demo transaction
-request.
+organization with an owner; 3 overlapping customer pricing rules; one priced demo transaction
+request; and the quoted monetization ledger (every revenue source, including the $100,000 worked
+example).
 
 Two rules shape the seed:
 

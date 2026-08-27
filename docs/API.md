@@ -144,7 +144,8 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "defiLiquidityRouting": true,
   "financialRoutingApi": true,
   "paymentPolicyEngine": true,
-  "executionIntents": true
+  "executionIntents": true,
+  "multiRailMonetization": true
 }
 ```
 
@@ -159,8 +160,9 @@ authenticated routing API; `transaction:create` records an intent, it does not p
 create payment intents, interpret natural language into structured intent, and run the sandbox
 simulator. They still cannot move money. The NL parser does not compute rates, fees, slippage or
 settlement amounts. `paymentPolicyEngine` is true: every agent request is evaluated fail-closed
-before quotes, authorization, simulation, and execution-intent recording. `POST /api/v1/executions`
-remains 501.
+before quotes, authorization, simulation, and execution-intent recording. `multiRailMonetization`
+is true: quoted TPV, platform revenue, provider cost, partner commission, gross profit and take
+rate are attributed on the revenue dashboard. `POST /api/v1/executions` remains 501.
 
 ## `GET /api/v1/providers`
 
@@ -474,6 +476,17 @@ Organization-scoped totals and 30-day charts, computed from stored quotes and tr
 
 `charts.volumeByDay`, `charts.costByDay` and `charts.providers` are the same store, filtered to this
 organization.
+
+## `GET /api/v1/dashboard/revenue`
+
+Organization-scoped multi-rail monetization report. Amounts are integer minor units. Arithmetic is
+Decimal only. `fundsMoved` is always false.
+
+Totals: TPV, gross revenue, provider cost, platform revenue, partner commission, gross profit, take
+rate. Breakdowns: rail, provider, currency, asset, organization, AI agent, transaction type, revenue
+source, date. Includes the canonical $100,000 worked example.
+
+Anonymous callers are `401`. Another tenant's events never appear.
 
 ## `GET /api/v1/dashboard/quotes`
 

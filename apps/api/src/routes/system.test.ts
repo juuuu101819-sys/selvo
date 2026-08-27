@@ -88,6 +88,7 @@ describe('GET /v1/meta', () => {
       financialRoutingApi: true,
       paymentPolicyEngine: true,
       executionIntents: true,
+      multiRailMonetization: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,

@@ -1,3 +1,5 @@
+import type { MonetizationEvent, MonetizationReport } from '../domain/monetization.js';
+
 /**
  * Organization-scoped dashboard projections.
  *
@@ -116,4 +118,10 @@ export interface DashboardRepository {
   getTransaction(organizationId: string, id: string): Promise<DashboardTransaction | null>;
   recordTransaction(input: RecordTransactionInput): Promise<void>;
   recordQuote(input: DashboardQuote): Promise<void>;
+  recordMonetizationEvent(event: MonetizationEvent): Promise<void>;
+  listMonetizationEvents(
+    organizationId: string,
+    options?: { readonly limit?: number },
+  ): Promise<readonly MonetizationEvent[]>;
+  revenue(organizationId: string): Promise<MonetizationReport>;
 }

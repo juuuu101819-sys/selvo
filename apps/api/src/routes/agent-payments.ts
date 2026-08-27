@@ -22,6 +22,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { API_KEY_PREFIX_LENGTH } from '../auth/identity-authenticator.js';
 import type { AppContainer } from '../container.js';
+import { recordAgentQuoteMonetization } from '../monetization/record.js';
 import {
   requireKeyManager,
   requireOrganization,
@@ -298,6 +299,13 @@ export function registerAgentPaymentRoutes(
       organizationId: principal.organizationId,
       agentId: principal.kind === 'agent' ? principal.subjectId : null,
       paymentIntentId: id,
+      actor: principal.actor,
+      requestId: request.id,
+    });
+    await recordAgentQuoteMonetization({
+      intent,
+      dashboard: container.persistence.dashboard,
+      auditLogger: container.auditLogger,
       actor: principal.actor,
       requestId: request.id,
     });

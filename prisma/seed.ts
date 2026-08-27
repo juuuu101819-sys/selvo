@@ -39,6 +39,7 @@ import {
   RouteComparisonService,
   RouteCostEngine,
   defaultScoringWeights,
+  demoMonetizationEvents,
   hashPassword,
   hashSecret,
   isCurrencyCode,
@@ -245,6 +246,7 @@ async function main(): Promise<void> {
   await seedDemoAgent();
   await seedCustomerPricing(providerIdBySlug);
   await seedDemoComparison(providerIdBySlug);
+  await seedMonetization();
 
   await report();
 }
@@ -805,6 +807,37 @@ async function seedDemoComparison(providerIdBySlug: Map<string, string>): Promis
   }
 }
 
+async function seedMonetization(): Promise<void> {
+  for (const event of demoMonetizationEvents(Date.now())) {
+    const amounts = {
+      occurredAt: new Date(event.occurredAt),
+      transactionType: event.transactionType,
+      revenueSource: event.revenueSource,
+      rail: event.rail,
+      providerId: event.providerId,
+      providerName: event.providerName,
+      currency: event.currency,
+      asset: event.asset,
+      destinationAsset: event.destinationAsset,
+      agentId: event.agentId,
+      tpvMinorUnits: new Prisma.Decimal(event.tpvMinorUnits),
+      providerCostMinorUnits: new Prisma.Decimal(event.providerCostMinorUnits),
+      platformRevenueMinorUnits: new Prisma.Decimal(event.platformRevenueMinorUnits),
+      partnerCommissionMinorUnits: new Prisma.Decimal(event.partnerCommissionMinorUnits),
+      grossProfitMinorUnits: new Prisma.Decimal(event.grossProfitMinorUnits),
+      takeRateBps: event.takeRateBps === null ? null : new Prisma.Decimal(event.takeRateBps),
+      fundsMoved: false,
+      custody: false,
+      realExecution: false,
+    };
+    await prisma.monetizationEvent.upsert({
+      where: { id: event.id },
+      create: { id: event.id, organizationId: event.organizationId, ...amounts },
+      update: amounts,
+    });
+  }
+}
+
 function spreadBpsOf(route: RouteDto): Prisma.Decimal {
   const mid = new Prisma.Decimal(route.midMarketRate.value);
   const offered = new Prisma.Decimal(route.offeredRate.value);
@@ -926,18 +959,29 @@ function legRows(route: RouteDto): Prisma.QuoteLegCreateWithoutQuoteInput[] {
 }
 
 async function report(): Promise<void> {
-  const [currencies, providers, capabilities, routes, requests, quotes, legs, fees, pricing] =
-    await Promise.all([
-      prisma.currency.count(),
-      prisma.provider.count(),
-      prisma.providerCapability.count(),
-      prisma.route.count(),
-      prisma.transactionRequest.count(),
-      prisma.quote.count(),
-      prisma.quoteLeg.count(),
-      prisma.fee.count(),
-      prisma.customerPricing.count(),
-    ]);
+  const [
+    currencies,
+    providers,
+    capabilities,
+    routes,
+    requests,
+    quotes,
+    legs,
+    fees,
+    pricing,
+    monetization,
+  ] = await Promise.all([
+    prisma.currency.count(),
+    prisma.provider.count(),
+    prisma.providerCapability.count(),
+    prisma.route.count(),
+    prisma.transactionRequest.count(),
+    prisma.quote.count(),
+    prisma.quoteLeg.count(),
+    prisma.fee.count(),
+    prisma.customerPricing.count(),
+    prisma.monetizationEvent.count(),
+  ]);
 
   process.stdout.write(
     [
@@ -951,6 +995,7 @@ async function report(): Promise<void> {
       `  quote legs            ${legs}`,
       `  fees                  ${fees}`,
       `  customer pricing      ${pricing}`,
+      `  monetization events   ${monetization}`,
       '',
       'Demo login (sandbox only):',
       '  email     treasury@demo-trading.example.invalid',
