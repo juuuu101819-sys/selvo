@@ -16,6 +16,7 @@ import {
   idempotencyKeySchema,
   listQuerySchema,
   parseOrThrow,
+  resolveRequestedRails,
   resolveTargetCurrency,
   toMinorUnits,
 } from '../http/validation.js';
@@ -62,7 +63,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
         body.amount,
         container.config.maxAmountMinorUnits,
       ),
-      rails: body.rails ?? null,
+      rails: resolveRequestedRails(body),
       weights: body.weights ?? null,
       idempotencyKey,
       actor: principalOf(request).actor,

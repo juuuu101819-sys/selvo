@@ -1,7 +1,12 @@
 import {
   CURRENCY_REGISTRY,
   DEFAULT_SCORING_WEIGHTS,
+  INTERACTION_MODELS,
+  PLATFORM_CAPABILITIES,
+  PRODUCT,
+  RAIL_FAMILY_REGISTRY,
   RAIL_REGISTRY,
+  ROUTING_PIPELINE,
   SUPPORTED_CURRENCIES,
   type PersistenceDriver,
 } from '@meridian/core';
@@ -73,18 +78,42 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       version: SERVICE_VERSION,
       mode: container.config.mode,
       engineVersion: container.engineVersion,
-      /** Non-custodial by design; see docs/COMPLIANCE.md. */
-      capabilities: {
-        compareRoutes: true,
-        executeTransactions: false,
-        custodyFunds: false,
-        holdCryptoAssets: false,
-        issueStablecoins: false,
+      product: {
+        kind: PRODUCT.kind,
+        name: PRODUCT.name,
+        positioning: PRODUCT.positioning,
+        scope: [...PRODUCT.scope],
+        customers: [...PRODUCT.customers],
+        notFor: [...PRODUCT.notFor],
+      },
+      pipeline: ROUTING_PIPELINE.map((stage) => ({
+        id: stage.id,
+        label: stage.label,
+        status: stage.status,
+      })),
+      railFamilies: Object.values(RAIL_FAMILY_REGISTRY),
+      interactionModels: INTERACTION_MODELS.map((model) => ({
+        id: model.id,
+        payer: model.payer,
+        payee: model.payee,
+        label: model.label,
+        status: model.status,
+      })),
+      /** Non-custodial by design; see docs/COMPLIANCE.md. Single source: PLATFORM_CAPABILITIES. */
+      capabilities: { ...PLATFORM_CAPABILITIES },
+      execution: {
+        implemented: false,
+        delegated: PLATFORM_CAPABILITIES.delegateExecution,
+        statusCode: 501,
+        reason:
+          'Meridian discovers and ranks routes. Settlement is delegated to licensed or authorized ' +
+          'providers. Direct execution, custody and private-key control are out of scope and not implemented.',
       },
       authentication: {
         scheme: container.authenticator.scheme,
         enforcing: container.authenticator.enforcing,
         principalKind: principalOf(request).kind,
+        economicActor: principalOf(request).economicActor,
       },
       persistenceDriver: container.persistence.kind,
       pricing: container.pricing,

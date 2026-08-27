@@ -1,7 +1,9 @@
 # Meridian — Phase Roadmap
 
-Phases are implemented **one at a time, on explicit instruction only**. Phases 1–4b and Phase 2b
-(the organization dashboard) are in place. Later phases wait for an explicit request.
+Phases are implemented **one at a time, on explicit instruction only**. User-facing phases 0–6
+(route comparison through the B2B dashboard) map to Phases 1–4b and 2b below and are in place.
+The expanded product definition is recorded in [MASTER_PRODUCT_DEFINITION.md](./MASTER_PRODUCT_DEFINITION.md).
+Later phases wait for an explicit request.
 
 ---
 
@@ -106,6 +108,22 @@ caching. Read-only pricing only; no money movement.
 - Formatting and expiry classification are pure functions with their own unit suite, so the
   financial display contract fails faster than a browser run.
 
+## Architectural alignment — routing hub ✅ implemented
+
+Generalize the existing B2B FX/payment router into a **global non-custodial financial routing hub**
+without rebuilding it.
+
+- Product identity, three rail families (`tradfi`, `stablecoin`, `defi`), routing pipeline,
+  economic actors and interaction models as core types.
+- `PLATFORM_CAPABILITIES` as the single source of truth (comparison on; custody, keys, wallets,
+  principal trading, DeFi execution, agent payments and delegated execution all off).
+- `DexLiquidityProvider` port, read-only, unregistered.
+- `POST /comparisons` accepts `railFamilies`; empty expansion is 400.
+- Docs: master product definition and architecture assessment.
+
+**Explicitly excluded:** DeFi quoting or execution, real-money execution, AI-agent payment
+initiation, engine-version bump, schema changes.
+
 ## Phase 5 — Live provider adapters _(not started)_
 
 Replace sandbox pricing with real read-only quote APIs from licensed partners: per-adapter
@@ -119,14 +137,22 @@ capability from the database, and persist quotes through the `quotes` table.
 Historical quote warehousing, realised-vs-quoted cost analytics, corridor benchmarks, alerting
 on spread anomalies, and a scheduled corridor coverage report.
 
-## Phase 7 — Execution orchestration, licensed partners only _(not started, gated)_
+## Phase 7 — Delegated execution, licensed partners only _(not started, gated)_
 
 Requires: a licensed partner of record, a compliance sign-off, KYB/KYC and sanctions screening,
 and an explicit written instruction to build it. Meridian would remain non-custodial —
-instructing a licensed partner, never touching funds. Until all of those exist,
-`POST /v1/executions` stays a `501`.
+**delegating** settlement to a licensed partner, never touching funds, keys or wallets, and never
+acting as principal. Until all of those exist, `POST /v1/executions` stays a `501` and
+`delegateExecution` stays false.
 
 ## Phase 8 — Treasury and DEX liquidity research _(not started, gated)_
 
-Read-only DEX liquidity depth modelling and treasury product comparison. Read-only analysis
-only; no on-chain transactions, no asset holdings.
+Read-only DEX liquidity depth modelling (`DexLiquidityProvider.getDepth`) and treasury product
+comparison. Read-only analysis only; no on-chain transactions, no asset holdings, no swaps.
+
+## Phase 9 — AI agent payments _(not started, gated)_
+
+Issue `ai_agent` principals that still act *for* an organization. Agents may request quotes and
+compare routes through the same API. Initiation remains delegated execution (Phase 7) and is
+gated on the same compliance bar. No agent wallets, no agent custody, no agent-to-agent settlement
+on this platform.

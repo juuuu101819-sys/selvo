@@ -2,7 +2,7 @@
   "name": "meridian",
   "version": "0.1.0",
   "private": true,
-  "description": "B2B global financial routing platform — compares cross-border transaction routes",
+  "description": "Global non-custodial financial routing hub — compare and rank routes across tradfi, stablecoin and DeFi rails",
   "license": "UNLICENSED",
   "type": "module",
   "engines": {

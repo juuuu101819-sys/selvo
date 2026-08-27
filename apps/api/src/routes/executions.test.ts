@@ -31,8 +31,12 @@ describe('POST /v1/executions', () => {
     expect(body.error.message).toMatch(/non-custodial/);
     expect(body.error.details).toMatchObject({
       nonCustodial: true,
+      operateAsPrincipal: false,
+      holdPrivateKeys: false,
+      delegateExecution: false,
       documentation: 'docs/COMPLIANCE.md',
     });
+    expect(body.error.message).toMatch(/delegated/);
   });
 
   it('refuses a bodyless request that declares a JSON content type', async () => {
@@ -68,7 +72,7 @@ describe('POST /v1/executions', () => {
 
     expect(rejection).toBeDefined();
     expect(rejection?.actor).toBe('over-eager-integrator');
-    expect(rejection?.payload['reason']).toMatch(/does not execute transactions/);
+    expect(rejection?.payload['reason']).toMatch(/delegated settlement is not implemented/);
   });
 });
 

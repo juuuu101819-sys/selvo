@@ -33,10 +33,40 @@ export type {
   TieredSlippageModel,
 } from './quote.js';
 export {
+  ECONOMIC_ACTOR_KINDS,
+  INTERACTION_MODELS,
+  INTERACTION_MODEL_IDS,
+  isEconomicActorKind,
+  type EconomicActorKind,
+  type InteractionModel,
+  type InteractionModelId,
+} from './actor.js';
+export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
+export {
+  PRODUCT,
+  PRODUCT_KIND,
+  type ProductDefinition,
+  type ProductKind,
+} from './product.js';
+export {
+  ROUTING_PIPELINE,
+  ROUTING_STAGE_IDS,
+  type RoutingStage,
+  type RoutingStageId,
+} from './pipeline.js';
+export {
+  RAIL_FAMILIES,
+  RAIL_FAMILY_REGISTRY,
   RAIL_REGISTRY,
   RAIL_TYPES,
+  availableRailsInFamily,
+  familyOf,
+  isRailFamily,
   isRailType,
+  resolveRailFilter,
   type RailDefinition,
+  type RailFamily,
+  type RailFamilyDefinition,
   type RailType,
 } from './rail.js';
 export type {

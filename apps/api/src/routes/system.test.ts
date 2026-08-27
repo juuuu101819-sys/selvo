@@ -42,15 +42,80 @@ describe('GET /v1/meta', () => {
     const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
 
     expect(response.statusCode).toBe(200);
-    expect(
-      response.json<{ data: { capabilities: Record<string, boolean> } }>().data.capabilities,
-    ).toEqual({
+    const body = response.json<{
+      data: {
+        product: {
+          kind: string;
+          scope: string[];
+          customers: string[];
+          notFor: string[];
+        };
+        capabilities: Record<string, boolean>;
+        execution: { implemented: boolean; delegated: boolean; statusCode: number };
+        pipeline: { id: string; status: string }[];
+        railFamilies: { id: string; status: string }[];
+        rails: { type: string; family: string; status: string }[];
+        interactionModels: { id: string; status: string }[];
+        authentication: { economicActor: string };
+      };
+    }>().data;
+
+    expect(body.product).toMatchObject({
+      kind: 'global_non_custodial_financial_routing_hub',
+      scope: expect.arrayContaining(['tradfi', 'stablecoin', 'defi']),
+      customers: expect.arrayContaining(['businesses', 'ai_agents_planned']),
+      notFor: expect.arrayContaining(['custody', 'principal_trading']),
+    });
+    expect(body.capabilities).toEqual({
       compareRoutes: true,
       executeTransactions: false,
+      delegateExecution: false,
       custodyFunds: false,
       holdCryptoAssets: false,
+      holdPrivateKeys: false,
+      controlCustomerWallets: false,
+      operateAsPrincipal: false,
       issueStablecoins: false,
+      agentPayments: false,
+      defiExecution: false,
     });
+    expect(body.execution).toMatchObject({
+      implemented: false,
+      delegated: false,
+      statusCode: 501,
+    });
+    expect(body.pipeline).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'discover', status: 'available' }),
+        expect.objectContaining({ id: 'delegate', status: 'planned' }),
+      ]),
+    );
+    expect(body.railFamilies).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'tradfi', status: 'available' }),
+        expect.objectContaining({ id: 'stablecoin', status: 'available' }),
+        expect.objectContaining({ id: 'defi', status: 'planned' }),
+      ]),
+    );
+    expect(body.rails).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'bank_fx', family: 'tradfi', status: 'available' }),
+        expect.objectContaining({
+          type: 'stablecoin_settlement',
+          family: 'stablecoin',
+          status: 'available',
+        }),
+        expect.objectContaining({ type: 'dex_liquidity', family: 'defi', status: 'planned' }),
+      ]),
+    );
+    expect(body.interactionModels).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'human_business', status: 'available' }),
+        expect.objectContaining({ id: 'business_business', status: 'available' }),
+        expect.objectContaining({ id: 'agent_agent', status: 'planned' }),
+      ]),
+    );
+    expect(body.authentication.economicActor).toBe('human');
   });
 
   it('lists the registered providers with their licensing posture', async () => {
@@ -60,6 +125,7 @@ describe('GET /v1/meta', () => {
     }>().data.providers;
 
     expect(providers).toHaveLength(4);
+    expect(providers.map((provider) => provider.rail)).not.toContain('dex_liquidity');
     expect(providers.map((provider) => provider.rail).sort()).toEqual([
       'bank_fx',
       'liquidity_provider',

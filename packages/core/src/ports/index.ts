@@ -60,6 +60,11 @@ export {
   type PricingRuleQuery,
 } from './platform-pricing-resolver.js';
 export type { PaymentProvider, PaymentQuote, PaymentQuoteRequest } from './payment-provider.js';
+export type {
+  DexDepthQuote,
+  DexDepthRequest,
+  DexLiquidityProvider,
+} from './dex-liquidity.js';
 export {
   PROVIDER_CAPABILITIES,
   type ProviderAdapter,

@@ -25,6 +25,7 @@ export const PROVIDER_CAPABILITIES = [
   'fx',
   'payment',
   'liquidity',
+  'dex_liquidity',
   'route',
 ] as const;
 

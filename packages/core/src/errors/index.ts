@@ -262,10 +262,16 @@ export class ExecutionNotImplementedError extends AppError {
 
   constructor() {
     super(
-      'Meridian does not execute transactions. The platform is non-custodial and provides ' +
-        'indicative route comparisons only. Execution requires a licensed partner of record and ' +
-        'is not implemented.',
-      { nonCustodial: true, documentation: 'docs/COMPLIANCE.md' },
+      'Meridian does not execute transactions. The platform is non-custodial: it does not hold ' +
+        'funds, keys or wallets, and it does not act as principal. Settlement is delegated to a ' +
+        'licensed partner when that capability exists; it is not implemented.',
+      {
+        nonCustodial: true,
+        operateAsPrincipal: false,
+        holdPrivateKeys: false,
+        delegateExecution: false,
+        documentation: 'docs/COMPLIANCE.md',
+      },
     );
   }
 }

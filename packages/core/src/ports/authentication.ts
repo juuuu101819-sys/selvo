@@ -1,3 +1,5 @@
+import type { EconomicActorKind } from '../domain/actor.js';
+
 /**
  * Authentication architecture.
  *
@@ -17,9 +19,14 @@ export type PrincipalKind = (typeof PRINCIPAL_KINDS)[number];
  * `organizationId` is the tenant boundary every query is scoped by. It is nullable only for
  * anonymous callers on the public comparison API. A null organization on a dashboard request is a
  * bug rather than a valid state.
+ *
+ * `economicActor` is who is speaking, distinct from tenancy: a human user and an API key both act
+ * *for* an organization. An `ai_agent` principal kind is reserved and not issued in this phase.
  */
 export interface Principal {
   readonly kind: PrincipalKind;
+  /** Who is speaking. Agents are a planned principal kind, not a way around tenancy. */
+  readonly economicActor: EconomicActorKind;
   readonly organizationId: string | null;
   /** User id or API key id, depending on `kind`. */
   readonly subjectId: string | null;
@@ -36,6 +43,7 @@ export interface Principal {
 
 export const ANONYMOUS_PRINCIPAL: Principal = {
   kind: 'anonymous',
+  economicActor: 'human',
   organizationId: null,
   subjectId: null,
   displayName: 'Anonymous',

@@ -169,6 +169,44 @@ describe('POST /v1/comparisons', () => {
       expect(payload.data.request.rails).toEqual(['bank_fx', 'payment_institution']);
     });
 
+    it('restricts the comparison to currently priced rails in a family', async () => {
+      const { status, payload } = await createComparison({
+        ...USD_100K_TO_KRW,
+        railFamilies: ['tradfi'],
+      });
+
+      expect(status).toBe(201);
+      expect(payload.data.routes.length).toBeGreaterThan(0);
+      expect(
+        payload.data.routes.every((route) =>
+          ['bank_fx', 'payment_institution', 'liquidity_provider'].includes(route.provider.rail),
+        ),
+      ).toBe(true);
+      expect(payload.data.routes.map((route) => route.provider.rail)).not.toContain(
+        'stablecoin_settlement',
+      );
+    });
+
+    it('intersects an explicit rail list with a family filter', async () => {
+      const { payload } = await createComparison({
+        ...USD_100K_TO_KRW,
+        rails: ['bank_fx', 'stablecoin_settlement'],
+        railFamilies: ['tradfi'],
+      });
+
+      expect(payload.data.routes.map((route) => route.provider.rail)).toEqual(['bank_fx']);
+    });
+
+    it('rejects a DeFi-only family filter because that family has no priced rails', async () => {
+      const { status, payload } = await createComparison({
+        ...USD_100K_TO_KRW,
+        railFamilies: ['defi'],
+      });
+
+      expect(status).toBe(400);
+      expect((payload as unknown as ApiError).error.code).toBe('VALIDATION_ERROR');
+    });
+
     it('applies caller-supplied scoring weights', async () => {
       const { payload } = await createComparison({
         ...USD_100K_TO_KRW,
@@ -242,6 +280,11 @@ describe('POST /v1/comparisons', () => {
       {
         name: 'an empty rail filter',
         body: { ...USD_100K_TO_KRW, rails: [] },
+        code: 'VALIDATION_ERROR',
+      },
+      {
+        name: 'an unknown rail family',
+        body: { ...USD_100K_TO_KRW, railFamilies: ['hawala'] },
         code: 'VALIDATION_ERROR',
       },
       {

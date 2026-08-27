@@ -32,13 +32,21 @@ describe('anonymous authentication', () => {
   it('reports the scheme and that it does not enforce', async () => {
     const response = await harness.app.inject({ method: 'GET', url: `${API_V1_PREFIX}/meta` });
     const auth = response.json<{
-      data: { authentication: { scheme: string; enforcing: boolean; principalKind: string } };
+      data: {
+        authentication: {
+          scheme: string;
+          enforcing: boolean;
+          principalKind: string;
+          economicActor: string;
+        };
+      };
     }>().data.authentication;
 
     expect(auth).toEqual({
       scheme: 'session+api_key',
       enforcing: true,
       principalKind: 'anonymous',
+      economicActor: 'human',
     });
   });
 

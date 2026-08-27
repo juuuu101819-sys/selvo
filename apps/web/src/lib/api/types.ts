@@ -147,8 +147,30 @@ export interface CurrencyDto {
   readonly name: string;
 }
 
+export interface RailFamilyDto {
+  readonly id: string;
+  readonly label: string;
+  readonly description: string;
+  readonly status: 'available' | 'planned';
+}
+
+export interface PipelineStageDto {
+  readonly id: string;
+  readonly label: string;
+  readonly status: 'available' | 'planned';
+}
+
+export interface InteractionModelDto {
+  readonly id: string;
+  readonly payer: string;
+  readonly payee: string;
+  readonly label: string;
+  readonly status: 'available' | 'planned';
+}
+
 export interface RailDto {
   readonly type: string;
+  readonly family: string;
   readonly label: string;
   readonly description: string;
   readonly status: 'available' | 'planned';
@@ -157,12 +179,35 @@ export interface RailDto {
 export interface MetaDto {
   readonly mode: string;
   readonly engineVersion: string;
+  readonly product: {
+    readonly kind: string;
+    readonly name: string;
+    readonly positioning: string;
+    readonly scope: readonly string[];
+    readonly customers: readonly string[];
+    readonly notFor: readonly string[];
+  };
+  readonly pipeline: readonly PipelineStageDto[];
+  readonly railFamilies: readonly RailFamilyDto[];
+  readonly interactionModels: readonly InteractionModelDto[];
   readonly capabilities: {
     readonly compareRoutes: boolean;
     readonly executeTransactions: boolean;
+    readonly delegateExecution: boolean;
     readonly custodyFunds: boolean;
     readonly holdCryptoAssets: boolean;
+    readonly holdPrivateKeys: boolean;
+    readonly controlCustomerWallets: boolean;
+    readonly operateAsPrincipal: boolean;
     readonly issueStablecoins: boolean;
+    readonly agentPayments: boolean;
+    readonly defiExecution: boolean;
+  };
+  readonly execution: {
+    readonly implemented: boolean;
+    readonly delegated: boolean;
+    readonly statusCode: number;
+    readonly reason: string;
   };
   readonly pricing: {
     readonly datasetVersion: string;

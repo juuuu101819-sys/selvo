@@ -26,7 +26,9 @@ export function registerExecutionRoutes(app: FastifyInstance, container: AppCont
       comparisonId: null,
       providerId: null,
       payload: {
-        reason: 'platform is non-custodial and does not execute transactions',
+        reason:
+          'platform is non-custodial and does not execute transactions; delegated settlement is not implemented',
+        delegateExecution: false,
         mode: container.config.mode,
       },
     });

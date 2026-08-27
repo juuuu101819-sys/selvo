@@ -1,12 +1,71 @@
 # Meridian — Architecture
 
-Meridian is a B2B **global financial routing** platform. It compares candidate routes for a
-cross-border business transaction and reports the estimated all-in cost, exchange rate, fee
-breakdown, settlement time, slippage and a composite route score.
+Meridian is a **global non-custodial financial routing hub**. It connects three rail families —
+traditional finance, stablecoin finance, and DeFi liquidity — and performs:
 
-Meridian is a **decision-support system**. It is explicitly not a money transmitter, not a
-custodian, and not an execution venue. See [COMPLIANCE.md](./COMPLIANCE.md) for the hard
-boundaries that the code enforces.
+**Discover → Quote → Compare → Route → Optimize → Delegate execution.**
+
+The first shipped slice is B2B route comparison (all-in cost, mid-market benchmark, fee breakdown,
+settlement time, slippage, composite score). That slice is reused, not replaced. Meridian is not a
+custodian, not a principal, and not an execution venue. Settlement, when it exists, is delegated to
+licensed or authorized providers.
+
+Canonical product text: [MASTER_PRODUCT_DEFINITION.md](./MASTER_PRODUCT_DEFINITION.md).
+Hard boundaries: [COMPLIANCE.md](./COMPLIANCE.md).
+
+---
+
+## 0. Architectural alignment
+
+This section records the audit against the expanded product definition and the *minimum* changes
+made. Nothing below rebuilds the application.
+
+### Reuse as-is
+
+- Decimal-safe money model, cost engine, scorer, fingerprints, audit log.
+- `RouteProvider` plus capability ports (`MarketData`, `FX`, `Payment`, `Liquidity`) and the
+  `FXRouteProvider` bridge. The engine still sees rails, not families.
+- Existing priced rails: `bank_fx`, `payment_institution`, `stablecoin_settlement`,
+  `liquidity_provider`. Reserved rails `dex_liquidity` and `treasury_product` were already in
+  `RAIL_TYPES` and Prisma `ProviderRail`.
+- Org-scoped auth, dashboard, comparison API, and the deliberate `501` on `POST /executions`.
+- Schema non-custody: no balances, no settlement states, no key or wallet tables.
+
+### Generalize (not replace)
+
+- Flat rails now carry a **family** (`tradfi` / `stablecoin` / `defi`). HTTP may filter by
+  `railFamilies`; the engine still receives a rail list.
+- Execution story: “we never execute” remains true, and is now stated as **delegate to licensed
+  partners — not implemented**. Distinct flags: `executeTransactions` (principal) vs
+  `delegateExecution` (instruct a partner). Both false.
+- `PLATFORM_CAPABILITIES` is the single source of truth for meta, tests and docs.
+- `Principal.economicActor` (`human` | `business` | `ai_agent`) without a new auth kind. Sessions
+  are humans; API keys are businesses; agents are not issued.
+
+### Missing abstractions added (types and ports only)
+
+- Rail families, `resolveRailFilter`, `availableRailsInFamily`.
+- `ROUTING_PIPELINE` with `delegate` planned.
+- Economic actors and `INTERACTION_MODELS` (agent flows planned).
+- `PRODUCT` / `PRODUCT_KIND`.
+- `DexLiquidityProvider` — **read-only `getDepth`**. No swap, no keys, **no adapter registered**.
+
+### Deliberately not changed
+
+- Quote engine request/snapshot shape and `ENGINE_VERSION` `2.0.0`. Family filters expand at the
+  HTTP layer.
+- Prisma schema and enums (`dex_liquidity` already existed).
+- Sandbox adapters and pricing datasets.
+- Comparison UI and dashboard behaviour.
+- No DEX quoting, no agent credentials, no delegated execution.
+
+### HTTP surface of this phase
+
+- `GET /api/v1/meta` publishes product, pipeline, rail families, interaction models, expanded
+  capabilities, and `execution.delegated: false`.
+- `POST /api/v1/comparisons` accepts optional `railFamilies`, intersected with `rails`. A filter
+  that names only planned rails (for example DeFi-only) is **400**, not a silent empty quote.
+- Planned rails never expand into a quote.
 
 ---
 
@@ -129,9 +188,11 @@ registered for a corridor it is not authorised for.
 
 `RouteProvider` above is the _engine-facing_ contract. Integrations are written against
 capability-specific ones — `MarketDataProvider`, `FXProvider`, `PaymentProvider`,
-`LiquidityProvider` — shaped like the upstream APIs they wrap, with a bridge composing them into a
-`RouteProvider`. That bridge is where anything peculiar to an upstream is resolved, which is what
-keeps provider-specific concepts out of the engine entirely.
+`LiquidityProvider`, and a planned read-only `DexLiquidityProvider` — shaped like the upstream APIs
+they wrap, with a bridge composing them into a `RouteProvider`. That bridge is where anything
+peculiar to an upstream is resolved, which is what keeps provider-specific concepts out of the
+engine entirely. `DexLiquidityProvider` has no registered adapter; it exists so a future depth
+feed cannot teach the engine about pools, chains or wallets.
 
 All of them share one thin base, `ProviderAdapter`, so a single resilience pipeline, recorder and
 registry serve every kind of provider. Timeout, overall latency budget, bounded jittered retry of
@@ -224,8 +285,10 @@ comparison (recorded in `providerErrors`) instead of failing the request.
 
 Organization-scoped. The parts that were hard to retrofit in Phase 1 are now wired:
 
-- `Principal` carries `organizationId` (the tenant boundary), `subjectId`, `roles` and a `verified`
-  flag. Handlers read the principal; they never take `organizationId` from the request body.
+- `Principal` carries `organizationId` (the tenant boundary), `subjectId`, `roles`, a `verified`
+  flag, and `economicActor` (`human` for session users, `business` for API keys, `ai_agent`
+  reserved and not issued). Handlers read the principal; they never take `organizationId` from the
+  request body.
 - `IdentityAuthenticator` accepts a session bearer (`mds_…`) or `X-Api-Key`, and still serves
   callers with no credential as anonymous on public routes. An unverifiable credential is `401`.
 - Dashboard repositories filter by `organizationId` in the query. Cross-tenant ids return `404`.
@@ -262,11 +325,12 @@ every API response carries `"mode": "sandbox"` plus a non-binding-quote disclaim
   earlier in this project was exactly that class of bug, so the suite sends a bodyless POST with a
   JSON content type on purpose.
 
-## 13. Deliberately out of scope for Phase 1
+## 13. Deliberately out of scope
 
-No execution, no custody, no wallets, no key management, no stablecoin issuance, no auth
-provider integration, no DEX connectivity. `POST /v1/executions` exists and returns
-`501 EXECUTION_NOT_IMPLEMENTED` — a deliberate, tested, audited refusal rather than an absent
-endpoint, so the boundary is visible in the API surface itself.
+No execution (principal or delegated), no custody of fiat or crypto, no wallets, no key management,
+no stablecoin issuance, no auth-provider integration, no DEX connectivity, no AI-agent payment
+initiation. `POST /v1/executions` exists and returns `501 EXECUTION_NOT_IMPLEMENTED` — a
+deliberate, tested, audited refusal rather than an absent endpoint, so the boundary is visible in
+the API surface itself.
 
 See [ROADMAP.md](./ROADMAP.md) for the phase plan.

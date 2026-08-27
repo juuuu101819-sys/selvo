@@ -6,8 +6,9 @@ All versioned routes are served under **`/api/v1`**. The original `/v1` prefix s
 returns `Deprecation: true` with a `Link` header naming its successor; it will be removed in the
 next version.
 
-Every quote this API returns is **indicative and non-binding**. Meridian does not custody funds or
-execute transactions; see [COMPLIANCE.md](./COMPLIANCE.md).
+Every quote this API returns is **indicative and non-binding**. Meridian is a non-custodial routing
+hub: it does not custody funds, hold keys, act as principal, or execute transfers; see
+[COMPLIANCE.md](./COMPLIANCE.md) and [MASTER_PRODUCT_DEFINITION.md](./MASTER_PRODUCT_DEFINITION.md).
 
 ## Conventions
 
@@ -104,21 +105,33 @@ process restarted.
 
 ## `GET /api/v1/meta`
 
-Everything a client needs to build a request: platform mode, engine version, declared capabilities,
-pricing dataset versions, registered providers, rails (with `available` / `planned` status),
-supported currencies with their minor-unit exponents, and the default scoring weights.
+Everything a client needs to build a request: product identity, routing pipeline, platform mode,
+engine version, declared capabilities, rail families, interaction models, pricing dataset versions,
+registered providers, rails (with family and `available` / `planned` status), supported currencies
+with their minor-unit exponents, and the default scoring weights.
 
-The `capabilities` block is the machine-readable form of the compliance boundary:
+The `capabilities` block is the machine-readable form of the compliance boundary
+(`PLATFORM_CAPABILITIES` in core — do not fork a second copy):
 
 ```json
 {
   "compareRoutes": true,
   "executeTransactions": false,
+  "delegateExecution": false,
   "custodyFunds": false,
   "holdCryptoAssets": false,
-  "issueStablecoins": false
+  "holdPrivateKeys": false,
+  "controlCustomerWallets": false,
+  "operateAsPrincipal": false,
+  "issueStablecoins": false,
+  "agentPayments": false,
+  "defiExecution": false
 }
 ```
+
+`execution.delegated` is false. `pipeline` names Discover → Delegate; only `delegate` is `planned`.
+`railFamilies` lists `tradfi` and `stablecoin` as available and `defi` as planned. Agent
+interaction models (`business_agent`, `agent_business`, `agent_agent`) are planned.
 
 ## `POST /api/v1/comparisons`
 
@@ -130,6 +143,7 @@ Compares every eligible route for a transaction.
   "targetCurrency": "KRW",
   "amount": "100000.00", // major units, no more precision than the currency allows
   "rails": ["bank_fx"], // optional; omit for every rail
+  "railFamilies": ["tradfi"], // optional; intersected with `rails`; planned families 400
   "weights": {
     // optional; must sum to exactly 1
     "cost": "0.6",
@@ -254,4 +268,6 @@ Always returns `501 EXECUTION_NOT_IMPLEMENTED`, and audits the attempt.
 
 This endpoint exists so the refusal to move money is visible in the API surface, recorded when
 someone tries, and covered by a test — rather than being an absent route that answers 404 and
-explains nothing. Nothing in the codebase can initiate a payment.
+explains nothing. Nothing in the codebase can initiate a payment, hold a key, or act as principal.
+Delegated settlement (`delegateExecution`) is the future form of this endpoint and is not
+implemented.

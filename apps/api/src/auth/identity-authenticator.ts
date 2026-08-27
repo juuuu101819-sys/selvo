@@ -59,6 +59,7 @@ export class IdentityAuthenticator implements Authenticator {
     }
     return {
       kind: 'user',
+      economicActor: 'human',
       organizationId: resolved.organization.id,
       subjectId: resolved.user.id,
       displayName: resolved.user.displayName,
@@ -87,6 +88,7 @@ export class IdentityAuthenticator implements Authenticator {
     await this.identity.touchApiKey(key.id, this.clock.nowIso());
     return {
       kind: 'service',
+      economicActor: 'business',
       organizationId: organization.id,
       subjectId: key.id,
       displayName: key.label,

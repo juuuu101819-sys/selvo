@@ -1,10 +1,13 @@
 import {
   Money,
+  RAIL_FAMILIES,
   RAIL_TYPES,
   SUPPORTED_CURRENCIES,
   ValidationError,
   currencyExponent,
+  resolveRailFilter,
   type CurrencyCode,
+  type RailType,
 } from '@meridian/core';
 import { z } from 'zod';
 
@@ -39,6 +42,12 @@ export const createComparisonSchema = z
     /** Send amount in major units, e.g. `"100000.00"`. */
     amount: decimalAmount,
     rails: z.array(z.enum(RAIL_TYPES)).min(1).max(RAIL_TYPES.length).optional(),
+    /**
+     * Restrict the comparison to every currently priced rail in these families.
+     *
+     * Combined with `rails` as an intersection. Planned rails (DEX, treasury) never expand.
+     */
+    railFamilies: z.array(z.enum(RAIL_FAMILIES)).min(1).max(RAIL_FAMILIES.length).optional(),
     weights: z.object({ cost: weight, speed: weight, reliability: weight }).strict().optional(),
   })
   .strict()
@@ -71,6 +80,29 @@ export function resolveTargetCurrency(body: CreateComparisonBody): CurrencyCode 
 }
 
 export type CreateComparisonBody = z.infer<typeof createComparisonSchema>;
+
+/**
+ * Turns `rails` and `railFamilies` into the engine's rail filter.
+ *
+ * `null` means every rail. An empty result means the caller asked for a family that has no
+ * priced rails yet (DeFi) or combined filters that cannot overlap — that is a 400, not a 422.
+ */
+export function resolveRequestedRails(body: CreateComparisonBody): readonly RailType[] | null {
+  const rails = resolveRailFilter({
+    ...(body.rails === undefined ? {} : { rails: body.rails }),
+    ...(body.railFamilies === undefined ? {} : { families: body.railFamilies }),
+  });
+  if (rails !== null && rails.length === 0) {
+    throw new ValidationError(
+      'No priced rail matches the requested rails and families. DeFi and treasury rails are planned.',
+      {
+        rails: body.rails ?? null,
+        railFamilies: body.railFamilies ?? null,
+      },
+    );
+  }
+  return rails;
+}
 
 export const comparisonIdParamsSchema = z
   .object({ comparisonId: z.string().min(1).max(128) })

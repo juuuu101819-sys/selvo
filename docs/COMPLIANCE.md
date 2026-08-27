@@ -1,17 +1,23 @@
 # Meridian — Compliance Boundaries
 
-Meridian is a **decision-support and analytics** platform. The constraints below are product
-requirements, and each one is backed by something in the code rather than by good intentions.
+Meridian is a **non-custodial financial routing hub**. It discovers, quotes, compares and ranks
+routes; it does not move money. The constraints below are product requirements, and each one is
+backed by something in the code rather than by good intentions. Canonical product text:
+[MASTER_PRODUCT_DEFINITION.md](./MASTER_PRODUCT_DEFINITION.md).
 
 ## Hard boundaries
 
 | Boundary                                                       | Enforcement in code                                                                                                                                                                                                                    |
 | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No custody of customer funds**                               | No wallet, account, balance, ledger or key-management code exists in the repository. There is no data model capable of representing a customer balance.                                                                                |
-| **No execution of real financial transactions**                | There is no outbound payment-initiation call anywhere in the codebase. `POST /v1/executions` returns `501 EXECUTION_NOT_IMPLEMENTED`, and the refusal is audit-logged and covered by an integration test.                              |
-| **No holding of crypto assets**                                | No private keys, no signing, no RPC/on-chain client dependency. Stablecoin rails are priced as _quote data only_.                                                                                                                      |
-| **No stablecoin issuance**                                     | No minting, burning, reserve or attestation logic.                                                                                                                                                                                     |
+| **No custody of customer funds (fiat or crypto)**              | No wallet, account, balance, ledger or key-management code exists in the repository. There is no data model capable of representing a customer balance. `custodyFunds` and `holdCryptoAssets` are false in `PLATFORM_CAPABILITIES`.    |
+| **No private keys, no wallet control**                         | No signing, no keystore, no RPC/on-chain client dependency. `holdPrivateKeys` and `controlCustomerWallets` are false. The `DexLiquidityProvider` port forbids keys and submission even if an adapter is added later.                   |
+| **No execution as principal**                                  | There is no outbound payment-initiation call anywhere in the codebase. `executeTransactions` and `operateAsPrincipal` are false. `POST /v1/executions` returns `501 EXECUTION_NOT_IMPLEMENTED`.                                        |
+| **No delegated execution yet**                                 | Distinct from principal trading: instructing a licensed partner is a future capability (`delegateExecution: false`). The 501 is the placeholder for that gate, not a missing feature. The refusal is audit-logged and tested.          |
+| **No DeFi execution**                                          | `defiExecution` is false. `dex_liquidity` is a planned, read-only rail. No adapter is registered. No swaps, wraps or bridges.                                                                                                          |
+| **No AI-agent payment initiation**                             | `agentPayments` is false. `Principal.economicActor` may be `ai_agent` in the type system; no such principal is issued.                                                                                                                 |
+| **No stablecoin issuance**                                     | No minting, burning, reserve or attestation logic. `issueStablecoins` is false.                                                                                                                                                        |
 | **No regulated financial services without a licensed partner** | Every provider descriptor declares a `licensing` posture. Adapters are `unlicensed_sandbox` in Phase 1 and only register in `sandbox` mode. Booting in `production` mode with no licensed adapter configured is a fatal startup error. |
+| **No investment guarantees**                                   | Every quote is marked indicative and non-binding. Responses carry `mode` and a disclaimer. Sandbox pricing is synthetic reference data.                                                                                                |
 
 ## Quote status
 
@@ -34,7 +40,7 @@ optional scoring weights. No beneficiary, payer, account number or identity docu
 accepted by any endpoint — the request schemas reject unknown fields, so such data cannot be
 smuggled in.
 
-## Before any Phase 5 (execution) work
+## Before any delegated-execution (Phase 7) work
 
 All of the following must exist first, and this document must be updated to record them:
 
@@ -42,7 +48,7 @@ All of the following must exist first, and this document must be updated to reco
 2. Legal review of the platform's regulatory position in each operating jurisdiction.
 3. KYB/KYC and sanctions screening on every counterparty.
 4. Transaction monitoring and suspicious-activity reporting.
-5. An explicit written instruction from the product owner to implement execution.
+5. An explicit written instruction from the product owner to implement **delegated** execution.
 
-Until then the platform compares routes and hands the customer a recommendation. The customer
-transacts with the licensed provider directly.
+Until then the platform compares routes and hands the caller a recommendation. The caller transacts
+with the licensed provider directly. Meridian does not become the transacting party.

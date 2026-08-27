@@ -1,11 +1,14 @@
 # Meridian
 
-**Find the best financial route for a business transaction.**
+**A global non-custodial financial routing hub.**
 
-Meridian is a B2B global financial routing platform. Give it a corridor and an amount and it prices
-every available route — traditional bank FX, licensed payment institutions, regulated stablecoin
-settlement, wholesale liquidity providers — and reports the all-in cost, exchange rate, fee
-breakdown, settlement time, expected slippage and a composite route score for each.
+Meridian connects traditional finance, stablecoin settlement and (planned) DeFi liquidity. Give it a
+corridor and an amount and it prices every available route — bank FX, licensed payment institutions,
+regulated stablecoin partners, wholesale liquidity providers — and reports the all-in cost, exchange
+rate, fee breakdown, settlement time, expected slippage and a composite route score for each.
+
+The B2B comparison UI already shipped is the first slice of that hub. Canonical definition:
+[docs/MASTER_PRODUCT_DEFINITION.md](./docs/MASTER_PRODUCT_DEFINITION.md).
 
 ```
 USD 100,000 → KRW
@@ -22,11 +25,11 @@ institution charging an explicit fee on a keen rate.
 
 ## What Meridian does not do
 
-Meridian is a decision-support system. It **does not** custody customer funds, execute
-transactions, hold crypto assets, issue stablecoins, or provide regulated financial services
-without a licensed partner. These are enforced in code, not just documented — see
-[docs/COMPLIANCE.md](./docs/COMPLIANCE.md). `POST /v1/executions` returns a deliberate, audited
-`501`.
+Meridian is non-custodial. It **does not** custody fiat or crypto, hold private keys, control
+wallets, execute transactions as principal, delegate settlement yet, hold crypto assets, issue
+stablecoins, or provide regulated financial services without a licensed partner. These are enforced
+in code, not just documented — see [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).
+`POST /v1/executions` returns a deliberate, audited `501`.
 
 ## Running it locally
 
@@ -106,12 +109,13 @@ prisma/
 tests/
   e2e/            Playwright specs spanning both apps.
 docs/
-  ARCHITECTURE.md How it fits together and why.
+  ARCHITECTURE.md How it fits together, including the routing-hub alignment.
+  MASTER_PRODUCT_DEFINITION.md  Canonical product: three rails, pipeline, non-custody, agents.
   QUOTE_ENGINE.md The pricing and scoring mathematics, stated formally.
   PROVIDERS.md    Market data and provider interfaces, resilience, quote freshness.
   DATABASE.md     The data model, its invariants, and how to work with it locally.
   STACK.md        The chosen stack, the directory mapping, and the decisions behind them.
-  ROADMAP.md      Phase plan. Phases 1–4b and the organization dashboard (Phase 2b) are in place.
+  ROADMAP.md      Phase plan. Phases 1–4b, the dashboard (Phase 2b), and architectural alignment.
   COMPLIANCE.md   The boundaries, and how the code enforces them.
   API.md          Endpoint reference.
 ```

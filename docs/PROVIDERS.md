@@ -17,6 +17,7 @@ engine.
         │                        │        │        │                      │
  MarketDataProvider       FXProvider  PaymentProvider  LiquidityProvider  RouteProvider
  getMarketRate()          getFXQuote()  getPaymentQuote()  getLiquidityQuote()  fetchQuote()
+ DexLiquidityProvider (planned, unregistered) — getDepth() only; no swap, no keys
         │                        │        │        │                      ▲
         │                        │        │        │                      │
         └────────► bridge (FXRouteProvider, …) ────┴──────────────────────┘
@@ -28,8 +29,10 @@ engine.
 Two families of contract, meeting at a bridge:
 
 - **Integration-facing** — `MarketDataProvider`, `FXProvider`, `PaymentProvider`,
-  `LiquidityProvider`. Shaped like the upstream APIs they wrap, so an adapter is a thin translation
-  rather than a reinterpretation.
+  `LiquidityProvider`, and a planned read-only `DexLiquidityProvider`. Shaped like the upstream APIs
+  they wrap, so an adapter is a thin translation rather than a reinterpretation. The DEX port is
+  depth-only: implementations must not hold keys, sign, submit, wrap, bridge or swap. No DEX adapter
+  is registered in this phase.
 - **Engine-facing** — `RouteProvider`. Expressed in the engine's own vocabulary: a mid-market
   benchmark, an offered rate, a fee schedule, a settlement estimate, a slippage model.
 
@@ -186,7 +189,8 @@ getting thorough treatment and the others a smoke test.
 
 Nothing here initiates a payment. These are read-only pricing integrations against a static dataset;
 there is no outbound payment-initiation call anywhere in the repository, and
-`POST /api/v1/executions` remains an audited `501`. See [COMPLIANCE.md](./COMPLIANCE.md).
+`POST /api/v1/executions` remains an audited `501`. Delegated execution is declared and false. See
+[COMPLIANCE.md](./COMPLIANCE.md).
 
 ## What comes next
 
