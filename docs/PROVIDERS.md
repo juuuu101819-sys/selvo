@@ -34,9 +34,10 @@ Two families of contract, meeting at a bridge:
   adapter is a thin translation rather than a reinterpretation.
 - **Catalog-facing** — `FinancialProvider`. The common façade: `getQuote`, `getCapabilities`,
   `getSupportedAssets`, `getSupportedCurrencies`, `getSettlementEstimate`, `getFees`,
-  `getLiquidityInfo`. Existing route adapters are wrapped; demo ramp / AMM / aggregator implement it
+  `getLiquidityInfo`. Existing route adapters are wrapped; demo ramp / DEX / AMM / aggregator implement it
   directly. A normalised quote can represent fiat, stablecoin and crypto pairs. `executable` is
-  always false.
+  always false. DeFi venues also implement `DeFiLiquiditySource` (`getQuote`, `getLiquidity`,
+  `getSwapFee`, `getEstimatedSlippage`, `getNetworkFee`, `getSupportedTokens`, `getSupportedChains`).
 - **Engine-facing** — `RouteProvider`. Unchanged. The comparison engine still only sees ISO currency
   corridors. DeFi demos are not registered as `RouteProvider`s.
 - **Engine-facing** — `RouteProvider`. Expressed in the engine's own vocabulary: a mid-market

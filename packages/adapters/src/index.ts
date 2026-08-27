@@ -26,6 +26,7 @@ export {
   DemoMarketDataProvider,
   DemoAmmProvider,
   DemoDexAggregatorProvider,
+  DemoDexProvider,
   DemoStablecoinRampProvider,
   createDemoMarketDataStack,
   createFinancialCatalog,

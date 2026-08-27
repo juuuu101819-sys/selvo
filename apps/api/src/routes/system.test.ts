@@ -82,6 +82,7 @@ describe('GET /v1/meta', () => {
       multiRailRouting: true,
       routeGraph: true,
       stablecoinRouting: true,
+      defiLiquidityRouting: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,
@@ -122,6 +123,15 @@ describe('GET /v1/meta', () => {
     expect(body.authentication.economicActor).toBe('human');
   });
 
+  it('publishes the DeFi liquidity routing engine version', async () => {
+    const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
+    const data = response.json<{
+      data: { defiRoutingEngineVersion: string; capabilities: { defiLiquidityRouting: boolean } };
+    }>().data;
+    expect(data.defiRoutingEngineVersion).toBe('1.0.0');
+    expect(data.capabilities.defiLiquidityRouting).toBe(true);
+  });
+
   it('lists the registered providers with their licensing posture', async () => {
     const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
     const providers = response.json<{
@@ -152,7 +162,7 @@ describe('GET /v1/meta', () => {
     }>().data;
 
     expect(catalog.providerCatalog.categories).toEqual(['traditional', 'stablecoin', 'defi']);
-    expect(catalog.providerCatalog.providers).toHaveLength(7);
+    expect(catalog.providerCatalog.providers).toHaveLength(8);
     expect(catalog.assets.map((asset) => asset.code)).toEqual(
       expect.arrayContaining(['USD', 'USDC', 'ETH']),
     );

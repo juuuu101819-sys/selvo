@@ -18,5 +18,6 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.multiRailRouting).toBe(true);
     expect(PLATFORM_CAPABILITIES.routeGraph).toBe(true);
     expect(PLATFORM_CAPABILITIES.stablecoinRouting).toBe(true);
+    expect(PLATFORM_CAPABILITIES.defiLiquidityRouting).toBe(true);
   });
 });

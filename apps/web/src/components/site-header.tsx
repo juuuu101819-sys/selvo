@@ -84,6 +84,9 @@ export async function SiteHeader({
           >
             Stablecoins
           </Button>
+          <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/defi" />}>
+            DeFi
+          </Button>
         </div>
       </div>
     </header>

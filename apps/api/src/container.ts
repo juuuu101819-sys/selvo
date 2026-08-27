@@ -1,5 +1,7 @@
 import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet } from '@meridian/adapters';
 import {
+  DEFI_ROUTING_ENGINE_VERSION,
+  DefiRouter,
   ENGINE_VERSION,
   FinancialProviderRegistry,
   GRAPH_ENGINE_VERSION,
@@ -42,6 +44,7 @@ export interface AppContainer {
   readonly comparisons: RouteComparisonService;
   readonly routing: MultiRailRouter;
   readonly stablecoinRouting: StablecoinRouter;
+  readonly defiRouting: DefiRouter;
   readonly routeGraph: RouteGraphService;
   readonly auditLogger: AuditLogger;
   readonly authenticator: Authenticator;
@@ -57,6 +60,7 @@ export interface AppContainer {
   readonly routingEngineVersion: string;
   readonly graphEngineVersion: string;
   readonly stablecoinRoutingEngineVersion: string;
+  readonly defiRoutingEngineVersion: string;
   /** Where negotiated commercial terms come from, or `"none"` when none are configured. */
   readonly pricingResolverKind: string;
   close(): Promise<void>;
@@ -158,6 +162,17 @@ export function createContainer(options: ContainerOptions): AppContainer {
     providerTimeoutMs: config.providerTimeoutMs,
   });
 
+  const defiRouting = new DefiRouter({
+    mode: config.mode,
+    registry: financialProviders,
+    costEngine,
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+    logger,
+    providerTimeoutMs: config.providerTimeoutMs,
+  });
+
   const routeGraph = new RouteGraphService({
     mode: config.mode,
     graph: buildDemoFinancialGraph(),
@@ -175,6 +190,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     routingEngineVersion: ROUTING_ENGINE_VERSION,
     graphEngineVersion: GRAPH_ENGINE_VERSION,
     stablecoinRoutingEngineVersion: STABLECOIN_ROUTING_ENGINE_VERSION,
+    defiRoutingEngineVersion: DEFI_ROUTING_ENGINE_VERSION,
     persistenceDriver: persistence.kind,
     providerCount: registry.all().length,
     financialProviderCount: financialProviders.all().length,
@@ -191,6 +207,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     comparisons,
     routing,
     stablecoinRouting,
+    defiRouting,
     routeGraph,
     auditLogger,
     authenticator,
@@ -209,6 +226,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     routingEngineVersion: ROUTING_ENGINE_VERSION,
     graphEngineVersion: GRAPH_ENGINE_VERSION,
     stablecoinRoutingEngineVersion: STABLECOIN_ROUTING_ENGINE_VERSION,
+    defiRoutingEngineVersion: DEFI_ROUTING_ENGINE_VERSION,
     pricingResolverKind: pricingResolver === noPlatformPricingResolver ? 'none' : persistence.kind,
     close: () => persistence.close(),
   };

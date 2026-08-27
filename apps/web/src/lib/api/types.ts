@@ -182,6 +182,7 @@ export interface MetaDto {
   readonly routingEngineVersion?: string;
   readonly graphEngineVersion?: string;
   readonly stablecoinRoutingEngineVersion?: string;
+  readonly defiRoutingEngineVersion?: string;
   readonly product: {
     readonly kind: string;
     readonly name: string;
@@ -209,6 +210,7 @@ export interface MetaDto {
     readonly multiRailRouting: boolean;
     readonly routeGraph: boolean;
     readonly stablecoinRouting: boolean;
+    readonly defiLiquidityRouting: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -686,6 +688,112 @@ export interface StablecoinCatalogDto {
     readonly defaultChain: ChainMetadataDto;
     readonly chains: readonly (ChainMetadataDto & { readonly status: 'available' | 'planned' })[];
     readonly custodiedByPlatform: false;
+  }[];
+  readonly chains: readonly ChainMetadataDto[];
+  readonly explanation: string;
+}
+
+export interface DefiRouteDto {
+  readonly routeId: string;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly routeKind: string;
+  readonly venueKind: string | null;
+  readonly conversionKind: string;
+  readonly asset: {
+    readonly source: string;
+    readonly destination: string;
+  };
+  readonly chain: {
+    readonly source: ChainMetadataDto | null;
+    readonly destination: ChainMetadataDto | null;
+    readonly settlement: ChainMetadataDto | null;
+  };
+  readonly price: {
+    readonly indicated: string;
+    readonly mid: string;
+  };
+  readonly swapFee: AssetAmountJson;
+  readonly networkFee: AssetAmountJson;
+  readonly estimatedSlippage: {
+    readonly bps: string;
+    readonly model: { readonly kind: string };
+  };
+  readonly liquidity: {
+    readonly availableDepthMinorUnits: string | null;
+    readonly venue: string | null;
+    readonly chain: ChainMetadataDto | null;
+  };
+  readonly estimatedSettlementTime: SettlementDto;
+  readonly expiration: string | null;
+  readonly estimatedReceiveAmount: AssetAmountJson;
+  readonly estimatedCost: AssetAmountJson;
+  readonly totalCostBps: string;
+  readonly hops: readonly string[];
+  readonly provider: {
+    readonly id: string;
+    readonly name: string;
+    readonly rail: string;
+    readonly railLabel: string;
+    readonly category: string;
+    readonly railFamily: string;
+  };
+  readonly explanation: string;
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly walletsConnected: false;
+  readonly privateKeysGenerated: false;
+  readonly swapSubmitted: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+}
+
+export interface DefiRoutingDto {
+  readonly routingId: string;
+  readonly defiRoutingEngineVersion: string;
+  readonly conversionKind: string;
+  readonly aiUsed: false;
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly walletsConnected: false;
+  readonly privateKeysGenerated: false;
+  readonly swapSubmitted: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+  readonly routes: readonly DefiRouteDto[];
+  readonly recommendedRoute: DefiRouteDto | null;
+  readonly recommendedExecutionRoute: DefiRouteDto | null;
+  readonly comparedFamilies: readonly string[];
+  readonly explanation: string;
+}
+
+export interface DefiCatalogDto {
+  readonly defiRoutingEngineVersion: string;
+  readonly venueKinds: readonly string[];
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly walletsConnected: false;
+  readonly privateKeysGenerated: false;
+  readonly swapSubmitted: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+  readonly pools: readonly {
+    readonly id: string;
+    readonly baseAsset: string;
+    readonly quoteAsset: string;
+    readonly defaultChain: ChainMetadataDto;
+    readonly status: 'available' | 'planned';
+    readonly custodiedByPlatform: false;
+  }[];
+  readonly venues: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly venueKind: string;
+    readonly tokens: readonly string[];
+    readonly chains: readonly ChainMetadataDto[];
   }[];
   readonly chains: readonly ChainMetadataDto[];
   readonly explanation: string;

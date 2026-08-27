@@ -28,6 +28,7 @@ export const PROVIDER_FEATURE_TAGS = [
   'on_chain',
   'amm',
   'aggregator',
+  'dex',
 ] as const;
 
 export type ProviderFeatureTag = (typeof PROVIDER_FEATURE_TAGS)[number];

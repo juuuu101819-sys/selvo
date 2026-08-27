@@ -4,6 +4,7 @@ import { registerAuthentication } from '../http/authentication.js';
 import { registerAuthRoutes } from './auth.js';
 import { registerComparisonRoutes } from './comparisons.js';
 import { registerDashboardRoutes } from './dashboard.js';
+import { registerDefiRoutes } from './defi-routes.js';
 import { registerExecutionRoutes } from './executions.js';
 import { registerProviderCatalogRoutes } from './providers.js';
 import { registerRouteGraphRoutes } from './route-graph.js';
@@ -44,6 +45,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerRoutingRoutes(instance, container);
     registerRouteGraphRoutes(instance, container);
     registerStablecoinRoutes(instance, container);
+    registerDefiRoutes(instance, container);
     registerProviderCatalogRoutes(instance, container);
     registerDashboardRoutes(instance, container);
     registerExecutionRoutes(instance, container);

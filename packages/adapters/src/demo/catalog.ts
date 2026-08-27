@@ -2,6 +2,7 @@ import type { FinancialProvider, RouteProvider } from '@meridian/core';
 import { RouteFinancialProvider } from '../bridge/route-financial-provider.js';
 import { DemoAmmProvider } from './demo-amm-provider.js';
 import { DemoDexAggregatorProvider } from './demo-dex-aggregator.js';
+import { DemoDexProvider } from './demo-dex-provider.js';
 import { DemoStablecoinRampProvider } from './demo-stablecoin-ramp.js';
 
 /**
@@ -19,5 +20,6 @@ export function createFinancialCatalog(
     new DemoStablecoinRampProvider(),
     new DemoAmmProvider(),
     new DemoDexAggregatorProvider(),
+    new DemoDexProvider(),
   ];
 }

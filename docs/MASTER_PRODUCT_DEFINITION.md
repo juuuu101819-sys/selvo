@@ -54,14 +54,16 @@ connect to a chain.
 Current rail: `stablecoin_settlement`. Dedicated HTTP: `GET /api/v1/stablecoins`,
 `POST /api/v1/stablecoin-routes`.
 
-### 3. DeFi liquidity (`defi`) — planned
+### 3. DeFi liquidity (`defi`) — quoting available; comparison rail planned
 
 DEX, AMM, DEX aggregators, on-chain liquidity, and later cross-chain liquidity.
 
-Reserved rail: `dex_liquidity`. A read-only `DexLiquidityProvider` and demo AMM/aggregator live on
-the **financial provider catalog** (`GET /api/v1/providers`, `POST /api/v1/provider-quotes`). They
-are not `RouteProvider`s and do not appear in `POST /comparisons`. **No adapter submits a swap.**
-No keys, wallets or custody. DeFi *execution* is out of scope.
+Reserved comparison rail: `dex_liquidity` (still `planned` on `POST /comparisons`). A normalised
+`DeFiLiquiditySource` plus demo DEX, AMM and aggregator live on the **financial provider catalog**
+and on `GET /api/v1/defi-liquidity` / `POST /api/v1/defi-routes`. They are not `RouteProvider`s and
+do not appear in `POST /comparisons`. **No adapter submits a swap.** No keys, wallets or custody.
+Adding Ethereum, Base, Arbitrum or Solana later is a chain-registry row — the routing engine does
+not switch on chain. DeFi *execution* is out of scope.
 
 ---
 
@@ -164,7 +166,8 @@ docs that describe them.
 comparison UI, dashboard, or any execution path.
 
 **Not started:** DeFi execution, delegated settlement, AI agent payment execution. Read-only DeFi
-quotes exist on the financial provider catalog. Multi-rail routing (`POST /api/v1/routes`) ranks
+quotes exist on the financial provider catalog and on the DeFi liquidity routing layer
+(`GET /api/v1/defi-liquidity`, `POST /api/v1/defi-routes`). Multi-rail routing (`POST /api/v1/routes`) ranks
 those quotes deterministically; it does not execute them. The financial route graph
 (`GET /api/v1/route-graph`, `POST /api/v1/route-graph/paths`) discovers multi-hop conversions
 without pricing them or submitting them. The stablecoin routing layer

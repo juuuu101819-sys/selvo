@@ -65,6 +65,10 @@ export type {
   DexDepthRequest,
   DexLiquidityProvider,
 } from './dex-liquidity.js';
+export {
+  isDeFiLiquiditySource,
+  type DeFiLiquiditySource,
+} from './defi-liquidity.js';
 export type {
   FinancialProvider,
   LiquidityInfo,

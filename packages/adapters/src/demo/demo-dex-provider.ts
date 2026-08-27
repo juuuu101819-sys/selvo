@@ -30,58 +30,50 @@ import {
 interface PairRate {
   readonly offered: string;
   readonly mid: string;
-  readonly composite: boolean;
 }
 
 const PAIRS: Readonly<Record<string, PairRate>> = {
-  'ETH/USDC': { offered: '3498', mid: '3500', composite: false },
-  'USDC/ETH': { offered: invertRate('3498'), mid: invertRate('3500'), composite: false },
-  'ETH/USDT': { offered: '3496', mid: '3498', composite: false },
-  'USDT/ETH': { offered: invertRate('3496'), mid: invertRate('3498'), composite: false },
-  'USDC/USDT': { offered: '0.9998', mid: '1', composite: false },
-  'USDT/USDC': { offered: '0.9999', mid: '1', composite: false },
-  // Indicative composite: crypto → fiat via a stablecoin. Not executed.
-  'ETH/USD': { offered: '3493', mid: '3500', composite: true },
-  'USD/ETH': { offered: invertRate('3493'), mid: invertRate('3500'), composite: true },
+  'ETH/USDC': { offered: '3488', mid: '3500' },
+  'USDC/ETH': { offered: invertRate('3488'), mid: invertRate('3500') },
+  'ETH/USDT': { offered: '3486', mid: '3498' },
+  'USDT/ETH': { offered: invertRate('3486'), mid: invertRate('3498') },
+  'USDC/USDT': { offered: '0.9995', mid: '1' },
+  'USDT/USDC': { offered: '0.9997', mid: '1' },
 };
 
 const PROFILE: ProviderCapabilityProfile = {
   category: 'defi',
-  features: ['defi', 'swap', 'on_chain', 'stablecoin', 'aggregator'],
-  conversionKinds: [
-    'stablecoin_stablecoin',
-    'stablecoin_crypto',
-    'crypto_stablecoin',
-    'crypto_fiat',
-  ],
+  features: ['defi', 'swap', 'on_chain', 'dex'],
+  conversionKinds: ['stablecoin_stablecoin', 'stablecoin_crypto', 'crypto_stablecoin'],
   rails: ['dex_liquidity'],
 };
 
 const SETTLEMENT: SettlementEstimate = {
-  p50Seconds: 18,
-  p95Seconds: 90,
+  p50Seconds: 15,
+  p95Seconds: 75,
   businessDaysOnly: false,
   cutoffUtc: null,
-  notes: 'Indicative aggregator route. Meridian does not submit, wrap, bridge or swap.',
+  notes: 'Indicative order-book fill. Meridian does not submit the swap or connect a wallet.',
 };
 
 /**
- * Demo DEX aggregator. Read-only. Quotes a tighter AMM-style price and an indicative ETH → USD
- * composite so the normalised quote model can represent `crypto_fiat` without executing it.
+ * Demo order-book DEX. Read-only quotes for USDC/USDT, ETH/USDC and ETH/USDT.
+ *
+ * Distinct from the AMM (constant-product) and the aggregator. No keys, no swaps, no custody.
  */
-export class DemoDexAggregatorProvider implements DeFiLiquiditySource {
+export class DemoDexProvider implements DeFiLiquiditySource {
   readonly capability = 'financial' as const;
-  readonly venueKind: DeFiVenueKind = 'aggregator';
+  readonly venueKind: DeFiVenueKind = 'dex';
   readonly descriptor: ProviderDescriptor = {
-    id: 'demo-horizon-aggregator',
-    name: 'Horizon Aggregator',
+    id: 'demo-ridgeline-dex',
+    name: 'Ridgeline DEX',
     rail: 'dex_liquidity',
     licensing: 'unlicensed_sandbox',
     modes: ['sandbox'],
     jurisdictions: ['*'],
     description:
-      'Demo DEX aggregator. Read-only comparison of on-chain venues. No keys, no swaps, no custody.',
-    pricingVersion: 'demo-agg-1',
+      'Demo order-book DEX. Read-only quotes for USDC/USDT and ETH pairs. No swaps are submitted.',
+    pricingVersion: 'demo-dex-1',
   };
 
   getCapabilities(): ProviderCapabilityProfile {
@@ -89,13 +81,13 @@ export class DemoDexAggregatorProvider implements DeFiLiquiditySource {
   }
 
   getSupportedAssets(): readonly AssetDefinition[] {
-    return ['ETH', 'USD', 'USDC', 'USDT']
+    return ['ETH', 'USDC', 'USDT']
       .map((code) => ASSET_REGISTRY[code])
       .filter((asset): asset is AssetDefinition => asset !== undefined);
   }
 
   getSupportedCurrencies(): readonly CurrencyCode[] {
-    return ['USD'];
+    return [];
   }
 
   getSupportedTokens(): readonly AssetDefinition[] {
@@ -124,68 +116,26 @@ export class DemoDexAggregatorProvider implements DeFiLiquiditySource {
       providerId: this.descriptor.id,
       timestamp: now,
       expiresAt: addSeconds(now, 30),
-      quoteReference: `agg_${request.sourceAsset}_${request.targetAsset}`,
+      quoteReference: `dex_${request.sourceAsset}_${request.targetAsset}`,
       conversionKind: conversionKindOf(request.sourceAsset, request.targetAsset),
       sourceAsset: request.sourceAsset,
       targetAsset: request.targetAsset,
       amountMinorUnits: request.amountMinorUnits,
       indicatedRate: pair.offered,
       midMarketRate: pair.mid,
-      fees: [...aggregatorFees(request.sourceAsset, request.targetAsset)],
+      fees: [...dexFees(request.sourceAsset, request.targetAsset)],
       settlement: SETTLEMENT,
-      liquidity: {
-        availableDepthMinorUnits: new Dec(10)
-          .pow(assetDefinition(request.sourceAsset).exponent)
-          .times(8_000_000)
-          .toFixed(0),
-        venue: this.descriptor.name,
-        chainId: assetDefinition(request.sourceAsset).chainId,
-      },
+      liquidity: depthOf(request.sourceAsset),
       slippage: { kind: 'none' },
-      reliabilityScore: '0.968',
+      reliabilityScore: '0.954',
       executable: false,
       chainId: assetDefinition(request.sourceAsset).chainId,
       metadata: {
-        venue: 'aggregator',
-        composite: pair.composite,
-        legs: pair.composite ? ['ETH-USDC', 'USDC-USD'] : ['direct'],
+        venue: 'dex',
         holdPrivateKeys: false,
         submitTransaction: false,
+        connectWallet: false,
       },
-    };
-  }
-
-  async getSettlementEstimate(
-    request: NormalizedQuoteRequest,
-    _context: ProviderContext,
-  ): Promise<SettlementEstimate> {
-    await Promise.resolve();
-    this.assertSupported(request);
-    return SETTLEMENT;
-  }
-
-  async getFees(
-    request: NormalizedQuoteRequest,
-    _context: ProviderContext,
-  ): Promise<readonly NormalizedFee[]> {
-    await Promise.resolve();
-    this.assertSupported(request);
-    return [...aggregatorFees(request.sourceAsset, request.targetAsset)];
-  }
-
-  async getLiquidityInfo(
-    request: NormalizedQuoteRequest,
-    _context: ProviderContext,
-  ): Promise<LiquidityInfo> {
-    await Promise.resolve();
-    this.assertSupported(request);
-    return {
-      availableDepthMinorUnits: new Dec(10)
-        .pow(assetDefinition(request.sourceAsset).exponent)
-        .times(8_000_000)
-        .toFixed(0),
-      venue: this.descriptor.name,
-      chainId: assetDefinition(request.sourceAsset).chainId,
     };
   }
 
@@ -201,7 +151,7 @@ export class DemoDexAggregatorProvider implements DeFiLiquiditySource {
     context: ProviderContext,
   ): Promise<NormalizedFee> {
     const fees = await this.getFees(request, context);
-    return requireNamedFee(fees, 'aggregator_fee', request.sourceAsset, request.targetAsset);
+    return requireNamedFee(fees, 'dex_fee', request.sourceAsset, request.targetAsset);
   }
 
   async getEstimatedSlippage(
@@ -219,13 +169,40 @@ export class DemoDexAggregatorProvider implements DeFiLiquiditySource {
     return requireNamedFee(fees, 'gas', request.sourceAsset, request.targetAsset);
   }
 
+  async getSettlementEstimate(
+    request: NormalizedQuoteRequest,
+    _context: ProviderContext,
+  ): Promise<SettlementEstimate> {
+    await Promise.resolve();
+    this.assertSupported(request);
+    return SETTLEMENT;
+  }
+
+  async getFees(
+    request: NormalizedQuoteRequest,
+    _context: ProviderContext,
+  ): Promise<readonly NormalizedFee[]> {
+    await Promise.resolve();
+    this.assertSupported(request);
+    return [...dexFees(request.sourceAsset, request.targetAsset)];
+  }
+
+  async getLiquidityInfo(
+    request: NormalizedQuoteRequest,
+    _context: ProviderContext,
+  ): Promise<LiquidityInfo> {
+    await Promise.resolve();
+    this.assertSupported(request);
+    return depthOf(request.sourceAsset);
+  }
+
   probe(context: ProviderContext): Promise<ProviderHealth> {
     return Promise.resolve({
       providerId: this.descriptor.id,
       state: 'up',
       checkedAt: context.clock.nowIso(),
       latencyMs: 0,
-      detail: 'demo aggregator',
+      detail: 'demo dex',
     });
   }
 
@@ -240,9 +217,27 @@ function pairOf(source: string, target: string): PairRate | undefined {
   return PAIRS[`${source}/${target}`];
 }
 
-function aggregatorFees(source: string, target: string): readonly NormalizedFee[] {
+function depthOf(source: string): LiquidityInfo {
+  const exponent = assetDefinition(source).exponent;
+  const depth = new Dec(10).pow(exponent).times(3_000_000);
+  return {
+    availableDepthMinorUnits: depth.toFixed(0),
+    venue: 'Ridgeline DEX',
+    chainId: assetDefinition(source).chainId,
+  };
+}
+
+function dexFees(source: string, target: string): readonly NormalizedFee[] {
   return [
-    aggregatorFee(source),
+    {
+      code: 'dex_fee',
+      label: 'DEX taker fee',
+      side: 'source',
+      kind: 'proportional',
+      asset: source,
+      amountMinorUnits: null,
+      rateBps: '8',
+    },
     {
       code: 'gas',
       label: 'Estimated network gas',
@@ -255,22 +250,10 @@ function aggregatorFees(source: string, target: string): readonly NormalizedFee[
   ];
 }
 
-function aggregatorFee(source: string): NormalizedFee {
-  return {
-    code: 'aggregator_fee',
-    label: 'Aggregator routing fee',
-    side: 'source',
-    kind: 'proportional',
-    asset: source,
-    amountMinorUnits: null,
-    rateBps: '3',
-  };
-}
-
 function gasMinorUnits(asset: string): string {
   if (asset === 'ETH') {
-    return '15000000000000';
+    return '18000000000000';
   }
   const exponent = assetDefinition(asset).exponent;
-  return new Dec(10).pow(exponent).times('0.04').toFixed(0);
+  return new Dec(10).pow(exponent).times('0.06').toFixed(0);
 }

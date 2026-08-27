@@ -219,7 +219,30 @@ registry row plus adapter rates — `StablecoinRouter` never switches on ticker.
 **Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
 AI-determined prices.
 
-## Phase 12 — AI agent payments _(not started, gated)_
+## Phase 12 — DeFi liquidity routing layer ✅ implemented
+
+A non-custodial DeFi liquidity abstraction on top of the financial catalog. Demo venues: **DEX**,
+**AMM**, **DEX aggregator**. Demo pools: **USDC/USDT**, **ETH/USDC**, **ETH/USDT**. Each venue
+implements a normalised `DeFiLiquiditySource`: `getQuote`, `getLiquidity`, `getSwapFee`,
+`getEstimatedSlippage`, `getNetworkFee`, `getSupportedTokens`, `getSupportedChains`.
+
+- The router ranks DEX / AMM / aggregator quotes, and a **stablecoin** or **traditional FX** quote
+  on the same pair when a catalog provider can price it
+- Output is a quote plus `recommendedExecutionRoute` — never a submitted swap
+- Chain metadata (`CHAIN_REGISTRY`, CAIP-2) lists Ethereum (quoting available), Base, Arbitrum,
+  Sepolia and Solana (planned). `connected` is always `false` and `rpcUrl` is always `null`. Adding
+  a chain is a registry row; the engine does not switch on chain name
+- `GET /api/v1/defi-liquidity` and `POST /api/v1/defi-routes`
+- `defiRoutingEngineVersion` **1.0.0**, independent of comparison `2.0.0`, routing `1.0.0`,
+  graph `1.0.0` and stablecoin `1.0.0`
+- Platform does not custody pool inventory. No mainnet connection, wallets, or private keys
+- Comparison engine unchanged (four USD→KRW routes). Multi-rail scoring unchanged.
+  `RAIL_FAMILY_REGISTRY.defi` and `dex_liquidity` remain `planned` for `POST /comparisons`
+
+**Still excluded:** on-chain execution, custody, keys, wallets, live partner credentials,
+AI-determined prices.
+
+## Phase 13 — AI agent payments _(not started, gated)_
 
 Issue `ai_agent` principals that still act *for* an organization. Agents may request quotes and
 compare routes through the same API. Initiation remains delegated execution (Phase 7) and is

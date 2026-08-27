@@ -10,10 +10,14 @@ import type {
 } from '../domain/index.js';
 import {
   CHAIN_REGISTRY,
+  DEFI_POOL_REGISTRY,
+  DEFI_VENUE_KINDS,
   RAIL_REGISTRY,
   STABLECOIN_CONVERSION_KINDS,
   STABLECOIN_REGISTRY,
 } from '../domain/index.js';
+import { DEFI_ROUTING_ENGINE_VERSION } from '../engine/defi-config.js';
+import type { DefiRoute, DefiRouting } from '../engine/defi-types.js';
 import { STABLECOIN_ROUTING_ENGINE_VERSION } from '../engine/stablecoin-config.js';
 import type { MultiRailRouting, ScoredMultiRailRoute } from '../engine/routing-types.js';
 import type { StablecoinRoute, StablecoinRouting } from '../engine/stablecoin-types.js';
@@ -28,12 +32,16 @@ import {
 } from '../graph/index.js';
 import { AssetAmount, Money, formatDecimal, type Decimal } from '../money/index.js';
 import type { FinancialProvider, NormalizedQuote } from '../ports/financial-provider.js';
+import { isDeFiLiquiditySource } from '../ports/defi-liquidity.js';
 import type {
   AppliedFeeDto,
   ChainMetadataDto,
   ComparisonDto,
   ComparisonInsightsDto,
   CostBreakdownDto,
+  DefiCatalogDto,
+  DefiRouteDto,
+  DefiRoutingDto,
   FinancialProviderDto,
   GraphEdgeDto,
   GraphNodeDto,
@@ -582,5 +590,138 @@ function serializeChainMetadata(chain: ChainMetadata): ChainMetadataDto {
     quoting: chain.quoting,
     connected: false,
     rpcUrl: null,
+  };
+}
+
+export function serializeDefiCatalog(providers: readonly FinancialProvider[]): DefiCatalogDto {
+  const venues = providers
+    .filter(isDeFiLiquiditySource)
+    .sort((left, right) => left.descriptor.id.localeCompare(right.descriptor.id, 'en'))
+    .map((venue) => ({
+      id: venue.descriptor.id,
+      name: venue.descriptor.name,
+      venueKind: venue.venueKind,
+      tokens: venue.getSupportedTokens().map((asset) => asset.code),
+      chains: venue.getSupportedChains().map(serializeChainMetadata),
+    }));
+  return {
+    defiRoutingEngineVersion: DEFI_ROUTING_ENGINE_VERSION,
+    venueKinds: [...DEFI_VENUE_KINDS],
+    custody: false,
+    connectedToMainnet: false,
+    walletsCreated: false,
+    walletsConnected: false,
+    privateKeysGenerated: false,
+    swapSubmitted: false,
+    executable: false,
+    delegateExecution: false,
+    pools: DEFI_POOL_REGISTRY.map((pool) => ({
+      id: pool.id,
+      baseAsset: pool.baseAsset,
+      quoteAsset: pool.quoteAsset,
+      defaultChain: serializeChainMetadata(CHAIN_REGISTRY[pool.defaultChainId]),
+      status: pool.status,
+      custodiedByPlatform: false as const,
+    })),
+    venues,
+    chains: Object.values(CHAIN_REGISTRY).map(serializeChainMetadata),
+    explanation:
+      'Demo DEX, AMM and aggregator venues for USDC/USDT, ETH/USDC and ETH/USDT. ' +
+      'When a stablecoin ramp or traditional FX desk can price the same pair, those quotes are ' +
+      'ranked together. Adding a chain is a registry row — the engine does not switch on Ethereum, ' +
+      'Base, Arbitrum or Solana. Meridian never submits a swap, connects a wallet or holds a key.',
+  };
+}
+
+export function serializeDefiRouting(result: DefiRouting): DefiRoutingDto {
+  const routes = result.routes.map(serializeDefiRoute);
+  const recommended = result.recommendedRoute === null ? null : serializeDefiRoute(result.recommendedRoute);
+  return {
+    routingId: result.routingId,
+    organizationId: result.organizationId,
+    createdAt: result.createdAt,
+    mode: result.mode,
+    defiRoutingEngineVersion: result.defiRoutingEngineVersion,
+    conversionKind: result.conversionKind,
+    aiUsed: false,
+    custody: false,
+    connectedToMainnet: false,
+    walletsCreated: false,
+    walletsConnected: false,
+    privateKeysGenerated: false,
+    swapSubmitted: false,
+    executable: false,
+    delegateExecution: false,
+    request: {
+      sourceAsset: result.request.sourceAsset,
+      destinationAsset: result.request.destinationAsset,
+      amount: AssetAmount.ofMinorUnits(
+        result.request.sourceAsset,
+        result.request.amountMinorUnits,
+      ).toJSON(),
+      requestedAt: result.request.requestedAt,
+    },
+    routes,
+    recommendedRoute: recommended,
+    recommendedExecutionRoute:
+      result.recommendedExecutionRoute === null
+        ? null
+        : serializeDefiRoute(result.recommendedExecutionRoute),
+    comparedFamilies: [...result.comparedFamilies],
+    providerFailures: result.providerFailures.map(serializeFailure),
+    explanation: result.explanation,
+  };
+}
+
+export function serializeDefiRoute(route: DefiRoute): DefiRouteDto {
+  return {
+    routeId: route.routeId,
+    rank: route.rank,
+    recommended: route.recommended,
+    routeKind: route.routeKind,
+    venueKind: route.venueKind,
+    conversionKind: route.conversionKind,
+    asset: { ...route.asset },
+    chain: {
+      source: serializeOptionalChain(route.chain.source),
+      destination: serializeOptionalChain(route.chain.destination),
+      settlement: serializeOptionalChain(route.chain.settlement),
+    },
+    price: {
+      indicated: route.price.indicated.toFixed(),
+      mid: route.price.mid.toFixed(),
+    },
+    swapFee: route.swapFee.toJSON(),
+    networkFee: route.networkFee.toJSON(),
+    estimatedSlippage: serializeStablecoinSlippage(route.estimatedSlippage),
+    liquidity: {
+      availableDepthMinorUnits: route.liquidity.availableDepthMinorUnits,
+      venue: route.liquidity.venue,
+      chain: serializeOptionalChain(route.liquidity.chain),
+    },
+    estimatedSettlementTime: route.estimatedSettlementTime,
+    expiration: route.expiration,
+    estimatedReceiveAmount: route.estimatedReceiveAmount.toJSON(),
+    estimatedCost: route.estimatedCost.toJSON(),
+    totalCostBps: fixed(route.totalCostBps, BPS_DECIMAL_PLACES),
+    hops: [...route.hops],
+    provider: {
+      id: route.provider.id,
+      name: route.provider.name,
+      rail: route.provider.rail,
+      railLabel: RAIL_REGISTRY[route.provider.rail].label,
+      category: route.provider.category,
+      railFamily: route.provider.railFamily,
+      licensing: route.provider.licensing,
+    },
+    explanation: route.explanation,
+    custody: false,
+    connectedToMainnet: false,
+    walletsCreated: false,
+    walletsConnected: false,
+    privateKeysGenerated: false,
+    swapSubmitted: false,
+    executable: false,
+    delegateExecution: false,
   };
 }

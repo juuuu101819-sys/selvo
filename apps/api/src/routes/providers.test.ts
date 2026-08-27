@@ -33,9 +33,10 @@ describe('GET /v1/providers', () => {
         'demo-helios-ramp',
         'demo-meridian-pool',
         'demo-horizon-aggregator',
+        'demo-ridgeline-dex',
       ]),
     );
-    expect(body.data.providers).toHaveLength(7);
+    expect(body.data.providers).toHaveLength(8);
   });
 });
 

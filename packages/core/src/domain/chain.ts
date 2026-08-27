@@ -5,14 +5,24 @@
  * submits a transaction. `connected` is therefore always false, including for Ethereum mainnet
  * which is listed so quotes can name a settlement rail without implying a node connection.
  *
- * Adding a chain later is a registry row, not a change to routing logic.
+ * Adding a chain later is a registry row, not a change to routing logic. Ethereum, Base,
+ * Arbitrum and Solana are listed so a future adapter can attach without touching the engine.
  */
-export const CHAIN_IDS = ['eip155:1', 'eip155:8453', 'eip155:11155111'] as const;
+export const CHAIN_NAMESPACES = ['eip155', 'solana'] as const;
+export type ChainNamespace = (typeof CHAIN_NAMESPACES)[number];
+
+export const CHAIN_IDS = [
+  'eip155:1',
+  'eip155:8453',
+  'eip155:42161',
+  'eip155:11155111',
+  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+] as const;
 export type ChainId = (typeof CHAIN_IDS)[number];
 
 export interface ChainMetadata {
   readonly id: ChainId;
-  readonly namespace: 'eip155';
+  readonly namespace: ChainNamespace;
   readonly reference: string;
   readonly name: string;
   readonly nativeAsset: string | null;
@@ -48,6 +58,17 @@ export const CHAIN_REGISTRY: Readonly<Record<ChainId, ChainMetadata>> = {
     connected: false,
     rpcUrl: null,
   },
+  'eip155:42161': {
+    id: 'eip155:42161',
+    namespace: 'eip155',
+    reference: '42161',
+    name: 'Arbitrum',
+    nativeAsset: 'ETH',
+    testnet: false,
+    quoting: 'planned',
+    connected: false,
+    rpcUrl: null,
+  },
   'eip155:11155111': {
     id: 'eip155:11155111',
     namespace: 'eip155',
@@ -55,6 +76,17 @@ export const CHAIN_REGISTRY: Readonly<Record<ChainId, ChainMetadata>> = {
     name: 'Sepolia',
     nativeAsset: 'ETH',
     testnet: true,
+    quoting: 'planned',
+    connected: false,
+    rpcUrl: null,
+  },
+  'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp': {
+    id: 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+    namespace: 'solana',
+    reference: '5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp',
+    name: 'Solana',
+    nativeAsset: null,
+    testnet: false,
     quoting: 'planned',
     connected: false,
     rpcUrl: null,

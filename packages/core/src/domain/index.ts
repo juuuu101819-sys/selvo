@@ -59,6 +59,7 @@ export {
 } from './asset.js';
 export {
   CHAIN_IDS,
+  CHAIN_NAMESPACES,
   CHAIN_REGISTRY,
   DEMO_SETTLEMENT_CHAIN_ID,
   chainMetadata,
@@ -66,6 +67,7 @@ export {
   requireChainMetadata,
   type ChainId,
   type ChainMetadata,
+  type ChainNamespace,
 } from './chain.js';
 export {
   STABLECOIN_CONVERSION_KINDS,
@@ -80,6 +82,19 @@ export {
   type StablecoinConversionKind,
   type StablecoinDefinition,
 } from './stablecoin.js';
+export {
+  DEFI_POOL_ASSETS,
+  DEFI_POOL_REGISTRY,
+  DEFI_ROUTE_KINDS,
+  DEFI_VENUE_KINDS,
+  chainsForDeFiVenue,
+  isDeFiVenueKind,
+  poolOf,
+  tokensOfPool,
+  type DefiPoolDefinition,
+  type DeFiRouteKind,
+  type DeFiVenueKind,
+} from './defi-liquidity.js';
 export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
 export {
   CONVERSION_KINDS,

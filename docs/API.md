@@ -128,18 +128,21 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "defiQuotes": true,
   "defiExecution": false,
   "multiRailRouting": true,
-  "routeGraph": true
+  "routeGraph": true,
+  "stablecoinRouting": true,
+  "defiLiquidityRouting": true
 }
 ```
 
 `execution.delegated` is false. `pipeline` names Discover → Delegate; only `delegate` is `planned`.
 `railFamilies` lists `tradfi` and `stablecoin` as available and `defi` as planned for the
 comparison engine. `providerCatalog` lists every `FinancialProvider`, including read-only DeFi
-demos that are not in `providers`. `defiQuotes` is true; `defiExecution` is false.
+demos that are not in `providers`. `defiQuotes` is true; `defiLiquidityRouting` is true;
+`defiExecution` is false. `defiRoutingEngineVersion` is **1.0.0**.
 
 ## `GET /api/v1/providers`
 
-The multi-rail catalog: wrapped comparison rails plus demo ramp, AMM and aggregator. Each row has
+The multi-rail catalog: wrapped comparison rails plus demo ramp, DEX, AMM and aggregator. Each row has
 `category` (`traditional` | `stablecoin` | `defi`), `features`, `conversionKinds`, supported
 assets and supported ISO currencies.
 
@@ -286,6 +289,55 @@ Top-level flags `custody`, `connectedToMainnet`, `walletsCreated`, `privateKeysG
 USD → KRW and USDC → ETH are **400** on this endpoint (wrong conversion kind). USDT → KRW is
 **422** (no demo provider prices it). USD 100,000 → KRW still returns **four** routes on
 `POST /comparisons`.
+
+## `GET /api/v1/defi-liquidity`
+
+Demo DeFi liquidity catalog. Pools: USDC/USDT, ETH/USDC, ETH/USDT. Venues: DEX, AMM, aggregator,
+each exposing `getQuote`, `getLiquidity`, `getSwapFee`, `getEstimatedSlippage`, `getNetworkFee`,
+`getSupportedTokens` and `getSupportedChains`. Chain metadata lists Ethereum (quoting available),
+Base, Arbitrum, Sepolia and Solana (planned). Every chain has `connected: false` and `rpcUrl: null`.
+`defiRoutingEngineVersion` is **1.0.0**. Custody, wallets, private keys, swap submission and
+execution flags are all `false`.
+
+## `POST /api/v1/defi-routes`
+
+DeFi liquidity routing layer. Quotes DEX, AMM and aggregator venues, and ranks a **stablecoin**
+or **traditional FX** quote on the same pair when a catalog provider can price it. Distinct from
+`POST /routes` (every rail, scored) and `POST /stablecoin-routes` (fiat ↔ stablecoin only). Cost
+math is the shared multi-rail cost engine; ranking is by indicative cost, then settlement time.
+No model is used. No chain is contacted. No swap is submitted.
+
+```jsonc
+{
+  "sourceAsset": "USDC",
+  "destinationAsset": "USDT", // `targetAsset` accepted as a synonym
+  "amount": "10000"
+}
+```
+
+`organizationId` is taken from the principal. The schema is strict: `execute`, keys, wallets and
+beneficiary fields are rejected.
+
+Returns `201` with ranked `routes[]` and `recommendedExecutionRoute` (same as `recommendedRoute`;
+never executable). Each route carries:
+
+- `routeKind` — `dex` | `amm` | `aggregator` | `stablecoin` | `traditional`
+- `venueKind` — DEX/AMM/aggregator kind, or `null` on a ramp or FX desk
+- `asset`, `chain` (`connected` always false)
+- `price` — indicated and mid
+- `swapFee`, `networkFee`
+- `estimatedSlippage` — bps plus the provider's model
+- `liquidity` — disclosed depth, venue, chain
+- `estimatedSettlementTime`, `expiration`
+
+Top-level flags `custody`, `connectedToMainnet`, `walletsCreated`, `walletsConnected`,
+`privateKeysGenerated`, `swapSubmitted`, `executable` and `delegateExecution` are always `false`.
+`aiUsed` is always `false`.
+
+USDC → USDT returns three DeFi venues. ETH → USDC and ETH → USDT quote the demo pools. USD → KRW
+compares traditional FX with a stablecoin ramp. USD → USDC quotes Helios. USD 100,000 → KRW still
+returns **four** routes on `POST /comparisons`. Adding a chain later is a registry row — this
+engine does not switch on Ethereum, Base, Arbitrum or Solana.
 
 ## `POST /api/v1/comparisons`
 

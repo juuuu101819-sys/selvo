@@ -2,7 +2,7 @@
 
 **A global non-custodial financial routing hub.**
 
-Meridian connects traditional finance, stablecoin settlement and (planned) DeFi liquidity. Give it a
+Meridian connects traditional finance, stablecoin settlement and DeFi liquidity. Give it a
 corridor and an amount and it prices every available route — bank FX, licensed payment institutions,
 regulated stablecoin partners, wholesale liquidity providers — and reports the all-in cost, exchange
 rate, fee breakdown, settlement time, expected slippage and a composite route score for each.
@@ -44,7 +44,8 @@ npm run dev              # API on :47311, web app on :43117
 
 Then open <http://127.0.0.1:43117> to compare fiat routes, <http://127.0.0.1:43117/rails> for the
 multi-rail engine (tradfi, stablecoin and DeFi), <http://127.0.0.1:43117/graph> for multi-hop path
-discovery, <http://127.0.0.1:43117/stablecoins> for USDC/USDT routing, or
+discovery, <http://127.0.0.1:43117/stablecoins> for USDC/USDT routing,
+<http://127.0.0.1:43117/defi> for DEX / AMM / aggregator quotes, or
 <http://127.0.0.1:43117/login> for the organization dashboard.
 
 Local sandbox login (in-memory driver provisions this on API start; Postgres gets it from `npm run db:seed`):
@@ -84,6 +85,11 @@ curl -s -X POST http://127.0.0.1:47311/api/v1/stablecoin-routes \
   -H 'content-type: application/json' \
   -d '{"sourceAsset":"USD","destinationAsset":"USDC","amount":"10000.00"}' \
   | jq '.data.routes[] | {asset, price: .price.indicated, provider: .provider.name, chain: .chain.destination.name}'
+
+curl -s -X POST http://127.0.0.1:47311/api/v1/defi-routes \
+  -H 'content-type: application/json' \
+  -d '{"sourceAsset":"USDC","destinationAsset":"USDT","amount":"10000"}' \
+  | jq '.data.routes[] | {kind: .routeKind, provider: .provider.name, cost: .totalCostBps}'
 ```
 
 ## Verifying a change
@@ -128,7 +134,7 @@ docs/
   DATABASE.md     The data model, its invariants, and how to work with it locally.
   STACK.md        The chosen stack, the directory mapping, and the decisions behind them.
   ROADMAP.md      Phase plan. Phases 1–4b, dashboard (2b), catalog (8), routing (9), graph (10),
-                  stablecoin routing (11).
+                  stablecoin routing (11), DeFi liquidity routing (12).
   COMPLIANCE.md   The boundaries, and how the code enforces them.
   API.md          Endpoint reference.
 ```

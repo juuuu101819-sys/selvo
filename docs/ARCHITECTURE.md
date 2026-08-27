@@ -76,8 +76,11 @@ made. Nothing below rebuilds the application.
 - `GET /api/v1/stablecoins` and `POST /api/v1/stablecoin-routes` quote fiat ↔ stablecoin and
   stablecoin ↔ stablecoin (`stablecoinRoutingEngineVersion` 1.0.0). Chain metadata is named, never
   connected. No custody, wallets or keys.
-- Planned rails never expand into a comparison quote. Direct catalog quotes (ramps, AMM, aggregator)
-  appear on `/routes` and `/provider-quotes`.
+- `GET /api/v1/defi-liquidity` and `POST /api/v1/defi-routes` quote DEX, AMM and aggregator venues
+  (`defiRoutingEngineVersion` 1.0.0) and rank a stablecoin or traditional FX quote on the same pair
+  when one exists. No swap is submitted. Adding a chain is a registry row.
+- Planned rails never expand into a comparison quote. Direct catalog quotes (ramps, DEX, AMM,
+  aggregator) appear on `/routes` and `/provider-quotes`.
 
 ---
 

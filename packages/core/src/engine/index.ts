@@ -81,3 +81,11 @@ export type {
   StablecoinRoute,
   StablecoinRouting,
 } from './stablecoin-types.js';
+export { DEFI_ROUTING_ENGINE_VERSION } from './defi-config.js';
+export { explainDefiRoute, explainDefiRouting, projectDefiRoute } from './defi-project.js';
+export {
+  DefiRouter,
+  type DefiRouterDependencies,
+  type DefiRoutingInput,
+} from './defi-routing.js';
+export type { DefiQuoteRequest, DefiRoute, DefiRouting } from './defi-types.js';

@@ -75,5 +75,6 @@ export {
 } from './demo-market-data-provider.js';
 export { DemoAmmProvider } from './demo-amm-provider.js';
 export { DemoDexAggregatorProvider } from './demo-dex-aggregator.js';
+export { DemoDexProvider } from './demo-dex-provider.js';
 export { DemoStablecoinRampProvider } from './demo-stablecoin-ramp.js';
 export { createFinancialCatalog } from './catalog.js';

@@ -326,6 +326,10 @@ export const createStablecoinRouteSchema = z
 
 export type CreateStablecoinRouteBody = z.infer<typeof createStablecoinRouteSchema>;
 
+/** Same pair-and-amount body as stablecoin routes; used by `POST /v1/defi-routes`. */
+export const createDeFiRouteSchema = createStablecoinRouteSchema;
+export type CreateDeFiRouteBody = CreateStablecoinRouteBody;
+
 const graphCostBps = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal string');
 
 /**

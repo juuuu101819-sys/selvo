@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { createFinancialCatalog, createSandboxAdapters } from '../index.js';
 import { DemoAmmProvider } from './demo-amm-provider.js';
 import { DemoDexAggregatorProvider } from './demo-dex-aggregator.js';
+import { DemoDexProvider } from './demo-dex-provider.js';
 import { DemoStablecoinRampProvider } from './demo-stablecoin-ramp.js';
 
 const clock = new FixedClock('2026-03-01T09:00:00.000Z');
@@ -20,9 +21,9 @@ describe('financial provider catalog', () => {
     createFinancialCatalog(sandbox.providers),
   );
 
-  it('wraps the four comparison-engine rails and adds ramp plus two DeFi demos', () => {
+  it('wraps the four comparison-engine rails and adds ramp plus three DeFi demos', () => {
     expect(sandbox.providers).toHaveLength(4);
-    expect(catalog.all()).toHaveLength(7);
+    expect(catalog.all()).toHaveLength(8);
     expect(catalog.byCategory('traditional').length).toBeGreaterThanOrEqual(3);
     expect(catalog.byCategory('stablecoin').map((provider) => provider.descriptor.id)).toEqual(
       expect.arrayContaining(['sandbox-solstice-settlement', 'demo-helios-ramp']),
@@ -30,6 +31,7 @@ describe('financial provider catalog', () => {
     expect(catalog.byCategory('defi').map((provider) => provider.descriptor.id).sort()).toEqual([
       'demo-horizon-aggregator',
       'demo-meridian-pool',
+      'demo-ridgeline-dex',
     ]);
   });
 
@@ -195,5 +197,41 @@ describe('Horizon Aggregator', () => {
     expect(quote.conversionKind).toBe('crypto_fiat');
     expect(quote.executable).toBe(false);
     expect(quote.metadata['composite']).toBe(true);
+  });
+});
+
+describe('Ridgeline DEX', () => {
+  const dex = new DemoDexProvider();
+
+  it('exposes the normalised DeFi liquidity methods without keys, wallets or swaps', async () => {
+    expect(dex.venueKind).toBe('dex');
+    expect(dex.getSupportedTokens().map((asset) => asset.code).sort()).toEqual([
+      'ETH',
+      'USDC',
+      'USDT',
+    ]);
+    expect(dex.getSupportedChains().every((chain) => chain.connected === false)).toBe(true);
+    expect(dex.getSupportedChains().some((chain) => chain.namespace === 'solana')).toBe(true);
+
+    const request = {
+      sourceAsset: 'USDC',
+      targetAsset: 'USDT',
+      amountMinorUnits: '10000000',
+      requestedAt: clock.nowIso(),
+    };
+    const quote = await dex.getQuote(request, context);
+    const liquidity = await dex.getLiquidity(request, context);
+    const swapFee = await dex.getSwapFee(request, context);
+    const slippage = await dex.getEstimatedSlippage(request, context);
+    const networkFee = await dex.getNetworkFee(request, context);
+
+    expect(quote.executable).toBe(false);
+    expect(quote.conversionKind).toBe('stablecoin_stablecoin');
+    expect(quote.metadata['connectWallet']).toBe(false);
+    expect(liquidity.venue).toBe('Ridgeline DEX');
+    expect(swapFee.code).toBe('dex_fee');
+    expect(slippage.kind).toBe('none');
+    expect(networkFee.code).toBe('gas');
+    expect(Object.keys(dex)).not.toContain('privateKey');
   });
 });

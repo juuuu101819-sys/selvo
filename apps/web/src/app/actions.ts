@@ -1,8 +1,8 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { createComparison, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, replayComparison } from '@/lib/api/client';
-import type { ApiResult, ComparisonDto, GraphSearchDto, MultiRailRoutingDto, ReplayResultDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { createComparison, createDeFiRoute, createRoute, createStablecoinRoute, discoverGraphPaths, login, logout, replayComparison } from '@/lib/api/client';
+import type { ApiResult, ComparisonDto, DefiRoutingDto, GraphSearchDto, MultiRailRoutingDto, ReplayResultDto, StablecoinRoutingDto } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -97,6 +97,23 @@ export async function evaluateStablecoinRoutes(input: {
     { actor: 'web-app', authorization },
   );
 }
+
+export async function evaluateDefiRoutes(input: {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: string;
+}): Promise<ApiResult<DefiRoutingDto>> {
+  const authorization = await readSessionToken();
+  return createDeFiRoute(
+    {
+      sourceAsset: input.sourceAsset,
+      destinationAsset: input.destinationAsset,
+      amount: input.amount,
+    },
+    { actor: 'web-app', authorization },
+  );
+}
+
 export async function verifyComparison(comparisonId: string): Promise<ApiResult<ReplayResultDto>> {
   const authorization = await readSessionToken();
   return replayComparison(comparisonId, authorization);

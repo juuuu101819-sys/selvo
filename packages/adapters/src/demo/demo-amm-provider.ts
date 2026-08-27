@@ -6,9 +6,10 @@ import {
   conversionKindOf,
   type AssetDefinition,
   type CurrencyCode,
+  type DeFiLiquiditySource,
+  type DeFiVenueKind,
   type DexDepthQuote,
   type DexDepthRequest,
-  type FinancialProvider,
   type LiquidityInfo,
   type NormalizedFee,
   type NormalizedQuote,
@@ -18,8 +19,15 @@ import {
   type ProviderDescriptor,
   type ProviderHealth,
   type SettlementEstimate,
+  type SlippageModel,
 } from '@meridian/core';
 import { addSeconds, invertRate } from './demo-time.js';
+import {
+  liquidityFromQuote,
+  requireNamedFee,
+  slippageFromQuote,
+  supportedDefiChains,
+} from './defi-source.js';
 
 interface PairRate {
   readonly offered: string;
@@ -63,8 +71,9 @@ const POOL_FEE: NormalizedFee = {
 /**
  * Demo AMM. Read-only depth and quotes. No keys, no swaps, no custody.
  */
-export class DemoAmmProvider implements FinancialProvider {
+export class DemoAmmProvider implements DeFiLiquiditySource {
   readonly capability = 'financial' as const;
+  readonly venueKind: DeFiVenueKind = 'amm';
   readonly descriptor: ProviderDescriptor = {
     id: 'demo-meridian-pool',
     name: 'Meridian Pool',
@@ -89,6 +98,14 @@ export class DemoAmmProvider implements FinancialProvider {
 
   getSupportedCurrencies(): readonly CurrencyCode[] {
     return [];
+  }
+
+  getSupportedTokens(): readonly AssetDefinition[] {
+    return this.getSupportedAssets();
+  }
+
+  getSupportedChains() {
+    return supportedDefiChains();
   }
 
   supportsNormalized(request: NormalizedQuoteRequest): boolean {
@@ -190,6 +207,36 @@ export class DemoAmmProvider implements FinancialProvider {
     await Promise.resolve();
     this.assertSupported(request);
     return depthOf(request.sourceAsset);
+  }
+
+  async getLiquidity(
+    request: NormalizedQuoteRequest,
+    context: ProviderContext,
+  ): Promise<LiquidityInfo> {
+    return liquidityFromQuote((inner, ctx) => this.getQuote(inner, ctx), request, context);
+  }
+
+  async getSwapFee(
+    request: NormalizedQuoteRequest,
+    context: ProviderContext,
+  ): Promise<NormalizedFee> {
+    const fees = await this.getFees(request, context);
+    return requireNamedFee(fees, 'pool_fee', request.sourceAsset, request.targetAsset);
+  }
+
+  async getEstimatedSlippage(
+    request: NormalizedQuoteRequest,
+    context: ProviderContext,
+  ): Promise<SlippageModel> {
+    return slippageFromQuote((inner, ctx) => this.getQuote(inner, ctx), request, context);
+  }
+
+  async getNetworkFee(
+    request: NormalizedQuoteRequest,
+    context: ProviderContext,
+  ): Promise<NormalizedFee> {
+    const fees = await this.getFees(request, context);
+    return requireNamedFee(fees, 'gas', request.sourceAsset, request.targetAsset);
   }
 
   probe(context: ProviderContext): Promise<ProviderHealth> {

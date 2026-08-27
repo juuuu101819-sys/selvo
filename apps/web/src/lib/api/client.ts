@@ -17,6 +17,8 @@ import type {
   RouteGraphDto,
   StablecoinCatalogDto,
   StablecoinRoutingDto,
+  DefiCatalogDto,
+  DefiRoutingDto,
 } from './types';
 
 /**
@@ -312,6 +314,35 @@ export function createStablecoinRoute(
   return request<StablecoinRoutingDto>({
     method: 'POST',
     path: '/api/v1/stablecoin-routes',
+    body: input,
+    actor: extras.actor ?? 'web-app',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export function fetchDefiLiquidity(
+  extras: { readonly authorization?: string | null } = {},
+): Promise<ApiResult<DefiCatalogDto>> {
+  return request<DefiCatalogDto>({
+    method: 'GET',
+    path: '/api/v1/defi-liquidity',
+    ...(extras.authorization ? { authorization: extras.authorization } : {}),
+  });
+}
+
+export interface CreateDeFiRouteInput {
+  readonly sourceAsset: string;
+  readonly destinationAsset: string;
+  readonly amount: string;
+}
+
+export function createDeFiRoute(
+  input: CreateDeFiRouteInput,
+  extras: { readonly actor?: string; readonly authorization?: string | null } = {},
+): Promise<ApiResult<DefiRoutingDto>> {
+  return request<DefiRoutingDto>({
+    method: 'POST',
+    path: '/api/v1/defi-routes',
     body: input,
     actor: extras.actor ?? 'web-app',
     ...(extras.authorization ? { authorization: extras.authorization } : {}),

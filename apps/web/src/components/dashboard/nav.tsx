@@ -36,6 +36,9 @@ export function DashboardNav({ organizationName }: { organizationName: string })
             >
               Stablecoins
             </Button>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/defi" />}>
+              DeFi
+            </Button>
             <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/" />}>
               Compare routes
             </Button>

@@ -31,6 +31,9 @@ export type {
   StablecoinRouteDto,
   StablecoinRoutingDto,
   StablecoinSlippageDto,
+  DefiCatalogDto,
+  DefiRouteDto,
+  DefiRoutingDto,
 } from './dto.js';
 export {
   serializeComparison,
@@ -45,4 +48,7 @@ export {
   serializeStablecoinCatalog,
   serializeStablecoinRoute,
   serializeStablecoinRouting,
+  serializeDefiCatalog,
+  serializeDefiRoute,
+  serializeDefiRouting,
 } from './serialize.js';

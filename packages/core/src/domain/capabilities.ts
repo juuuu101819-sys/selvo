@@ -44,6 +44,12 @@ export const PLATFORM_CAPABILITIES = {
    * Meridian never holds the token, opens an RPC, or creates a wallet.
    */
   stablecoinRouting: true,
+  /**
+   * DeFi liquidity routing layer: DEX, AMM and aggregator quotes, compared with stablecoin and
+   * traditional FX routes on the same pair when those providers can price it. Read-only.
+   * `defiExecution` stays false: no swap is submitted, no wallet is connected, no key is held.
+   */
+  defiLiquidityRouting: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

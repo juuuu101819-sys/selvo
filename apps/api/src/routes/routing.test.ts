@@ -137,6 +137,7 @@ describe('POST /api/v1/routes', () => {
     expect(data.routes.map((item) => item.provider.id).sort()).toEqual([
       'demo-horizon-aggregator',
       'demo-meridian-pool',
+      'demo-ridgeline-dex',
     ]);
     expect(data.routes.every((item) => item.conversionKind === 'stablecoin_stablecoin')).toBe(true);
     expect(data.routes.every((item) => item.provider.railFamily === 'defi')).toBe(true);
@@ -151,7 +152,7 @@ describe('POST /api/v1/routes', () => {
     });
     expect(status).toBe(201);
     const data = (body as ApiEnvelope<RoutePayload>).data;
-    expect(data.routes).toHaveLength(2);
+    expect(data.routes).toHaveLength(3);
     const costs = data.routes.map((item) => item.estimatedCost.minorUnits);
     expect(new Set(costs).size).toBeGreaterThan(1);
   });

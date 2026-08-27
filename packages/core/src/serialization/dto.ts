@@ -540,3 +540,117 @@ export interface StablecoinCatalogDto {
   readonly chains: readonly ChainMetadataDto[];
   readonly explanation: string;
 }
+
+export interface DefiRouteDto {
+  readonly routeId: string;
+  readonly rank: number;
+  readonly recommended: boolean;
+  readonly routeKind: string;
+  readonly venueKind: string | null;
+  readonly conversionKind: string;
+  readonly asset: {
+    readonly source: string;
+    readonly destination: string;
+  };
+  readonly chain: {
+    readonly source: ChainMetadataDto | null;
+    readonly destination: ChainMetadataDto | null;
+    readonly settlement: ChainMetadataDto | null;
+  };
+  readonly price: {
+    readonly indicated: string;
+    readonly mid: string;
+  };
+  readonly swapFee: AssetAmountDto;
+  readonly networkFee: AssetAmountDto;
+  readonly estimatedSlippage: StablecoinSlippageDto;
+  readonly liquidity: {
+    readonly availableDepthMinorUnits: string | null;
+    readonly venue: string | null;
+    readonly chain: ChainMetadataDto | null;
+  };
+  readonly estimatedSettlementTime: SettlementDto;
+  readonly expiration: string | null;
+  readonly estimatedReceiveAmount: AssetAmountDto;
+  readonly estimatedCost: AssetAmountDto;
+  readonly totalCostBps: string;
+  readonly hops: readonly string[];
+  readonly provider: {
+    readonly id: string;
+    readonly name: string;
+    readonly rail: RailType;
+    readonly railLabel: string;
+    readonly category: string;
+    readonly railFamily: string;
+    readonly licensing: ProviderLicensing;
+  };
+  readonly explanation: string;
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly walletsConnected: false;
+  readonly privateKeysGenerated: false;
+  readonly swapSubmitted: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+}
+
+export interface DefiRoutingDto {
+  readonly routingId: string;
+  readonly organizationId: string | null;
+  readonly createdAt: string;
+  readonly mode: PlatformMode;
+  readonly defiRoutingEngineVersion: string;
+  readonly conversionKind: string;
+  readonly aiUsed: false;
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly walletsConnected: false;
+  readonly privateKeysGenerated: false;
+  readonly swapSubmitted: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+  readonly request: {
+    readonly sourceAsset: string;
+    readonly destinationAsset: string;
+    readonly amount: AssetAmountDto;
+    readonly requestedAt: string;
+  };
+  readonly routes: readonly DefiRouteDto[];
+  readonly recommendedRoute: DefiRouteDto | null;
+  readonly recommendedExecutionRoute: DefiRouteDto | null;
+  readonly comparedFamilies: readonly string[];
+  readonly providerFailures: readonly ProviderFailureDto[];
+  readonly explanation: string;
+}
+
+export interface DefiCatalogDto {
+  readonly defiRoutingEngineVersion: string;
+  readonly venueKinds: readonly string[];
+  readonly custody: false;
+  readonly connectedToMainnet: false;
+  readonly walletsCreated: false;
+  readonly walletsConnected: false;
+  readonly privateKeysGenerated: false;
+  readonly swapSubmitted: false;
+  readonly executable: false;
+  readonly delegateExecution: false;
+  readonly pools: readonly {
+    readonly id: string;
+    readonly baseAsset: string;
+    readonly quoteAsset: string;
+    readonly defaultChain: ChainMetadataDto;
+    readonly status: 'available' | 'planned';
+    readonly custodiedByPlatform: false;
+  }[];
+  readonly venues: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly venueKind: string;
+    readonly tokens: readonly string[];
+    readonly chains: readonly ChainMetadataDto[];
+  }[];
+  readonly chains: readonly ChainMetadataDto[];
+  readonly explanation: string;
+}
