@@ -269,8 +269,8 @@ export type CreateRouteBody = z.infer<typeof createRouteSchema>;
 
 export function resolveRouteRequest(body: {
   readonly sourceAsset: string;
-  readonly destinationAsset?: string;
-  readonly targetAsset?: string;
+  readonly destinationAsset?: string | undefined;
+  readonly targetAsset?: string | undefined;
   readonly amount: string;
 }): {
   readonly sourceAsset: string;

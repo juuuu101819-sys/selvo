@@ -13,7 +13,6 @@ import {
   RAIL_REGISTRY,
   STABLECOIN_CONVERSION_KINDS,
   STABLECOIN_REGISTRY,
-  SUPPORTED_STABLECOINS,
 } from '../domain/index.js';
 import { STABLECOIN_ROUTING_ENGINE_VERSION } from '../engine/stablecoin-config.js';
 import type { MultiRailRouting, ScoredMultiRailRoute } from '../engine/routing-types.js';
@@ -448,9 +447,9 @@ export function serializeStablecoinCatalog(): StablecoinCatalogDto {
     privateKeysGenerated: false,
     executable: false,
     delegateExecution: false,
-    stablecoins: SUPPORTED_STABLECOINS.map((code) => {
-      const definition = STABLECOIN_REGISTRY[code]!;
-      return {
+    stablecoins: Object.values(STABLECOIN_REGISTRY)
+      .sort((left, right) => left.code.localeCompare(right.code, 'en'))
+      .map((definition) => ({
         code: definition.code,
         name: definition.name,
         exponent: definition.exponent,
@@ -462,8 +461,7 @@ export function serializeStablecoinCatalog(): StablecoinCatalogDto {
           status: entry.status,
         })),
         custodiedByPlatform: false as const,
-      };
-    }),
+      })),
     chains: Object.values(CHAIN_REGISTRY).map(serializeChainMetadata),
     explanation:
       'Demo USDC and USDT. Adding a stablecoin is a registry row plus adapter rates — routing ' +

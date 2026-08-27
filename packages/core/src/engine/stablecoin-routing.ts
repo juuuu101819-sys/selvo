@@ -18,7 +18,7 @@ import type {
   NormalizedQuoteRequest,
 } from '../ports/index.js';
 import type { FinancialProviderRegistry } from './financial-registry.js';
-import { MultiRailCostEngine, NO_ROUTING_PLATFORM_CHARGE } from './routing-cost.js';
+import { NO_ROUTING_PLATFORM_CHARGE, type MultiRailCostEngine } from './routing-cost.js';
 import { STABLECOIN_ROUTING_ENGINE_VERSION } from './stablecoin-config.js';
 import { explainStablecoinRouting, projectStablecoinRoute } from './stablecoin-project.js';
 import type { StablecoinRouting } from './stablecoin-types.js';

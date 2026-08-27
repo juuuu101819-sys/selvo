@@ -132,7 +132,7 @@ describe('Helios Ramp', () => {
     expect(quote.midMarketRate).toBe('1380');
   });
 
-  it('does not price USDT → KRW — that corridor stays adapter data, not an engine special case', async () => {
+  it('does not price USDT → KRW — that corridor stays adapter data, not an engine special case', () => {
     expect(
       ramp.supportsNormalized({
         sourceAsset: 'USDT',
