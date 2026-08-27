@@ -565,7 +565,7 @@ async function seedDemoAgent(): Promise<void> {
       allowedAssets: ['USD', 'KRW'],
       allowedRecipientCodes: [DEMO_MERCHANT_CODE],
       allowedProviderIds: [],
-      maxFeeBps: new Prisma.Decimal('100'),
+      maxFeeBps: new Prisma.Decimal('500'),
       dailySpendingLimitMinorUnits: new Prisma.Decimal('2000000'),
       dailySpendingAsset: 'USD',
       createdAt,

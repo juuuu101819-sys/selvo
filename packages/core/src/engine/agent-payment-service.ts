@@ -30,7 +30,7 @@ import type {
   IdGenerator,
 } from '../ports/index.js';
 import { simulateSandboxExecution } from './sandbox-simulator.js';
-import { MultiRailRouter } from './routing-engine.js';
+import type { MultiRailRouter } from './routing-engine.js';
 import type { ScoredMultiRailRoute } from './routing-types.js';
 
 const DEFAULT_INTENT_TTL_MS = 3_600_000;
@@ -221,12 +221,16 @@ export class AgentPaymentService {
       });
 
       const quoted = routing.routes.map(toQuotedRouteOption);
+      if (quoted.length === 0) {
+        throw new NoRoutesAvailableError('No provider priced this payment corridor.');
+      }
       const allowed = filterRoutesByPolicy(policy, quoting.maxFeeBps, quoted);
       if (allowed.length === 0) {
+        const providersRestricted = policy.allowedProviderIds.length > 0;
         throw new PolicyDeniedError(
-          quoted.length === 0 ? 'allowed_providers' : 'maximum_fee',
-          quoted.length === 0
-            ? 'No priced route is allowed by this agent policy.'
+          providersRestricted ? 'allowed_providers' : 'maximum_fee',
+          providersRestricted
+            ? 'No priced route uses a provider allowed by this agent policy.'
             : 'Every priced route exceeds the maximum fee allowed by policy.',
           {
             pricedRouteCount: quoted.length,
@@ -611,7 +615,7 @@ export class AgentPaymentService {
     paymentIntentId: string | null,
   ): Promise<void> {
     const payload: JsonObject = {
-      rule: String(error.details['rule'] ?? ''),
+      rule: typeof error.details['rule'] === 'string' ? error.details['rule'] : '',
       message: error.message,
       ...(paymentIntentId === null ? {} : { paymentIntentId }),
     };

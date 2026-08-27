@@ -331,7 +331,7 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
   }
 }
 
-function toIntentData(intent: PaymentIntent) {
+function toIntentData(intent: PaymentIntent): Prisma.PaymentIntentUncheckedCreateInput {
   return {
     id: intent.id,
     organizationId: intent.organizationId,
@@ -466,7 +466,7 @@ function toPublicAgent(row: AgentRow & { credentials: CredentialRow[] }): Public
   return {
     ...toAgent(row),
     keyPrefix: credential?.keyPrefix ?? null,
-    scopes: credential === undefined ? [] : (credential.scopes.filter(isScope) as ApiScope[]),
+    scopes: credential === undefined ? [] : credential.scopes.filter(isScope),
     credentialExpiresAt: credential?.expiresAt?.toISOString() ?? null,
     credentialRevokedAt: credential?.revokedAt?.toISOString() ?? null,
   };
@@ -479,7 +479,7 @@ function toCredential(row: CredentialRow): AgentCredential {
     organizationId: row.organizationId,
     keyPrefix: row.keyPrefix,
     secretHash: row.secretHash,
-    scopes: row.scopes.filter(isScope) as ApiScope[],
+    scopes: row.scopes.filter(isScope),
     expiresAt: row.expiresAt?.toISOString() ?? null,
     revokedAt: row.revokedAt?.toISOString() ?? null,
     lastUsedAt: row.lastUsedAt?.toISOString() ?? null,

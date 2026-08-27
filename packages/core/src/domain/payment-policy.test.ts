@@ -34,7 +34,8 @@ function deniedRule(run: () => void): string {
     run();
   } catch (error) {
     if (error instanceof PolicyDeniedError) {
-      return String(error.details['rule'] ?? '');
+      const rule = error.details['rule'];
+      return typeof rule === 'string' ? rule : '';
     }
     throw error;
   }

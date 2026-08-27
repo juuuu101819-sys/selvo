@@ -139,7 +139,7 @@ export function registerAgentPaymentRoutes(
       allowedAssets: ['USD', 'KRW'],
       allowedRecipientCodes: merchants.map((merchant) => merchant.recipientCode),
       allowedProviderIds: [],
-      maxFeeBps: '100',
+      maxFeeBps: '500',
       dailySpendingLimitMinorUnits: '2000000',
       dailySpendingAsset: 'USD',
       createdAt: now,

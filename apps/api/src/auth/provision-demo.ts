@@ -281,7 +281,7 @@ async function provisionDemoAgent(store: AgentPaymentsRepository): Promise<void>
     allowedAssets: ['USD', 'KRW'],
     allowedRecipientCodes: [DEMO_MERCHANT_CODE],
     allowedProviderIds: [],
-    maxFeeBps: '100',
+    maxFeeBps: '500',
     dailySpendingLimitMinorUnits: '2000000',
     dailySpendingAsset: 'USD',
     createdAt,
