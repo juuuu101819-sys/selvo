@@ -152,6 +152,11 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       defaultRoutingWeights: container.config.routingWeights,
       platformDefaultScoringWeights: DEFAULT_SCORING_WEIGHTS,
       providerTimeoutMs: container.config.providerTimeoutMs,
+      quoteCircuits: {
+        failureThreshold: container.circuitBreakers.failureThreshold,
+        cooldownMs: container.circuitBreakers.cooldownMs,
+        breakers: container.circuitBreakers.snapshot(),
+      },
       providers: container.providers.map((provider) => ({
         id: provider.id,
         name: provider.name,

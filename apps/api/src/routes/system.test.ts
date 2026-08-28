@@ -136,6 +136,25 @@ describe('GET /v1/meta', () => {
     expect(body.authentication.economicActor).toBe('human');
   });
 
+  it('publishes quote circuit-breaker state (PA-L04)', async () => {
+    const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
+    const circuits = response.json<{
+      data: {
+        quoteCircuits: {
+          failureThreshold: number;
+          cooldownMs: number;
+          breakers: { providerId: string; state: string; consecutiveFailures: number }[];
+        };
+      };
+    }>().data.quoteCircuits;
+
+    expect(circuits.failureThreshold).toBe(3);
+    expect(circuits.cooldownMs).toBe(30_000);
+    expect(circuits.breakers.length).toBeGreaterThan(0);
+    expect(circuits.breakers.every((breaker) => breaker.state === 'closed')).toBe(true);
+    expect(circuits.breakers.every((breaker) => breaker.consecutiveFailures === 0)).toBe(true);
+  });
+
   it('publishes the DeFi liquidity routing engine version', async () => {
     const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
     const data = response.json<{

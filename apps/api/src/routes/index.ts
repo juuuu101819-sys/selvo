@@ -44,7 +44,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
   const v1: FastifyPluginAsync = async (instance) => {
     // Registered inside the plugin so authentication is scoped to the versioned API by Fastify's
     // encapsulation, rather than applied globally and then excepted route by route.
-    registerAuthentication(instance, container.authenticator);
+    registerAuthentication(instance, container.authenticator, container.auditLogger);
     registerRateLimiting(instance, {
       settings: container.config.rateLimit,
       store: container.persistence.rateLimits,

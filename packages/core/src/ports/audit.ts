@@ -43,6 +43,8 @@ export const AUDIT_EVENT_TYPES = [
   'nl.route.completed',
   'monetization.recorded',
   'payment.policy.updated',
+  'auth.login.failed',
+  'auth.credential.failed',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

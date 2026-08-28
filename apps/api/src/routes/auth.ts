@@ -12,6 +12,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { SESSION_PREFIX } from '../auth/identity-authenticator.js';
 import type { AppContainer } from '../container.js';
+import { recordLoginFailure } from '../http/auth-failure-audit.js';
 import { principalOf } from '../http/authentication.js';
 import { requireOrganization } from '../http/require-organization.js';
 import { parseOrThrow } from '../http/validation.js';
@@ -50,13 +51,16 @@ export function registerAuthRoutes(app: FastifyInstance, container: AppContainer
       enforcing: true,
     });
     if (container.config.productionLocked && isDemoLoginCredential(body.email, body.password)) {
+      await recordLoginFailure(container.auditLogger, request, body.email);
       throw failed;
     }
     if (user === null || user.status !== 'active' || user.passwordHash === null) {
+      await recordLoginFailure(container.auditLogger, request, body.email);
       throw failed;
     }
     const matches = await verifyPassword(body.password, user.passwordHash);
     if (!matches) {
+      await recordLoginFailure(container.auditLogger, request, body.email);
       throw failed;
     }
     const memberships = await container.persistence.identity.listMembershipsForUser(user.id);
@@ -71,6 +75,7 @@ export function registerAuthRoutes(app: FastifyInstance, container: AppContainer
       membership.organizationId,
     );
     if (organization === null || organization.status !== 'active') {
+      await recordLoginFailure(container.auditLogger, request, body.email);
       throw failed;
     }
 

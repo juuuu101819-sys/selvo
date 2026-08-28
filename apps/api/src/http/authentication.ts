@@ -1,10 +1,15 @@
 import {
   ANONYMOUS_PRINCIPAL,
   UnauthenticatedError,
+  type AuditLogger,
   type Authenticator,
   type Principal,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import {
+  classifyPresentedCredential,
+  recordCredentialFailure,
+} from './auth-failure-audit.js';
 
 /**
  * Per-request identity, held in a WeakMap keyed by the request.
@@ -31,15 +36,25 @@ export function principalOf(request: FastifyRequest): Principal {
  * one place where a credential becomes an identity — and adding real authentication in Phase 2 means
  * replacing the injected authenticator, not touching the routes.
  */
-export function registerAuthentication(app: FastifyInstance, authenticator: Authenticator): void {
+export function registerAuthentication(
+  app: FastifyInstance,
+  authenticator: Authenticator,
+  auditLogger: AuditLogger,
+): void {
   app.addHook('onRequest', async (request: FastifyRequest) => {
+    const authorization = singleHeader(request, 'authorization');
+    const apiKey = singleHeader(request, 'x-api-key');
     const principal = await authenticator.authenticate({
-      authorization: singleHeader(request, 'authorization'),
-      apiKey: singleHeader(request, 'x-api-key'),
+      authorization,
+      apiKey,
       declaredActor: singleHeader(request, 'x-meridian-actor'),
     });
 
     if (principal === null) {
+      const presented = classifyPresentedCredential(authorization, apiKey);
+      if (presented.presented) {
+        await recordCredentialFailure(auditLogger, request, presented);
+      }
       throw new UnauthenticatedError(
         authenticator.enforcing
           ? 'The credential could not be verified.'

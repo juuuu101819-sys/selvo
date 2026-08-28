@@ -1,4 +1,11 @@
-import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet } from '@meridian/adapters';
+import {
+  createFinancialCatalog,
+  createSandboxAdapters,
+  CircuitBreakerRegistry,
+  QuoteCache,
+  wrapFinancialProvidersWithQuoteResilience,
+  type SandboxAdapterSet,
+} from '@meridian/adapters';
 import {
   AgentPaymentService,
   ConfigurationError,
@@ -66,6 +73,7 @@ export interface AppContainer {
   readonly defiRoutingEngineVersion: string;
   /** Where negotiated commercial terms come from, or `"none"` when none are configured. */
   readonly pricingResolverKind: string;
+  readonly circuitBreakers: CircuitBreakerRegistry;
   close(): Promise<void>;
 }
 
@@ -108,10 +116,16 @@ export function createContainer(options: ContainerOptions): AppContainer {
       ? { allowEmpty: true }
       : {},
   );
+  const catalog = createFinancialCatalog(providers, {
+    includeDemoAdapters: config.mode === 'sandbox',
+  });
+  const circuitBreakers = new CircuitBreakerRegistry({ clock, logger });
+  const quoteCache = new QuoteCache({ clock });
   const financialProviders = FinancialProviderRegistry.create(
     config.mode,
-    createFinancialCatalog(providers, {
-      includeDemoAdapters: config.mode === 'sandbox',
+    wrapFinancialProvidersWithQuoteResilience(catalog, {
+      cache: quoteCache,
+      breakers: circuitBreakers,
     }),
   );
 
@@ -276,6 +290,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     stablecoinRoutingEngineVersion: STABLECOIN_ROUTING_ENGINE_VERSION,
     defiRoutingEngineVersion: DEFI_ROUTING_ENGINE_VERSION,
     pricingResolverKind: pricingResolver === noPlatformPricingResolver ? 'none' : persistence.kind,
+    circuitBreakers,
     close: () => persistence.close(),
   };
 }

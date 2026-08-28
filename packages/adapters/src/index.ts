@@ -44,6 +44,26 @@ export {
   type ResilienceOptions,
 } from './resilience/decorators.js';
 export {
+  CircuitBreakerRegistry,
+  DEFAULT_QUOTE_CIRCUIT_COOLDOWN_MS,
+  DEFAULT_QUOTE_CIRCUIT_FAILURE_THRESHOLD,
+  ProviderCircuitBreaker,
+  type CircuitAdmission,
+  type CircuitBreakerOptions,
+  type CircuitBreakerSnapshot,
+  type CircuitBreakerState,
+} from './resilience/circuit-breaker.js';
+export {
+  DEFAULT_QUOTE_CACHE_MAX_ENTRIES,
+  QuoteCache,
+  type QuoteCacheOptions,
+} from './resilience/quote-cache.js';
+export {
+  ResilientFinancialProvider,
+  wrapFinancialProvidersWithQuoteResilience,
+  type QuoteResilienceOptions,
+} from './resilience/with-quote-resilience.js';
+export {
   attemptContext,
   executeProviderCall,
   type ProviderCallOptions,

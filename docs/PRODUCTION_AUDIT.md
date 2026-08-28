@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, and PA-M12 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M07–PA-M10, PA-M13–PA-M16, PA-L01–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, and PA-L04 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M07–PA-M10, PA-M14, PA-M16, PA-L01–PA-L03, PA-L05–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -34,7 +34,7 @@ It is **not production-ready** as a live financial service:
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
   (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
   naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
-  PA-M01–PA-M06, PA-M11, and PA-M12 are closed. Remaining Medium/Low items are out of scope for this phase.
+  PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 (quote cache / circuit breaker) is closed. Remaining Medium/Low items are out of scope for this phase.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -435,11 +435,14 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M13 — Next middleware only checks cookie presence
 
-- **File:** `apps/web/src/middleware.ts` (lines 8–17)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/web/src/middleware.ts`; `apps/web/src/lib/session-gate.ts`; `apps/web/src/lib/protected-routes.ts`
 - **Component:** `/dashboard` gate
 - **Problem:** Any non-empty `meridian_session` cookie reaches the dashboard; API then rejects.
 - **Why it matters:** Extra round-trip, not a data leak if server actions always hit the API (they do).
-- **Recommended fix:** Optional `/auth/me` check; not a substitute for API auth.
+- **Before:** Presence-only check. Garbage cookies reached `/dashboard` and were rejected later by `GET /auth/me`.
+- **After:** One middleware gate on every `/dashboard` route. Missing, malformed, expired, and API-rejected cookies all produce the same client-visible outcome: PA-M03 `401 UNAUTHENTICATED` (`Sign in to continue.`, empty `details`) for programmatic JSON, or a generic `/login` redirect for document navigation. The response never distinguishes expired vs malformed vs missing. Format-invalid cookies are rejected without calling the API. Well-formed `mds_` tokens are verified with `GET /api/v1/auth/me` (fail-closed on timeout or transport error). Not a substitute for API auth.
+- **Tests:** `apps/web/src/lib/session-gate.test.ts`; `apps/web/src/middleware.test.ts` — every dashboard `page.tsx` enumerated; no cookie and tampered cookie both 401.
 - **Priority:** P3
 
 #### PA-M14 — Auto-created “wallet” reference on agent issue
@@ -453,11 +456,14 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M15 — Failed authentication is not an audit event
 
-- **File:** `apps/api/src/routes/auth.ts`; `packages/core/src/ports/audit.ts` event set
-- **Component:** login
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/routes/auth.ts`; `apps/api/src/http/authentication.ts`; `apps/api/src/http/auth-failure-audit.ts`; `packages/core/src/ports/audit.ts`
+- **Component:** login and presented credentials
 - **Problem:** Brute force is not in the financial audit log (rate limit may still apply).
 - **Why it matters:** Security monitoring gap.
-- **Recommended fix:** Append `auth.login.failed` with hashed identifier, no password.
+- **Before:** Failed login and unverifiable Bearer/API-key/agent credentials returned 401 with no audit row.
+- **After:** Every failed login appends `auth.login.failed` (hashed email identifier, source IP, category `login_failed`). Every presented-but-unverifiable credential appends `auth.credential.failed` with a reason category (`invalid_session` / `invalid_api_key` / `invalid_agent` / `malformed_credential`). Raw passwords, session tokens, and API-key/agent secrets are never written. Public `mk_`/`mag_` 16-character prefixes may appear; `mds_` tokens do not. No lockout, CAPTCHA, or extra throttle — observability only.
+- **Tests:** `apps/api/src/http/auth-failure-audit.test.ts` — N failed logins produce N events; payloads contain no raw credential.
 - **Priority:** P2
 
 #### PA-M16 — `parseApiScopes` silently drops unknown strings
@@ -502,11 +508,14 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-L04 — No quote cache, circuit breaker, or worker queue
 
-- **File:** `docs/ROADMAP.md` Phase 5; `packages/adapters/src/resilience/execute.ts`
+- **Status:** **FIXED** (2026-08-28) for cache and per-provider circuit breaker. Worker queue remains out of scope.
+- **File:** `packages/adapters/src/resilience/quote-cache.ts`; `packages/adapters/src/resilience/circuit-breaker.ts`; `packages/adapters/src/resilience/with-quote-resilience.ts`; `apps/api/src/container.ts`; `GET /api/v1/meta` `quoteCircuits`
 - **Component:** adapters
 - **Problem:** Resilience helper exists; dataset providers do not HTTP. No cache/breaker.
 - **Why it matters:** Live adapters will stampede and retry storms.
-- **Recommended fix:** Phase 5 with licensed HTTP adapters.
+- **Before:** Every `getQuote` hit the adapter. A failing provider was retried by each request until MultiRailRouter's per-call timeout.
+- **After:** Identical quote requests to the same provider/corridor are served from a cache whose TTL is the PA-H09 rail freshness window (never longer). A per-provider circuit breaker opens after three consecutive `getQuote` failures, excludes that adapter from `FinancialProviderRegistry.eligible` (and therefore from MultiRailRouter ranking input) for a 30s cooldown, then half-opens for one probe. Open breakers are logged and published on `GET /meta` `quoteCircuits`. MultiRailRouter remains the only ranking engine. No worker queue.
+- **Tests:** `packages/adapters/src/resilience/quote-resilience.test.ts`; `apps/api/src/routes/system.test.ts`
 - **Priority:** P1 with live adapters; P3 until then
 
 #### PA-L05 — Agent-to-agent, receive-payments, treasury rail, KYC/sanctions
@@ -563,13 +572,15 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 ## C. Medium / low issues
 
-**Still open and out of scope for this phase.** PA-M01–PA-M06, PA-M11, and PA-M12 are closed. Do not treat this phase as having closed the remainder.
+**Still open and out of scope for this phase.** PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 is closed (cache + circuit breaker; no worker queue). Do not treat this phase as having closed the remainder.
 
-**Medium closed:** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure).
+**Medium closed:** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure), PA-M13 (dashboard session middleware), PA-M15 (failed-auth audit).
 
-**Medium still open:** PA-M07–PA-M10, PA-M13–PA-M16 (pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, middleware, wallet wording, login audit, silent scopes).
+**Medium still open:** PA-M07–PA-M10, PA-M14, PA-M16 (pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, wallet wording, silent scopes).
 
-**Low:** PA-L01–PA-L06 (display `Number()`, Prisma string status, SSO/MFA, cache/breakers, A2A/treasury/KYC-as-product, e2e memory).
+**Low closed:** PA-L04 (quote cache and circuit breaker; worker queue not added).
+
+**Low still open:** PA-L01–PA-L03, PA-L05–PA-L06 (display `Number()`, Prisma string status, SSO/MFA, A2A/treasury/KYC-as-product, e2e memory).
 
 ---
 
@@ -620,4 +631,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, and PA-M12 were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium (PA-M07–PA-M10, PA-M13–PA-M16) and Low (PA-L01–PA-L06) issues remain open.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, and PA-L04 were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium (PA-M07–PA-M10, PA-M14, PA-M16) and Low (PA-L01–PA-L03, PA-L05–PA-L06) issues remain open.*
