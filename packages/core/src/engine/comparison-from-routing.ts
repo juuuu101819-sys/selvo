@@ -80,11 +80,8 @@ export function serializeComparisonFromRouting(input: {
 function serializeRouteFromMultiRail(route: ScoredMultiRailRoute): RouteDto {
   const source = route.sendAmount.asset;
   const dest = route.deliveredAmount.asset;
-  const intermediary =
-    route.hops.find((hop) => hop !== source && hop !== dest) ??
-    (typeof route.quote.metadata['intermediaryAsset'] === 'string'
-      ? route.quote.metadata['intermediaryAsset']
-      : null);
+  const fromMeta = route.quote.metadata['intermediaryAsset'];
+  const intermediary = typeof fromMeta === 'string' ? fromMeta : null;
 
   return {
     routeId: route.routeId,

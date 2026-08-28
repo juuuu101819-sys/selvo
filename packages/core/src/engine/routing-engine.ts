@@ -139,6 +139,7 @@ export class MultiRailRouter {
       });
       throw new UnsupportedCorridorError(input.sourceAsset, input.destinationAsset, {
         amount: AssetAmount.ofMinorUnits(input.sourceAsset, input.amountMinorUnits).toString(),
+        rails: input.rails === undefined || input.rails === null ? null : [...input.rails],
       });
     }
 

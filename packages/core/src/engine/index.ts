@@ -59,6 +59,7 @@ export {
 } from './routing-engine.js';
 export {
   isRoutingComparisonSnapshot,
+  fingerprintableRoutingSnapshot,
   snapshotFromRouting,
   ROUTING_COMPARISON_SNAPSHOT_KIND,
   ROUTING_COMPARISON_SNAPSHOT_VERSION,

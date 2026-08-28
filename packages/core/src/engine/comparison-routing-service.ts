@@ -9,6 +9,7 @@ import type { FinancialProviderRegistry } from './financial-registry.js';
 import {
   isRoutingComparisonSnapshot,
   snapshotFromRouting,
+  fingerprintableRoutingSnapshot,
   type RoutingComparisonSnapshot,
 } from './routing-snapshot.js';
 import type { ComparisonDto, ReplayResultDto } from '../serialization/dto.js';
@@ -102,7 +103,7 @@ export class ComparisonRoutingService {
       routing.pricingRules,
       capabilitiesOf(routing, this.deps.registry),
     );
-    const digest = fingerprint(snapshot);
+    const digest = fingerprint(fingerprintableRoutingSnapshot(snapshot));
     const dto = serializeComparisonFromRouting({
       comparisonId,
       fingerprint: digest,
@@ -192,7 +193,7 @@ export class ComparisonRoutingService {
     }
 
     const replayedRouting = this.deps.routing.recomputeFromSnapshot(stored.snapshot);
-    const replayedFingerprint = fingerprint(stored.snapshot);
+    const replayedFingerprint = fingerprint(fingerprintableRoutingSnapshot(stored.snapshot));
     const dto = serializeComparisonFromRouting({
       comparisonId: stored.comparisonId,
       fingerprint: replayedFingerprint,

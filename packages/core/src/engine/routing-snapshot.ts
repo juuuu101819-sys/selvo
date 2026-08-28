@@ -84,3 +84,25 @@ export function snapshotFromRouting(
 function sortById<T>(items: readonly T[], key: (item: T) => string): readonly T[] {
   return [...items].sort((left, right) => key(left).localeCompare(key(right), 'en'));
 }
+
+/**
+ * Canonical fingerprint input. `routingId` is a per-request identity, not part of the calculation.
+ */
+export function fingerprintableRoutingSnapshot(
+  snapshot: RoutingComparisonSnapshot,
+): Omit<RoutingComparisonSnapshot, 'routingId'> {
+  return {
+    snapshotKind: snapshot.snapshotKind,
+    snapshotVersion: snapshot.snapshotVersion,
+    engineVersion: snapshot.engineVersion,
+    mode: snapshot.mode,
+    organizationId: snapshot.organizationId,
+    request: snapshot.request,
+    pricingRules: snapshot.pricingRules,
+    weights: snapshot.weights,
+    quotes: snapshot.quotes,
+    providers: snapshot.providers,
+    capabilities: snapshot.capabilities,
+    providerFailures: snapshot.providerFailures,
+  };
+}
