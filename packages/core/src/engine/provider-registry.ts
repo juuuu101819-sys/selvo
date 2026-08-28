@@ -12,12 +12,23 @@ export interface RegistryExclusion {
   readonly reason: string;
 }
 
+export interface ProviderRegistryOptions {
+  /**
+   * When true, an empty admitted set is allowed. Production uses this only when financial routing
+   * has been explicitly declared unavailable (`PRODUCTION_ROUTING_AVAILABLE=false`).
+   *
+   * Default false preserves the historical fail-closed boot: production still requires at least
+   * one `licensed_partner` adapter before routing may be offered.
+   */
+  readonly allowEmpty?: boolean;
+}
+
 /**
  * The set of liquidity sources available in the running platform mode.
  *
  * The registry is the compliance choke point: a sandbox adapter cannot reach a production caller
- * because it is filtered out here, before the engine ever sees it. Booting production with no
- * licensed provider is a startup failure rather than an empty result at request time.
+ * because it is filtered out here, before the engine ever sees it. Claiming production routing
+ * with no licensed provider is a startup failure rather than an empty result at request time.
  */
 export class ProviderRegistry {
   private readonly byId: ReadonlyMap<ProviderId, RouteProvider>;
@@ -34,7 +45,11 @@ export class ProviderRegistry {
     this.byId = new Map(providers.map((provider) => [provider.descriptor.id, provider]));
   }
 
-  static create(mode: PlatformMode, providers: readonly RouteProvider[]): ProviderRegistry {
+  static create(
+    mode: PlatformMode,
+    providers: readonly RouteProvider[],
+    options: ProviderRegistryOptions = {},
+  ): ProviderRegistry {
     const seen = new Set<ProviderId>();
     const admitted: RouteProvider[] = [];
     const exclusions: RegistryExclusion[] = [];
@@ -68,17 +83,19 @@ export class ProviderRegistry {
       admitted.push(provider);
     }
 
-    if (admitted.length === 0) {
-      throw new ConfigurationError(
-        `No provider adapters are available in ${mode} mode. ` +
-          (mode === 'production'
-            ? 'Production mode requires at least one licensed partner adapter to be configured.'
-            : 'Check the sandbox adapter registration.'),
-        { mode, exclusions },
-      );
-    }
+    const allowEmpty = options.allowEmpty === true;
 
-    if (
+    if (admitted.length === 0) {
+      if (!allowEmpty) {
+        throw new ConfigurationError(
+          `No provider adapters are available in ${mode} mode. ` +
+            (mode === 'production'
+              ? 'Production mode requires at least one licensed partner adapter to be configured.'
+              : 'Check the sandbox adapter registration.'),
+          { mode, exclusions },
+        );
+      }
+    } else if (
       mode === 'production' &&
       !admitted.some((p) => p.descriptor.licensing === 'licensed_partner')
     ) {

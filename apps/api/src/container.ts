@@ -1,14 +1,16 @@
 import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet } from '@meridian/adapters';
 import {
   AgentPaymentService,
-  NlRoutingService,
+  ConfigurationError,
   DEFI_ROUTING_ENGINE_VERSION,
   DefiRouter,
   ENGINE_VERSION,
   FinancialProviderRegistry,
+  FinancialRouteGraph,
   GRAPH_ENGINE_VERSION,
   MultiRailCostEngine,
   MultiRailRouter,
+  NlRoutingService,
   ProviderRegistry,
   ROUTING_ENGINE_VERSION,
   RepositoryAuditLogger,
@@ -87,6 +89,13 @@ export function createContainer(options: ContainerOptions): AppContainer {
   const { config, logger } = options;
   const clock = options.clock ?? systemClock;
 
+  if (config.productionLocked && config.database.driver === 'memory') {
+    throw new ConfigurationError(
+      'DATABASE_DRIVER=memory is forbidden when NODE_ENV=production or PLATFORM_MODE=production.',
+      { driver: config.database.driver, mode: config.mode, nodeEnv: config.nodeEnv },
+    );
+  }
+
   const persistence = createPersistenceDriver({
     driver: config.database.driver,
     connectionString: config.database.url,
@@ -95,10 +104,18 @@ export function createContainer(options: ContainerOptions): AppContainer {
   });
 
   const { providers, sandbox } = buildProviders(config, logger);
-  const registry = ProviderRegistry.create(config.mode, providers);
+  const registry = ProviderRegistry.create(
+    config.mode,
+    providers,
+    config.mode === 'production' && !config.productionGates.routingAvailable
+      ? { allowEmpty: true }
+      : {},
+  );
   const financialProviders = FinancialProviderRegistry.create(
     config.mode,
-    createFinancialCatalog(providers),
+    createFinancialCatalog(providers, {
+      includeDemoAdapters: config.mode === 'sandbox',
+    }),
   );
 
   if (registry.exclusions.length > 0) {
@@ -179,7 +196,8 @@ export function createContainer(options: ContainerOptions): AppContainer {
 
   const routeGraph = new RouteGraphService({
     mode: config.mode,
-    graph: buildDemoFinancialGraph(),
+    graph:
+      config.mode === 'sandbox' ? buildDemoFinancialGraph() : FinancialRouteGraph.create([], []),
     clock,
     ids: uuidIdGenerator,
     auditLogger,
@@ -190,6 +208,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     persistence.identity,
     clock,
     persistence.agentPayments,
+    { rejectDemoSecrets: config.productionLocked },
   );
 
   const agentPayments = new AgentPaymentService({
@@ -211,6 +230,10 @@ export function createContainer(options: ContainerOptions): AppContainer {
 
   logger.info('Meridian container initialised', {
     mode: config.mode,
+    productionLocked: config.productionLocked,
+    routingAvailable: config.productionGates.routingAvailable,
+    executionAvailable: config.productionGates.executionAvailable,
+    authSecretConfigured: config.authSecretConfigured,
     engineVersion: ENGINE_VERSION,
     routingEngineVersion: ROUTING_ENGINE_VERSION,
     graphEngineVersion: GRAPH_ENGINE_VERSION,
@@ -262,19 +285,29 @@ export function createContainer(options: ContainerOptions): AppContainer {
 /**
  * Selects the adapters for the running mode.
  *
- * Sandbox rails are loaded from the pricing dataset. Production mode has no adapters in Phase 1,
- * so `ProviderRegistry.create` refuses to start — a loud failure is the correct outcome, because
- * the alternative is a production deployment quietly serving synthetic prices.
+ * Sandbox rails are loaded from the pricing dataset. Production never loads demo adapters.
+ * Production financial routing is enabled only when PRODUCTION_ROUTING_AVAILABLE=true and at least
+ * one licensed partner adapter is configured. No licensed adapters exist in this tree, so claiming
+ * routing availability is a startup failure. With the flag false, the process may start read-only
+ * with an empty registry. Execution is independently unavailable.
  */
 function buildProviders(
   config: AppConfig,
   logger: Logger,
 ): { providers: readonly RouteProvider[]; sandbox: SandboxAdapterSet | null } {
   if (config.mode !== 'sandbox') {
-    // Phase 3 registers licensed partner adapters here, resolving credentials through the
-    // SecretResolver rather than reading the environment directly.
-    logger.warn('Production mode requested with no licensed partner adapters configured', {
+    if (config.productionGates.routingAvailable) {
+      throw new ConfigurationError(
+        'PRODUCTION_ROUTING_AVAILABLE is true but no licensed partner adapters are configured. ' +
+          'Do not enable production financial routing without a licensed adapter. ' +
+          'Set PRODUCTION_ROUTING_AVAILABLE=false to start in a read-only production state.',
+        { mode: config.mode, routingAvailable: true, executionAvailable: false },
+      );
+    }
+    logger.warn('Production mode starting without licensed partner adapters; financial routing is unavailable', {
       mode: config.mode,
+      routingAvailable: false,
+      executionAvailable: false,
     });
     return { providers: [], sandbox: null };
   }

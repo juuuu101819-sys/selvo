@@ -1,6 +1,7 @@
 import {
   UnauthenticatedError,
   hashSecret,
+  isDemoLoginCredential,
   randomToken,
   uuidIdGenerator,
   verifyPassword,
@@ -46,6 +47,9 @@ export function registerAuthRoutes(app: FastifyInstance, container: AppContainer
       scheme: container.authenticator.scheme,
       enforcing: true,
     });
+    if (container.config.productionLocked && isDemoLoginCredential(body.email, body.password)) {
+      throw failed;
+    }
     if (user === null || user.status !== 'active' || user.passwordHash === null) {
       throw failed;
     }

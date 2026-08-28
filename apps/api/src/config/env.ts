@@ -3,6 +3,8 @@ import {
   DEFAULT_ROUTING_WEIGHTS,
   DEFAULT_SCORING_WEIGHTS,
   PLATFORM_MODES,
+  PRODUCTION_AUTH_SECRET_MIN_LENGTH,
+  isForbiddenProductionSecret,
   parseRoutingWeights,
   parseScoringWeights,
   type SerializedRoutingWeights,
@@ -12,6 +14,10 @@ import { PERSISTENCE_DRIVERS } from '@meridian/persistence';
 import { z } from 'zod';
 
 const decimalString = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal string');
+const booleanFlag = z
+  .enum(['true', 'false'])
+  .default('false')
+  .transform((value) => value === 'true');
 
 /**
  * Configuration schema.
@@ -19,6 +25,7 @@ const decimalString = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative 
  * Everything the application needs arrives through the environment and is validated exactly once,
  * at startup. A misconfigured deployment fails immediately with a precise message instead of
  * surfacing as a strange 500 on the first request. No secret is ever read from source (rule 4).
+ * Secret values are never copied onto {@link AppConfig} and must never be logged.
  */
 const envSchema = z
   .object({
@@ -43,6 +50,25 @@ const envSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((value) => value === 'true'),
+
+    /**
+     * Operator claim that licensed partner quotes may be routed in production.
+     * Independently false from {@link PRODUCTION_EXECUTION_AVAILABLE}. Default false.
+     */
+    PRODUCTION_ROUTING_AVAILABLE: booleanFlag,
+    /**
+     * Operator claim that partner execution is available. Always rejected: execution is not
+     * implemented and `POST /executions` remains 501.
+     */
+    PRODUCTION_EXECUTION_AVAILABLE: booleanFlag,
+
+    SEED_DEMO_TENANTS: booleanFlag,
+
+    /**
+     * Production-only process secret. Required when NODE_ENV or PLATFORM_MODE is production.
+     * Never stored on AppConfig; only {@link AppConfig.authSecretConfigured} is retained.
+     */
+    AUTH_SECRET: z.string().min(1).optional(),
 
     // Defaults taken from the engine rather than repeated here, so the running service and the
     // platform default cannot drift apart.
@@ -79,13 +105,100 @@ const envSchema = z
         message: 'DATABASE_URL is required when DATABASE_DRIVER is "postgres".',
       });
     }
+
+    const productionLocked = isProductionLocked(env.NODE_ENV, env.PLATFORM_MODE);
+
+    if (productionLocked && env.DATABASE_DRIVER === 'memory') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DATABASE_DRIVER'],
+        message:
+          'DATABASE_DRIVER=memory is forbidden when NODE_ENV=production or PLATFORM_MODE=production. ' +
+          'Production requires an approved persistent database (postgres). The driver is not switched automatically.',
+      });
+    } else if (productionLocked && env.DATABASE_DRIVER !== 'postgres') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DATABASE_DRIVER'],
+        message:
+          'Production requires DATABASE_DRIVER=postgres (the only approved persistent production database). ' +
+          'The driver is not switched automatically.',
+      });
+    }
+
+    if (env.PRODUCTION_EXECUTION_AVAILABLE) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PRODUCTION_EXECUTION_AVAILABLE'],
+        message:
+          'PRODUCTION_EXECUTION_AVAILABLE cannot be true. Partner execution is not implemented; ' +
+          'POST /api/v1/executions remains 501. A production environment with no licensed execution ' +
+          'partner must never pretend that execution is available.',
+      });
+    }
+
+    if (env.PRODUCTION_ROUTING_AVAILABLE && env.PLATFORM_MODE !== 'production') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['PRODUCTION_ROUTING_AVAILABLE'],
+        message: 'PRODUCTION_ROUTING_AVAILABLE is only valid when PLATFORM_MODE=production.',
+      });
+    }
+
+    if (productionLocked && env.SEED_DEMO_TENANTS) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SEED_DEMO_TENANTS'],
+        message:
+          'SEED_DEMO_TENANTS cannot be true when NODE_ENV=production or PLATFORM_MODE=production.',
+      });
+    }
+
+    if (productionLocked) {
+      const authSecret = env.AUTH_SECRET;
+      if (authSecret === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_SECRET'],
+          message:
+            'AUTH_SECRET is required when NODE_ENV=production or PLATFORM_MODE=production. ' +
+            'Set an explicit production secret via the environment; demo and default credentials are rejected.',
+        });
+      } else if (authSecret.length < PRODUCTION_AUTH_SECRET_MIN_LENGTH) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_SECRET'],
+          message: `AUTH_SECRET must be at least ${PRODUCTION_AUTH_SECRET_MIN_LENGTH} characters. Do not use a demo or default secret.`,
+        });
+      } else if (isForbiddenProductionSecret(authSecret)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_SECRET'],
+          message:
+            'AUTH_SECRET must not be a demo password, demo secret, or default credential fallback.',
+        });
+      }
+    }
   });
 
 export type RawEnv = z.infer<typeof envSchema>;
 
+export interface ProductionGates {
+  /** Licensed partner quotes may be offered. Independent of {@link executionAvailable}. */
+  readonly routingAvailable: boolean;
+  /** Partner execution may be offered. Always false until the compliance gate is satisfied. */
+  readonly executionAvailable: boolean;
+}
+
 export interface AppConfig {
   readonly nodeEnv: RawEnv['NODE_ENV'];
   readonly mode: RawEnv['PLATFORM_MODE'];
+  /** True when NODE_ENV=production or PLATFORM_MODE=production. */
+  readonly productionLocked: boolean;
+  readonly productionGates: ProductionGates;
+  /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
+  readonly authSecretConfigured: boolean;
+  readonly seedDemoTenants: boolean;
   readonly host: string;
   readonly port: number;
   readonly logLevel: RawEnv['LOG_LEVEL'];
@@ -109,6 +222,24 @@ export interface AppConfig {
   };
 }
 
+export function isProductionLocked(nodeEnv: string, mode: string): boolean {
+  return nodeEnv === 'production' || mode === 'production';
+}
+
+/**
+ * Demo tenants are sandbox fixtures. Production-locked processes never seed them. Tests seed only
+ * when SEED_DEMO_TENANTS=true (Playwright). Local development keeps the historical auto-seed.
+ */
+export function shouldProvisionDemoTenants(config: AppConfig): boolean {
+  if (config.productionLocked) {
+    return false;
+  }
+  if (config.nodeEnv === 'test') {
+    return config.seedDemoTenants;
+  }
+  return true;
+}
+
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.safeParse(source);
   if (!parsed.success) {
@@ -120,6 +251,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     });
   }
   const env = parsed.data;
+  const productionLocked = isProductionLocked(env.NODE_ENV, env.PLATFORM_MODE);
 
   const weights = {
     cost: env.ROUTE_WEIGHT_COST,
@@ -144,6 +276,13 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   return {
     nodeEnv: env.NODE_ENV,
     mode: env.PLATFORM_MODE,
+    productionLocked,
+    productionGates: {
+      routingAvailable: env.PRODUCTION_ROUTING_AVAILABLE,
+      executionAvailable: false,
+    },
+    authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
+    seedDemoTenants: env.SEED_DEMO_TENANTS,
     host: env.API_HOST,
     port: env.API_PORT,
     logLevel: env.LOG_LEVEL,

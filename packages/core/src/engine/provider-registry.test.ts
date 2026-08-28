@@ -69,6 +69,22 @@ describe('ProviderRegistry', () => {
     ).toThrow(ConfigurationError);
   });
 
+  it('allows an empty production registry only when allowEmpty is set', () => {
+    const registry = ProviderRegistry.create('production', [], { allowEmpty: true });
+    expect(registry.all()).toEqual([]);
+    expect(registry.descriptors()).toEqual([]);
+  });
+
+  it('still refuses modelled-only production adapters even when allowEmpty is set', () => {
+    expect(() =>
+      ProviderRegistry.create(
+        'production',
+        [stub('model', { modes: ['production'], licensing: 'internal_model' })],
+        { allowEmpty: true },
+      ),
+    ).toThrow(ConfigurationError);
+  });
+
   describe('eligibility', () => {
     const request = buildQuoteRequest();
 

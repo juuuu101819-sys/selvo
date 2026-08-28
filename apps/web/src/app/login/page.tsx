@@ -21,6 +21,7 @@ export default async function LoginPage({
   }
 
   const meta = await fetchMeta();
+  const allowDemoCredentials = meta.ok && meta.data.mode === 'sandbox';
 
   return (
     <>
@@ -35,29 +36,31 @@ export default async function LoginPage({
           route comparison stays available without an account.
         </p>
         <div className="mt-6">
-          <LoginForm nextPath={nextPath} />
+          <LoginForm nextPath={nextPath} allowDemoCredentials={allowDemoCredentials} />
         </div>
-        <aside className="border-border/60 bg-muted/40 mt-8 rounded-xl border p-4 text-sm">
-          <h2 className="font-medium">Local demo tenant</h2>
-          <p className="text-muted-foreground mt-1">
-            Sandbox only. This login is committed on purpose so local development does not need a
-            secrets manager.
-          </p>
-          <dl className="mt-3 space-y-1 font-mono text-xs">
-            <div>
-              <dt className="text-muted-foreground inline">email </dt>
-              <dd className="inline">{DEMO_LOGIN.email}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground inline">password </dt>
-              <dd className="inline">{DEMO_LOGIN.password}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground inline">organization </dt>
-              <dd className="inline">{DEMO_LOGIN.organization}</dd>
-            </div>
-          </dl>
-        </aside>
+        {allowDemoCredentials ? (
+          <aside className="border-border/60 bg-muted/40 mt-8 rounded-xl border p-4 text-sm">
+            <h2 className="font-medium">Local demo tenant</h2>
+            <p className="text-muted-foreground mt-1">
+              Sandbox only. This login is committed on purpose so local development does not need a
+              secrets manager.
+            </p>
+            <dl className="mt-3 space-y-1 font-mono text-xs">
+              <div>
+                <dt className="text-muted-foreground inline">email </dt>
+                <dd className="inline">{DEMO_LOGIN.email}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground inline">password </dt>
+                <dd className="inline">{DEMO_LOGIN.password}</dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground inline">organization </dt>
+                <dd className="inline">{DEMO_LOGIN.organization}</dd>
+              </div>
+            </dl>
+          </aside>
+        ) : null}
       </main>
     </>
   );

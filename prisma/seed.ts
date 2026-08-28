@@ -60,6 +60,12 @@ if (DATABASE_URL === undefined || DATABASE_URL.trim() === '') {
   throw new Error('DATABASE_URL must be set to seed the database.');
 }
 
+if (process.env['NODE_ENV'] === 'production' || process.env['PLATFORM_MODE'] === 'production') {
+  throw new Error(
+    'Refusing to seed demo credentials when NODE_ENV=production or PLATFORM_MODE=production.',
+  );
+}
+
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: DATABASE_URL }) });
 
 /** The currencies demo mode offers. Exponents are asserted against the code registry below. */

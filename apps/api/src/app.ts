@@ -3,7 +3,7 @@ import cors from '@fastify/cors';
 import { ValidationError, type Clock } from '@meridian/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { provisionDemoTenants } from './auth/provision-demo.js';
-import type { AppConfig } from './config/env.js';
+import { shouldProvisionDemoTenants, type AppConfig } from './config/env.js';
 import { createContainer, type AppContainer } from './container.js';
 import { registerErrorHandling } from './http/errors.js';
 import { PinoLoggerAdapter } from './logging/pino-logger.js';
@@ -48,6 +48,8 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
           '*.password',
           '*.privateKey',
           '*.secret',
+          '*.AUTH_SECRET',
+          '*.authSecret',
           '*.apiKey',
           '*.token',
           '*.wallet',
@@ -89,9 +91,9 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
   registerErrorHandling(app);
   await registerRoutes(app, container);
 
-  // Tests provision tenants themselves. End-to-end and local sandbox set SEED_DEMO_TENANTS so the
-  // documented demo login exists even when NODE_ENV is test (Playwright's API process).
-  if (config.nodeEnv !== 'test' || process.env['SEED_DEMO_TENANTS'] === 'true') {
+  // Demo tenants are sandbox fixtures. Production-locked processes never seed them. Tests seed
+  // only when SEED_DEMO_TENANTS=true (Playwright). Local development keeps the historical auto-seed.
+  if (shouldProvisionDemoTenants(config)) {
     await provisionDemoTenants(
       {
         identity: container.persistence.identity,
@@ -102,6 +104,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
       {
         seedDashboard: container.persistence.kind === 'memory',
         nowIso: container.clock.nowIso(),
+        productionLocked: config.productionLocked,
       },
     );
   }

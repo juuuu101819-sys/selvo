@@ -117,6 +117,10 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
           'Meridian discovers and ranks routes. Settlement is delegated to licensed or authorized ' +
           'providers. Direct execution, custody and private-key control are out of scope and not implemented.',
       },
+      productionGates: {
+        routingAvailable: container.config.productionGates.routingAvailable,
+        executionAvailable: container.config.productionGates.executionAvailable,
+      },
       authentication: {
         scheme: container.authenticator.scheme,
         enforcing: container.authenticator.enforcing,

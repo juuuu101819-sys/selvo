@@ -52,6 +52,7 @@ describe('GET /v1/meta', () => {
         };
         capabilities: Record<string, boolean>;
         execution: { implemented: boolean; delegated: boolean; statusCode: number };
+        productionGates: { routingAvailable: boolean; executionAvailable: boolean };
         pipeline: { id: string; status: string }[];
         railFamilies: { id: string; status: string }[];
         rails: { type: string; family: string; status: string }[];
@@ -95,6 +96,10 @@ describe('GET /v1/meta', () => {
       implemented: false,
       delegated: false,
       statusCode: 501,
+    });
+    expect(body.productionGates).toEqual({
+      routingAvailable: false,
+      executionAvailable: false,
     });
     expect(body.pipeline).toEqual(
       expect.arrayContaining([

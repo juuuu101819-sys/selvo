@@ -7,7 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DEMO_LOGIN } from '@/lib/demo-credentials';
 
-export function LoginForm({ nextPath }: { nextPath: string }) {
+export function LoginForm({
+  nextPath,
+  allowDemoCredentials = false,
+}: {
+  nextPath: string;
+  allowDemoCredentials?: boolean;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -61,17 +67,19 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         <Button type="submit" disabled={pending}>
           {pending ? 'Signing in…' : 'Sign in'}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={pending}
-          onClick={() => {
-            setEmail(DEMO_LOGIN.email);
-            setPassword(DEMO_LOGIN.password);
-          }}
-        >
-          Use demo credentials
-        </Button>
+        {allowDemoCredentials ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={() => {
+              setEmail(DEMO_LOGIN.email);
+              setPassword(DEMO_LOGIN.password);
+            }}
+          >
+            Use demo credentials
+          </Button>
+        ) : null}
       </div>
     </form>
   );

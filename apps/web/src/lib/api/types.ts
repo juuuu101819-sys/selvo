@@ -225,6 +225,10 @@ export interface MetaDto {
     readonly statusCode: number;
     readonly reason: string;
   };
+  readonly productionGates?: {
+    readonly routingAvailable: boolean;
+    readonly executionAvailable: boolean;
+  };
   readonly pricing: {
     readonly datasetVersion: string;
     readonly referenceRatesVersion: string;

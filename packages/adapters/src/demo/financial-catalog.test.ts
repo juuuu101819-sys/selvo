@@ -21,6 +21,14 @@ describe('financial provider catalog', () => {
     createFinancialCatalog(sandbox.providers),
   );
 
+  it('omits ramp and DeFi demo adapters when includeDemoAdapters is false', () => {
+    const productionCatalog = FinancialProviderRegistry.create(
+      'production',
+      createFinancialCatalog([], { includeDemoAdapters: false }),
+    );
+    expect(productionCatalog.all()).toEqual([]);
+  });
+
   it('wraps the four comparison-engine rails and adds ramp plus three DeFi demos', () => {
     expect(sandbox.providers).toHaveLength(4);
     expect(catalog.all()).toHaveLength(8);

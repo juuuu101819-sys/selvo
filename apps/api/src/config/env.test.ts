@@ -1,6 +1,6 @@
 import { ConfigurationError, DEFAULT_SCORING_WEIGHTS } from '@meridian/core';
 import { describe, expect, it } from 'vitest';
-import { disclaimerFor, loadConfig } from './env.js';
+import { disclaimerFor, loadConfig, shouldProvisionDemoTenants } from './env.js';
 
 describe('loadConfig', () => {
   it('defaults to sandbox mode with the in-memory store', () => {
@@ -102,6 +102,159 @@ describe('loadConfig', () => {
         'PROVIDER_TIMEOUT_MS',
       );
     }
+  });
+});
+
+const PRODUCTION_AUTH_SECRET = 'unit-test-production-auth-secret-ok';
+
+function productionSource(overrides: Record<string, string | undefined> = {}): NodeJS.ProcessEnv {
+  return {
+    NODE_ENV: 'production',
+    PLATFORM_MODE: 'production',
+    DATABASE_DRIVER: 'postgres',
+    DATABASE_URL: 'postgres://meridian:meridian@127.0.0.1:5432/meridian',
+    AUTH_SECRET: PRODUCTION_AUTH_SECRET,
+    ...overrides,
+  };
+}
+
+function issuesOf(source: NodeJS.ProcessEnv): string {
+  try {
+    loadConfig(source);
+    return '';
+  } catch (error) {
+    expect(error).toBeInstanceOf(ConfigurationError);
+    return JSON.stringify((error as ConfigurationError).details);
+  }
+}
+
+describe('PA-C03 database production gate', () => {
+  it('fails closed when NODE_ENV=production and DATABASE_DRIVER=memory', () => {
+    const issues = issuesOf(
+      productionSource({ NODE_ENV: 'production', PLATFORM_MODE: 'sandbox', DATABASE_DRIVER: 'memory' }),
+    );
+    expect(issues).toMatch(/DATABASE_DRIVER/);
+    expect(issues).toMatch(/memory is forbidden/);
+  });
+
+  it('fails closed when PLATFORM_MODE=production and DATABASE_DRIVER=memory', () => {
+    const issues = issuesOf(
+      productionSource({ NODE_ENV: 'test', PLATFORM_MODE: 'production', DATABASE_DRIVER: 'memory' }),
+    );
+    expect(issues).toMatch(/DATABASE_DRIVER/);
+    expect(issues).toMatch(/memory is forbidden/);
+  });
+
+  it('passes configuration validation for production + postgres when secrets are set', () => {
+    const config = loadConfig(productionSource());
+    expect(config.database.driver).toBe('postgres');
+    expect(config.productionLocked).toBe(true);
+    expect(config.productionGates).toEqual({
+      routingAvailable: false,
+      executionAvailable: false,
+    });
+  });
+
+  it('allows development + memory', () => {
+    const config = loadConfig({ NODE_ENV: 'development', DATABASE_DRIVER: 'memory' });
+    expect(config.database.driver).toBe('memory');
+    expect(config.productionLocked).toBe(false);
+  });
+
+  it('allows test + memory', () => {
+    const config = loadConfig({ NODE_ENV: 'test', DATABASE_DRIVER: 'memory' });
+    expect(config.database.driver).toBe('memory');
+    expect(config.productionLocked).toBe(false);
+  });
+});
+
+describe('PA-C02 production secret gate', () => {
+  it('rejects a missing production AUTH_SECRET', () => {
+    const issues = issuesOf(productionSource({ AUTH_SECRET: undefined }));
+    expect(issues).toMatch(/AUTH_SECRET/);
+    expect(issues).toMatch(/required/);
+    expect(issues).not.toMatch(PRODUCTION_AUTH_SECRET);
+  });
+
+  it('rejects the documented demo password as AUTH_SECRET', () => {
+    const issues = issuesOf(productionSource({ AUTH_SECRET: 'MeridianDemo!2026' }));
+    expect(issues).toMatch(/AUTH_SECRET/);
+    expect(issues).toMatch(/demo password|demo secret|default credential/i);
+    expect(issues).not.toContain('MeridianDemo!2026');
+  });
+
+  it('rejects the documented demo agent secret as AUTH_SECRET', () => {
+    const issues = issuesOf(
+      productionSource({ AUTH_SECRET: 'mag_demo_agent01_sandbox_only_not_production' }),
+    );
+    expect(issues).toMatch(/AUTH_SECRET/);
+    expect(issues).not.toContain('mag_demo_agent01_sandbox_only_not_production');
+  });
+
+  it('rejects a default credential fallback as AUTH_SECRET', () => {
+    const issues = issuesOf(
+      productionSource({ AUTH_SECRET: 'changemechangemechangemechangeme' }),
+    );
+    expect(issues).toMatch(/AUTH_SECRET/);
+    expect(issues).not.toContain('changemechangemechangemechangeme');
+  });
+
+  it('rejects SEED_DEMO_TENANTS in production', () => {
+    const issues = issuesOf(productionSource({ SEED_DEMO_TENANTS: 'true' }));
+    expect(issues).toMatch(/SEED_DEMO_TENANTS/);
+  });
+
+  it('never copies AUTH_SECRET onto the loaded config object', () => {
+    const config = loadConfig(productionSource());
+    expect(config.authSecretConfigured).toBe(true);
+    expect(JSON.stringify(config)).not.toContain(PRODUCTION_AUTH_SECRET);
+    expect(config).not.toHaveProperty('authSecret');
+    expect(config).not.toHaveProperty('AUTH_SECRET');
+  });
+});
+
+describe('PA-C01 production routing and execution flags', () => {
+  it('keeps PRODUCTION_EXECUTION_AVAILABLE independently false and rejects true', () => {
+    const issues = issuesOf(productionSource({ PRODUCTION_EXECUTION_AVAILABLE: 'true' }));
+    expect(issues).toMatch(/PRODUCTION_EXECUTION_AVAILABLE/);
+    expect(issues).toMatch(/cannot be true/);
+
+    const config = loadConfig(productionSource({ PRODUCTION_EXECUTION_AVAILABLE: 'false' }));
+    expect(config.productionGates.executionAvailable).toBe(false);
+    expect(config.productionGates.routingAvailable).toBe(false);
+  });
+
+  it('accepts PRODUCTION_ROUTING_AVAILABLE=true at config time (adapters are checked later)', () => {
+    const config = loadConfig(productionSource({ PRODUCTION_ROUTING_AVAILABLE: 'true' }));
+    expect(config.productionGates.routingAvailable).toBe(true);
+    expect(config.productionGates.executionAvailable).toBe(false);
+  });
+
+  it('rejects PRODUCTION_ROUTING_AVAILABLE outside production mode', () => {
+    const issues = issuesOf({
+      NODE_ENV: 'development',
+      PLATFORM_MODE: 'sandbox',
+      PRODUCTION_ROUTING_AVAILABLE: 'true',
+    });
+    expect(issues).toMatch(/PRODUCTION_ROUTING_AVAILABLE/);
+  });
+});
+
+describe('shouldProvisionDemoTenants', () => {
+  it('never provisions in a production-locked process', () => {
+    const config = loadConfig(productionSource());
+    expect(shouldProvisionDemoTenants(config)).toBe(false);
+  });
+
+  it('provisions in development sandbox', () => {
+    expect(shouldProvisionDemoTenants(loadConfig({ NODE_ENV: 'development' }))).toBe(true);
+  });
+
+  it('provisions in test only when SEED_DEMO_TENANTS is true', () => {
+    expect(shouldProvisionDemoTenants(loadConfig({ NODE_ENV: 'test' }))).toBe(false);
+    expect(
+      shouldProvisionDemoTenants(loadConfig({ NODE_ENV: 'test', SEED_DEMO_TENANTS: 'true' })),
+    ).toBe(true);
   });
 });
 

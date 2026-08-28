@@ -30,6 +30,7 @@ export {
   DemoStablecoinRampProvider,
   createDemoMarketDataStack,
   createFinancialCatalog,
+  type FinancialCatalogOptions,
   type DemoFXProviderOptions,
   type DemoMarketDataProviderOptions,
   type DemoMarketDataStack,

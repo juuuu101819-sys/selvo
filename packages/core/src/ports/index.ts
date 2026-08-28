@@ -143,6 +143,14 @@ export {
   OTHER_USER_ID,
   OTHER_USER_PASSWORD,
 } from '../auth/demo-tenant.js';
+export {
+  PRODUCTION_AUTH_SECRET_MIN_LENGTH,
+  isDemoAgentSecret,
+  isDemoEmail,
+  isDemoLoginCredential,
+  isDemoPassword,
+  isForbiddenProductionSecret,
+} from '../auth/production-credentials.js';
 export { demoMonetizationEvents } from '../auth/demo-monetization.js';
 export {
   DEMO_OTHER_AGENT_ID,

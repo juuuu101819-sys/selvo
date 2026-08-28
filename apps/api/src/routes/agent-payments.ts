@@ -1,6 +1,7 @@
 import {
   DEFAULT_AGENT_SCOPES,
   DEMO_AGENT_POLICY,
+  ExecutionNotImplementedError,
   NotFoundError,
   hashSecret,
   isRoutePreference,
@@ -341,6 +342,9 @@ export function registerAgentPaymentRoutes(
   });
 
   app.post('/payment-intents/:id/simulate', async (request) => {
+    if (container.config.productionLocked) {
+      throw new ExecutionNotImplementedError();
+    }
     const principal = requireScope(request, 'payment:authorize');
     const { id } = parseOrThrow(paymentIntentIdParamsSchema, request.params, 'params');
     const intent = await container.agentPayments.simulateIntent({

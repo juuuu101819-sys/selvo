@@ -25,7 +25,11 @@ export {
   type ScoringWeightsInput,
   type SerializedScoringWeights,
 } from './engine-config.js';
-export { ProviderRegistry, type RegistryExclusion } from './provider-registry.js';
+export {
+  ProviderRegistry,
+  type ProviderRegistryOptions,
+  type RegistryExclusion,
+} from './provider-registry.js';
 export {
   FinancialProviderRegistry,
   type FinancialRegistryExclusion,

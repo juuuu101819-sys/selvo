@@ -1,4 +1,5 @@
 import {
+  ConfigurationError,
   demoMonetizationEvents,
   demoAgentPaymentIntents,
   demoAgentPolicyViolations,
@@ -52,8 +53,17 @@ export interface TenantStores {
  */
 export async function provisionDemoTenants(
   stores: TenantStores,
-  options: { readonly seedDashboard?: boolean; readonly nowIso?: string } = {},
+  options: {
+    readonly seedDashboard?: boolean;
+    readonly nowIso?: string;
+    readonly productionLocked?: boolean;
+  } = {},
 ): Promise<void> {
+  if (options.productionLocked === true) {
+    throw new ConfigurationError(
+      'Demo tenant provisioning is forbidden when NODE_ENV=production or PLATFORM_MODE=production.',
+    );
+  }
   const demoHash = await hashPassword(DEMO_USER_PASSWORD);
   const otherHash = await hashPassword(OTHER_USER_PASSWORD);
 

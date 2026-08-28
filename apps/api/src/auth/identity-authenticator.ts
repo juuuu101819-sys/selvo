@@ -3,6 +3,7 @@ import {
   ANONYMOUS_PRINCIPAL,
   SESSION_API_SCOPES,
   hashSecret,
+  isDemoAgentSecret,
   secretsMatch,
   type AgentPaymentsRepository,
   type AuthenticationAttempt,
@@ -31,6 +32,7 @@ export class IdentityAuthenticator implements Authenticator {
     private readonly identity: IdentityStore,
     private readonly clock: Clock,
     private readonly agentPayments: AgentPaymentsRepository,
+    private readonly options: { readonly rejectDemoSecrets?: boolean } = {},
   ) {}
 
   async authenticate(attempt: AuthenticationAttempt): Promise<Principal | null> {
@@ -88,6 +90,9 @@ export class IdentityAuthenticator implements Authenticator {
   private async fromPresentedSecret(raw: string): Promise<Principal | null> {
     const presented = raw.trim();
     if (presented.length < API_KEY_PREFIX_LENGTH) {
+      return null;
+    }
+    if (this.options.rejectDemoSecrets === true && isDemoAgentSecret(presented)) {
       return null;
     }
     if (presented.startsWith(AGENT_CREDENTIAL_PREFIX)) {
