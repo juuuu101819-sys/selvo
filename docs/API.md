@@ -929,3 +929,9 @@ someone tries, and covered by a test — rather than being an absent route that 
 explains nothing. Nothing in the codebase can initiate a payment, hold a key, or act as principal.
 Delegated settlement (`delegateExecution`) is the future form of this endpoint and is not
 implemented.
+
+PHASE 33 (AI-agent payment pilot) did **not** change this. The four business/legal gates in
+[`COMPLIANCE.md`](./COMPLIANCE.md) (licensed execution rights, compliance sign-off, bounded
+org/agent allowlist with caps and corridor, incident/rollback plan) were not confirmed outside
+Cursor, so the 501 was left in place. Non-allowlisted callers do not receive a new error code:
+there is no allowlist, because the endpoint is still unimplemented for everyone.

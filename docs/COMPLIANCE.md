@@ -121,3 +121,28 @@ codebase:
 `realizedRevenue` stays false on invoiced snapshots until a confirmed collection adapter writes
 `collected`. `POST /api/v1/executions` remains 501.
 
+## Before any live execution / AI-agent payment pilot (Phase 5 / PHASE 33)
+
+PHASE 33 (roadmap item 21) would lift `POST /api/v1/executions` off its 501 gate for a **narrow,
+allowlisted** pilot. The prompt itself is a **business + legal decision gate**: do not run in
+Cursor until **all four** of the following are confirmed **outside** this session.
+
+As of 2026-08-28 this gate is **not satisfied**. Therefore PHASE 33 was **not implemented**. The
+501 remains the production control.
+
+| Confirmation | Status (2026-08-28) | Why it is required |
+| ------------ | ------------------- | ------------------ |
+| The licensed provider integrated in PHASE 30 **explicitly covers execution**, not just quoting | **Missing.** PHASE 30 never named a partner of record; the licensed registry is empty; there is no execution adapter to extend. Read-only quoting and real-money execution are typically **separate contractual/regulatory scopes**. | Calling a quoting API is not authorization to move funds. |
+| **Compliance/regulatory sign-off** for enabling real execution in the relevant jurisdictions (money-transmission licensing, AML/KYC beyond PHASE 31 KYB, corridor-specific financial regulation) | **Missing.** PHASE 31 recorded KYB *process* only; no MSB/MTL, no BSA/AML program of record, no named counsel. | Real execution is a regulated activity. Platform KYB of *customers* does not substitute for the platform's own licenses. |
+| **Pilot scope explicitly bounded**: which orgs/agents may execute (allowlist, not a global flag); max transaction size and daily volume; which corridor(s)/rail(s) | **Missing.** No named orgs, agents, caps, or corridors were confirmed outside this session. Inventing a sample allowlist would be a product decision, not an implementation of a confirmed gate. | Unbounded or invented scope is a general launch, not a pilot. |
+| **Incident/rollback plan** for a real-money failure (partial execution, provider error after funds moved, reconciliation mismatch) | **Missing.** This is operational readiness, not something a coding session can verify. | Fail-closed code is not a substitute for an ops runbook that humans have agreed to. |
+
+**If any of the four is not confirmed, do not run PHASE 33.** Continue operating with
+`/api/v1/executions` at **501**. That is the state after this session: the 501 gate was **not**
+lifted; no allowlist table, settlement state machine, provider execution call, or
+realized-revenue-from-settlement path was added.
+
+Invariant ③ (customer assets never touch the platform) and invariant ② (Route View ≠ Selection ≠
+Execution Intent ≠ External Provider Execution ≠ Verified Settlement ≠ Realized Revenue) remain
+untested against real money — by design, until the four gates close.
+

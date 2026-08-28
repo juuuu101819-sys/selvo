@@ -84,7 +84,8 @@ DISCOVER → QUOTE → COMPARE → ROUTE → OPTIMIZE → DELEGATE EXECUTION
 
 Delegation is the only stage that would move money, and it is refused until the compliance gate in
 [COMPLIANCE.md](./COMPLIANCE.md) is satisfied. Until then `POST /api/v1/executions` is an audited
-`501`. The platform never executes as principal.
+`501`. The platform never executes as principal. PHASE 33 (allowlisted execution pilot) was not
+run: the four business/legal gates in that document remain unconfirmed.
 
 ---
 

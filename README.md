@@ -29,7 +29,8 @@ Meridian is non-custodial. It **does not** custody fiat or crypto, hold private 
 wallets, execute transactions as principal, delegate settlement yet, hold crypto assets, issue
 stablecoins, or provide regulated financial services without a licensed partner. These are enforced
 in code, not just documented — see [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).
-`POST /v1/executions` returns a deliberate, audited `501`.
+`POST /v1/executions` returns a deliberate, audited `501`. PHASE 33 (real-execution pilot) was
+not run: the four business/legal gates in `docs/COMPLIANCE.md` are unconfirmed.
 
 ## Running it locally
 

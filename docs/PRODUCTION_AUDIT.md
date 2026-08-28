@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08 (index + CI already ran postgres tests), PA-M11–PA-M16, PA-L01–PA-L04 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M07, PA-M09 partner payouts / payment collection, PA-M10, PA-L05, PA-L06) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution.
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08 (index + CI already ran postgres tests), PA-M11–PA-M16, PA-L01–PA-L04 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M07, PA-M09 partner payouts / payment collection, PA-M10, PA-L05, PA-L06) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution. PHASE 33 (AI-agent payment pilot) was **not run**: the four business/legal gates were unconfirmed outside Cursor, so `POST /api/v1/executions` was left at 501.
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -640,7 +640,8 @@ Do not add product features until this sequence is complete. Do not start delega
 6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
 7. ~~**Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).~~ **Done** with PostgreSQL-backed rate-limit counters (no Redis in this stack — that roadmap item overlaps PA-M02), salted scrypt API-key hashes, HMAC session tokens, and production cookie Secure. Error leakage (PA-M03) and audit-actor spoofing (PA-M04) closed in the same phase.
 8. **Phase 5 / PHASE 30 only after a named licensed partner of record is confirmed** (see `docs/COMPLIANCE.md`). Do not invent a partner, wrap sandbox pricing, or relabel a demo adapter as `licensed_partner`. Until then staging/production keep an empty licensed registry and 422 on quote/comparison.
-9. **Stop.** Partner execution remains 501 until the compliance gate.
+9. **PHASE 33 (execution pilot) only after all four gates in `docs/COMPLIANCE.md` are confirmed outside Cursor** (licensed **execution** rights, compliance/regulatory sign-off, bounded org/agent allowlist with size/volume/corridor caps, incident/rollback plan). As of 2026-08-28 none of those are on file. Do not invent an allowlist, corridor, or partner to lift the 501.
+10. **Stop.** Partner execution remains 501 until those gates close. PHASE 33 was **not implemented**.
 
 ---
 
@@ -663,6 +664,19 @@ Billing never recomputes pricing. Line items name snapshot IDs. Tax is 0. Issuer
 
 ---
 
+## PHASE 33 — AI agent payment pilot (not run)
+
+The prompt required four confirmations **outside Cursor** before lifting `POST /api/v1/executions` off 501:
+
+1. PHASE 30 licensed provider covers **execution**, not just quoting.
+2. Compliance/regulatory sign-off for real execution.
+3. Explicitly bounded pilot (org/agent allowlist, size/daily caps, corridor/rail).
+4. Incident/rollback plan for real-money failure.
+
+**None were confirmed.** This session did **not** add a pilot allowlist, provider execution calls, settlement states (`SETTLEMENT_PENDING` / `SETTLEMENT_CONFIRMED`), a live-rail reconciliation job, or a realized-revenue-from-settlement path. Do **not** read this audit as “execution is now live for a bounded pilot.” Execution is **not** live. The audited 501 in `apps/api/src/routes/executions.ts` remains the production control. `executeTransactions` and `delegateExecution` stay false. `realizedRevenue` stays false. Customer assets still never touch the platform (invariant ③) because no funds-movement instruction is issued.
+
+---
+
 ## Controls to keep
 
 Do not “clean up” these as if they were incomplete features:
@@ -679,4 +693,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08, PA-M11–PA-M16, PA-L01–PA-L04 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M07, PA-M09 collection/tax/partner AP, PA-M10, PA-L05, PA-L06, plus SCIM and worker queue.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08, PA-M11–PA-M16, PA-L01–PA-L04 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M07, PA-M09 collection/tax/partner AP, PA-M10, PA-L05, PA-L06, plus SCIM and worker queue.*

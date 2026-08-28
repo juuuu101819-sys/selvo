@@ -5,6 +5,8 @@ contract for PA-C01, PA-C02 and PA-C03. It does not authorize live execution.
 
 Meridian remains **non-custodial**. `POST /api/v1/executions` is an audited **501** until the
 compliance gate in `docs/COMPLIANCE.md` is satisfied. These gates do not weaken that restriction.
+PHASE 33 did not lift the 501: the four execution-pilot confirmations in that document are still
+missing.
 
 A process is **production-locked** when `NODE_ENV=production` **or** `PLATFORM_MODE=production`.
 `DEPLOY_ENV=staging` is a label for the same lock: staging is not a relaxed sandbox. See

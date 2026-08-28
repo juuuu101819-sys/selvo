@@ -487,6 +487,34 @@ vs invoiced vs collected vs unbilled. Duplicate billed snapshot IDs must be empt
 Operator auth reuses `ONBOARDING_OPERATOR_SECRET` / `X-Onboarding-Operator-Key`.
 `platformInvoicing` is true. `POST /api/v1/executions` remains 501. Engine versions unchanged.
 
-Do not proceed to PHASE 33 (execution enablement) from this work.
+## Phase 33 — AI agent payment pilot _(blocked — four business/legal gates unconfirmed)_
+
+Would lift `POST /api/v1/executions` off 501 for a **narrow, allowlisted** pilot only — not a
+general launch. The prompt itself forbids running this in Cursor until **all four** of the
+following are confirmed **outside** this session:
+
+1. The licensed provider from PHASE 30 **explicitly covers execution**, not just quoting.
+   Read-only quoting and real-money execution are typically separate contractual/regulatory
+   scopes.
+2. **Compliance/regulatory sign-off** for real execution in the relevant jurisdictions
+   (money-transmission licensing, AML/KYC beyond PHASE 31 KYB, corridor-specific regulation).
+3. **Pilot scope explicitly bounded**: org + agent allowlist (not a global flag), max
+   transaction size and daily volume, designated corridor(s)/rail(s).
+4. **Incident/rollback plan** for a real-money failure (partial execution, provider error after
+   funds moved, reconciliation mismatch).
+
+**As of 2026-08-28 none of the four are confirmed.** PHASE 30 is itself still blocked (no named
+licensed partner of record; empty licensed registry; production-locked quotes 422), so there is
+no execution adapter to extend. This session did **not** implement an allowlist, provider
+execution calls, settlement state machines (`SETTLEMENT_PENDING` / `SETTLEMENT_CONFIRMED`),
+reconciliation against a live rail, or realized-revenue-from-settlement.
+
+`POST /api/v1/executions` remains the audited **501**. `executeTransactions` and
+`delegateExecution` stay **false**. Invariant ③ (customer assets never touch the platform) and
+invariant ② (Route View ≠ … ≠ Verified Settlement ≠ Realized Revenue) remain untested against
+real money — by design.
+
+Do not invent a sample allowlist, corridor, or partner to “try” the endpoint. Re-run this phase
+only after the four confirmations are on file in `docs/COMPLIANCE.md`.
 
 

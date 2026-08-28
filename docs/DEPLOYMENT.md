@@ -216,5 +216,19 @@ First-cohort onboarding is **sales-assisted**. There is no public signup. An ope
 - Completing onboarding does **not** enable `POST /api/v1/executions` (still 501) and does not
   register a licensed quoting adapter (PHASE 30 still blocked).
 
+## 8. PHASE 33 — do not enable executions from this deploy
+
+PHASE 33 (AI agent payment pilot) was **not implemented**. A deploy of this revision must **not**
+be operated as if a pilot allowlist, provider execution call, or settlement confirmation path
+exists. `POST /api/v1/executions` is still **501**. `PRODUCTION_EXECUTION_AVAILABLE=true` remains
+a startup failure.
+
+Lifting that gate requires the four confirmations in [`COMPLIANCE.md`](./COMPLIANCE.md)
+(execution rights, compliance sign-off, bounded pilot scope, incident/rollback plan) — none of
+which are on file. Do not invent an allowlist or corridor in production config to “try” the
+endpoint. There is no rollback procedure for live execution because live execution is not
+enabled; the rollback for an accidental attempt is the existing 501 plus the `execution.rejected`
+audit event.
+
 Related: [`PRODUCTION_GATES.md`](./PRODUCTION_GATES.md), [`COMPLIANCE.md`](./COMPLIANCE.md),
 [`DATABASE.md`](./DATABASE.md), [`API.md`](./API.md).
