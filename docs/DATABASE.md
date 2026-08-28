@@ -134,7 +134,8 @@ TOTP seeds live on `User` as AES-256-GCM ciphertext (`totp_secret_ciphertext`).
 **`OrganizationOidcConnection` / `OidcAuthorizationState`** — org-level OIDC. Client secret and
 OIDC nonce are ciphertext. Enabled defaults to false.
 
-**`ExecutionIntent`** — a recorded route choice. `status` is always `recorded`. `executable` and
+**`ExecutionIntent`** — a recorded route choice. `status` is the Prisma/Postgres enum
+`ExecutionIntentStatus` with the single value `recorded`, plus CHECK constraints. `executable` and
 `submitted` are always false (CHECK constraints). Amounts are `DECIMAL(38,0)` minor units of the
 source asset ticker (`VARCHAR(16)`), not an ISO currency FK. No wallet, key or settlement columns.
 

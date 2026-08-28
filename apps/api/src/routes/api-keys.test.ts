@@ -150,6 +150,28 @@ describe('organization API keys', () => {
     expect(denied.json<ApiError>().error.code).toBe('FORBIDDEN');
   });
 
+  it('rejects unknown scopes instead of silently dropping them', async () => {
+    const token = await login(DEMO_USER_EMAIL, DEMO_USER_PASSWORD);
+    const created = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/api-keys`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { label: 'Silent drop probe', scopes: ['execute'] },
+    });
+    expect(created.statusCode).toBe(400);
+    expect(created.json<ApiError>().error.code).toBe('VALIDATION_ERROR');
+
+    const listed = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/api-keys`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+    const labels = listed
+      .json<{ data: { apiKeys: { label: string; scopes: string[] }[] } }>()
+      .data.apiKeys.filter((key) => key.label === 'Silent drop probe');
+    expect(labels).toEqual([]);
+  });
+
   it('does not list another organization\'s keys', async () => {
     const demo = await login(DEMO_USER_EMAIL, DEMO_USER_PASSWORD);
     await harness.app.inject({

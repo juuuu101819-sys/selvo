@@ -1,4 +1,5 @@
 import type { MoneyJson } from './api/types';
+import { parseDisplayDecimal } from './display-decimal';
 
 /**
  * Presentation helpers.
@@ -65,22 +66,30 @@ function formatMinorUnits(minorUnits: string, exponent: number): string {
 
 /** Renders an all-in cost as a percentage, e.g. `"0.34%"`. */
 export function formatPercent(percentString: string, decimals = 2): string {
-  return `${Number(percentString).toFixed(decimals)}%`;
+  const parsed = parseDisplayDecimal(percentString);
+  if (parsed === null) {
+    return percentString;
+  }
+  return `${parsed.toFixed(decimals)}%`;
 }
 
 export function formatBps(bpsString: string, decimals = 1): string {
-  return `${Number(bpsString).toFixed(decimals)} bps`;
+  const parsed = parseDisplayDecimal(bpsString);
+  if (parsed === null) {
+    return bpsString;
+  }
+  return `${parsed.toFixed(decimals)} bps`;
 }
 
 /** Renders an exchange rate at a sensible precision for its magnitude. */
 export function formatRate(value: string): string {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
+  const parsed = parseDisplayDecimal(value);
+  if (parsed === null) {
     return value;
   }
-  if (numeric >= 100) return numeric.toFixed(2);
-  if (numeric >= 1) return numeric.toFixed(4);
-  return numeric.toPrecision(6);
+  if (parsed.abs().gte(100)) return parsed.toFixed(2);
+  if (parsed.abs().gte(1)) return parsed.toFixed(4);
+  return parsed.toPrecision(6);
 }
 
 /**
@@ -106,7 +115,11 @@ export function formatSettlement(seconds: number, businessDaysOnly: boolean): st
 }
 
 export function formatReliability(score: string): string {
-  return `${(Number(score) * 100).toFixed(1)}%`;
+  const parsed = parseDisplayDecimal(score);
+  if (parsed === null) {
+    return score;
+  }
+  return `${parsed.times(100).toFixed(1)}%`;
 }
 
 export function formatTimestamp(iso: string): string {

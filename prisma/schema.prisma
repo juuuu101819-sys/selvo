@@ -87,6 +87,11 @@ enum MembershipStatus {
   removed
 }
 
+/// Recorded route choice only. There is no submitted, settled, or executed value (PA-L02).
+enum ExecutionIntentStatus {
+  recorded
+}
+
 /// Lifecycle of a *requested* transaction.
 ///
 /// There is deliberately no settled, executed, funded or in_flight state. Meridian is
@@ -401,7 +406,7 @@ model ExecutionIntent {
   sourceAsset        String   @map("source_asset") @db.VarChar(16)
   destinationAsset   String   @map("destination_asset") @db.VarChar(16)
   amountMinorUnits   Decimal  @map("amount_minor_units") @db.Decimal(38, 0)
-  status             String   @default("recorded")
+  status             ExecutionIntentStatus @default(recorded)
   executable         Boolean  @default(false)
   submitted          Boolean  @default(false)
   quoteExpiresAt     DateTime? @map("quote_expires_at") @db.Timestamptz(3)
@@ -554,6 +559,9 @@ model PaymentIntent {
 
   @@index([organizationId, createdAt])
   @@index([organizationId, agentId, createdAt])
+  /// Aligns to `sumDailySpending`: org + agent + asset + status + authorized/created window (PA-M08).
+  @@index([organizationId, agentId, sourceAsset, status, authorizedAt], map: "payment_intents_daily_spend_authorized_idx")
+  @@index([organizationId, agentId, sourceAsset, status, createdAt], map: "payment_intents_daily_spend_created_idx")
   @@map("payment_intents")
 }
 

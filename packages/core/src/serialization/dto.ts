@@ -811,6 +811,7 @@ export interface IssuedAgentDto extends PublicAgentDto {
 }
 
 export interface AgentWalletReferenceDto {
+  /** External account reference. Never a custodian wallet. */
   readonly id: string;
   readonly organizationId: string;
   readonly agentId: string;

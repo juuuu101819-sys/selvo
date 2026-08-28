@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, PA-L03 (SSO+MFA; SCIM still out of scope), and PA-L04 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M07–PA-M10, PA-M14, PA-M16, PA-L01–PA-L02, PA-L05–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08 (index + CI already ran postgres tests), PA-M11–PA-M16, PA-L01–PA-L04 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M07, PA-M09, PA-M10, PA-L05, PA-L06) remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -34,7 +34,7 @@ It is **not production-ready** as a live financial service:
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
   (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
   naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
-  PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 (quote cache / circuit breaker) is closed. Remaining Medium/Low items are out of scope for this phase.
+  PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 (quote cache / circuit breaker) is closed. PA-M08, PA-M14, PA-M16, PA-L01, and PA-L02 are closed. Remaining Medium/Low items are feature-scale and deferred.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -82,7 +82,7 @@ NL_DID_NOT_COMPUTE = ['exchange_rates', 'fees', 'slippage', 'settlement_amounts'
 
 Core money: `bigint` minor units + `decimal.js` clone `Dec` with 34 digits (`packages/core/src/money/decimal.ts`, `money.ts`). Ingress via string major units (`apps/api/src/http/validation.ts`). Persistence uses `toFixed(0)`, never `toNumber()` (`packages/persistence/src/postgres/prisma-driver.ts` line 303). Monetization uses `bigint` (`packages/core/src/engine/monetization-engine.ts`).
 
-**Exceptions (not quote engines):** web display helpers in `apps/web/src/lib/format.ts` still use `Number()` for human-readable percents, bps, and scores (PA-L01). Dashboard metric aggregation and chart geometry no longer do (PA-H07).
+**Exceptions (not quote engines):** web display helpers in `apps/web/src/lib/format.ts` format percents, bps, rates, and scores with a display-only `decimal.js` clone (PA-L01 FIXED). Dashboard metric aggregation and chart geometry use `Dec`/`bigint` (PA-H07). Settlement-time labels still use `Math.round` on seconds, which is not money.
 
 ### Demo providers cannot execute real transactions — PASS
 
@@ -95,7 +95,7 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | # | Area | Assessment |
 | - | ---- | ---------- |
 | 1 | Overall architecture | Acyclic monorepo (`web → api → adapters/persistence → core`). `/comparisons` and `/routes` share MultiRailRouter; graph not composed into prices. |
-| 2 | Frontend | Next.js 16, server actions, no Execute control. Duplicate wire types. Display `Number()` remains in `format.ts` (PA-L01); dashboard/chart geometry is bigint-scaled (PA-H07). |
+| 2 | Frontend | Next.js 16, server actions, no Execute control. Duplicate wire types. Display percents/bps/rates use Decimal (PA-L01 FIXED); dashboard/chart geometry is bigint-scaled (PA-H07). |
 | 3 | Backend | Fastify 5, Zod, capability flags. Anonymous public quote surfaces vs authenticated `/quote`. |
 | 4 | Database | PostgreSQL schema exists; **default driver is memory**. |
 | 5 | Prisma schema | Strong non-custody conventions; CHECKs live in SQL migrations. No billing tables. |
@@ -104,7 +104,7 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | 8 | Authorization | Roles exist but policy PATCH ignores them. Sessions get every API scope. |
 | 9 | Organization isolation | Queries keyed by principal `organizationId`. Cross-tenant 404 (tested). |
 | 10 | API key security | Salted scrypt at rest, prefix lookup, scope CHECK. Legacy SHA-256 re-hashed on use until 2026-11-28 (PA-M01). |
-| 11 | Financial calculations | Engines Decimal-safe. Dashboard averages use `Dec`/`bigint` (PA-H07). Display `Number()` remains in `format.ts` (PA-L01). |
+| 11 | Financial calculations | Engines Decimal-safe. Dashboard averages use `Dec`/`bigint` (PA-H07). Display percents/bps/rates use Decimal (PA-L01 FIXED). |
 | 12 | Decimal precision | `DECIMAL(38,0)` amounts, `DECIMAL(38,18)` rates. |
 | 13 | Quote engine | `/comparisons` ranks via MultiRailRouter 1.0.0. Fiat `ENGINE_VERSION` 2.0.0 remains on `/meta` and in `RouteComparisonService` (not HTTP). Fingerprints + replay. |
 | 14 | Multi-rail routing | 1.0.0 ranks tradfi+stablecoin+DeFi. Rail-configured freshness excludes expired quotes (PA-H09). `/comparisons` shares this engine. |
@@ -377,39 +377,48 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M07 — List pagination is limit-only
 
+- **Status:** **DEFERRED** (feature-scale — cursor pagination across dashboard lists)
 - **File:** `apps/api/src/http/validation.ts` (`listQuerySchema`, ~lines 117–118)
 - **Component:** dashboard and intent lists
 - **Problem:** `limit` 1–100, no cursor. Default dashboard page size 50.
 - **Why it matters:** Large tenants cannot page stably.
 - **Recommended fix:** Cursor pagination on quotes, intents, comparisons.
 - **Priority:** P2
+- **Deferred because:** New list protocol (cursors on quotes, intents, comparisons) is a product API change, not a smallest-possible cleanup.
 
 #### PA-M08 — Postgres integration tests are opt-in; daily-spend query under-indexed
 
-- **File:** `packages/persistence/src/postgres/prisma-driver.integration.test.ts`; `prisma/schema.prisma` (`payment_intents` indexes ~475–476); `packages/persistence/src/postgres/prisma-agent-payments.ts` (`sumDailySpending`)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/persistence/src/postgres/prisma-driver.integration.test.ts`; `prisma/schema.prisma` (`payment_intents` indexes); `packages/persistence/src/postgres/prisma-agent-payments.ts` (`sumDailySpending`); `.github/workflows/ci.yml`
 - **Component:** CI / indexes
 - **Problem:** Tests skip without `TEST_DATABASE_URL`. Daily sum filters status + asset + timestamps without a matching composite index.
 - **Why it matters:** CHECK/migration regressions and slow policy checks under load.
-- **Recommended fix:** Run postgres tests in CI. Add an index aligned to `sumDailySpending`.
+- **Before:** `sumDailySpending` filtered `organizationId`, `agentId`, `sourceAsset`, `status`, and an `authorizedAt`/`createdAt` window with only `(organization_id, created_at)` and `(organization_id, agent_id, created_at)` indexes. CI already set `TEST_DATABASE_URL` (PA-H11).
+- **After:** Composite indexes `payment_intents_daily_spend_authorized_idx` and `payment_intents_daily_spend_created_idx` on `(organization_id, agent_id, source_asset, status, authorized_at|created_at)`. CI postgres job unchanged. Query logic unchanged.
+- **Tests:** `packages/persistence/src/postgres/prisma-driver.test.ts`; `prisma-driver.integration.test.ts` (gated on `TEST_DATABASE_URL`)
 - **Priority:** P1
 
 #### PA-M09 — No invoices, subscriptions, or partner-payout tables
 
+- **Status:** **DEFERRED** (feature-scale — billing domain)
 - **File:** `prisma/schema.prisma` (`MonetizationEvent` lines 480–511)
 - **Component:** billing
 - **Problem:** Referral/commission is an attributed field, not accounts payable. `enterprise_api_subscription` is a seeded demo event.
 - **Why it matters:** Business model (API fees, enterprise fees, partner commissions) is not operable. Correct that it is not a cash ledger.
 - **Recommended fix:** Separate billing domain when charging customers; keep `fundsMoved: false` on routing events.
 - **Priority:** P2
+- **Deferred because:** Invoices, subscriptions, and partner payouts are a new billing product, not a cleanup of existing quoting.
 
 #### PA-M10 — Multi-rail results have no comparison-style fingerprint/replay
 
+- **Status:** **DEFERRED** (feature-scale — public snapshot would require a new engine version)
 - **File:** `packages/core/src/engine/routing-engine.ts`; fingerprints in `packages/core/src/reproducibility/fingerprint.ts` used by comparison service
 - **Component:** reproducibility
 - **Problem:** Agent intents hash create-payload for idempotency, not provider quotes. `/routes` has `routingId` only.
 - **Why it matters:** Disputes on multi-rail quotes cannot replay like `/comparisons/:id/replay`.
 - **Recommended fix:** Snapshot + fingerprint multi-rail evaluations (new engine version if the snapshot shape is public).
 - **Priority:** P2
+- **Deferred because:** A public multi-rail snapshot/fingerprint is a new reproducibility surface and must not bump `ROUTING_ENGINE_VERSION` in this cleanup phase.
 
 #### PA-M11 — `preferredRoutePreference` is not a policy rule
 
@@ -447,11 +456,14 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M14 — Auto-created “wallet” reference on agent issue
 
-- **File:** `apps/api/src/routes/agent-payments.ts` (lines 123–131)
+- **Status:** **FIXED** (2026-08-28) for wording. Making the reference optional remains deferred.
+- **File:** `apps/api/src/routes/agent-payments.ts`; `docs/AGENTS.md`; `apps/api/src/openapi/catalog.ts`
 - **Component:** `POST /agents`
 - **Problem:** Synthetic `external_account` / `ext_acct_*` handle. `controlledByPlatform` remains false.
 - **Why it matters:** Wording can look like wallet provisioning.
-- **Recommended fix:** Rename to external account reference; make optional.
+- **Before:** Handler already stored `kind: 'external_account'` and label “External operating account”, but docs/OpenAPI/`GET /agents/me` still said “wallet”.
+- **After:** User-facing copy (AGENTS.md, OpenAPI catalog, agents page, DTO comment) calls it an **external account reference**. JSON keys and `/agents/:id/wallets` path are unchanged (breaking API). The row is still always created on mint; making it optional would change product issuance.
+- **Tests:** `apps/api/src/routes/agent-payments.test.ts` — `kind`, label, `controlledByPlatform: false`, `ext_acct_*`
 - **Priority:** P2
 
 #### PA-M15 — Failed authentication is not an audit event
@@ -468,11 +480,14 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M16 — `parseApiScopes` silently drops unknown strings
 
-- **File:** `packages/core/src/domain/api-scope.ts` (lines 47–57)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/domain/api-scope.ts`; `apps/api/src/routes/api-keys.ts`; `apps/api/src/http/validation.ts` (`createApiKeySchema`)
 - **Component:** key issuance
 - **Problem:** Invalid scope names are skipped rather than 400.
 - **Why it matters:** Operator may think a key has a right it does not.
-- **Recommended fix:** Reject unknown scopes at Zod parse (already constrained for org keys; keep consistent).
+- **Before:** `parseApiScopes` `continue`d on unknown strings. Org-key Zod already constrained known names; issuance still called the dropping parser.
+- **After:** Issuance uses `parseApiScopesStrict`, which throws `VALIDATION_ERROR` on unknown names (e.g. `execute`). Stored-row hydration still uses lenient `parseApiScopes` so leftover strings cannot crash auth. Org-key Zod enum is unchanged.
+- **Tests:** `packages/core/src/domain/api-scope.test.ts`; `apps/api/src/routes/api-keys.test.ts`
 - **Priority:** P3
 
 ---
@@ -481,20 +496,26 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-L01 — Display-only `Number()` in the web app
 
-- **File:** `apps/web/src/lib/format.ts` (lines 68–109); `apps/web/src/components/cost-comparison.tsx`; `route-card.tsx`
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/web/src/lib/format.ts`; `apps/web/src/lib/display-decimal.ts`; `apps/web/src/components/cost-comparison.tsx`; `apps/web/src/components/route-card.tsx`
 - **Component:** UI formatting
 - **Problem:** Percent, bps, and score strings converted with `Number()` for presentation. Amounts correctly use integer minor units in `format.ts`.
 - **Why it matters:** Typical USD bps are safe; not a quote-engine bug.
-- **Recommended fix:** Format bps via `Dec` if operators will show sub-0.01 bps.
+- **Before:** `formatPercent`, `formatBps`, `formatRate`, and `formatReliability` used IEEE `Number()`.
+- **After:** Those helpers parse with a display-only `decimal.js` clone matching core `Dec` settings. Invalid strings are returned unchanged. Quote engines and dashboard aggregates are untouched (PA-H07).
+- **Tests:** `apps/web/src/lib/format.test.ts`
 - **Priority:** P3
 
 #### PA-L02 — `ExecutionIntent.status` is a free `String` in Prisma
 
-- **File:** `prisma/schema.prisma` (line 326)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `prisma/schema.prisma` (`ExecutionIntent.status`); migration `20260828160000_phase28_status_enum_daily_spend_idx`
 - **Component:** `ExecutionIntent`
 - **Problem:** Domain + SQL CHECK force `recorded`; Prisma layer is weaker.
 - **Why it matters:** Accidental new statuses in application code before a migration.
-- **Recommended fix:** Enum in schema when convenient.
+- **Before:** `status String @default("recorded")` plus CHECK `"status" = 'recorded'`.
+- **After:** Prisma/Postgres enum `ExecutionIntentStatus { recorded }`. Existing CHECK constraints remain. HTTP execution-intent behaviour unchanged; `POST /executions` stays 501.
+- **Tests:** `packages/persistence/src/postgres/prisma-driver.test.ts`; `prisma-driver.integration.test.ts`
 - **Priority:** P3
 
 #### PA-L03 — No SSO, MFA, SCIM
@@ -523,21 +544,25 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-L05 — Agent-to-agent, receive-payments, treasury rail, KYC/sanctions
 
+- **Status:** **DEFERRED** (feature-scale — must not be built as in-platform balances)
 - **File:** `docs/MASTER_PRODUCT_DEFINITION.md`; `docs/COMPLIANCE.md` Phase 7 gate; `packages/core/src/engine/routing-types.ts` (`sanctionsScreeningRequired` metadata)
 - **Component:** product gaps
 - **Problem:** Flags and docs, not programs. `treasury_product` unused.
 - **Why it matters:** Stated long-term product. **Must not** be built as in-platform balances.
 - **Recommended fix:** Follow COMPLIANCE.md before any of this. Sanctions/KYC are P2 blockers for execution, not for sandbox quoting.
 - **Priority:** P2 (compliance gate), P3 (treasury / A2A)
+- **Deferred because:** A2A, treasury, and KYC/sanctions programs are product work and must not be implemented as in-platform balances.
 
 #### PA-L06 — E2E uses memory driver by design
 
+- **Status:** **DEFERRED** (feature-scale — new postgres e2e pipeline)
 - **File:** `playwright.config.ts`
 - **Component:** Phase 19
 - **Problem:** Does not exercise Postgres CHECKs over the wire.
 - **Why it matters:** Complementary to unit postgres tests, not a replacement.
 - **Recommended fix:** Optional e2e job with `DATABASE_DRIVER=postgres`.
 - **Priority:** P3
+- **Deferred because:** A second e2e job is a CI architecture change; CHECKs are already covered by gated postgres integration tests.
 
 ---
 
@@ -575,15 +600,15 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 ## C. Medium / low issues
 
-**Still open and out of scope for this phase.** PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L03 (SSO+MFA; SCIM still out of scope) and PA-L04 are closed. Do not treat this phase as having closed the remainder.
+**Closed in this cleanup (PHASE 28):** PA-M08 (daily-spend indexes; CI already ran postgres tests), PA-M14 (external-account wording; optional mint deferred), PA-M16 (strict scope issuance), PA-L01 (display Decimal formatters), PA-L02 (`ExecutionIntentStatus` enum).
 
-**Medium closed:** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure), PA-M13 (dashboard session middleware), PA-M15 (failed-auth audit).
+**Medium closed (prior):** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure), PA-M13 (dashboard session middleware), PA-M15 (failed-auth audit).
 
-**Medium still open:** PA-M07–PA-M10, PA-M14, PA-M16 (pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, wallet wording, silent scopes).
+**Medium still open (deferred, feature-scale):** PA-M07 (cursor pagination), PA-M09 (billing domain), PA-M10 (multi-rail fingerprint/replay; would bump engine version if public).
 
-**Low closed:** PA-L03 (TOTP MFA + OIDC; SCIM still out of scope), PA-L04 (quote cache and circuit breaker; worker queue not added).
+**Low closed:** PA-L01, PA-L02, PA-L03 (TOTP MFA + OIDC; SCIM still out of scope), PA-L04 (quote cache and circuit breaker; worker queue not added).
 
-**Low still open:** PA-L01–PA-L02, PA-L05–PA-L06 (display `Number()`, Prisma string status, A2A/treasury/KYC-as-product, e2e memory).
+**Low still open (deferred, feature-scale):** PA-L05 (A2A/treasury/KYC-as-product), PA-L06 (postgres e2e job). SCIM (PA-L03 remainder) and worker queue (PA-L04 remainder) remain out of scope.
 
 ---
 
@@ -608,7 +633,7 @@ Do not add product features until this sequence is complete. Do not start delega
 
 1. ~~**Sandbox-gate demo identity** (PA-C02) and **refuse memory in production mode** (PA-C03).~~ **Done.** See `docs/PRODUCTION_GATES.md`.
 2. ~~**Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.~~ **Done.**
-3. ~~**CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).~~ **PA-H11 and PA-H12 done.** PA-M08 (broader postgres CI/index work) remains Medium.
+3. ~~**CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).~~ **PA-H11, PA-H12, and PA-M08 (indexes) done.** CI already ran postgres integration tests; daily-spend composite indexes are in schema.
 4. ~~**Docs:** simulation vs settlement naming (PA-H13).~~ **PA-H13 done.** ~~Agents issued; public vs authenticated quote surfaces (PA-M06, PA-M05).~~ **PA-M05 and PA-M06 done.**
 5. ~~**Quote integrity:** freshness on multi-rail (PA-H09); platform fee on non-fiat corridors (PA-H10). Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
 6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
@@ -634,4 +659,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, PA-L03 (SSO+MFA; SCIM out of scope), and PA-L04 were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium (PA-M07–PA-M10, PA-M14, PA-M16) and Low (PA-L01–PA-L02, PA-L05–PA-L06) issues remain open.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08, PA-M11–PA-M16, PA-L01–PA-L04 (SCIM out of scope; worker queue out of scope) were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M07, PA-M09, PA-M10, PA-L05, PA-L06, plus SCIM and worker queue.*

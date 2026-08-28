@@ -127,10 +127,10 @@ export interface IssuedAgent {
 }
 
 /**
- * External wallet or account the agent controls *outside* this platform.
+ * External account the agent controls *outside* this platform.
  *
  * `controlledByPlatform` is always false. There is no private key, seed, balance or RPC field —
- * the type cannot represent custody.
+ * the type cannot represent custody. Issuance stores a label and `ext_acct_*` handle, not a wallet.
  */
 export interface AgentWalletReference {
   readonly id: string;

@@ -108,6 +108,7 @@ export {
   isOrganizationSessionRole,
   isPrivilegedOrganizationRole,
   parseApiScopes,
+  parseApiScopesStrict,
   principalHasCapability,
   sessionScopesForRole,
   type ApiScope,

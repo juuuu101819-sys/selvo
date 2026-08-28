@@ -85,6 +85,12 @@ describe('formatPercent and formatBps', () => {
   it('renders basis points with one decimal place by default', () => {
     expect(formatBps('33.9584')).toBe('34.0 bps');
   });
+
+  it('formats sub-0.01 bps via Decimal rather than IEEE Number', () => {
+    expect(formatBps('0.00123', 5)).toBe('0.00123 bps');
+    expect(formatBps('0.1234567890123456789', 4)).toBe('0.1235 bps');
+    expect(formatPercent('not-a-number')).toBe('not-a-number');
+  });
 });
 
 describe('formatRate', () => {
@@ -107,6 +113,10 @@ describe('formatSettlement', () => {
 describe('formatReliability', () => {
   it('renders a settlement record as a percentage', () => {
     expect(formatReliability('0.985')).toBe('98.5%');
+  });
+
+  it('does not collapse a long decimal score through Number', () => {
+    expect(formatReliability('0.123456789012345678')).toBe('12.3%');
   });
 });
 

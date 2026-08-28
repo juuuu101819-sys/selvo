@@ -2,7 +2,7 @@ import {
   DEFAULT_API_KEY_SCOPES,
   NotFoundError,
   hashCredential,
-  parseApiScopes,
+  parseApiScopesStrict,
   randomToken,
   uuidIdGenerator,
 } from '@meridian/core';
@@ -46,7 +46,7 @@ export function registerApiKeyRoutes(app: FastifyInstance, container: AppContain
     const principal = requireKeyManager(request);
     const body = parseOrThrow(createApiKeySchema, request.body, 'body');
     const scopes =
-      body.scopes === undefined ? DEFAULT_API_KEY_SCOPES : parseApiScopes(body.scopes);
+      body.scopes === undefined ? DEFAULT_API_KEY_SCOPES : parseApiScopesStrict(body.scopes);
     const secret = randomToken(ISSUED_KEY_PREFIX);
     const keyPrefix = secret.slice(0, API_KEY_PREFIX_LENGTH);
     const id = uuidIdGenerator.generate('key');

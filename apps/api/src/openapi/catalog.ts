@@ -242,7 +242,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     ['Keys'],
   ),
 
-  r('GET', '/agents/me', 'authenticated', 'agent', 'The authenticated mag_ agent and wallets.', [
+  r('GET', '/agents/me', 'authenticated', 'agent', 'The authenticated mag_ agent and external account references.', [
     'Agents',
   ]),
   r('GET', '/agents', 'authenticated', 'organization', 'List agents for this organization.', [
@@ -264,7 +264,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'Retire an agent and revoke its credentials.',
     ['Agents'],
   ),
-  r('GET', '/agents/:id/wallets', 'authenticated', 'organization', 'External wallet references.', [
+  r('GET', '/agents/:id/wallets', 'authenticated', 'organization', 'External account references (not custodian wallets).', [
     'Agents',
   ]),
   r('GET', '/merchants', 'authenticated', 'organization', 'Merchants this tenant may pay.', [

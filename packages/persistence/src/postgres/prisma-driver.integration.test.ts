@@ -133,6 +133,26 @@ describeIntegration('PostgreSQL schema', () => {
       }
     });
 
+    it('restricts execution intent status to the recorded enum value', async () => {
+      const rows = await prisma.$queryRaw<{ label: string }[]>`
+        SELECT e.enumlabel AS label
+        FROM pg_enum e
+        JOIN pg_type t ON t.oid = e.enumtypid
+        WHERE t.typname = 'ExecutionIntentStatus'
+      `;
+      expect(rows.map((row) => row.label)).toEqual(['recorded']);
+    });
+
+    it('indexes payment_intents for the daily-spend aggregate', async () => {
+      const rows = await prisma.$queryRaw<{ indexname: string }[]>`
+        SELECT indexname FROM pg_indexes
+        WHERE schemaname = 'public' AND tablename = 'payment_intents'
+      `;
+      const names = rows.map((row) => row.indexname);
+      expect(names).toContain('payment_intents_daily_spend_authorized_idx');
+      expect(names).toContain('payment_intents_daily_spend_created_idx');
+    });
+
     it('stores no provider credential column', async () => {
       const rows = await prisma.$queryRaw<{ column_name: string }[]>`
         SELECT column_name FROM information_schema.columns

@@ -375,6 +375,44 @@ describe('AI agent payment infrastructure', () => {
       headers: { 'x-api-key': issued.secret },
     });
     expect(me.statusCode).toBe(200);
+    const meBody = me.json<
+      ApiEnvelope<{
+        wallets: readonly {
+          kind: string;
+          label: string;
+          externalRef: string;
+          controlledByPlatform: boolean;
+        }[];
+      }>
+    >().data;
+    expect(meBody.wallets).toHaveLength(1);
+    expect(meBody.wallets[0]).toMatchObject({
+      kind: 'external_account',
+      label: 'External operating account',
+      controlledByPlatform: false,
+    });
+    expect(meBody.wallets[0]?.externalRef).toBe(`ext_acct_${issued.id}`);
+
+    const accounts = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/agents/${issued.id}/wallets`,
+      headers: { authorization: `Bearer ${session}` },
+    });
+    expect(accounts.statusCode).toBe(200);
+    const listedAccounts = accounts.json<
+      ApiEnvelope<{
+        wallets: readonly { kind: string; label: string; controlledByPlatform: boolean }[];
+      }>
+    >().data.wallets;
+    expect(listedAccounts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'external_account',
+          label: 'External operating account',
+          controlledByPlatform: false,
+        }),
+      ]),
+    );
 
     await harness.app.inject({
       method: 'POST',

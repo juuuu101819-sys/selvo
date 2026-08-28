@@ -8,6 +8,7 @@ import {
   SESSION_SCOPES_BY_ROLE,
   isApiScope,
   parseApiScopes,
+  parseApiScopesStrict,
   sessionScopesForRole,
   type ApiScope,
   type OrganizationSessionRole,
@@ -31,6 +32,11 @@ describe('API scopes', () => {
     expect(isApiScope('agent_policy:write')).toBe(true);
     expect(isApiScope('execute')).toBe(false);
     expect(parseApiScopes(['route:read', 'quote:read', 'route:read', 'nope'])).toEqual([
+      'route:read',
+      'quote:read',
+    ]);
+    expect(() => parseApiScopesStrict(['route:read', 'execute'])).toThrow(/Unknown API scope/);
+    expect(parseApiScopesStrict(['route:read', 'quote:read', 'route:read'])).toEqual([
       'route:read',
       'quote:read',
     ]);

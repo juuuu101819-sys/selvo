@@ -33,8 +33,8 @@ export default async function AgentsPage() {
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Agents request a payment in natural language. Meridian interprets that into a structured
             intent, then the deterministic routing engine quotes and ranks rails. The parser never
-            computes rates, fees, slippage or settlement amounts. The platform never custodies the
-            agent wallet and never moves funds.
+            computes rates, fees, slippage or settlement amounts. The platform never custodies an
+            external operating account and never moves funds.
           </p>
         </div>
         <AgentPaymentsExplorer

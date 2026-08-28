@@ -199,6 +199,18 @@ describe('migrations', () => {
     expect(sql).toContain('"execution_intents_not_submitted"');
     expect(sql).toContain('CHECK ("executable" = false)');
     expect(sql).toContain('CHECK ("submitted" = false)');
+    expect(sql).toContain('CREATE TYPE "ExecutionIntentStatus" AS ENUM (\'recorded\')');
+  });
+
+  it('indexes payment_intents for the daily-spend aggregate', () => {
+    expect(sql).toContain('"payment_intents_daily_spend_authorized_idx"');
+    expect(sql).toContain('"payment_intents_daily_spend_created_idx"');
+    expect(sql).toContain(
+      'ON "payment_intents"("organization_id", "agent_id", "source_asset", "status", "authorized_at")',
+    );
+    expect(sql).toContain(
+      'ON "payment_intents"("organization_id", "agent_id", "source_asset", "status", "created_at")',
+    );
   });
 
   it('stores agent credentials as a hash and wallet references as non-custodial', () => {

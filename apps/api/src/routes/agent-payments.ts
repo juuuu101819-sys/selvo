@@ -122,6 +122,7 @@ export function registerAgentPaymentRoutes(
       expiresAt: null,
     });
 
+    // PA-M14: external account reference — not a provisioned custodian wallet. Always created on mint.
     await container.persistence.agentPayments.createWalletReference({
       id: uuidIdGenerator.generate('awr'),
       organizationId: principal.organizationId,

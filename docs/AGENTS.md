@@ -45,8 +45,9 @@ Human MFA and OIDC change only how an `mds_` session is obtained. They do not ap
 3. Stores scopes **exactly** `DEFAULT_AGENT_SCOPES`:
    `quote:read`, `payment:create`, `payment:quote`, `payment:authorize`.
    There is no API to add `agent_policy:write` or `transaction:create` to a `mag_` credential.
-4. Creates one **external** wallet reference (`controlledByPlatform: false`) labelled
+4. Creates one **external account reference** (`controlledByPlatform: false`) labelled
    “External operating account”. The platform does not generate keys or hold the account.
+   Making this row optional is deferred (would change `POST /agents` issuance).
 5. Creates a payment policy copied from `DEMO_AGENT_POLICY` (limits, allowlists, and
    `preferredRoutePreference: 'lowest_cost'`), with `allowedRecipientCodes` set to this
    organization's merchants.
@@ -58,8 +59,8 @@ endpoint (see [Rotation](#rotation-and-revocation)).
 
 ## Using the credential
 
-Send `X-Api-Key: mag_…` (or Bearer). `GET /api/v1/agents/me` returns the agent plus wallet
-references.
+Send `X-Api-Key: mag_…` (or Bearer). `GET /api/v1/agents/me` returns the agent plus external
+account references.
 
 Payment flow (all non-custodial):
 
@@ -96,8 +97,8 @@ secrets.
 ## Gaps (code, not aspiration)
 
 - Scopes on mint are a fixed constant. Operators cannot narrow a `mag_` key to `quote:read` only.
-- Wallet references are labels pointing outside the platform; the handler always creates one
-  default row. It is not a custodian wallet.
+- External account references are labels pointing outside the platform; the handler always creates one
+  default row. It is not a custodian wallet and is not optional on mint.
 - Demo sandbox still provisions `DEMO_AGENT_SECRET` (`mag_demo_agent01_…`) when demo tenants are
   allowed. Production-locked processes reject that seed (PA-C02).
 - Agent-to-agent settlement and treasury automation are **not** implemented.

@@ -1,3 +1,5 @@
+import { ValidationError } from '../errors/index.js';
+
 /**
  * Organization API key and session scopes.
  *
@@ -103,6 +105,10 @@ export function isApiScope(value: unknown): value is ApiScope {
   return typeof value === 'string' && (API_SCOPES as readonly string[]).includes(value);
 }
 
+/**
+ * Hydrates scopes from a stored row. Unknown strings are skipped so a leftover value cannot
+ * crash authentication. Do not use this on issuance — use {@link parseApiScopesStrict}.
+ */
 export function parseApiScopes(values: readonly string[]): readonly ApiScope[] {
   const unique: ApiScope[] = [];
   for (const value of values) {
@@ -114,6 +120,17 @@ export function parseApiScopes(values: readonly string[]): readonly ApiScope[] {
     }
   }
   return unique;
+}
+
+/**
+ * Issuance parser. Unknown names are rejected rather than dropped (PA-M16).
+ */
+export function parseApiScopesStrict(values: readonly string[]): readonly ApiScope[] {
+  const unknown = values.filter((value) => !isApiScope(value));
+  if (unknown.length > 0) {
+    throw new ValidationError('Unknown API scope.', { scopes: [...new Set(unknown)] });
+  }
+  return parseApiScopes(values);
 }
 
 export function principalHasCapability(

@@ -941,16 +941,16 @@ export function serializeIssuedAgent(agent: PublicAgent, secret: string): Issued
   return { ...serializePublicAgent(agent), secret };
 }
 
-export function serializeWalletReference(wallet: AgentWalletReference): AgentWalletReferenceDto {
+export function serializeWalletReference(reference: AgentWalletReference): AgentWalletReferenceDto {
   return {
-    id: wallet.id,
-    organizationId: wallet.organizationId,
-    agentId: wallet.agentId,
-    kind: wallet.kind,
-    label: wallet.label,
-    externalRef: wallet.externalRef,
+    id: reference.id,
+    organizationId: reference.organizationId,
+    agentId: reference.agentId,
+    kind: reference.kind,
+    label: reference.label,
+    externalRef: reference.externalRef,
     controlledByPlatform: false,
-    createdAt: wallet.createdAt,
+    createdAt: reference.createdAt,
   };
 }
 
