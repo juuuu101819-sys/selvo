@@ -154,7 +154,9 @@ docker compose -f docker-compose.staging.yml --env-file .env.staging --profile s
   run --rm provision-operator
 ```
 
-Without Docker (same env, local Postgres) — used when Compose is unavailable:
+Without Docker (same env, local Postgres) — used when Compose is unavailable. The helper
+**does not inherit** a sandbox `DATABASE_URL`; it targets `meridian_staging` unless
+`STAGING_DATABASE_URL` is set.
 
 ```bash
 export STAGING_DB_PASSWORD='...' STAGING_AUTH_SECRET='...'   # not committed

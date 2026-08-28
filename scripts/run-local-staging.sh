@@ -19,7 +19,13 @@ PGPASSWORD="${STAGING_DB_PASSWORD:-${PGPASSWORD:-meridian}}"
 export PGPASSWORD
 STAGING_AUTH_SECRET="${STAGING_AUTH_SECRET:-}"
 MERIDIAN_IMAGE_TAG="${MERIDIAN_IMAGE_TAG:-$(git rev-parse HEAD 2>/dev/null || echo local)}"
-DATABASE_URL="${DATABASE_URL:-postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:5432/${DB_NAME}}"
+# Do not inherit sandbox DATABASE_URL. Staging uses a dedicated database unless
+# STAGING_DATABASE_URL is set explicitly.
+if [[ -n "${STAGING_DATABASE_URL:-}" ]]; then
+  DATABASE_URL="$STAGING_DATABASE_URL"
+else
+  DATABASE_URL="postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}:5432/${DB_NAME}"
+fi
 
 export NODE_ENV=production
 export PLATFORM_MODE=production
