@@ -123,7 +123,7 @@ describe('PA-M03 error handler over HTTP', () => {
   it('returns the canonical DTO for a Prisma throw and a provider throw', async () => {
     const app = Fastify({ logger: false });
     registerErrorHandling(app);
-    app.get('/boom-prisma', async () => {
+    app.get('/boom-prisma', () => {
       throw Object.assign(new Error('select * from api_keys where id = $1'), {
         code: 'P2022',
         clientVersion: '7.10.0',
@@ -131,7 +131,7 @@ describe('PA-M03 error handler over HTTP', () => {
         name: 'PrismaClientKnownRequestError',
       });
     });
-    app.get('/boom-provider', async () => {
+    app.get('/boom-provider', () => {
       throw Object.assign(new Error('adapter 502'), {
         response: { data: { access_token: 'tok_live', raw: { stack: 'at Adapter.quote' } } },
       });

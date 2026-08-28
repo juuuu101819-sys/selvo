@@ -10,7 +10,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { provisionDemoTenants } from '../auth/provision-demo.js';
 import { API_V1_PREFIX } from '../routes/index.js';
-import { createTestHarness, type ApiError, type TestHarness } from '../testing/harness.js';
+import { createTestHarness, type TestHarness } from '../testing/harness.js';
 
 let harness: TestHarness;
 

@@ -8,7 +8,7 @@ import type { FastifyError } from 'fastify';
 
 export interface ErrorResponseBody {
   readonly error: {
-    readonly code: ErrorCodeValue | string;
+    readonly code: ErrorCodeValue;
     readonly message: string;
     readonly details: Readonly<Record<string, unknown>>;
     readonly requestId: string;
