@@ -233,7 +233,7 @@ describe('StablecoinRouter', () => {
     expect(route?.slippage.bps).toBeDefined();
     expect(route?.liquidity.availableDepthMinorUnits).toBe('5000000000000');
     expect(route?.estimatedSettlementTime.p50Seconds).toBeGreaterThan(0);
-    expect(route?.expiration).toBe('2026-01-01T00:02:00.000Z');
+    expect(route?.expiration).toBe('2026-05-01T09:02:00.000Z');
   });
 
   it('quotes STABLECOIN → FIAT', async () => {
