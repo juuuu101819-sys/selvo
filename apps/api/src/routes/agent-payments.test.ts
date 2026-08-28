@@ -2,7 +2,6 @@ import {
   DEMO_AGENT_ID,
   DEMO_AGENT_POLICY,
   DEMO_AGENT_SECRET,
-  DEMO_ORGANIZATION_ID,
   DEMO_USER_EMAIL,
   DEMO_USER_PASSWORD,
   OTHER_USER_EMAIL,
@@ -385,7 +384,7 @@ describe('AI agent payment infrastructure', () => {
     expect(agents.find((agent) => agent.id === DEMO_AGENT_ID)?.keyPrefix).toBe('mag_demo_agent01');
   });
 
-  it('lets a session user create an intent for the demo agent', async () => {
+  it('forbids a session user from creating a payment intent', async () => {
     const token = await login(DEMO_USER_EMAIL, DEMO_USER_PASSWORD);
     const response = await harness.app.inject({
       method: 'POST',
@@ -396,9 +395,8 @@ describe('AI agent payment infrastructure', () => {
       },
       payload: { agentId: DEMO_AGENT_ID, instruction: 'Pay 500 USD to merchant X' },
     });
-    expect(response.statusCode).toBe(201);
-    expect(response.json<ApiEnvelope<PaymentIntentBody>>().data.organizationId ?? DEMO_ORGANIZATION_ID).toBe(
-      DEMO_ORGANIZATION_ID,
-    );
+    expect(response.statusCode).toBe(403);
+    expect(response.json<ApiError>().error.code).toBe('FORBIDDEN');
+    expect(response.json<ApiError>().error.details['requiredCapability']).toBe('payment:create');
   });
 });

@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02 and PA-C03 were subsequently fixed in production code. No other audit items were implemented in that change. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H04 were subsequently fixed in production code. PA-H05–PA-H13 remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -28,7 +28,9 @@ It is **not production-ready** as a live financial service:
 - Persistence defaults to in-memory **only** in development/test; production-locked processes require PostgreSQL and reject demo credentials.
 - Traditional FX, stablecoin, and DeFi are **not equal rails** on the original comparison API; they are equal only inside the multi-rail catalog.
 - Partner execution and settlement are deliberately unimplemented (`POST /api/v1/executions` → 501).
-- Authorization on agent policy and session scopes is weaker than the role model implies.
+- Authorization on agent policy and session scopes is least-privilege for owner/admin policy writes,
+  role-derived session scopes, mandatory Policy Engine evaluation before execution intents, and
+  atomic daily-spend reservation (PA-H01–H04). Remaining HIGH items PA-H05–PA-H13 are untouched.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -116,7 +118,7 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | 26 | Error handling | Typed `AppError`; 5xx opaque. Fastify 4xx may echo parser message. |
 | 27 | Secrets management | Env Zod; `SecretResolver` for `PROVIDER_*`. Demo secrets in source. |
 | 28 | Demo/production separation | Production boot fail-closed for comparison registry. Demo seed not sandbox-gated. Graph always demo. |
-| 29 | Testing coverage | 845 unit/integration; 46 e2e (Phase 19). Gaps: viewer PATCH, daily-spend reservation, production boot, postgres-default CI. |
+| 29 | Testing coverage | 845 unit/integration; 46 e2e (Phase 19). Gaps: production boot, postgres-default CI. Viewer PATCH and daily-spend reservation covered by PA-H01–H04. |
 | 30 | Performance | Per-request live quotes, no cache, 4s provider timeout. Fine for sandbox. |
 | 31 | Scalability | Memory default; in-process limiter; JSON `quoted_routes` on intents. |
 | 32 | Deployment configuration | `.env.example` present. No Dockerfile, no CI workflows, no `vercel.json`. |
@@ -171,38 +173,42 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-H01 — Any organization session role can PATCH agent payment policy
 
-- **File:** `apps/api/src/routes/dashboard.ts` (lines 191–197)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/routes/dashboard.ts`; `apps/api/src/http/require-organization.ts`
 - **Component:** `PATCH /api/v1/dashboard/agents/:id/policies`
-- **Problem:** Handler calls `requireOrganization` and only rejects `principal.kind === 'agent'`. `viewer` and `member` can raise spend limits or empty allow-lists. `requireKeyManager` (owner/admin) exists in `apps/api/src/http/require-organization.ts` (lines 73–85) but is unused here.
-- **Why it matters:** Policy is the fail-closed control for agents. A read-only role can disable it.
-- **Recommended fix:** Require `owner` or `admin`. Add tests that `viewer`/`member` receive 403. Update `docs/API.md`.
+- **Problem:** Handler called `requireOrganization` and only rejected `principal.kind === 'agent'`. `viewer` and `member` could raise spend limits or empty allow-lists.
+- **Fix:** The route uses Fastify `capabilityPreHandler('agent_policy:write')` plus `requireCapability`. Only `owner`/`admin` sessions receive that capability at issuance. `viewer`/`member`, agent credentials, and organization keys are `403`. Every successful mutation writes `payment.policy.updated` with actor id, actor role, organization id, agent id, previous and new policy snapshots, and timestamp.
+- **Tests:** `apps/api/src/routes/agent-dashboard.test.ts` — viewer PATCH 403; member PATCH 403; admin/owner PATCH 200 + audit row
 - **Priority:** P0
 
 #### PA-H02 — Session users receive every API scope, including `payment:*` and `transaction:create`
 
-- **File:** `packages/core/src/domain/api-scope.ts` (lines 13–23); `apps/api/src/auth/identity-authenticator.ts` (lines 75–84)
-- **Component:** `SESSION_API_SCOPES`
-- **Problem:** Logged-in humans get `quote:read`, `route:read`, `transaction:create`, `payment:create`, `payment:quote`, `payment:authorize`. Comments say payment scopes belong to agent credentials.
-- **Why it matters:** A `viewer` session can record execution intents and drive the agent payment API as if they were the agent, subject only to org tenancy.
-- **Recommended fix:** Narrow session scopes to dashboard/org administration. Keep `payment:*` on `mag_` credentials. Keep `transaction:create` on explicitly minted org keys.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/domain/api-scope.ts`; `apps/api/src/auth/identity-authenticator.ts`
+- **Component:** `sessionScopesForRole` / `SESSION_SCOPES_BY_ROLE`
+- **Problem:** Logged-in humans received a default blob of every API scope, including `payment:*` and `transaction:create`.
+- **Fix:** Session scopes are derived from membership role at issuance. `viewer`/`member` receive `quote:read` and `route:read` only. `owner`/`admin` additionally receive `agent_policy:write`. `payment:*` stays on `mag_` credentials. `transaction:create` stays on explicitly minted organization keys. Protected mutations enforce capability via `capabilityPreHandler` middleware.
+- **Tests:** `packages/core/src/domain/api-scope.test.ts` (exact per-role scope set); `apps/api/src/routes/agent-payments.test.ts` and `execution-intents.test.ts` (session `payment:create` / `transaction:create` → 403)
 - **Priority:** P0
 
 #### PA-H03 — `POST /execution-intents` skips the payment policy engine
 
-- **File:** `apps/api/src/routes/execution-intents.ts` (lines 41–84)
-- **Component:** `registerExecutionIntentRoutes`
-- **Problem:** Only `requireScope(..., 'transaction:create')` and quote-expiry are checked. Agent NL routing calls `gateExecutionIntent`; this path does not. Combined with PA-H02, any session user can persist a route choice.
-- **Why it matters:** Documented contract is policy-before-intent. Intents cannot submit (`executable: false`), but they are the artefact Phase 7 would consume.
-- **Recommended fix:** Run `gateExecutionIntent` (or an org-level policy) before `create`. Or restrict the route to keys that already passed policy. Add an integration test.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/routes/execution-intents.ts`; `packages/core/src/engine/agent-payment-service.ts`
+- **Component:** `registerExecutionIntentRoutes` / `gateExecutionIntent`
+- **Problem:** Only `transaction:create` and quote-expiry were checked. Combined with PA-H02, any session user could persist a route choice without Policy Engine evaluation.
+- **Fix:** Quote expiry is still checked first. A `paymentIntentId` is then required; omitting it is `403 POLICY_DENIED` (`policy_required`). `gateExecutionIntent` re-evaluates policy fail-closed (missing policy, evaluation errors, and non-gated statuses all reject). Allowed statuses are `ROUTED`, `AUTHORIZED`, `EXECUTION_PENDING`, and `COMPLETED`. Select, authorize, simulate, NL routing, and the HTTP execution-intent route all funnel through that gate or `assertPolicy`.
+- **Tests:** `apps/api/src/routes/execution-intents.test.ts`; `apps/api/src/routes/policy-hardening.test.ts` (API, service, NL, missing policy)
 - **Priority:** P0
 
 #### PA-H04 — Daily spending limit ignores in-flight intents
 
-- **File:** `packages/core/src/domain/agent-payments.ts` (lines 59–64); `packages/core/src/engine/agent-payment-service.ts` (~726–733)
-- **Component:** `DAILY_SPENDING_STATUSES`
-- **Problem:** Only `AUTHORIZED`, `EXECUTION_PENDING`, `COMPLETED` count. Many `CREATED`/`QUOTED`/`ROUTED` intents can each pass the daily check, then authorize in parallel.
-- **Why it matters:** The $10,000 demo daily cap is not a reservation. After delegated execution exists, this is a real limit bypass.
-- **Recommended fix:** Count `ROUTED` (and optionally `QUOTED`) as reserved spend, or serialize authorize under a transactional remaining-capacity check. Add a multi-intent test.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/domain/agent-payments.ts`; `packages/core/src/engine/agent-payment-service.ts`; persistence agent-payment stores
+- **Component:** `DAILY_SPENDING_STATUSES` / `withExclusiveAgentAccess`
+- **Problem:** Only `AUTHORIZED`, `EXECUTION_PENDING`, and `COMPLETED` counted. Concurrent `QUOTED` intents could each pass the daily check and then select in parallel.
+- **Fix:** `ROUTED` is reserved spend. Select, authorize, simulate, and the execution-intent gate run inside `withExclusiveAgentAccess` (in-process mutex in memory; `SELECT … FOR UPDATE` on the agent policy row in Postgres). Check-and-reserve is a single locked operation; `excludeIntentId` prevents double-counting a row already reserved. `FAILED`/`EXPIRED` are omitted from the status set, so those transitions release the reservation. `COMPLETED` keeps the amount as permanent spend.
+- **Tests:** `apps/api/src/routes/policy-hardening.test.ts` — five parallel 400-unit intents against a 1,000-unit cap, six rounds; exactly two succeed each round
 - **Priority:** P0 (control correctness); P2 (money impact)
 
 #### PA-H05 — Dual quote engines; FX / stablecoin / DeFi are not one rail on `/comparisons`
@@ -508,21 +514,21 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 ## B. High-priority issues
 
-| ID | Summary |
-| -- | ------- |
-| PA-H01 | Viewer/member can PATCH agent policy. |
-| PA-H02 | Session scopes include `payment:*` and `transaction:create`. |
-| PA-H03 | Execution intents bypass policy. |
-| PA-H04 | Daily limit ignores in-flight intents. |
-| PA-H05 | FX / stablecoin / DeFi are not equal on `/comparisons`; dual engines. |
-| PA-H06 | Route graph always demo. |
-| PA-H07 | Dashboard/chart `Number()` on financial metrics. |
-| PA-H08 | Monetization/TPV not recorded on multi-rail HTTP. |
-| PA-H09 | Multi-rail missing quote freshness. |
-| PA-H10 | Platform fees skip non-fiat multi-rail corridors. |
-| PA-H11 | No CI / container / deploy config. |
-| PA-H12 | Prisma `deepmerge-ts` high advisory. |
-| PA-H13 | `COMPLETED`/`AUTHORIZED` naming resembles settlement. |
+| ID | Summary | Status |
+| -- | ------- | ------ |
+| PA-H01 | Viewer/member can PATCH agent policy. | **FIXED** — `agent_policy:write` capability; owner/admin only; audit snapshots |
+| PA-H02 | Session scopes include `payment:*` and `transaction:create`. | **FIXED** — role-derived session scopes; no payment or execution-intent rights on sessions |
+| PA-H03 | Execution intents bypass policy. | **FIXED** — `gateExecutionIntent` required; missing payment intent fail-closed |
+| PA-H04 | Daily limit ignores in-flight intents. | **FIXED** — atomic reserve at `ROUTED`; exclusive agent lock; concurrency test |
+| PA-H05 | FX / stablecoin / DeFi are not equal on `/comparisons`; dual engines. | Open |
+| PA-H06 | Route graph always demo. | Open |
+| PA-H07 | Dashboard/chart `Number()` on financial metrics. | Open |
+| PA-H08 | Monetization/TPV not recorded on multi-rail HTTP. | Open |
+| PA-H09 | Multi-rail missing quote freshness. | Open |
+| PA-H10 | Platform fees skip non-fiat multi-rail corridors. | Open |
+| PA-H11 | No CI / container / deploy config. | Open |
+| PA-H12 | Prisma `deepmerge-ts` high advisory. | Open |
+| PA-H13 | `COMPLETED`/`AUTHORIZED` naming resembles settlement. | Open |
 
 ---
 
@@ -541,7 +547,7 @@ A production-labelled **quoting** deployment (still non-custodial, still no sett
 1. ~~Licensed read-only adapters exist **or** production is explicitly forbidden in deploy config (PA-C01).~~ **PA-C01 FIXED:** production starts read-only unless `PRODUCTION_ROUTING_AVAILABLE=true` *and* a licensed adapter exists (none do; the flag fails closed). Licensed adapters remain a product requirement before live quotes.
 2. ~~Demo tenant provision and seed cannot run in that environment (PA-C02).~~ **PA-C02 FIXED.**
 3. ~~Durable postgres is required and migrations applied (PA-C03).~~ **PA-C03 FIXED** at configuration validation; operators must still provision and migrate a real database.
-4. Policy PATCH and session scopes are least-privilege (PA-H01, PA-H02, PA-H03, PA-H04).
+4. ~~Policy PATCH and session scopes are least-privilege (PA-H01, PA-H02, PA-H03, PA-H04).~~ **PA-H01–H04 FIXED.**
 5. Automated verify + audit gate exists (PA-H11, PA-H12).
 6. HTTPS session cookies default secure (PA-M12).
 
@@ -554,7 +560,7 @@ A production-labelled **partner-execution** deployment is **additionally** block
 Do not add product features until this sequence is complete. Do not start delegated execution in this sequence.
 
 1. ~~**Sandbox-gate demo identity** (PA-C02) and **refuse memory in production mode** (PA-C03).~~ **Done.** See `docs/PRODUCTION_GATES.md`.
-2. **Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.
+2. ~~**Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.~~ **Done.**
 3. **CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).
 4. **Docs:** agents issued; public vs authenticated quote surfaces; simulation vs settlement naming (PA-M06, PA-H13).
 5. **Quote integrity:** freshness on multi-rail (PA-H09); Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).
@@ -581,4 +587,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02 and PA-C03 were fixed in a later change; HIGH and below were not implemented in that change.*
+*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H04 were fixed in later changes; PA-H05–PA-H13 and below were not implemented in those changes.*

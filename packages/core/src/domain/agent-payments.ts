@@ -56,8 +56,9 @@ export const POLICY_RULES = [
 ] as const;
 export type PolicyRule = (typeof POLICY_RULES)[number];
 
-/** Statuses that consume the agent's daily simulated spending capacity. */
+/** Statuses that consume the agent's daily simulated spending capacity, including in-flight reservations. */
 export const DAILY_SPENDING_STATUSES: readonly PaymentIntentStatus[] = [
+  'ROUTED',
   'AUTHORIZED',
   'EXECUTION_PENDING',
   'COMPLETED',

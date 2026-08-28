@@ -1,6 +1,7 @@
 import {
   ForbiddenError,
   UnauthenticatedError,
+  principalHasCapability,
   type ApiScope,
   type Principal,
 } from '@meridian/core';
@@ -27,22 +28,42 @@ export function requireOrganization(
 }
 
 /**
- * Same tenant check, plus the named API scope.
+ * Same tenant check, plus the named capability/scope.
  *
- * Session users receive every scope. Organization API keys receive only the scopes stored on the
- * key. Anonymous callers have none.
+ * Session users receive the scopes of their membership role at issuance. Organization API keys
+ * receive only the scopes stored on the key. Agent credentials receive `payment:*`. Anonymous
+ * callers have none. This is the enforcement point for every protected mutation.
  */
+export function requireCapability(
+  request: FastifyRequest,
+  capability: ApiScope,
+): Principal & { organizationId: string } {
+  const principal = requireOrganization(request);
+  if (!principalHasCapability(principal.scopes, capability)) {
+    throw new ForbiddenError('This credential does not include the required capability.', {
+      requiredCapability: capability,
+    });
+  }
+  return principal;
+}
+
+/** @see requireCapability */
 export function requireScope(
   request: FastifyRequest,
   scope: ApiScope,
 ): Principal & { organizationId: string } {
-  const principal = requireOrganization(request);
-  if (!principal.scopes.includes(scope)) {
-    throw new ForbiddenError('This credential does not include the required scope.', {
-      requiredScope: scope,
-    });
-  }
-  return principal;
+  return requireCapability(request, scope);
+}
+
+/**
+ * Fastify preHandler: reject before the route body runs when the capability is missing.
+ *
+ * Handlers still call {@link requireCapability} (or {@link requireScope}) to read the principal.
+ */
+export function capabilityPreHandler(capability: ApiScope) {
+  return async (request: FastifyRequest): Promise<void> => {
+    requireCapability(request, capability);
+  };
 }
 
 /**

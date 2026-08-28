@@ -33,6 +33,7 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
   private readonly merchants = new Map<string, Merchant>();
   private readonly policies = new Map<string, PaymentPolicy>();
   private readonly intents = new Map<string, PaymentIntent>();
+  private readonly exclusiveTails = new Map<string, Promise<void>>();
 
   createAgent(input: CreateAgentInput): Promise<Agent> {
     const agent: Agent = {
@@ -314,6 +315,9 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
       if (intent.organizationId !== query.organizationId || intent.agentId !== query.agentId) {
         continue;
       }
+      if (query.excludeIntentId !== undefined && intent.id === query.excludeIntentId) {
+        continue;
+      }
       if (intent.sourceAsset !== query.asset) {
         continue;
       }
@@ -327,6 +331,35 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
       total += BigInt(intent.amountMinorUnits);
     }
     return Promise.resolve(total.toString());
+  }
+
+  async withExclusiveAgentAccess<T>(
+    organizationId: string,
+    agentId: string,
+    run: () => Promise<T>,
+  ): Promise<T> {
+    const key = `${organizationId}:${agentId}`;
+    const prior = this.exclusiveTails.get(key) ?? Promise.resolve();
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.exclusiveTails.set(
+      key,
+      prior.then(
+        () => held,
+        () => held,
+      ),
+    );
+    await prior.then(
+      () => undefined,
+      () => undefined,
+    );
+    try {
+      return await run();
+    } finally {
+      release();
+    }
   }
 
   private toPublic(agent: Agent): PublicAgent {

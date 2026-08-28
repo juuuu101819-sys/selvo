@@ -7,6 +7,7 @@ import {
   DEMO_USER_PASSWORD,
   OTHER_USER_EMAIL,
   OTHER_USER_PASSWORD,
+  hashPassword,
 } from '@meridian/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { provisionDemoTenants } from '../auth/provision-demo.js';
@@ -40,6 +41,27 @@ async function login(email: string, password: string): Promise<string> {
   });
   expect(response.statusCode).toBe(201);
   return response.json<{ data: { token: string } }>().data.token;
+}
+
+async function provisionRoleUser(
+  role: 'viewer' | 'member' | 'admin',
+  email: string,
+  password: string,
+): Promise<void> {
+  const userId = `usr_pah01_${role}`;
+  await harness.container.persistence.identity.upsertUser({
+    id: userId,
+    email,
+    displayName: `PA-H01 ${role}`,
+    passwordHash: await hashPassword(password),
+  });
+  await harness.container.persistence.identity.upsertMembership({
+    id: `mbr_pah01_${role}`,
+    organizationId: DEMO_ORGANIZATION_ID,
+    userId,
+    role,
+    status: 'active',
+  });
 }
 
 interface AgentSummary {
@@ -226,7 +248,12 @@ describe('AI agent financial dashboard', () => {
         (event) =>
           event.type === 'payment.policy.updated' &&
           event.payload['agentId'] === DEMO_AGENT_ID &&
-          event.organizationId === DEMO_ORGANIZATION_ID,
+          event.organizationId === DEMO_ORGANIZATION_ID &&
+          event.payload['actorRole'] === 'owner' &&
+          typeof event.payload['actorId'] === 'string' &&
+          typeof event.payload['timestamp'] === 'string' &&
+          event.payload['previousPolicy'] !== undefined &&
+          event.payload['newPolicy'] !== undefined,
       ),
     ).toBe(true);
 
@@ -254,6 +281,57 @@ describe('AI agent financial dashboard', () => {
     });
     expect(response.statusCode).toBe(403);
     expect(response.json<ApiError>().error.code).toBe('FORBIDDEN');
+  });
+
+  it('rejects viewer and member policy PATCH with 403 and lets admin PATCH with an audit row', async () => {
+    await provisionRoleUser('viewer', 'viewer-policy@demo-trading.example.invalid', 'ViewerPolicy!2026');
+    await provisionRoleUser('member', 'member-policy@demo-trading.example.invalid', 'MemberPolicy!2026');
+    await provisionRoleUser('admin', 'admin-policy@demo-trading.example.invalid', 'AdminPolicy!2026');
+
+    const viewerToken = await login('viewer-policy@demo-trading.example.invalid', 'ViewerPolicy!2026');
+    const memberToken = await login('member-policy@demo-trading.example.invalid', 'MemberPolicy!2026');
+    const adminToken = await login('admin-policy@demo-trading.example.invalid', 'AdminPolicy!2026');
+
+    const payload = { preferredRoutePreference: 'fastest' as const };
+
+    for (const token of [viewerToken, memberToken]) {
+      const denied = await harness.app.inject({
+        method: 'PATCH',
+        url: `${API_V1_PREFIX}/dashboard/agents/${DEMO_AGENT_ID}/policies`,
+        headers: { authorization: `Bearer ${token}` },
+        payload,
+      });
+      expect(denied.statusCode).toBe(403);
+      expect(denied.json<ApiError>().error.code).toBe('FORBIDDEN');
+      expect(denied.json<ApiError>().error.details['requiredCapability']).toBe('agent_policy:write');
+    }
+
+    const allowed = await harness.app.inject({
+      method: 'PATCH',
+      url: `${API_V1_PREFIX}/dashboard/agents/${DEMO_AGENT_ID}/policies`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { preferredRoutePreference: 'balanced' },
+    });
+    expect(allowed.statusCode).toBe(200);
+    const events = await harness.auditEvents();
+    expect(
+      events.some(
+        (event) =>
+          event.type === 'payment.policy.updated' &&
+          event.payload['actorRole'] === 'admin' &&
+          event.payload['agentId'] === DEMO_AGENT_ID &&
+          event.organizationId === DEMO_ORGANIZATION_ID &&
+          typeof event.payload['previousPolicy'] === 'object' &&
+          typeof event.payload['newPolicy'] === 'object',
+      ),
+    ).toBe(true);
+
+    await harness.app.inject({
+      method: 'PATCH',
+      url: `${API_V1_PREFIX}/dashboard/agents/${DEMO_AGENT_ID}/policies`,
+      headers: { authorization: `Bearer ${adminToken}` },
+      payload: { preferredRoutePreference: 'lowest_cost' },
+    });
   });
 
   it('lets the other organization see only its own secret volume', async () => {

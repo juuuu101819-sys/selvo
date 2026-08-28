@@ -100,10 +100,16 @@ export {
   DEFAULT_AGENT_SCOPES,
   DEFAULT_API_KEY_SCOPES,
   ORGANIZATION_API_KEY_SCOPES,
+  ORGANIZATION_SESSION_ROLES,
   SESSION_API_SCOPES,
+  SESSION_SCOPES_BY_ROLE,
   isApiScope,
+  isOrganizationSessionRole,
   parseApiScopes,
+  principalHasCapability,
+  sessionScopesForRole,
   type ApiScope,
+  type OrganizationSessionRole,
 } from './api-scope.js';
 export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
 export {

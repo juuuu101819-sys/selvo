@@ -349,61 +349,77 @@ export class AgentPaymentService {
     readonly actor: string;
     readonly requestId: string;
   }): Promise<PaymentIntent> {
-    const intent = await this.requireMutableIntent(input.paymentIntentId, input.organizationId, input.agentId);
-    if (intent.status !== 'QUOTED') {
-      throw new ValidationError(`A payment intent in status ${intent.status} cannot select a route.`, {
-        status: intent.status,
-      });
-    }
-    this.assertQuoteFresh(intent);
-
-    const selected = intent.quotedRoutes.find((route) => route.routeId === input.routeId);
-    if (selected === undefined) {
-      throw new ValidationError('Selected route is not one of the quoted options.', {
-        routeId: input.routeId,
-      });
-    }
-
-    const policy = await this.requirePolicy(
-      intent.organizationId,
-      intent.agentId,
-      input.actor,
-      input.requestId,
-      intent.id,
-    );
-    await this.assertPolicy(policy, {
-      amountMinorUnits: intent.amountMinorUnits,
-      sourceAsset: intent.sourceAsset,
-      destinationAsset: intent.destinationAsset,
-      recipientCode: intent.recipient,
-      maxFeeBps: intent.maxFeeBps,
-      selectedProviderId: selected.providerId,
-      selectedRouteCostBps: selected.totalCostBps,
-      selectedRoute: selected,
-      actor: input.actor,
-      requestId: input.requestId,
-      paymentIntentId: intent.id,
+    const existing = await this.getIntent({
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      paymentIntentId: input.paymentIntentId,
     });
+    return this.deps.agentPayments.withExclusiveAgentAccess(
+      existing.organizationId,
+      existing.agentId,
+      async () => {
+        const intent = await this.requireMutableIntent(
+          input.paymentIntentId,
+          input.organizationId,
+          input.agentId,
+        );
+        if (intent.status !== 'QUOTED') {
+          throw new ValidationError(
+            `A payment intent in status ${intent.status} cannot select a route.`,
+            { status: intent.status },
+          );
+        }
+        this.assertQuoteFresh(intent);
 
-    const routed = await this.deps.agentPayments.updateIntent({
-      ...intent,
-      status: 'ROUTED',
-      selectedRouteId: selected.routeId,
-      updatedAt: this.deps.clock.nowIso(),
-    });
-    await this.deps.auditLogger.record({
-      type: 'payment.intent.selected',
-      actor: input.actor,
-      requestId: input.requestId,
-      comparisonId: null,
-      providerId: selected.providerId,
-      payload: {
-        paymentIntentId: routed.id,
-        routeId: selected.routeId,
-        fundsMoved: false,
+        const selected = intent.quotedRoutes.find((route) => route.routeId === input.routeId);
+        if (selected === undefined) {
+          throw new ValidationError('Selected route is not one of the quoted options.', {
+            routeId: input.routeId,
+          });
+        }
+
+        const policy = await this.requirePolicy(
+          intent.organizationId,
+          intent.agentId,
+          input.actor,
+          input.requestId,
+          intent.id,
+        );
+        await this.assertPolicy(policy, {
+          amountMinorUnits: intent.amountMinorUnits,
+          sourceAsset: intent.sourceAsset,
+          destinationAsset: intent.destinationAsset,
+          recipientCode: intent.recipient,
+          maxFeeBps: intent.maxFeeBps,
+          selectedProviderId: selected.providerId,
+          selectedRouteCostBps: selected.totalCostBps,
+          selectedRoute: selected,
+          actor: input.actor,
+          requestId: input.requestId,
+          paymentIntentId: intent.id,
+        });
+
+        const routed = await this.deps.agentPayments.updateIntent({
+          ...intent,
+          status: 'ROUTED',
+          selectedRouteId: selected.routeId,
+          updatedAt: this.deps.clock.nowIso(),
+        });
+        await this.deps.auditLogger.record({
+          type: 'payment.intent.selected',
+          actor: input.actor,
+          requestId: input.requestId,
+          comparisonId: null,
+          providerId: selected.providerId,
+          payload: {
+            paymentIntentId: routed.id,
+            routeId: selected.routeId,
+            fundsMoved: false,
+          },
+        });
+        return routed;
       },
-    });
-    return routed;
+    );
   }
 
   async authorizeIntent(input: {
@@ -413,60 +429,76 @@ export class AgentPaymentService {
     readonly actor: string;
     readonly requestId: string;
   }): Promise<PaymentIntent> {
-    const intent = await this.requireMutableIntent(input.paymentIntentId, input.organizationId, input.agentId);
-    if (intent.status === 'AUTHORIZED') {
-      return intent;
-    }
-    if (intent.status !== 'ROUTED') {
-      throw new ValidationError(`A payment intent in status ${intent.status} cannot be authorized.`, {
-        status: intent.status,
-      });
-    }
-    this.assertQuoteFresh(intent);
-
-    const selected = selectedRouteOf(intent);
-    const policy = await this.requirePolicy(
-      intent.organizationId,
-      intent.agentId,
-      input.actor,
-      input.requestId,
-      intent.id,
-    );
-    await this.assertPolicy(policy, {
-      amountMinorUnits: intent.amountMinorUnits,
-      sourceAsset: intent.sourceAsset,
-      destinationAsset: intent.destinationAsset,
-      recipientCode: intent.recipient,
-      maxFeeBps: intent.maxFeeBps,
-      selectedProviderId: selected.providerId,
-      selectedRouteCostBps: selected.totalCostBps,
-      selectedRoute: selected,
-      actor: input.actor,
-      requestId: input.requestId,
-      paymentIntentId: intent.id,
+    const existing = await this.getIntent({
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      paymentIntentId: input.paymentIntentId,
     });
+    return this.deps.agentPayments.withExclusiveAgentAccess(
+      existing.organizationId,
+      existing.agentId,
+      async () => {
+        const intent = await this.requireMutableIntent(
+          input.paymentIntentId,
+          input.organizationId,
+          input.agentId,
+        );
+        if (intent.status === 'AUTHORIZED') {
+          return intent;
+        }
+        if (intent.status !== 'ROUTED') {
+          throw new ValidationError(
+            `A payment intent in status ${intent.status} cannot be authorized.`,
+            { status: intent.status },
+          );
+        }
+        this.assertQuoteFresh(intent);
 
-    const authorized = await this.deps.agentPayments.updateIntent({
-      ...intent,
-      status: 'AUTHORIZED',
-      authorizedAt: this.deps.clock.nowIso(),
-      updatedAt: this.deps.clock.nowIso(),
-    });
-    await this.deps.auditLogger.record({
-      type: 'payment.intent.authorized',
-      actor: input.actor,
-      requestId: input.requestId,
-      comparisonId: null,
-      providerId: selected.providerId,
-      payload: {
-        paymentIntentId: authorized.id,
-        authorizedAt: authorized.authorizedAt,
-        fundsMoved: false,
-        custody: false,
-        realExecution: false,
+        const selected = selectedRouteOf(intent);
+        const policy = await this.requirePolicy(
+          intent.organizationId,
+          intent.agentId,
+          input.actor,
+          input.requestId,
+          intent.id,
+        );
+        await this.assertPolicy(policy, {
+          amountMinorUnits: intent.amountMinorUnits,
+          sourceAsset: intent.sourceAsset,
+          destinationAsset: intent.destinationAsset,
+          recipientCode: intent.recipient,
+          maxFeeBps: intent.maxFeeBps,
+          selectedProviderId: selected.providerId,
+          selectedRouteCostBps: selected.totalCostBps,
+          selectedRoute: selected,
+          actor: input.actor,
+          requestId: input.requestId,
+          paymentIntentId: intent.id,
+        });
+
+        const authorized = await this.deps.agentPayments.updateIntent({
+          ...intent,
+          status: 'AUTHORIZED',
+          authorizedAt: this.deps.clock.nowIso(),
+          updatedAt: this.deps.clock.nowIso(),
+        });
+        await this.deps.auditLogger.record({
+          type: 'payment.intent.authorized',
+          actor: input.actor,
+          requestId: input.requestId,
+          comparisonId: null,
+          providerId: selected.providerId,
+          payload: {
+            paymentIntentId: authorized.id,
+            authorizedAt: authorized.authorizedAt,
+            fundsMoved: false,
+            custody: false,
+            realExecution: false,
+          },
+        });
+        return authorized;
       },
-    });
-    return authorized;
+    );
   }
 
   async simulateIntent(input: {
@@ -476,79 +508,101 @@ export class AgentPaymentService {
     readonly actor: string;
     readonly requestId: string;
   }): Promise<PaymentIntent> {
-    const intent = await this.requireMutableIntent(input.paymentIntentId, input.organizationId, input.agentId);
-    if (intent.status === 'COMPLETED' && intent.simulation !== null) {
-      return intent;
+    const existing = await this.getIntent({
+      organizationId: input.organizationId,
+      agentId: input.agentId,
+      paymentIntentId: input.paymentIntentId,
+    });
+    if (existing.status === 'COMPLETED' && existing.simulation !== null) {
+      return existing;
     }
-    if (intent.status !== 'AUTHORIZED') {
-      throw new ValidationError(`A payment intent in status ${intent.status} cannot be simulated.`, {
-        status: intent.status,
-      });
-    }
-    this.assertQuoteFresh(intent);
+    return this.deps.agentPayments.withExclusiveAgentAccess(
+      existing.organizationId,
+      existing.agentId,
+      async () => {
+        const intent = await this.getIntent({
+          organizationId: input.organizationId,
+          agentId: input.agentId,
+          paymentIntentId: input.paymentIntentId,
+        });
+        if (intent.status === 'COMPLETED' && intent.simulation !== null) {
+          return intent;
+        }
+        if (intent.status === 'EXPIRED') {
+          throw new QuoteExpiredError('This payment intent has expired.');
+        }
+        if (intent.status !== 'AUTHORIZED') {
+          throw new ValidationError(
+            `A payment intent in status ${intent.status} cannot be simulated.`,
+            { status: intent.status },
+          );
+        }
+        this.assertQuoteFresh(intent);
 
-    const selected = selectedRouteOf(intent);
-    const policy = await this.requirePolicy(
-      intent.organizationId,
-      intent.agentId,
-      input.actor,
-      input.requestId,
-      intent.id,
-    );
-    await this.assertPolicy(policy, {
-      amountMinorUnits: intent.amountMinorUnits,
-      sourceAsset: intent.sourceAsset,
-      destinationAsset: intent.destinationAsset,
-      recipientCode: intent.recipient,
-      maxFeeBps: intent.maxFeeBps,
-      selectedProviderId: selected.providerId,
-      selectedRouteCostBps: selected.totalCostBps,
-      selectedRoute: selected,
-      actor: input.actor,
-      requestId: input.requestId,
-      paymentIntentId: intent.id,
-    });
+        const selected = selectedRouteOf(intent);
+        const policy = await this.requirePolicy(
+          intent.organizationId,
+          intent.agentId,
+          input.actor,
+          input.requestId,
+          intent.id,
+        );
+        await this.assertPolicy(policy, {
+          amountMinorUnits: intent.amountMinorUnits,
+          sourceAsset: intent.sourceAsset,
+          destinationAsset: intent.destinationAsset,
+          recipientCode: intent.recipient,
+          maxFeeBps: intent.maxFeeBps,
+          selectedProviderId: selected.providerId,
+          selectedRouteCostBps: selected.totalCostBps,
+          selectedRoute: selected,
+          actor: input.actor,
+          requestId: input.requestId,
+          paymentIntentId: intent.id,
+        });
 
-    const pending = await this.deps.agentPayments.updateIntent({
-      ...intent,
-      status: 'EXECUTION_PENDING',
-      updatedAt: this.deps.clock.nowIso(),
-    });
+        const pending = await this.deps.agentPayments.updateIntent({
+          ...intent,
+          status: 'EXECUTION_PENDING',
+          updatedAt: this.deps.clock.nowIso(),
+        });
 
-    const simulation = simulateSandboxExecution({
-      clock: this.deps.clock,
-      ids: this.deps.ids,
-      selectedProviderId: selected.providerId,
-    });
+        const simulation = simulateSandboxExecution({
+          clock: this.deps.clock,
+          ids: this.deps.ids,
+          selectedProviderId: selected.providerId,
+        });
 
-    const completed = await this.deps.agentPayments.updateIntent({
-      ...pending,
-      status: 'COMPLETED',
-      simulatedAt: simulation.occurredAt,
-      simulation,
-      fundsMoved: false,
-      custody: false,
-      realExecution: false,
-      updatedAt: this.deps.clock.nowIso(),
-    });
+        const completed = await this.deps.agentPayments.updateIntent({
+          ...pending,
+          status: 'COMPLETED',
+          simulatedAt: simulation.occurredAt,
+          simulation,
+          fundsMoved: false,
+          custody: false,
+          realExecution: false,
+          updatedAt: this.deps.clock.nowIso(),
+        });
 
-    await this.deps.auditLogger.record({
-      type: 'payment.intent.simulated',
-      actor: input.actor,
-      requestId: input.requestId,
-      comparisonId: null,
-      providerId: selected.providerId,
-      payload: {
-        paymentIntentId: completed.id,
-        simulationId: simulation.simulationId,
-        simulated: true,
-        fundsMoved: false,
-        custody: false,
-        realExecution: false,
-        receipt: simulation.receipt,
+        await this.deps.auditLogger.record({
+          type: 'payment.intent.simulated',
+          actor: input.actor,
+          requestId: input.requestId,
+          comparisonId: null,
+          providerId: selected.providerId,
+          payload: {
+            paymentIntentId: completed.id,
+            simulationId: simulation.simulationId,
+            simulated: true,
+            fundsMoved: false,
+            custody: false,
+            realExecution: false,
+            receipt: simulation.receipt,
+          },
+        });
+        return completed;
       },
-    });
-    return completed;
+    );
   }
 
   /**
@@ -564,40 +618,57 @@ export class AgentPaymentService {
     readonly actor: string;
     readonly requestId: string;
   }): Promise<{ readonly intent: PaymentIntent; readonly route: QuotedRouteOption }> {
-    const intent = await this.getIntent({
+    const existing = await this.getIntent({
       organizationId: input.organizationId,
       agentId: input.agentId,
       paymentIntentId: input.paymentIntentId,
     });
-    if (intent.status !== 'ROUTED' && intent.status !== 'AUTHORIZED') {
-      throw new ValidationError(
-        `A payment intent in status ${intent.status} cannot record an execution intent.`,
-        { status: intent.status },
-      );
-    }
-    this.assertQuoteFresh(intent);
-    const route = selectedRouteOf(intent);
-    const policy = await this.requirePolicy(
-      intent.organizationId,
-      intent.agentId,
-      input.actor,
-      input.requestId,
-      intent.id,
+    return this.deps.agentPayments.withExclusiveAgentAccess(
+      existing.organizationId,
+      existing.agentId,
+      async () => {
+        const intent = await this.getIntent({
+          organizationId: input.organizationId,
+          agentId: input.agentId,
+          paymentIntentId: input.paymentIntentId,
+        });
+        if (
+          intent.status !== 'ROUTED' &&
+          intent.status !== 'AUTHORIZED' &&
+          intent.status !== 'EXECUTION_PENDING' &&
+          intent.status !== 'COMPLETED'
+        ) {
+          throw new PolicyDeniedError(
+            'policy_required',
+            `A payment intent in status ${intent.status} has not passed Policy Engine evaluation for execution.`,
+            { failClosed: true, status: intent.status },
+          );
+        }
+        this.assertQuoteFresh(intent);
+        const route = selectedRouteOf(intent);
+        const policy = await this.requirePolicy(
+          intent.organizationId,
+          intent.agentId,
+          input.actor,
+          input.requestId,
+          intent.id,
+        );
+        await this.assertPolicy(policy, {
+          amountMinorUnits: intent.amountMinorUnits,
+          sourceAsset: intent.sourceAsset,
+          destinationAsset: intent.destinationAsset,
+          recipientCode: intent.recipient,
+          maxFeeBps: intent.maxFeeBps,
+          selectedProviderId: route.providerId,
+          selectedRouteCostBps: route.totalCostBps,
+          selectedRoute: route,
+          actor: input.actor,
+          requestId: input.requestId,
+          paymentIntentId: intent.id,
+        });
+        return { intent, route };
+      },
     );
-    await this.assertPolicy(policy, {
-      amountMinorUnits: intent.amountMinorUnits,
-      sourceAsset: intent.sourceAsset,
-      destinationAsset: intent.destinationAsset,
-      recipientCode: intent.recipient,
-      maxFeeBps: intent.maxFeeBps,
-      selectedProviderId: route.providerId,
-      selectedRouteCostBps: route.totalCostBps,
-      selectedRoute: route,
-      actor: input.actor,
-      requestId: input.requestId,
-      paymentIntentId: intent.id,
-    });
-    return { intent, route };
   }
 
   async getIntent(input: {
@@ -730,6 +801,7 @@ export class AgentPaymentService {
       fromInclusive: window.start,
       toExclusive: window.end,
       statuses: DAILY_SPENDING_STATUSES,
+      ...(input.paymentIntentId === null ? {} : { excludeIntentId: input.paymentIntentId }),
     });
     const providerId = input.selectedRoute?.providerId ?? input.selectedProviderId;
     try {
@@ -745,19 +817,25 @@ export class AgentPaymentService {
         dailySpentMinorUnits,
       });
     } catch (error) {
-      if (error instanceof PolicyDeniedError) {
-        await this.recordPolicyDecision({
-          allowed: false,
-          error,
-          actor: input.actor,
-          requestId: input.requestId,
-          paymentIntentId: input.paymentIntentId,
-          providerId,
-          organizationId: policy.organizationId,
-          agentId: policy.agentId,
-        });
-      }
-      throw error;
+      const denied =
+        error instanceof PolicyDeniedError
+          ? error
+          : new PolicyDeniedError(
+              'policy_required',
+              'Policy Engine evaluation failed closed and the payment was rejected.',
+              { failClosed: true, reason: 'policy_evaluation_failed' },
+            );
+      await this.recordPolicyDecision({
+        allowed: false,
+        error: denied,
+        actor: input.actor,
+        requestId: input.requestId,
+        paymentIntentId: input.paymentIntentId,
+        providerId,
+        organizationId: policy.organizationId,
+        agentId: policy.agentId,
+      });
+      throw denied;
     }
     await this.recordPolicyDecision({
       allowed: true,

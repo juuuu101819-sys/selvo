@@ -10,7 +10,7 @@ import {
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
-import { assertClaimedOrganization, requireScope } from '../http/require-organization.js';
+import { assertClaimedOrganization, capabilityPreHandler, requireScope } from '../http/require-organization.js';
 import {
   createFinancialQuoteSchema,
   parseOrThrow,
@@ -59,7 +59,7 @@ export function registerFinancialRoutingRoutes(
     });
   });
 
-  app.post('/quote', async (request, reply) => {
+  app.post('/quote', { preHandler: [capabilityPreHandler('quote:read')] }, async (request, reply) => {
     const body = parseOrThrow(createFinancialQuoteSchema, request.body, 'body');
     assertClaimedOrganization(request, body.organizationId);
     const principal = requireScope(request, 'quote:read');
@@ -80,7 +80,10 @@ export function registerFinancialRoutingRoutes(
       .send(envelope<FinancialQuoteDto>(request, serializeFinancialQuote(routing, request.id)));
   });
 
-  app.post('/routes/search', async (request, reply) => {
+  app.post(
+    '/routes/search',
+    { preHandler: [capabilityPreHandler('route:read')] },
+    async (request, reply) => {
     const body = parseOrThrow(searchRoutesSchema, request.body, 'body');
     assertClaimedOrganization(request, body.organizationId);
     const principal = requireScope(request, 'route:read');

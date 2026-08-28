@@ -3,6 +3,8 @@ import {
   NotFoundError,
   serializeMonetizationReport,
   serializePaymentIntent,
+  serializePaymentPolicy,
+  type JsonObject,
   type PaymentPolicy,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -14,7 +16,7 @@ import {
   loadAgentPaymentHistory,
   loadAgentPolicyControls,
 } from '../dashboard/agent-financials.js';
-import { requireOrganization } from '../http/require-organization.js';
+import { capabilityPreHandler, requireCapability, requireOrganization } from '../http/require-organization.js';
 import { parseOrThrow, patchAgentPolicySchema } from '../http/validation.js';
 
 const listQuery = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).strict();
@@ -188,8 +190,11 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
     return envelope(request, controls);
   });
 
-  app.patch('/dashboard/agents/:id/policies', async (request) => {
-    const principal = requireOrganization(request);
+  app.patch(
+    '/dashboard/agents/:id/policies',
+    { preHandler: [capabilityPreHandler('agent_policy:write')] },
+    async (request) => {
+    const principal = requireCapability(request, 'agent_policy:write');
     if (principal.kind === 'agent') {
       throw new ForbiddenError('Agent credentials cannot update payment policy.', {
         kind: principal.kind,
@@ -208,6 +213,7 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
       );
       throw new NotFoundError(agent === null ? 'Agent' : 'PaymentPolicy', id);
     }
+    const previousSnapshot = policyAuditSnapshot(existing);
     const updated: PaymentPolicy = {
       ...existing,
       maxTransactionAmountMinorUnits:
@@ -231,6 +237,7 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
       updatedAt: container.clock.nowIso(),
     };
     await container.persistence.agentPayments.updatePolicy(updated);
+    const timestamp = container.clock.nowIso();
     await container.auditLogger.record({
       type: 'payment.policy.updated',
       actor: principal.actor,
@@ -239,8 +246,13 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
       providerId: null,
       organizationId: principal.organizationId,
       payload: {
-        agentId: id,
+        actorId: principal.subjectId,
+        actorRole: principal.roles[0] ?? null,
         organizationId: principal.organizationId,
+        agentId: id,
+        previousPolicy: previousSnapshot,
+        newPolicy: policyAuditSnapshot(updated),
+        timestamp,
         fundsMoved: false,
         custody: false,
         walletsGenerated: false,
@@ -260,4 +272,12 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
     }
     return envelope(request, controls);
   });
+}
+
+function policyAuditSnapshot(policy: PaymentPolicy): JsonObject {
+  const parsed: unknown = JSON.parse(JSON.stringify(serializePaymentPolicy(policy)));
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return {};
+  }
+  return parsed as JsonObject;
 }

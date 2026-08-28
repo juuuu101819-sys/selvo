@@ -1,8 +1,8 @@
 import {
+  DEMO_ORGANIZATION_ID,
   DEMO_USER_EMAIL,
   DEMO_USER_PASSWORD,
   hashSecret,
-  DEMO_ORGANIZATION_ID,
 } from '@meridian/core';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { provisionDemoTenants } from '../auth/provision-demo.js';
@@ -16,6 +16,8 @@ beforeAll(async () => {
   await provisionDemoTenants({
     identity: harness.container.persistence.identity,
     dashboard: harness.container.persistence.dashboard,
+    agentPayments: harness.container.persistence.agentPayments,
+    auditLog: harness.container.persistence.auditLog,
   });
 });
 
@@ -33,19 +35,55 @@ async function login(): Promise<string> {
   return response.json<{ data: { token: string } }>().data.token;
 }
 
+async function mintTransactionKey(id: string, secret: string): Promise<void> {
+  await harness.container.persistence.identity.createApiKey({
+    id,
+    organizationId: DEMO_ORGANIZATION_ID,
+    keyPrefix: secret.slice(0, 16),
+    secretHash: hashSecret(secret),
+    label: 'intents',
+    createdAt: harness.clock.nowIso(),
+    scopes: ['transaction:create'],
+    expiresAt: null,
+  });
+}
+
+const COMPLETED_PAYMENT_INTENT_ID = 'pay_demo_completed_500';
+const QUOTED_PAYMENT_INTENT_ID = 'pay_demo_quoted_open';
+const FAILED_PAYMENT_INTENT_ID = 'pay_demo_failed_policy';
+
+const validBody = {
+  requestId: 'req_quote_demo',
+  routeId: 'rte_veridian_usd_krw',
+  sourceAsset: 'USD',
+  destinationAsset: 'KRW',
+  amount: '500.00',
+} as const;
+
 describe('POST /api/v1/execution-intents', () => {
-  it('records an intent that is never executable or submitted', async () => {
+  it('rejects a session user because sessions never receive transaction:create', async () => {
     const token = await login();
     const response = await harness.app.inject({
       method: 'POST',
       url: `${API_V1_PREFIX}/execution-intents`,
       headers: { authorization: `Bearer ${token}` },
+      payload: { ...validBody, paymentIntentId: COMPLETED_PAYMENT_INTENT_ID },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json<ApiError>().error.code).toBe('FORBIDDEN');
+  });
+
+  it('records an intent that is never executable or submitted after Policy Engine evaluation', async () => {
+    const secret = 'mk_txcreatekey123_intentonly';
+    await mintTransactionKey('key_tx_create', secret);
+
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/execution-intents`,
+      headers: { 'x-api-key': secret },
       payload: {
-        requestId: 'req_quote_demo',
-        routeId: 'rte_northgate',
-        sourceAsset: 'USD',
-        destinationAsset: 'KRW',
-        amount: '100000.00',
+        ...validBody,
+        paymentIntentId: COMPLETED_PAYMENT_INTENT_ID,
       },
     });
     expect(response.statusCode).toBe(201);
@@ -65,7 +103,7 @@ describe('POST /api/v1/execution-intents', () => {
     const listed = await harness.app.inject({
       method: 'GET',
       url: `${API_V1_PREFIX}/execution-intents`,
-      headers: { authorization: `Bearer ${token}` },
+      headers: { 'x-api-key': secret },
     });
     expect(listed.statusCode).toBe(200);
     expect(
@@ -76,27 +114,17 @@ describe('POST /api/v1/execution-intents', () => {
 
   it('does not execute when a key has transaction:create', async () => {
     const secret = 'mk_txcreatekey123_intentonly';
-    await harness.container.persistence.identity.createApiKey({
-      id: 'key_tx_create',
-      organizationId: DEMO_ORGANIZATION_ID,
-      keyPrefix: secret.slice(0, 16),
-      secretHash: hashSecret(secret),
-      label: 'intents',
-      createdAt: harness.clock.nowIso(),
-      scopes: ['transaction:create'],
-      expiresAt: null,
-    });
-
     const intent = await harness.app.inject({
       method: 'POST',
       url: `${API_V1_PREFIX}/execution-intents`,
       headers: { 'x-api-key': secret },
       payload: {
         requestId: 'req_key',
-        routeId: 'rte_demo',
-        sourceAsset: 'USDC',
-        destinationAsset: 'USDT',
-        amount: '1000.00',
+        routeId: 'rte_veridian_usd_krw',
+        sourceAsset: 'USD',
+        destinationAsset: 'KRW',
+        amount: '500.00',
+        paymentIntentId: COMPLETED_PAYMENT_INTENT_ID,
       },
     });
     expect(intent.statusCode).toBe(201);
@@ -136,17 +164,18 @@ describe('POST /api/v1/execution-intents', () => {
         sourceAsset: 'USD',
         destinationAsset: 'KRW',
         amount: '10.00',
+        paymentIntentId: COMPLETED_PAYMENT_INTENT_ID,
       },
     });
     expect(response.statusCode).toBe(403);
   });
 
-  it('rejects an execution intent whose quote has already expired', async () => {
-    const token = await login();
+  it('rejects an execution intent whose quote has already expired before policy evaluation', async () => {
+    const secret = 'mk_txcreatekey123_intentonly';
     const response = await harness.app.inject({
       method: 'POST',
       url: `${API_V1_PREFIX}/execution-intents`,
-      headers: { authorization: `Bearer ${token}` },
+      headers: { 'x-api-key': secret },
       payload: {
         requestId: 'req_expired_quote',
         routeId: 'rte_northgate',
@@ -177,26 +206,27 @@ describe('POST /api/v1/execution-intents', () => {
     const listed = await harness.app.inject({
       method: 'GET',
       url: `${API_V1_PREFIX}/execution-intents`,
-      headers: { authorization: `Bearer ${token}` },
+      headers: { 'x-api-key': secret },
     });
     expect(listed.statusCode).toBe(200);
     const intents = listed.json<{ data: { intents: { requestId: string }[] } }>().data.intents;
     expect(intents.some((intent) => intent.requestId === 'req_expired_quote')).toBe(false);
   });
 
-  it('records an execution intent when the quote is still fresh', async () => {
-    const token = await login();
+  it('records an execution intent when the quote is still fresh and policy has passed', async () => {
+    const secret = 'mk_txcreatekey123_intentonly';
     const response = await harness.app.inject({
       method: 'POST',
       url: `${API_V1_PREFIX}/execution-intents`,
-      headers: { authorization: `Bearer ${token}` },
+      headers: { 'x-api-key': secret },
       payload: {
         requestId: 'req_fresh_quote',
-        routeId: 'rte_northgate',
+        routeId: 'rte_veridian_usd_krw',
         sourceAsset: 'USD',
         destinationAsset: 'KRW',
-        amount: '100000.00',
+        amount: '500.00',
         quoteExpiresAt: '2026-03-01T09:15:00.000Z',
+        paymentIntentId: COMPLETED_PAYMENT_INTENT_ID,
       },
     });
     expect(response.statusCode).toBe(201);
@@ -205,5 +235,62 @@ describe('POST /api/v1/execution-intents', () => {
         quoteExpiresAt: '2026-03-01T09:15:00.000Z',
         executable: false,
       });
+  });
+
+  it('rejects recording without a payment intent so the Policy Engine cannot be skipped', async () => {
+    const secret = 'mk_txcreatekey123_intentonly';
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/execution-intents`,
+      headers: { 'x-api-key': secret },
+      payload: {
+        requestId: 'req_no_policy',
+        routeId: 'rte_veridian_usd_krw',
+        sourceAsset: 'USD',
+        destinationAsset: 'KRW',
+        amount: '500.00',
+      },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json<ApiError>().error.code).toBe('POLICY_DENIED');
+    expect(response.json<ApiError>().error.details['rule']).toBe('policy_required');
+  });
+
+  it('rejects a quoted payment intent that has not passed the execution policy gate', async () => {
+    const secret = 'mk_txcreatekey123_intentonly';
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/execution-intents`,
+      headers: { 'x-api-key': secret },
+      payload: {
+        requestId: 'req_quoted_bypass',
+        routeId: 'rte_veridian_usd_krw',
+        sourceAsset: 'USD',
+        destinationAsset: 'KRW',
+        amount: '250.00',
+        paymentIntentId: QUOTED_PAYMENT_INTENT_ID,
+      },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json<ApiError>().error.code).toBe('POLICY_DENIED');
+  });
+
+  it('rejects a failed payment intent that never passed policy', async () => {
+    const secret = 'mk_txcreatekey123_intentonly';
+    const response = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/execution-intents`,
+      headers: { 'x-api-key': secret },
+      payload: {
+        requestId: 'req_failed_bypass',
+        routeId: 'rte_veridian_usd_krw',
+        sourceAsset: 'USD',
+        destinationAsset: 'KRW',
+        amount: '1500.00',
+        paymentIntentId: FAILED_PAYMENT_INTENT_ID,
+      },
+    });
+    expect(response.statusCode).toBe(403);
+    expect(response.json<ApiError>().error.code).toBe('POLICY_DENIED');
   });
 });

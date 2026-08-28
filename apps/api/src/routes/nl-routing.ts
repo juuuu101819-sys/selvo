@@ -6,7 +6,7 @@ import {
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
-import { requireScope } from '../http/require-organization.js';
+import { capabilityPreHandler, requireScope } from '../http/require-organization.js';
 import {
   idempotencyKeySchema,
   nlAgentInstructionSchema,
@@ -35,7 +35,10 @@ export function registerNlRoutingRoutes(app: FastifyInstance, container: AppCont
     },
   });
 
-  app.post('/agent/interpret', async (request) => {
+  app.post(
+    '/agent/interpret',
+    { preHandler: [capabilityPreHandler('payment:create')] },
+    async (request) => {
     const principal = requireScope(request, 'payment:create');
     const body = parseOrThrow(nlAgentInstructionSchema, request.body, 'body');
     const interpretation = await container.nlRouting.interpret({
@@ -55,9 +58,19 @@ export function registerNlRoutingRoutes(app: FastifyInstance, container: AppCont
       pipelineCompleted: ['natural_language', 'intent_parser'],
       aiUsed: false,
     });
-  });
+    },
+  );
 
-  app.post('/agent/route', async (request, reply) => {
+  app.post(
+    '/agent/route',
+    {
+      preHandler: [
+        capabilityPreHandler('payment:create'),
+        capabilityPreHandler('payment:quote'),
+        capabilityPreHandler('payment:authorize'),
+      ],
+    },
+    async (request, reply) => {
     const principal = requireScope(request, 'payment:create');
     requireScope(request, 'payment:quote');
     requireScope(request, 'payment:authorize');

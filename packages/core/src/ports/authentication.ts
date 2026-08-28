@@ -34,7 +34,7 @@ export interface Principal {
   readonly subjectId: string | null;
   readonly displayName: string;
   readonly roles: readonly string[];
-  /** Rights granted to this caller. Empty for anonymous. Session users receive every scope. */
+  /** Rights granted to this caller. Empty for anonymous. Session users receive the scopes of their membership role. */
   readonly scopes: readonly ApiScope[];
   /**
    * Label recorded on audit events. For an authenticated principal this is derived from the

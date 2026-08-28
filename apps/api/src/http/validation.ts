@@ -523,6 +523,7 @@ export const createExecutionIntentSchema = z
     destinationAsset: z.string().trim().min(2).max(16),
     amount: assetAmount,
     quoteExpiresAt: isoTimestamp.optional(),
+    paymentIntentId: z.string().trim().min(1).max(128).optional(),
   })
   .strict()
   .refine((body) => body.sourceAsset !== body.destinationAsset, {

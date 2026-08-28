@@ -16,6 +16,7 @@ import {
   expectError,
   jsonBody,
   loginDemoOperator,
+  mintTransactionCreateKey,
   uniqueIdempotencyKey,
   type AuditTrailBody,
   type ComparisonBody,
@@ -231,14 +232,16 @@ test.describe('CASE 3 — AI agent Pay 500 USD', () => {
     expect(await simulated.text()).not.toContain(DEMO_AGENT_SECRET);
 
     const token = await loginDemoOperator(request);
+    const executionKey = await mintTransactionCreateKey(request, token);
     const recorded = await request.post('/api/v1/execution-intents', {
-      headers: bearerHeaders(token),
+      headers: { 'x-api-key': executionKey },
       data: {
         requestId: uniqueIdempotencyKey('exec-500'),
         routeId: route.routeId,
         sourceAsset: 'USD',
         destinationAsset: quotedBody.data.destinationAsset,
         amount: '500.00',
+        paymentIntentId: intent.data.id,
         ...(quotedBody.data.quoteExpiresAt === null
           ? {}
           : { quoteExpiresAt: quotedBody.data.quoteExpiresAt }),
@@ -340,8 +343,9 @@ test.describe('CASE 6 — Quote expires', () => {
     request,
   }) => {
     const token = await loginDemoOperator(request);
+    const executionKey = await mintTransactionCreateKey(request, token);
     const response = await request.post('/api/v1/execution-intents', {
-      headers: bearerHeaders(token),
+      headers: { 'x-api-key': executionKey },
       data: {
         requestId: uniqueIdempotencyKey('expired-exec'),
         routeId: 'rte_demo',

@@ -324,6 +324,7 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
           agentId: query.agentId,
           sourceAsset: query.asset,
           status: { in: [...query.statuses] },
+          ...(query.excludeIntentId === undefined ? {} : { id: { not: query.excludeIntentId } }),
           OR: [
             {
               authorizedAt: {
@@ -344,6 +345,21 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
       }),
     );
     return result._sum.amountMinorUnits?.toFixed(0) ?? '0';
+  }
+
+  async withExclusiveAgentAccess<T>(
+    organizationId: string,
+    agentId: string,
+    run: () => Promise<T>,
+  ): Promise<T> {
+    return this.client.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT id FROM payment_policies
+        WHERE organization_id = ${organizationId} AND agent_id = ${agentId}
+        FOR UPDATE
+      `;
+      return run();
+    });
   }
 
   private async read<TResult>(run: () => Promise<TResult>): Promise<TResult> {

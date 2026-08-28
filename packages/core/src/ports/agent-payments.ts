@@ -76,6 +76,8 @@ export interface DailySpendingQuery {
   readonly fromInclusive: string;
   readonly toExclusive: string;
   readonly statuses: readonly PaymentIntentStatus[];
+  /** When set, this intent is omitted from the sum so a reserved row is not double-counted. */
+  readonly excludeIntentId?: string;
 }
 
 /**
@@ -128,4 +130,15 @@ export interface AgentPaymentsRepository {
     options?: { readonly agentId?: string; readonly limit?: number },
   ): Promise<readonly PaymentIntent[]>;
   sumDailySpending(query: DailySpendingQuery): Promise<string>;
+  /**
+   * Serializes work that checks and reserves daily spend for one agent.
+   *
+   * Memory uses an in-process mutex. Postgres locks the agent's policy row. Callers must perform
+   * the remaining-capacity check and the status transition inside `run`.
+   */
+  withExclusiveAgentAccess<T>(
+    organizationId: string,
+    agentId: string,
+    run: () => Promise<T>,
+  ): Promise<T>;
 }

@@ -70,8 +70,11 @@ for the same reason — never JSON numbers.
 
 **Authentication.** Public comparison, meta, health, provider catalog, assets and currencies stay
 available without a credential. Presenting `Authorization: Bearer mds_…` or `X-Api-Key` authenticates
-a user or service principal whose `organizationId` scopes every tenant query. API keys carry scopes
-(`quote:read`, `route:read`, `transaction:create`); session users receive all three. A credential
+a user or service principal whose `organizationId` scopes every tenant query. Organization API keys
+carry explicitly minted scopes (`quote:read`, `route:read`, `transaction:create`). Session users
+receive the scopes of their membership role at login (`viewer`/`member`: `quote:read` and
+`route:read` only; `owner`/`admin` additionally receive `agent_policy:write`). Sessions never
+receive `payment:*` or `transaction:create`. A credential
 that cannot be verified is `401 UNAUTHENTICATED`, never silently treated as anonymous.
 `GET /api/v1/meta` reports the active scheme under `authentication` (`session+api_key`,
 `enforcing: true`).
@@ -517,8 +520,11 @@ route preferences). Empty allow-lists mean none.
 
 ## `PATCH /api/v1/dashboard/agents/:id/policies`
 
-Session users only. Agent credentials are `403`. Body fields are optional; omitted limits are left
-unchanged. Spending amounts are integer minor-unit strings. Records `payment.policy.updated`.
+Requires the `agent_policy:write` capability (`owner` and `admin` sessions). `viewer`, `member`,
+agent credentials, and organization API keys are `403`. Body fields are optional; omitted limits are
+left unchanged. Spending amounts are integer minor-unit strings. A successful mutation writes
+`payment.policy.updated` with actor id, actor role, organization id, agent id, previous and new
+policy snapshots, and timestamp.
 
 ## `GET /api/v1/dashboard/quotes`
 
@@ -597,16 +603,19 @@ prefixes, never secrets or hashes.
 
 ## `GET /api/v1/execution-intents`
 
-Requires `transaction:create`. Records a route choice with `status: "recorded"`, `executable: false`,
-`submitted: false`. This is not a payment. An expired `quoteExpiresAt` is rejected with
-`409 QUOTE_EXPIRED` and audited as `execution.intent.rejected`; nothing is stored. `POST /api/v1/executions`
-remains the audited `501`.
+Requires `transaction:create` (organization API keys minted with that scope — never human sessions).
+Records a route choice with `status: "recorded"`, `executable: false`, `submitted: false`. This is
+not a payment. An expired `quoteExpiresAt` is rejected with `409 QUOTE_EXPIRED` and audited as
+`execution.intent.rejected` **before** Policy Engine evaluation. A payment intent id that has
+already passed the Policy Engine (`ROUTED`, `AUTHORIZED`, `EXECUTION_PENDING`, or `COMPLETED`) is
+required; omitting it is `403 POLICY_DENIED` (`policy_required`). The gate re-evaluates policy
+fail-closed immediately before persist. `POST /api/v1/executions` remains the audited `501`.
 
 ## AI agent payments
 
-Agents authenticate with `X-Api-Key: mag_...` (hashed, revocable). Session users with
-`payment:*` scopes can drive the same flow for an `agentId`. Organization `mk_` keys do not receive
-payment scopes by default.
+Agents authenticate with `X-Api-Key: mag_...` (hashed, revocable). Human sessions never receive
+`payment:*` scopes; only `mag_` credentials drive the agent payment API. Organization `mk_` keys do
+not receive payment scopes by default.
 
 | Method | Path | Scope |
 | ------ | ---- | ----- |
@@ -645,7 +654,9 @@ The policy engine evaluates, fail-closed:
 
 Every decision writes `payment.policy.evaluated` (`allowed`, `aiUsed: false`, `failClosed: true`).
 Denials also write `payment.policy.denied`. The engine runs at intent create, quote, select,
-authorize, simulate, and immediately before an execution intent is recorded.
+authorize, simulate, and immediately before an execution intent is recorded. Select/authorize/simulate
+check-and-reserve daily spend atomically (in-flight `ROUTED` counts toward the cap). Evaluation
+errors fail closed.
 
 Quoted routes snapshot `routeScore`, `slippageBps`, `liquidityHeadroom`, `chainId`, and
 `jurisdictions` from the routing engine. The router itself is unchanged.

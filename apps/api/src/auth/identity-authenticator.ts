@@ -1,7 +1,7 @@
 import {
   AGENT_CREDENTIAL_PREFIX,
   ANONYMOUS_PRINCIPAL,
-  SESSION_API_SCOPES,
+  sessionScopesForRole,
   hashSecret,
   isDemoAgentSecret,
   secretsMatch,
@@ -81,7 +81,7 @@ export class IdentityAuthenticator implements Authenticator {
       subjectId: resolved.user.id,
       displayName: resolved.user.displayName,
       roles: [resolved.membership.role],
-      scopes: SESSION_API_SCOPES,
+      scopes: [...sessionScopesForRole(resolved.membership.role)],
       actor: resolved.user.email,
       verified: true,
     };

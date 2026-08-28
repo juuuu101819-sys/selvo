@@ -25,6 +25,7 @@ import { API_KEY_PREFIX_LENGTH } from '../auth/identity-authenticator.js';
 import type { AppContainer } from '../container.js';
 import { recordAgentQuoteMonetization } from '../monetization/record.js';
 import {
+  capabilityPreHandler,
   requireKeyManager,
   requireOrganization,
   requireScope,
@@ -237,7 +238,10 @@ export function registerAgentPaymentRoutes(
     });
   });
 
-  app.post('/payment-intents', async (request, reply) => {
+  app.post(
+    '/payment-intents',
+    { preHandler: [capabilityPreHandler('payment:create')] },
+    async (request, reply) => {
     const principal = requireScope(request, 'payment:create');
     const body = parseOrThrow(createPaymentIntentSchema, request.body, 'body');
     const idempotencyHeader = request.headers['idempotency-key'];
@@ -270,6 +274,7 @@ export function registerAgentPaymentRoutes(
     );
   });
 
+
   app.get('/payment-intents', async (request) => {
     const principal = requireOrganization(request);
     const query = parseOrThrow(listQuerySchema, request.query, 'query');
@@ -293,7 +298,10 @@ export function registerAgentPaymentRoutes(
     return envelope(request, serializePaymentIntent(intent));
   });
 
-  app.post('/payment-intents/:id/quote', async (request) => {
+  app.post(
+    '/payment-intents/:id/quote',
+    { preHandler: [capabilityPreHandler('payment:quote')] },
+    async (request) => {
     const principal = requireScope(request, 'payment:quote');
     const { id } = parseOrThrow(paymentIntentIdParamsSchema, request.params, 'params');
     const intent = await container.agentPayments.quoteIntent({
@@ -311,9 +319,13 @@ export function registerAgentPaymentRoutes(
       requestId: request.id,
     });
     return envelope(request, serializePaymentIntent(intent));
-  });
+    },
+  );
 
-  app.post('/payment-intents/:id/select', async (request) => {
+  app.post(
+    '/payment-intents/:id/select',
+    { preHandler: [capabilityPreHandler('payment:authorize')] },
+    async (request) => {
     const principal = requireScope(request, 'payment:authorize');
     const { id } = parseOrThrow(paymentIntentIdParamsSchema, request.params, 'params');
     const body = parseOrThrow(selectPaymentRouteSchema, request.body, 'body');
@@ -326,9 +338,13 @@ export function registerAgentPaymentRoutes(
       requestId: request.id,
     });
     return envelope(request, serializePaymentIntent(intent));
-  });
+    },
+  );
 
-  app.post('/payment-intents/:id/authorize', async (request) => {
+  app.post(
+    '/payment-intents/:id/authorize',
+    { preHandler: [capabilityPreHandler('payment:authorize')] },
+    async (request) => {
     const principal = requireScope(request, 'payment:authorize');
     const { id } = parseOrThrow(paymentIntentIdParamsSchema, request.params, 'params');
     const intent = await container.agentPayments.authorizeIntent({
@@ -339,12 +355,22 @@ export function registerAgentPaymentRoutes(
       requestId: request.id,
     });
     return envelope(request, serializePaymentIntent(intent));
-  });
+    },
+  );
 
-  app.post('/payment-intents/:id/simulate', async (request) => {
-    if (container.config.productionLocked) {
-      throw new ExecutionNotImplementedError();
-    }
+  app.post(
+    '/payment-intents/:id/simulate',
+    {
+      preHandler: [
+        async () => {
+          if (container.config.productionLocked) {
+            throw new ExecutionNotImplementedError();
+          }
+        },
+        capabilityPreHandler('payment:authorize'),
+      ],
+    },
+    async (request) => {
     const principal = requireScope(request, 'payment:authorize');
     const { id } = parseOrThrow(paymentIntentIdParamsSchema, request.params, 'params');
     const intent = await container.agentPayments.simulateIntent({
@@ -355,5 +381,6 @@ export function registerAgentPaymentRoutes(
       requestId: request.id,
     });
     return envelope(request, serializePaymentIntent(intent));
-  });
+    },
+  );
 }

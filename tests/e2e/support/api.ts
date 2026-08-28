@@ -301,6 +301,19 @@ export async function loginDemoOperator(request: APIRequestContext): Promise<str
   return (await jsonBody<Envelope<{ token: string }>>(response)).data.token;
 }
 
+/** Owner/admin session mints an organization key that can record execution intents. */
+export async function mintTransactionCreateKey(
+  request: APIRequestContext,
+  token: string,
+): Promise<string> {
+  const minted = await request.post('/api/v1/api-keys', {
+    headers: bearerHeaders(token),
+    data: { label: 'e2e execution intents', scopes: ['transaction:create'] },
+  });
+  expect(minted.status()).toBe(201);
+  return (await jsonBody<Envelope<{ secret: string }>>(minted)).data.secret;
+}
+
 export async function expectError(
   response: APIResponse,
   status: number,
