@@ -366,6 +366,7 @@ export function registerAgentPaymentRoutes(
           if (container.config.productionLocked) {
             throw new ExecutionNotImplementedError();
           }
+          return Promise.resolve();
         },
         capabilityPreHandler('payment:authorize'),
       ],

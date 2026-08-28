@@ -61,8 +61,9 @@ export function requireScope(
  * Handlers still call {@link requireCapability} (or {@link requireScope}) to read the principal.
  */
 export function capabilityPreHandler(capability: ApiScope) {
-  return (request: FastifyRequest): void => {
+  return (request: FastifyRequest): Promise<void> => {
     requireCapability(request, capability);
+    return Promise.resolve();
   };
 }
 
