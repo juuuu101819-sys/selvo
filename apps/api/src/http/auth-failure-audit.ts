@@ -36,6 +36,17 @@ export function publicCredentialPrefix(token: string): string | undefined {
   return undefined;
 }
 
+function withPublicPrefix(
+  presented: Omit<PresentedCredential, 'credentialPrefix'>,
+  token: string,
+): PresentedCredential {
+  const prefix = publicCredentialPrefix(token);
+  if (prefix === undefined) {
+    return presented;
+  }
+  return { ...presented, credentialPrefix: prefix };
+}
+
 export function classifyPresentedCredential(
   authorization: string | null,
   apiKey: string | null,
@@ -54,46 +65,30 @@ export function classifyPresentedCredential(
       return { presented: true, category: 'invalid_session', identifierKind: 'session' };
     }
     if (token.startsWith('mk_')) {
-      return {
-        presented: true,
-        category: 'invalid_api_key',
-        identifierKind: 'api_key',
-        ...(publicCredentialPrefix(token) === undefined
-          ? {}
-          : { credentialPrefix: publicCredentialPrefix(token) }),
-      };
+      return withPublicPrefix(
+        { presented: true, category: 'invalid_api_key', identifierKind: 'api_key' },
+        token,
+      );
     }
     if (token.startsWith('mag_')) {
-      return {
-        presented: true,
-        category: 'invalid_agent',
-        identifierKind: 'agent',
-        ...(publicCredentialPrefix(token) === undefined
-          ? {}
-          : { credentialPrefix: publicCredentialPrefix(token) }),
-      };
+      return withPublicPrefix(
+        { presented: true, category: 'invalid_agent', identifierKind: 'agent' },
+        token,
+      );
     }
     return { presented: true, category: 'malformed_credential', identifierKind: 'unknown' };
   }
   if (apiKey !== null) {
     if (apiKey.startsWith('mag_')) {
-      return {
-        presented: true,
-        category: 'invalid_agent',
-        identifierKind: 'agent',
-        ...(publicCredentialPrefix(apiKey) === undefined
-          ? {}
-          : { credentialPrefix: publicCredentialPrefix(apiKey) }),
-      };
+      return withPublicPrefix(
+        { presented: true, category: 'invalid_agent', identifierKind: 'agent' },
+        apiKey,
+      );
     }
-    return {
-      presented: true,
-      category: 'invalid_api_key',
-      identifierKind: 'api_key',
-      ...(publicCredentialPrefix(apiKey) === undefined
-        ? {}
-        : { credentialPrefix: publicCredentialPrefix(apiKey) }),
-    };
+    return withPublicPrefix(
+      { presented: true, category: 'invalid_api_key', identifierKind: 'api_key' },
+      apiKey,
+    );
   }
   return { presented: false };
 }

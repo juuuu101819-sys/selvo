@@ -98,13 +98,13 @@ describe('PA-M13 session gate', () => {
     },
   );
 
-  it('does not distinguish an API-rejected (expired) cookie from a missing one', async () => {
+  it('does not distinguish an API-rejected cookie from a missing one', async () => {
     const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 401 });
-    const expired = await decideDashboardAccess({
+    const rejected = await decideDashboardAccess({
       pathname: '/dashboard',
       cookieValue: VALID_LOOKING,
       origin: 'http://127.0.0.1:43117',
-      requestId: 'req_expired',
+      requestId: 'req_same',
       fetchImpl,
       headers: { accept: 'application/json' },
     });
@@ -112,12 +112,17 @@ describe('PA-M13 session gate', () => {
       pathname: '/dashboard',
       cookieValue: undefined,
       origin: 'http://127.0.0.1:43117',
-      requestId: 'req_expired',
+      requestId: 'req_same',
       fetchImpl,
       headers: { accept: 'application/json' },
     });
-    expect(expired).toEqual(missing);
-    expect(JSON.stringify(expired).toLowerCase()).not.toMatch(/expired|malformed/);
+    expect(rejected).toEqual(missing);
+    expect(rejected.kind).toBe('unauthorized');
+    if (rejected.kind === 'unauthorized') {
+      expect(rejected.body.error.message).toBe(SESSION_UNAUTHENTICATED_MESSAGE);
+      expect(rejected.body.error.message.toLowerCase()).not.toMatch(/expired|malformed|missing/);
+      expect(rejected.body.error.details).toEqual({});
+    }
   });
 
   it('fails closed when the API cannot be reached', async () => {
