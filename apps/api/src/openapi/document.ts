@@ -53,7 +53,7 @@ function pathParameters(path: string): readonly unknown[] {
   }));
 }
 
-function requestBody(route: CatalogRoute): unknown | undefined {
+function requestBody(route: CatalogRoute): unknown {
   if (route.method === 'GET') {
     return undefined;
   }
@@ -234,8 +234,9 @@ export function isOpenApiV3(document: unknown): document is OpenApiDocument {
   if (typeof info['title'] !== 'string' || typeof info['version'] !== 'string') {
     return false;
   }
-  if (typeof candidate['paths'] !== 'object' || candidate['paths'] === null) {
+  const paths = candidate['paths'];
+  if (typeof paths !== 'object' || paths === null) {
     return false;
   }
-  return Object.keys(candidate['paths'] as object).length > 0;
+  return Object.keys(paths).length > 0;
 }
