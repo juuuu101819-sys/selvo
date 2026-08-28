@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { completeSsoSignIn } from '@/app/actions';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ export function SsoCallbackClient({
   readonly nextPath: string;
   readonly errorDescription: string | null;
 }) {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(errorDescription);
   const [pending, startTransition] = useTransition();
 
@@ -37,7 +39,7 @@ export function SsoCallbackClient({
         <p role="alert" className="text-destructive text-sm">
           {error}
         </p>
-        <Button type="button" variant="outline" onClick={() => window.location.assign('/login')}>
+        <Button type="button" variant="outline" onClick={() => router.push('/login')}>
           Back to sign in
         </Button>
       </div>

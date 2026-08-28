@@ -52,7 +52,7 @@ export function registerMfaRoutes(app: FastifyInstance, container: AppContainer)
     },
   });
 
-  const dek = () => dataEncryptionKeyFromHex(container.config.dataEncryptionKey);
+  const dek = (): Buffer => dataEncryptionKeyFromHex(container.config.dataEncryptionKey);
 
   app.get('/auth/mfa', async (request) => {
     const principal = requireHumanUser(request);

@@ -54,17 +54,17 @@ export function totpAt(
   periodSeconds = TOTP_PERIOD_SECONDS,
   digits = TOTP_DIGITS,
 ): string {
-  const counter = Math.floor(unixSeconds / periodSeconds);
+  const counter = integerDivide(unixSeconds, periodSeconds);
   const key = decodeBase32(secret);
   const buffer = Buffer.alloc(8);
   buffer.writeBigUInt64BE(BigInt(counter));
   const hmac = createHmac('sha1', key).update(buffer).digest();
-  const offset = hmac[hmac.length - 1]! & 0x0f;
+  const offset = hmacByte(hmac, hmac.length - 1) & 0x0f;
   const truncated =
-    ((hmac[offset]! & 0x7f) << 24) |
-    ((hmac[offset + 1]! & 0xff) << 16) |
-    ((hmac[offset + 2]! & 0xff) << 8) |
-    (hmac[offset + 3]! & 0xff);
+    ((hmacByte(hmac, offset) & 0x7f) << 24) |
+    ((hmacByte(hmac, offset + 1) & 0xff) << 16) |
+    ((hmacByte(hmac, offset + 2) & 0xff) << 8) |
+    (hmacByte(hmac, offset + 3) & 0xff);
   const otp = truncated % 10 ** digits;
   return otp.toString().padStart(digits, '0');
 }
@@ -79,7 +79,7 @@ export function verifyTotp(
     return false;
   }
   const presented = Buffer.from(code, 'utf8');
-  const unix = Math.floor(nowMs / 1000);
+  const unix = integerDivide(nowMs, 1000);
   let matched = false;
   for (let step = -window; step <= window; step += 1) {
     const expected = Buffer.from(totpAt(secret, unix + step * TOTP_PERIOD_SECONDS), 'utf8');
@@ -88,6 +88,18 @@ export function verifyTotp(
     }
   }
   return matched;
+}
+
+function integerDivide(numerator: number, denominator: number): number {
+  return (numerator - (numerator % denominator)) / denominator;
+}
+
+function hmacByte(digest: Buffer, index: number): number {
+  const value = digest[index];
+  if (value === undefined) {
+    throw new Error('TOTP HMAC digest was shorter than RFC 6238 requires.');
+  }
+  return value;
 }
 
 export function otpauthUrl(

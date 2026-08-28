@@ -45,7 +45,7 @@ export function registerOidcRoutes(app: FastifyInstance, container: AppContainer
     },
   });
 
-  const dek = () => dataEncryptionKeyFromHex(container.config.dataEncryptionKey);
+  const dek = (): Buffer => dataEncryptionKeyFromHex(container.config.dataEncryptionKey);
   const unavailable = new UnauthenticatedError(SSO_UNAVAILABLE, {
     scheme: 'oidc',
     enforcing: true,
