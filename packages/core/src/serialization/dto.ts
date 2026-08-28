@@ -93,9 +93,10 @@ export interface RouteDto {
     readonly cost: string;
     readonly speed: string;
     readonly reliability: string;
-    readonly slippage: string;
-    readonly liquidity: string;
-    readonly risk: string;
+    readonly slippage?: string;
+    readonly liquidity?: string;
+    readonly risk?: string;
+    readonly settlementConfidence?: string;
   };
 }
 
@@ -140,9 +141,10 @@ export interface ComparisonDto {
     readonly cost: string;
     readonly speed: string;
     readonly reliability: string;
-    readonly slippage: string;
-    readonly liquidity: string;
-    readonly risk: string;
+    readonly slippage?: string;
+    readonly liquidity?: string;
+    readonly risk?: string;
+    readonly settlementConfidence?: string;
   };
 }
 
@@ -414,6 +416,28 @@ export interface MultiRailRoutingDto {
   readonly routeExplanation: string;
   readonly plannedRoutes: readonly PlannedRouteDto[];
   readonly providerFailures: readonly ProviderFailureDto[];
+  readonly monetization: RouteMonetizationDto | null;
+}
+
+export interface RouteMonetizationDto {
+  readonly eventType: 'ROUTE_QUOTE';
+  readonly stage: 'route_quote';
+  readonly realizedRevenue: false;
+  readonly fundsMoved: false;
+  readonly custody: false;
+  readonly realExecution: false;
+  readonly routeId: string;
+  readonly quoteId: string | null;
+  readonly providerId: string;
+  readonly providerName: string;
+  readonly currency: string;
+  readonly asset: string;
+  readonly tpvMinorUnits: string;
+  readonly providerCostMinorUnits: string;
+  readonly platformFeeMinorUnits: string;
+  readonly partnerCommissionMinorUnits: string;
+  readonly grossMarginMinorUnits: string;
+  readonly takeRateBps: string | null;
 }
 
 export interface ChainMetadataDto {
@@ -855,6 +879,7 @@ export interface MonetizationTotalsDto {
   readonly takeRateBps: string | null;
   readonly currency: string;
   readonly exponent: number;
+  readonly realizedRevenueMinorUnits: string;
 }
 
 export interface MonetizationBreakdownRowDto {
@@ -892,6 +917,10 @@ export interface MonetizationEventDto {
   readonly fundsMoved: false;
   readonly custody: false;
   readonly realExecution: false;
+  readonly routeId: string | null;
+  readonly quoteId: string | null;
+  readonly economicStage: string;
+  readonly realizedRevenue: false;
 }
 
 export interface MonetizationWorkedExampleDto {

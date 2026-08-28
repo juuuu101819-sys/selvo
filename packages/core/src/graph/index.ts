@@ -5,6 +5,13 @@ export {
   buildVenueNode,
 } from './graph.js';
 export { buildDemoFinancialGraph } from './demo-graph.js';
+export {
+  buildFinancialRouteGraph,
+  graphFromLicensedVenues,
+  type BuildFinancialRouteGraphOptions,
+  type LicensedVenueEdgeMetadata,
+  type LicensedVenueMetadata,
+} from './build-graph.js';
 export { discoverPaths, type DiscoverPathsInput } from './path-finder.js';
 export { explainGraphPath, explainPathDiscovery } from './explanation.js';
 export { assetNodeId, conversionEdgeId, graphPathId, venueNodeId } from './ids.js';

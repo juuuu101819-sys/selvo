@@ -2,6 +2,7 @@ import { serializeMultiRailRouting, type MultiRailRoutingDto } from '@meridian/c
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
+import { recordRouteQuoteMonetization } from '../monetization/record.js';
 import { createRouteSchema, parseOrThrow, resolveRouteRequest } from '../http/validation.js';
 
 interface ResponseEnvelope<TData> {
@@ -16,8 +17,9 @@ interface ResponseEnvelope<TData> {
 /**
  * Multi-rail routing engine.
  *
- * Distinct from `POST /comparisons`: this endpoint evaluates tradfi, stablecoin and DeFi quotes
- * with one scorer. Figures are deterministic. No model is used. Quotes are never executable.
+ * `POST /comparisons` ranks through this same MultiRailRouter. Figures are deterministic. No model
+ * is used. Quotes are never executable. Discovery records a ROUTE_QUOTE economic snapshot, never
+ * realized revenue.
  */
 export function registerRoutingRoutes(app: FastifyInstance, container: AppContainer): void {
   const envelope = <TData>(request: FastifyRequest, data: TData): ResponseEnvelope<TData> => ({
@@ -40,6 +42,17 @@ export function registerRoutingRoutes(app: FastifyInstance, container: AppContai
       destinationAsset: resolved.destinationAsset,
       amountMinorUnits: resolved.amountMinorUnits,
       weights: body.preferences?.weights ?? null,
+      actor: principal.actor,
+      requestId: request.id,
+    });
+
+    await recordRouteQuoteMonetization({
+      organizationId: principal.organizationId,
+      routingId: routing.routingId,
+      createdAt: routing.createdAt,
+      route: routing.recommendedRoute,
+      dashboard: container.persistence.dashboard,
+      auditLogger: container.auditLogger,
       actor: principal.actor,
       requestId: request.id,
     });

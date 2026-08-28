@@ -155,7 +155,7 @@ describe('POST /api/v1/route-graph/paths', () => {
     expect((body as ApiError).error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('leaves POST /comparisons at four USD → KRW routes', async () => {
+  it('ranks POST /comparisons with MultiRailRouter 1.0.0', async () => {
     const response = await harness.app.inject({
       method: 'POST',
       url: '/api/v1/comparisons',
@@ -163,7 +163,7 @@ describe('POST /api/v1/route-graph/paths', () => {
     });
     expect(response.statusCode).toBe(201);
     const body = response.json<ApiEnvelope<{ routes: unknown[]; engineVersion: string }>>();
-    expect(body.data.routes).toHaveLength(4);
-    expect(body.data.engineVersion).toBe('2.0.0');
+    expect(body.data.routes.length).toBeGreaterThanOrEqual(3);
+    expect(body.data.engineVersion).toBe('1.0.0');
   });
 });

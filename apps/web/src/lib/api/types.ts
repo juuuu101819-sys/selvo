@@ -94,6 +94,10 @@ export interface RouteDto {
     readonly cost: string;
     readonly speed: string;
     readonly reliability: string;
+    readonly liquidity?: string;
+    readonly settlementConfidence?: string;
+    readonly slippage?: string;
+    readonly risk?: string;
   };
 }
 
@@ -130,6 +134,10 @@ export interface ComparisonDto {
     readonly cost: string;
     readonly speed: string;
     readonly reliability: string;
+    readonly liquidity?: string;
+    readonly settlementConfidence?: string;
+    readonly slippage?: string;
+    readonly risk?: string;
   };
 }
 
@@ -460,6 +468,7 @@ export interface MonetizationTotalsDto {
   readonly takeRateBps: string | null;
   readonly currency: string;
   readonly exponent: number;
+  readonly realizedRevenueMinorUnits: string;
 }
 
 export interface MonetizationBreakdownRowDto {
@@ -497,6 +506,10 @@ export interface MonetizationEventDto {
   readonly fundsMoved: false;
   readonly custody: false;
   readonly realExecution: false;
+  readonly routeId: string | null;
+  readonly quoteId: string | null;
+  readonly economicStage: string;
+  readonly realizedRevenue: false;
 }
 
 export interface MonetizationWorkedExampleDto {

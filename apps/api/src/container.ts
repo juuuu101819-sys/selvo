@@ -2,11 +2,11 @@ import { createFinancialCatalog, createSandboxAdapters, type SandboxAdapterSet }
 import {
   AgentPaymentService,
   ConfigurationError,
+  ComparisonRoutingService,
   DEFI_ROUTING_ENGINE_VERSION,
   DefiRouter,
   ENGINE_VERSION,
   FinancialProviderRegistry,
-  FinancialRouteGraph,
   GRAPH_ENGINE_VERSION,
   MultiRailCostEngine,
   MultiRailRouter,
@@ -14,16 +14,13 @@ import {
   ProviderRegistry,
   ROUTING_ENGINE_VERSION,
   RepositoryAuditLogger,
-  RouteComparisonService,
-  RouteCostEngine,
   RouteGraphService,
   STABLECOIN_ROUTING_ENGINE_VERSION,
   StablecoinRouter,
-  buildDemoFinancialGraph,
+  buildFinancialRouteGraph,
   defaultRoutingWeights,
   noPlatformPricingResolver,
   parseRoutingWeights,
-  parseScoringWeights,
   systemClock,
   uuidIdGenerator,
   type AuditLogger,
@@ -45,7 +42,7 @@ export interface AppContainer {
   readonly persistence: PersistenceDriver;
   readonly registry: ProviderRegistry;
   readonly financialProviders: FinancialProviderRegistry;
-  readonly comparisons: RouteComparisonService;
+  readonly comparisons: ComparisonRoutingService;
   readonly routing: MultiRailRouter;
   readonly stablecoinRouting: StablecoinRouter;
   readonly defiRouting: DefiRouter;
@@ -140,20 +137,6 @@ export function createContainer(options: ContainerOptions): AppContainer {
       ? (persistence.pricing as PlatformPricingResolver)
       : noPlatformPricingResolver;
 
-  const comparisons = new RouteComparisonService({
-    mode: config.mode,
-    registry,
-    costEngine: new RouteCostEngine(),
-    defaultWeights: parseScoringWeights(config.weights),
-    clock,
-    ids: uuidIdGenerator,
-    auditLogger,
-    comparisons: persistence.comparisons,
-    logger,
-    providerTimeoutMs: config.providerTimeoutMs,
-    pricingResolver,
-  });
-
   const costEngine = new MultiRailCostEngine();
 
   const routing = new MultiRailRouter({
@@ -170,6 +153,16 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
     providerTimeoutMs: config.providerTimeoutMs,
     pricingResolver,
+  });
+
+  const comparisons = new ComparisonRoutingService({
+    routing,
+    registry: financialProviders,
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+    comparisons: persistence.comparisons,
+    logger,
   });
 
   const stablecoinRouting = new StablecoinRouter({
@@ -196,8 +189,10 @@ export function createContainer(options: ContainerOptions): AppContainer {
 
   const routeGraph = new RouteGraphService({
     mode: config.mode,
-    graph:
-      config.mode === 'sandbox' ? buildDemoFinancialGraph() : FinancialRouteGraph.create([], []),
+    graph: buildFinancialRouteGraph({
+      includeDemoAdapters: config.mode === 'sandbox',
+      licensedVenueMetadata: [],
+    }),
     clock,
     ids: uuidIdGenerator,
     auditLogger,

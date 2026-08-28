@@ -8,6 +8,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
 import { capabilityPreHandler, requireCapability } from '../http/require-organization.js';
+import { recordExecutionIntentMonetization } from '../monetization/record.js';
 import {
   createExecutionIntentSchema,
   listQuerySchema,
@@ -138,6 +139,21 @@ export function registerExecutionIntentRoutes(
           executable: false,
           submitted: false,
         },
+      });
+
+      await recordExecutionIntentMonetization({
+        organizationId: principal.organizationId,
+        intentId: intent.id,
+        routeId: intent.routeId,
+        createdAt: intent.createdAt,
+        sourceAsset: intent.sourceAsset,
+        destinationAsset: intent.destinationAsset,
+        amountMinorUnits: intent.amountMinorUnits,
+        route: null,
+        dashboard: container.persistence.dashboard,
+        auditLogger: container.auditLogger,
+        actor: principal.actor,
+        requestId: request.id,
       });
 
       return reply

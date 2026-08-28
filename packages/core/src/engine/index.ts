@@ -57,6 +57,22 @@ export {
   type MultiRailRouterDependencies,
   type RoutingEngineInput,
 } from './routing-engine.js';
+export {
+  isRoutingComparisonSnapshot,
+  snapshotFromRouting,
+  ROUTING_COMPARISON_SNAPSHOT_KIND,
+  ROUTING_COMPARISON_SNAPSHOT_VERSION,
+  type RoutingComparisonSnapshot,
+} from './routing-snapshot.js';
+export {
+  ComparisonRoutingService,
+  type ComparisonRoutingServiceDependencies,
+  type RoutingBackedComparison,
+} from './comparison-routing-service.js';
+export {
+  routingWeightsFromComparisonInput,
+  serializeComparisonFromRouting,
+} from './comparison-from-routing.js';
 export type {
   ComplianceEligibility,
   MultiRailRouting,
@@ -104,6 +120,8 @@ export {
   convertDestMinorToSource,
   monetizationFromQuotedAgentRoute,
   monetizationFromRecommendedFiatRoute,
+  monetizationFromMultiRailRoute,
+  priceRouteMonetization,
   priceMonetization,
   type MonetizationComputation,
   type MonetizationPriceInput,

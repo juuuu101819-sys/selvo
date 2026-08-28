@@ -22,6 +22,7 @@ import { DEFI_ROUTING_ENGINE_VERSION } from '../engine/defi-config.js';
 import type { DefiRoute, DefiRouting } from '../engine/defi-types.js';
 import { STABLECOIN_ROUTING_ENGINE_VERSION } from '../engine/stablecoin-config.js';
 import type { MultiRailRouting, ScoredMultiRailRoute } from '../engine/routing-types.js';
+import { priceRouteMonetization } from '../engine/monetization-engine.js';
 import type { StablecoinRoute, StablecoinRouting } from '../engine/stablecoin-types.js';
 import {
   GRAPH_ENGINE_VERSION,
@@ -313,6 +314,35 @@ export function serializeMultiRailRouting(result: MultiRailRouting): MultiRailRo
     routeExplanation: result.routeExplanation,
     plannedRoutes: result.plannedRoutes.map((route) => ({ ...route })),
     providerFailures: result.providerFailures.map(serializeFailure),
+    monetization: serializeRouteMonetization(result),
+  };
+}
+
+function serializeRouteMonetization(result: MultiRailRouting): MultiRailRoutingDto['monetization'] {
+  const route = result.recommendedRoute;
+  if (route === null) {
+    return null;
+  }
+  const priced = priceRouteMonetization(route);
+  return {
+    eventType: 'ROUTE_QUOTE',
+    stage: 'route_quote',
+    realizedRevenue: false,
+    fundsMoved: false,
+    custody: false,
+    realExecution: false,
+    routeId: route.routeId,
+    quoteId: result.routingId,
+    providerId: route.provider.id,
+    providerName: route.provider.name,
+    currency: route.sendAmount.asset,
+    asset: route.sendAmount.asset,
+    tpvMinorUnits: priced.tpvMinorUnits,
+    providerCostMinorUnits: priced.providerCostMinorUnits,
+    platformFeeMinorUnits: priced.platformRevenueMinorUnits,
+    partnerCommissionMinorUnits: priced.partnerCommissionMinorUnits,
+    grossMarginMinorUnits: priced.grossProfitMinorUnits,
+    takeRateBps: priced.takeRateBps,
   };
 }
 
@@ -1020,6 +1050,10 @@ function serializeMonetizationEvent(event: MonetizationEvent): MonetizationEvent
     fundsMoved: false,
     custody: false,
     realExecution: false,
+    routeId: event.routeId,
+    quoteId: event.quoteId,
+    economicStage: event.economicStage,
+    realizedRevenue: false,
   };
 }
 

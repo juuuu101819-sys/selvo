@@ -3,6 +3,7 @@ import type {
   PlatformPricingRule,
   ProviderDescriptor,
   ProviderFailure,
+  RailType,
 } from '../domain/index.js';
 import { assetKind, isFiatAsset } from '../domain/asset.js';
 import { conversionKindOf } from '../domain/conversion.js';
@@ -40,6 +41,7 @@ import {
 import { MultiRailScorer } from './routing-scorer.js';
 import { explainRecommendation } from './routing-explanation.js';
 import type { MultiRailRouting, PlannedRoute, PricedMultiRailRoute } from './routing-types.js';
+import type { RoutingComparisonSnapshot } from './routing-snapshot.js';
 
 export interface RoutingEngineInput {
   readonly organizationId: string | null;
@@ -49,6 +51,10 @@ export interface RoutingEngineInput {
   readonly weights: RoutingWeightsInput | null;
   readonly actor: string;
   readonly requestId: string | null;
+  /** Restrict eligible providers to these rails. `null` / omitted means every rail. */
+  readonly rails?: readonly RailType[] | null | undefined;
+  /** When set, provider quote audit events attach to this comparison id. */
+  readonly comparisonId?: string | null | undefined;
 }
 
 export interface MultiRailRouterDependencies {
@@ -93,12 +99,13 @@ export class MultiRailRouter {
     };
 
     const routingId = this.deps.ids.generate('rte');
+    const comparisonId = input.comparisonId ?? null;
 
     await auditLogger.record({
       type: 'routing.requested',
       actor: input.actor,
       requestId: input.requestId,
-      comparisonId: null,
+      comparisonId,
       providerId: null,
       payload: {
         routingId,
@@ -107,17 +114,22 @@ export class MultiRailRouter {
         amountMinorUnits: input.amountMinorUnits,
         organizationId: input.organizationId,
         weights: serializeRoutingWeights(weights),
+        rails: input.rails === undefined || input.rails === null ? null : [...input.rails],
         aiUsed: false,
       },
     });
 
-    const eligible = registry.eligible(request);
+    let eligible = registry.eligible(request);
+    if (input.rails !== undefined && input.rails !== null) {
+      const allowed = new Set(input.rails);
+      eligible = eligible.filter((provider) => allowed.has(provider.descriptor.rail));
+    }
     if (eligible.length === 0) {
       await auditLogger.record({
         type: 'routing.failed',
         actor: input.actor,
         requestId: input.requestId,
-        comparisonId: null,
+        comparisonId: input.comparisonId ?? null,
         providerId: null,
         payload: {
           routingId,
@@ -149,7 +161,7 @@ export class MultiRailRouter {
         type: 'routing.failed',
         actor: input.actor,
         requestId: input.requestId,
-        comparisonId: null,
+        comparisonId: input.comparisonId ?? null,
         providerId: null,
         payload: {
           routingId,
@@ -228,13 +240,14 @@ export class MultiRailRouter {
       routeExplanation: explainRecommendation(recommended),
       plannedRoutes: plannedRoutesOf(input.sourceAsset, input.destinationAsset),
       providerFailures: allFailures,
+      pricingRules,
     };
 
     await auditLogger.record({
       type: 'routing.completed',
       actor: input.actor,
       requestId: input.requestId,
-      comparisonId: null,
+      comparisonId,
       providerId: recommended?.provider.id ?? null,
       payload: {
         routingId,
@@ -247,6 +260,99 @@ export class MultiRailRouter {
     });
 
     return result;
+  }
+
+  /**
+   * Re-prices stored MultiRail quotes. Used by `/comparisons` replay. Does not fetch providers
+   * and does not call the fiat {@link RouteComparisonService}.
+   */
+  recomputeFromSnapshot(snapshot: RoutingComparisonSnapshot): MultiRailRouting {
+    const weights = parseRoutingWeights(snapshot.weights);
+    const priced: PricedMultiRailRoute[] = [];
+    const pricingFailures: ProviderFailure[] = [];
+    const descriptors = new Map(snapshot.providers.map((provider) => [provider.id, provider]));
+
+    for (const quote of snapshot.quotes) {
+      const descriptor = descriptors.get(quote.providerId);
+      const capabilities = snapshot.capabilities[quote.providerId];
+      if (descriptor === undefined || capabilities === undefined) {
+        pricingFailures.push({
+          providerId: quote.providerId,
+          rail: descriptor?.rail ?? null,
+          code: 'MISSING_PROVIDER_DESCRIPTOR',
+          message: `Snapshot has no descriptor or capabilities for provider "${quote.providerId}".`,
+          failedAt: snapshot.request.requestedAt,
+        });
+        continue;
+      }
+      try {
+        priced.push(
+          this.deps.costEngine.price(
+            quote,
+            descriptor,
+            capabilities,
+            this.platformCharge(
+              {
+                organizationId: snapshot.organizationId,
+                sourceAsset: snapshot.request.sourceAsset,
+                destinationAsset: snapshot.request.destinationAsset,
+                amountMinorUnits: snapshot.request.amountMinorUnits,
+                weights: null,
+                actor: 'replay',
+                requestId: null,
+              },
+              descriptor,
+              snapshot.pricingRules,
+              snapshot.request.requestedAt,
+            ),
+          ),
+        );
+      } catch (error) {
+        const appError = toAppError(error);
+        pricingFailures.push({
+          providerId: descriptor.id,
+          rail: descriptor.rail,
+          code: appError.code,
+          message: appError.message,
+          failedAt: snapshot.request.requestedAt,
+        });
+      }
+    }
+
+    if (priced.length === 0) {
+      throw new NoRoutesAvailableError(
+        'Stored quotes could not be re-priced for this comparison.',
+        { providerFailures: [...snapshot.providerFailures, ...pricingFailures] },
+      );
+    }
+
+    const routes = new MultiRailScorer(weights).score(priced);
+    const recommended = routes[0] ?? null;
+    return {
+      routingId: snapshot.routingId,
+      organizationId: snapshot.organizationId,
+      createdAt: snapshot.request.requestedAt,
+      mode: snapshot.mode,
+      routingEngineVersion: ROUTING_ENGINE_VERSION,
+      aiUsed: false,
+      request: {
+        sourceAsset: snapshot.request.sourceAsset,
+        destinationAsset: snapshot.request.destinationAsset,
+        amountMinorUnits: snapshot.request.amountMinorUnits,
+        requestedAt: snapshot.request.requestedAt,
+      },
+      scoringWeights: snapshot.weights,
+      routes,
+      recommendedRoute: recommended,
+      routeScore: recommended?.routeScore ?? null,
+      estimatedCost: recommended?.totalCost ?? null,
+      estimatedReceiveAmount: recommended?.deliveredAmount ?? null,
+      estimatedSettlementTime: recommended?.settlement ?? null,
+      routeExplanation: explainRecommendation(recommended),
+      plannedRoutes: plannedRoutesOf(snapshot.request.sourceAsset, snapshot.request.destinationAsset),
+      providerFailures: [...snapshot.providerFailures, ...pricingFailures],
+      pricingRules: snapshot.pricingRules,
+    };
   }
 
   private assertValidCorridor(input: RoutingEngineInput): void {
@@ -355,7 +461,7 @@ export class MultiRailRouter {
         type: 'provider.quote.received',
         actor: input.actor,
         requestId: input.requestId,
-        comparisonId: null,
+        comparisonId: input.comparisonId ?? null,
         providerId,
         payload: {
           conversionKind: quote.conversionKind,
@@ -386,7 +492,7 @@ export class MultiRailRouter {
         type: 'provider.quote.failed',
         actor: input.actor,
         requestId: input.requestId,
-        comparisonId: null,
+        comparisonId: input.comparisonId ?? null,
         providerId,
         payload: { code: appError.code, message: appError.message },
       });

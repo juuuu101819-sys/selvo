@@ -56,9 +56,14 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
       hint: 'Platform revenue as basis points of TPV. Null when TPV is zero.',
     },
     {
+      title: 'Realized revenue',
+      value: money(summary.realizedRevenueMinorUnits),
+      hint: 'Only a verified external settlement can realize revenue. Route quotes, selections, and execution intents stay at zero.',
+    },
+    {
       title: 'Events',
       value: String(summary.eventCount),
-      hint: 'Quoted and simulated activity only. Funds never moved.',
+      hint: 'Quoted and simulated activity only. Funds never moved. None of these events are realized revenue.',
     },
   ];
 

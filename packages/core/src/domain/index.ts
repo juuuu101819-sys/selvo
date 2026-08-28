@@ -253,4 +253,7 @@ export {
   type MonetizationTransactionType,
   type MonetizationWorkedExample,
   type RevenueSource,
+  ECONOMIC_STAGES,
+  isEconomicStage,
+  type EconomicStage,
 } from './monetization.js';

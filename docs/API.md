@@ -201,9 +201,9 @@ rejected. `data.executable` is always `false`.
 ## `POST /api/v1/routes`
 
 Multi-rail routing engine. Evaluates Traditional Finance, stablecoin and DeFi quotes with one
-deterministic scorer. Distinct from `POST /comparisons`, which remains the fiat comparison engine
-(`ENGINE_VERSION` 2.0.0). This engine is `routingEngineVersion` **1.0.0**. No model is used for
-any figure.
+deterministic scorer. `POST /comparisons` uses this same MultiRailRouter (`routingEngineVersion`
+**1.0.0**). The fiat library constant `ENGINE_VERSION` **2.0.0** remains on `GET /meta` and is not
+the comparison ranking engine. No model is used for any figure.
 
 ```jsonc
 {
@@ -234,6 +234,9 @@ Returns `201` with:
   `routeExplanation` — echoed from the recommendation
 - `plannedRoutes` — Route D (fiat → stablecoin → DEX → fiat) is declared, not composed
 - `aiUsed: false`
+- `monetization` — quoted economics for the recommended route (`ROUTE_QUOTE`): provider cost,
+  platform fee, partner commission, gross margin, take rate, TPV basis. `realizedRevenue` is
+  always `false`. Discovery does not create realized revenue.
 
 USD 100,000 → KRW still returns **four** routes on `POST /comparisons`. The routing engine may
 return those same wrapped rails plus catalog-only venues when the corridor is on-chain or a ramp.
@@ -372,7 +375,8 @@ engine does not switch on Ethereum, Base, Arbitrum or Solana.
 
 ## `POST /api/v1/comparisons`
 
-Compares every eligible route for a transaction.
+Ranks every eligible catalog route for a fiat corridor through **MultiRailRouter** (same engine as
+`POST /routes`, `engineVersion` **1.0.0**). `RouteComparisonService` is not on this path.
 
 ```jsonc
 {

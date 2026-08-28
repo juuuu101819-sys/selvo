@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { CostPointDto, DashboardProviderUsageDto, VolumePointDto } from '@/lib/api/types';
+import { displayBarPercent, displayBarPercentFromDecimal, maxDecimal, maxMinorUnits } from '@/lib/chart-display';
 import { exponentFor } from '@/lib/currency';
 import { formatBps, formatQuotedAmount } from '@/lib/format';
 
@@ -19,11 +20,8 @@ export function DashboardCharts({
   costByDay: readonly CostPointDto[];
   providers: readonly DashboardProviderUsageDto[];
 }) {
-  const maxVolume = Math.max(
-    0,
-    ...volumeByDay.map((point) => Number(point.minorUnits) / 10 ** exponentFor(point.currency)),
-  );
-  const maxCost = Math.max(0, ...costByDay.map((point) => Number(point.averageCostBps)));
+  const maxVolumeMinor = maxMinorUnits(volumeByDay.map((point) => point.minorUnits));
+  const maxCostBps = maxDecimal(costByDay.map((point) => point.averageCostBps));
   const maxQuotes = Math.max(0, ...providers.map((provider) => provider.quoteCount));
 
   return (
@@ -35,7 +33,6 @@ export function DashboardCharts({
       >
         <ul className="space-y-3">
           {volumeByDay.map((point) => {
-            const major = Number(point.minorUnits) / 10 ** exponentFor(point.currency);
             return (
               <li key={`${point.date}-${point.currency}`}>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -53,7 +50,8 @@ export function DashboardCharts({
                 <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
                   <div
                     className="h-full rounded-full bg-emerald-600"
-                    style={{ width: `${barWidth(major, maxVolume)}%` }}
+                    // Display-only CSS width. Not used in further calculation.
+                    style={{ width: `${displayBarPercent(point.minorUnits, maxVolumeMinor)}%` }}
                     role="presentation"
                   />
                 </div>
@@ -80,7 +78,10 @@ export function DashboardCharts({
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
                 <div
                   className="h-full rounded-full bg-foreground/40"
-                  style={{ width: `${barWidth(Number(point.averageCostBps), maxCost)}%` }}
+                    // Display-only CSS width. Not used in further calculation.
+                    style={{
+                      width: `${displayBarPercentFromDecimal(point.averageCostBps, maxCostBps)}%`,
+                    }}
                   role="presentation"
                 />
               </div>
@@ -112,6 +113,7 @@ export function DashboardCharts({
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
                 <div
                   className="h-full rounded-full bg-emerald-600"
+                  // Quote counts are not financial amounts; this width is display-only.
                   style={{ width: `${barWidth(provider.quoteCount, maxQuotes)}%` }}
                   role="presentation"
                 />

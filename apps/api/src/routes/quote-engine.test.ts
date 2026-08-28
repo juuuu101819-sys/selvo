@@ -37,7 +37,9 @@ describe('the quote engine over HTTP', () => {
 
     expect(status).toBe(201);
     expect(payload.data.recommendedRouteId).toBe(payload.data.routes[0]?.routeId);
-    expect(payload.data.routes.map((route) => route.rank)).toEqual([1, 2, 3, 4]);
+    expect(payload.data.routes.map((route) => route.rank)).toEqual(
+      payload.data.routes.map((_, index) => index + 1),
+    );
 
     // Every figure the brief asks the engine to calculate, present on every route.
     for (const route of payload.data.routes) {
@@ -61,8 +63,7 @@ describe('the quote engine over HTTP', () => {
       'cost',
       'liquidity',
       'reliability',
-      'risk',
-      'slippage',
+      'settlementConfidence',
       'speed',
     ]);
   });
@@ -196,7 +197,7 @@ describe('the quote engine over HTTP', () => {
 
       expect(replay.reproducible).toBe(true);
       expect(replay.divergence).toBeNull();
-      expect(replay.replayEngineVersion).toBe('2.0.0');
+      expect(replay.replayEngineVersion).toBe('1.0.0');
     });
 
     it('names both engine versions, so a divergence is diagnosable', async () => {

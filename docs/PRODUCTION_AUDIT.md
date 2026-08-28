@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H04 were subsequently fixed in production code. PA-H05–PA-H13 remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H08 were subsequently fixed in production code. PA-H09–PA-H13 remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -26,11 +26,12 @@ It is **not production-ready** as a live financial service:
 
 - Licensed partner adapters still do not exist; production now starts **read-only** with routing and execution independently unavailable (`docs/PRODUCTION_GATES.md`). Claiming `PRODUCTION_ROUTING_AVAILABLE=true` without a licensed adapter fails closed. Execution cannot be enabled.
 - Persistence defaults to in-memory **only** in development/test; production-locked processes require PostgreSQL and reject demo credentials.
-- Traditional FX, stablecoin, and DeFi are **not equal rails** on the original comparison API; they are equal only inside the multi-rail catalog.
+- `POST /api/v1/comparisons` ranks through the same MultiRailRouter as `POST /api/v1/routes` (`ROUTING_ENGINE_VERSION` 1.0.0). The fiat `ENGINE_VERSION` 2.0.0 constant remains for `/meta` and for `RouteComparisonService`, which is no longer reachable from HTTP.
 - Partner execution and settlement are deliberately unimplemented (`POST /api/v1/executions` → 501).
 - Authorization on agent policy and session scopes is least-privilege for owner/admin policy writes,
   role-derived session scopes, mandatory Policy Engine evaluation before execution intents, and
-  atomic daily-spend reservation (PA-H01–H04). Remaining HIGH items PA-H05–PA-H13 are untouched.
+  atomic daily-spend reservation (PA-H01–H04). Routing consistency and financial-data integrity
+  issues PA-H05–PA-H08 are fixed. Remaining HIGH items PA-H09–PA-H13 are untouched.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -49,15 +50,15 @@ It is **not production-ready** as a live financial service:
 
 `PLATFORM_CAPABILITIES.executeTransactions`, `delegateExecution`, `custodyFunds`, `holdCryptoAssets`, `holdPrivateKeys`, `controlCustomerWallets`, `operateAsPrincipal`, `defiExecution` are all `false`.
 
-### Traditional FX / stablecoin / DeFi as equal rails — FAIL (split surfaces)
+### Traditional FX / stablecoin / DeFi as equal rails — PASS on `/comparisons` ranking; catalog flags still split
 
-Equal **inside** `MultiRailRouter` (`packages/core/src/engine/routing-engine.ts`): one `FinancialProvider` catalog, one `MultiRailCostEngine`, one scorer.
+Equal **inside** `MultiRailRouter` (`packages/core/src/engine/routing-engine.ts`): one `FinancialProvider` catalog, one `MultiRailCostEngine`, one scorer. `POST /api/v1/comparisons` is a facade over that same router (`ComparisonRoutingService`).
 
-Not equal **as a product**:
+Residual catalog honesty (not a second ranker):
 
-- `POST /api/v1/comparisons` uses `ProviderRegistry` + `RouteCostEngine` and **never** includes `dex_liquidity` (`packages/core/src/engine/financial-registry.ts` lines 14–16).
-- `dex_liquidity` and family `defi` remain `planned` in `RAIL_REGISTRY` (`packages/core/src/domain/rail.ts` lines 52–57, 101–106) while `/defi-routes` and `/routes` already quote DEX/AMM/aggregator venues.
+- `dex_liquidity` and family `defi` remain `planned` in `RAIL_REGISTRY` (`packages/core/src/domain/rail.ts`), so a `railFamilies: ['defi']` filter on `/comparisons` is still 400. `/defi-routes` quotes those venues directly.
 - `treasury_product` has no adapter.
+- Graph paths are still indicative topology, not priced routes (`packages/core/src/graph/service.ts`).
 
 ### AI agents use the deterministic routing engine — PASS
 
@@ -74,11 +75,11 @@ NL_DID_NOT_COMPUTE = ['exchange_rates', 'fees', 'slippage', 'settlement_amounts'
 
 `payment-instruction.ts` is a regex/merchant resolver, not a pricing engine. No balance lookup. Settlement status on NL results is typed `executable: false`, `submitted: false`, `fundsMoved: false`. `COMPLETED` on the payment-intent path is **simulation only** (`sandbox-simulator.ts`).
 
-### Decimal-safe financial calculations — PASS on the money path; exceptions on display/aggregates
+### Decimal-safe financial calculations — PASS on the money path; display-only conversion at chart CSS
 
 Core money: `bigint` minor units + `decimal.js` clone `Dec` with 34 digits (`packages/core/src/money/decimal.ts`, `money.ts`). Ingress via string major units (`apps/api/src/http/validation.ts`). Persistence uses `toFixed(0)`, never `toNumber()` (`packages/persistence/src/postgres/prisma-driver.ts` line 303). Monetization uses `bigint` (`packages/core/src/engine/monetization-engine.ts`).
 
-**Exceptions (not quote engines):** dashboard `Number(quote.totalCostBps)` (`packages/persistence/src/dashboard/aggregate.ts` line 100); web charts `Number(point.minorUnits)` (`apps/web/src/components/dashboard/charts.tsx` lines 24, 38). See PA-H07.
+**Exceptions (not quote engines):** web display helpers in `apps/web/src/lib/format.ts` still use `Number()` for human-readable percents, bps, and scores (PA-L01). Dashboard metric aggregation and chart geometry no longer do (PA-H07).
 
 ### Demo providers cannot execute real transactions — PASS
 
@@ -90,8 +91,8 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 
 | # | Area | Assessment |
 | - | ---- | ---------- |
-| 1 | Overall architecture | Acyclic monorepo (`web → api → adapters/persistence → core`). Dual quote stacks; graph not composed into prices. |
-| 2 | Frontend | Next.js 16, server actions, no Execute control. Duplicate wire types. Display `Number()` on bps/charts. |
+| 1 | Overall architecture | Acyclic monorepo (`web → api → adapters/persistence → core`). `/comparisons` and `/routes` share MultiRailRouter; graph not composed into prices. |
+| 2 | Frontend | Next.js 16, server actions, no Execute control. Duplicate wire types. Display `Number()` remains in `format.ts` (PA-L01); dashboard/chart geometry is bigint-scaled (PA-H07). |
 | 3 | Backend | Fastify 5, Zod, capability flags. Anonymous public quote surfaces vs authenticated `/quote`. |
 | 4 | Database | PostgreSQL schema exists; **default driver is memory**. |
 | 5 | Prisma schema | Strong non-custody conventions; CHECKs live in SQL migrations. No billing tables. |
@@ -100,24 +101,24 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | 8 | Authorization | Roles exist but policy PATCH ignores them. Sessions get every API scope. |
 | 9 | Organization isolation | Queries keyed by principal `organizationId`. Cross-tenant 404 (tested). |
 | 10 | API key security | SHA-256 hash at rest, prefix lookup, scope CHECK. Unsalted. |
-| 11 | Financial calculations | Engines Decimal-safe. Dashboard averages are not. |
+| 11 | Financial calculations | Engines Decimal-safe. Dashboard averages use `Dec`/`bigint` (PA-H07). Display `Number()` remains in `format.ts` (PA-L01). |
 | 12 | Decimal precision | `DECIMAL(38,0)` amounts, `DECIMAL(38,18)` rates. |
-| 13 | Quote engine | Comparison 2.0.0, four fiat rails, fingerprints + replay. Freshness at ingestion. |
-| 14 | Multi-rail routing | 1.0.0 ranks tradfi+stablecoin+DeFi. No freshness assert. No fingerprint. |
-| 15 | Route graph | Demo topology, indicative edges, never executable. Always `buildDemoFinancialGraph()`. |
+| 13 | Quote engine | `/comparisons` ranks via MultiRailRouter 1.0.0. Fiat `ENGINE_VERSION` 2.0.0 remains on `/meta` and in `RouteComparisonService` (not HTTP). Fingerprints + replay. |
+| 14 | Multi-rail routing | 1.0.0 ranks tradfi+stablecoin+DeFi. No freshness assert (PA-H09). `/comparisons` now shares this engine. |
+| 15 | Route graph | Demo topology only when `includeDemoAdapters` is true. Production / no licensed metadata → empty graph (PA-H06). Never executable. |
 | 16 | Stablecoin abstraction | Helios ramp + Solstice rail. No RPC. USDT→KRW graph-only. |
-| 17 | DeFi abstraction | Read-only DEX/AMM/aggregator. Not on `/comparisons`. `defiExecution: false`. |
+| 17 | DeFi abstraction | Read-only DEX/AMM/aggregator. Ranked on `/comparisons` via MultiRailRouter when the corridor is quoted. `defiExecution: false`. |
 | 18 | AI agent infrastructure | Issue/revoke, intents, NL, dashboard. Simulator, not partner. |
 | 19 | Policy engine | Fail-closed for agents. Daily spend under-counts in-flight. Execution intents ungated. |
 | 20 | Fee engine | Provider vs platform split; CustomerPricing fiat-only on multi-rail. |
-| 21 | Revenue analytics | Quoted ledger + org dashboard. Not wired on `/routes`. |
+| 21 | Revenue analytics | Quoted ledger + org dashboard. `/routes` and `/comparisons` write `ROUTE_QUOTE` events. Realized revenue stays zero until settlement (unimplemented). |
 | 22 | TPV analytics | `tpvMinorUnits` on monetization events; agent dashboard volume. |
 | 23 | Referral system | 25% of platform revenue in `priceMonetization`. No partner payout rail (correct). |
 | 24 | Audit logging | Append-only; closed event set. Failed logins not recorded. |
 | 25 | Rate limiting | In-process Map. Disabled in `NODE_ENV=test` unless overridden. |
 | 26 | Error handling | Typed `AppError`; 5xx opaque. Fastify 4xx may echo parser message. |
 | 27 | Secrets management | Env Zod; `SecretResolver` for `PROVIDER_*`. Demo secrets in source. |
-| 28 | Demo/production separation | Production boot fail-closed for comparison registry. Demo seed not sandbox-gated. Graph always demo. |
+| 28 | Demo/production separation | Production boot fail-closed for comparison registry. Demo seed sandbox-gated (PA-C02). Graph is demo-gated; production graph is empty until licensed metadata exists (PA-H06). |
 | 29 | Testing coverage | 845 unit/integration; 46 e2e (Phase 19). Gaps: production boot, postgres-default CI. Viewer PATCH and daily-spend reservation covered by PA-H01–H04. |
 | 30 | Performance | Per-request live quotes, no cache, 4s provider timeout. Fine for sandbox. |
 | 31 | Scalability | Memory default; in-process limiter; JSON `quoted_routes` on intents. |
@@ -213,38 +214,42 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-H05 — Dual quote engines; FX / stablecoin / DeFi are not one rail on `/comparisons`
 
-- **File:** `apps/api/src/container.ts` (lines 126–178); `packages/core/src/domain/rail.ts` (lines 52–57, 101–106); `packages/core/src/engine/financial-registry.ts` (lines 11–16)
-- **Component:** `RouteComparisonService` vs `MultiRailRouter` / `StablecoinRouter` / `DefiRouter`
-- **Problem:** Fiat comparison 2.0.0 (four dataset rails) and multi-rail 1.0.0 (eight catalog providers) rank the same corridor independently. `dex_liquidity` is `planned` on meta/`POST /comparisons` while `/defi-routes` already quotes DEX/AMM/aggregator. Graph paths are not priced (`packages/core/src/graph/service.ts`).
-- **Why it matters:** The product definition requires equal rails and a single Discover→Route pipeline. Clients can get two “best” routes or miss DeFi entirely.
-- **Recommended fix:** Treat `/routes` (or `/quote`) as the canonical cross-family ranker; keep `/comparisons` as a documented fiat specialty **or** fold DeFi in only with an explicit engine-version bump. Compose graph hops into priced routes in a later phase. Align `RAIL_REGISTRY.defi` status with quoting reality on catalog endpoints.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/container.ts`; `apps/api/src/routes/comparisons.ts`; `packages/core/src/engine/comparison-routing-service.ts`; `packages/core/src/engine/comparison-from-routing.ts`; `packages/core/src/engine/routing-snapshot.ts`
+- **Component:** `ComparisonRoutingService` / `MultiRailRouter`
+- **Problem:** Fiat comparison 2.0.0 (`RouteComparisonService` + `RouteCostEngine`) and multi-rail 1.0.0 (`MultiRailRouter`) ranked the same corridor independently. Clients could get two “best” routes or miss catalog venues that `/routes` already priced.
+- **Fix:** Every `/comparisons` HTTP response is produced by `ComparisonRoutingService`, which calls `MultiRailRouter.evaluate` and maps the result to the existing comparison DTO. `container.comparisons` is that service; `RouteComparisonService` is not constructed in the API container and is not imported by the route handler. Replay re-prices stored MultiRail snapshots (`recomputeFromSnapshot`); a legacy fiat snapshot is reported as `engine_version_changed` rather than re-ranked by the old engine. Comparison `engineVersion` on the wire is `ROUTING_ENGINE_VERSION` (`1.0.0`). The fiat constant `ENGINE_VERSION` (`2.0.0`) is unchanged and still appears on `/meta`.
+- **Tests:** `apps/api/src/routes/comparisons-multirail.test.ts` — handler/container must not mention `RouteComparisonService`; a fixed USD 100,000 → KRW fixture returns identical provider ranking and cost minor units on `/comparisons` and `/routes`; two identical comparison requests match. Existing comparison, routing, and e2e CASE 1 tests expect engine `1.0.0`.
 - **Priority:** P1
 
 #### PA-H06 — Route graph is always the demo topology
 
-- **File:** `apps/api/src/container.ts` (lines 180–187); `packages/core/src/graph/demo-graph.ts` (lines 10–26)
-- **Component:** `RouteGraphService` / `buildDemoFinancialGraph`
-- **Problem:** Graph construction did not depend on `PLATFORM_MODE` and included graph-only venue `demo-peninsula-settlement`. Production now uses an empty graph (PA-C01). Remaining work: a production graph from licensed venue metadata rather than an empty topology.
-- **Why it matters:** After licensed adapters exist, `/route-graph` must advertise those venues, not synthetic edges and not a permanent empty graph.
-- **Recommended fix:** Mode-gate the demo graph; production graph from licensed venue metadata only.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/graph/build-graph.ts`; `apps/api/src/container.ts`
+- **Component:** `buildFinancialRouteGraph` / `RouteGraphService`
+- **Problem:** Graph construction always used `buildDemoFinancialGraph()`, including graph-only demo venue `demo-peninsula-settlement`, even when demo adapters were disabled.
+- **Fix:** `buildFinancialRouteGraph({ includeDemoAdapters, licensedVenueMetadata })` is the only constructor the container uses. Sandbox sets `includeDemoAdapters: true` and loads the demo topology. Production sets `includeDemoAdapters: false` and `licensedVenueMetadata: []`. Missing licensed metadata returns an empty graph — never a silent demo fallback. Tests may inject licensed venue metadata; that metadata is not a licensed adapter and is never invented in production.
+- **Tests:** `packages/core/src/graph/build-graph.test.ts` — demo on → demo nodes; demo off + no metadata → empty; demo off + licensed fixture → only that fixture.
 - **Priority:** P1
 
 #### PA-H07 — Dashboard and chart code coerce financial figures through IEEE `Number`
 
-- **File:** `packages/persistence/src/dashboard/aggregate.ts` (lines 100–114, 172, 196); `apps/web/src/components/dashboard/charts.tsx` (lines 22–38)
-- **Component:** `aggregateDashboardMetrics` / volume bars
-- **Problem:** `Number(quote.totalCostBps)` and `Number(point.minorUnits) / 10 ** exponent` for averages and bar width. Quote engines themselves stay on `Dec`/`bigint`.
-- **Why it matters:** Large KRW/IDR minor-unit volumes can round incorrectly in operator metrics (the exact class of bug `format.ts` documents for amounts).
-- **Recommended fix:** Average bps with `Dec`; scale charts from `bigint` with a bounded display conversion.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/persistence/src/dashboard/aggregate.ts`; `apps/web/src/lib/chart-display.ts`; `apps/web/src/components/dashboard/charts.tsx`; `apps/web/src/components/cost-comparison.tsx`
+- **Component:** `aggregateMetrics` / volume and cost bars
+- **Problem:** `Number(quote.totalCostBps)` and `Number(point.minorUnits)` were used for dashboard averages and bar widths. Quote engines themselves stayed on `Dec`/`bigint`.
+- **Fix:** Bps averages use `Dec`/`toDecimal` with four decimal places. Volume and savings stay on `bigint` minor units. Chart bar percentages are computed from bigint (or 4 d.p. scaled decimals) in `chart-display.ts`; the only `Number()` is a 0–100 CSS width at the rendering boundary, commented as display-only. Quote-count bars are not financial amounts.
+- **Tests:** `packages/persistence/src/dashboard/aggregate.test.ts` — notional `2^53+1` (`9007199254740993`) and Decimal bps means; `apps/web/src/lib/chart-display.test.ts` — bar width past the IEEE integer boundary.
 - **Priority:** P1
 
 #### PA-H08 — Monetization events are not recorded on the multi-rail / stablecoin / DeFi HTTP surfaces
 
-- **File:** `apps/api/src/monetization/record.ts`; callers only in `apps/api/src/routes/comparisons.ts` and `apps/api/src/routes/agent-payments.ts`
-- **Component:** `recordComparisonMonetization` / `recordAgentQuoteMonetization`
-- **Problem:** TPV and take-rate dashboards miss `/routes`, `/quote`, `/stablecoin-routes`, `/defi-routes`. Enterprise subscription / volume-pricing sources exist as enums and demo seed rows only (`packages/core/src/auth/demo-monetization.ts`).
-- **Why it matters:** Revenue and TPV analytics cannot represent hub usage. Referral commission (25% of platform revenue, `DEFAULT_PARTNER_COMMISSION_BPS`) is computed but only on the hooked paths.
-- **Recommended fix:** Record events on every successful ranked quote (still `fundsMoved: false`). Keep subscriptions as a separate billing phase.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/monetization/record.ts`; `apps/api/src/routes/routing.ts`; `apps/api/src/routes/comparisons.ts`; `apps/api/src/routes/execution-intents.ts`; `packages/core/src/engine/monetization-engine.ts`; `packages/core/src/domain/monetization.ts`
+- **Component:** `recordRouteQuoteMonetization` / `priceRouteMonetization` / `ECONOMIC_STAGES`
+- **Problem:** TPV and take-rate dashboards missed `/routes`. A route search could be mistaken for realized revenue if hooked naively.
+- **Fix:** `/routes` reuses the same Decimal monetization calculation as the comparison/quote flow (`priceRouteMonetization` / `monetizationFromMultiRailRoute`) and returns that metadata on the DTO (`provider cost`, platform fee, partner commission, gross margin, take rate, TPV). Authenticated discovery writes an auditable `ROUTE_QUOTE` (`economicStage: 'route_quote'`, `realizedRevenue: false`, `fundsMoved: false`). There is no route-selection HTTP surface, so no `route_selected` snapshot is created. An execution intent writes `economicStage: 'execution_intent'` with the same unrealized flags; fees are not invented when no live priced route is supplied. Nothing in this tree writes `economicStage: 'settled'` or sets `realizedRevenue: true`. `POST /api/v1/executions` remains 501. Aggregation counts realized revenue only for `settled` events, so realized totals stay `0`.
+- **Tests:** `apps/api/src/routes/routing-monetization.test.ts` (A–G); `packages/core/src/engine/monetization-engine.test.ts` — settled vs quote/intent; large-TPV Decimal identity.
 - **Priority:** P1
 
 #### PA-H09 — Multi-rail quoting does not apply comparison-grade freshness
@@ -520,10 +525,10 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 | PA-H02 | Session scopes include `payment:*` and `transaction:create`. | **FIXED** — role-derived session scopes; no payment or execution-intent rights on sessions |
 | PA-H03 | Execution intents bypass policy. | **FIXED** — `gateExecutionIntent` required; missing payment intent fail-closed |
 | PA-H04 | Daily limit ignores in-flight intents. | **FIXED** — atomic reserve at `ROUTED`; exclusive agent lock; concurrency test |
-| PA-H05 | FX / stablecoin / DeFi are not equal on `/comparisons`; dual engines. | Open |
-| PA-H06 | Route graph always demo. | Open |
-| PA-H07 | Dashboard/chart `Number()` on financial metrics. | Open |
-| PA-H08 | Monetization/TPV not recorded on multi-rail HTTP. | Open |
+| PA-H05 | FX / stablecoin / DeFi are not equal on `/comparisons`; dual engines. | **FIXED** — `/comparisons` ranks via MultiRailRouter 1.0.0; `RouteComparisonService` is not on the HTTP path |
+| PA-H06 | Route graph always demo. | **FIXED** — demo graph only when demo adapters are on; otherwise empty or licensed metadata only |
+| PA-H07 | Dashboard/chart `Number()` on financial metrics. | **FIXED** — Decimal/`bigint` aggregates; display-only CSS conversion at the chart boundary |
+| PA-H08 | Monetization/TPV not recorded on multi-rail HTTP. | **FIXED** — `/routes` returns quoted monetization; `ROUTE_QUOTE` ≠ realized revenue; execution stays 501 |
 | PA-H09 | Multi-rail missing quote freshness. | Open |
 | PA-H10 | Platform fees skip non-fiat multi-rail corridors. | Open |
 | PA-H11 | No CI / container / deploy config. | Open |
@@ -563,8 +568,8 @@ Do not add product features until this sequence is complete. Do not start delega
 2. ~~**Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.~~ **Done.**
 3. **CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).
 4. **Docs:** agents issued; public vs authenticated quote surfaces; simulation vs settlement naming (PA-M06, PA-H13).
-5. **Quote integrity:** freshness on multi-rail (PA-H09); Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).
-6. **Rail honesty:** document `/routes` as the equal-rail ranker; align `defi` registry status on catalog meta; do not silently change comparison 2.0.0 (PA-H05). Mode-gate demo graph (PA-H06).
+5. **Quote integrity:** freshness on multi-rail (PA-H09). ~~Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
+6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
 7. **Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).
 8. **Phase 5 only after 1–7:** licensed read-only FX, payment, ramp, DEX APIs; persist `Quote` rows; then consider production mode.
 9. **Stop.** Partner execution remains 501 until the compliance gate.
@@ -587,4 +592,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H04 were fixed in later changes; PA-H05–PA-H13 and below were not implemented in those changes.*
+*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H08 were fixed in later changes; PA-H09–PA-H13 and below were not implemented in those changes.*

@@ -1,6 +1,8 @@
 import {
   CURRENCY_REGISTRY,
+  Dec,
   isCurrencyCode,
+  toDecimal,
   type DashboardMetrics,
   type DashboardQuote,
   type DashboardTransaction,
@@ -19,11 +21,26 @@ function addMinor(left: string, right: string): string {
   return (BigInt(left) + BigInt(right)).toString();
 }
 
-function mean(values: readonly number[]): number | null {
+function meanBps(values: readonly string[]): string | null {
   if (values.length === 0) {
     return null;
   }
-  return values.reduce((total, value) => total + value, 0) / values.length;
+  let sum = new Dec(0);
+  for (const value of values) {
+    sum = sum.plus(toDecimal(value));
+  }
+  return sum.div(values.length).toDecimalPlaces(4).toFixed(4);
+}
+
+function meanSeconds(values: readonly number[]): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+  let total = 0;
+  for (const value of values) {
+    total += value;
+  }
+  return Math.round(total / values.length);
 }
 
 /**
@@ -31,6 +48,8 @@ function mean(values: readonly number[]): number | null {
  *
  * Callers must pass only one organization's quotes and transactions. This function does not
  * re-check tenant identity; the repository is the place that filter belongs.
+ *
+ * Financial averages use Decimal/`bigint`. IEEE `Number` is not applied to amounts, fees, or bps.
  */
 export function aggregateMetrics(
   quotes: readonly DashboardQuote[],
@@ -66,13 +85,13 @@ export function aggregateMetrics(
 
   const savingsByCurrency = new Map<string, string>();
   for (const group of quotesByRequest.values()) {
-    const recommended = group.find((quote) => quote.isRecommended) ?? group[0];
+    const recommended = group.find((row) => row.isRecommended) ?? group[0];
     if (recommended === undefined) {
       continue;
     }
     let maxCost = 0n;
-    for (const quote of group) {
-      const cost = BigInt(quote.totalCostMinorUnits);
+    for (const row of group) {
+      const cost = BigInt(row.totalCostMinorUnits);
       if (cost > maxCost) {
         maxCost = cost;
       }
@@ -97,10 +116,8 @@ export function aggregateMetrics(
   );
 
   const recommended = quotes.filter((quote) => quote.isRecommended);
-  const costValues = recommended.map((quote) => Number(quote.totalCostBps));
-  const settlementValues = recommended.map((quote) => quote.settlementP50Seconds);
-  const averageCost = mean(costValues.filter((value) => Number.isFinite(value)));
-  const averageSettlement = mean(settlementValues);
+  const averageCost = meanBps(recommended.map((quote) => quote.totalCostBps));
+  const averageSettlement = meanSeconds(recommended.map((quote) => quote.settlementP50Seconds));
 
   const successful = transactions.filter(
     (request) => request.status === 'quoted' || request.status === 'quote_selected',
@@ -111,8 +128,8 @@ export function aggregateMetrics(
     estimatedSavings,
     quoteCount: quotes.length,
     successfulRouteRequests: successful,
-    averageRouteCostBps: averageCost === null ? null : averageCost.toFixed(4),
-    averageSettlementP50Seconds: averageSettlement === null ? null : Math.round(averageSettlement),
+    averageRouteCostBps: averageCost,
+    averageSettlementP50Seconds: averageSettlement,
   };
 }
 
@@ -158,7 +175,7 @@ export function aggregateCostByDay(
   nowMs: number,
 ): readonly CostPoint[] {
   const cutoff = nowMs - days * 86_400_000;
-  const buckets = new Map<string, number[]>();
+  const buckets = new Map<string, string[]>();
   for (const quote of quotes) {
     if (!quote.isRecommended) {
       continue;
@@ -169,13 +186,13 @@ export function aggregateCostByDay(
     }
     const date = quote.quotedAt.slice(0, 10);
     const list = buckets.get(date) ?? [];
-    list.push(Number(quote.totalCostBps));
+    list.push(quote.totalCostBps);
     buckets.set(date, list);
   }
   return [...buckets.entries()]
     .map(([date, values]) => ({
       date,
-      averageCostBps: (mean(values) ?? 0).toFixed(4),
+      averageCostBps: meanBps(values) ?? '0.0000',
       quoteCount: values.length,
     }))
     .sort((left, right) => left.date.localeCompare(right.date));
@@ -193,8 +210,6 @@ export function aggregateProviderUsage(
   return [...byProvider.entries()]
     .map(([providerId, list]) => {
       const recommended = list.filter((quote) => quote.isRecommended);
-      const costs = recommended.map((quote) => Number(quote.totalCostBps));
-      const settlements = recommended.map((quote) => quote.settlementP50Seconds);
       const first = list[0];
       return {
         providerId,
@@ -202,9 +217,10 @@ export function aggregateProviderUsage(
         rail: first?.rail ?? 'unknown',
         quoteCount: list.length,
         recommendedCount: recommended.length,
-        averageCostBps: mean(costs.filter((value) => Number.isFinite(value)))?.toFixed(4) ?? null,
-        averageSettlementP50Seconds:
-          mean(settlements) === null ? null : Math.round(mean(settlements) ?? 0),
+        averageCostBps: meanBps(recommended.map((quote) => quote.totalCostBps)),
+        averageSettlementP50Seconds: meanSeconds(
+          recommended.map((quote) => quote.settlementP50Seconds),
+        ),
       };
     })
     .sort((left, right) => right.quoteCount - left.quoteCount);

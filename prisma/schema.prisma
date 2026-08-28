@@ -500,6 +500,10 @@ model MonetizationEvent {
   fundsMoved                    Boolean  @default(false) @map("funds_moved")
   custody                       Boolean  @default(false)
   realExecution                 Boolean  @default(false) @map("real_execution")
+  routeId                       String?  @map("route_id")
+  quoteId                       String?  @map("quote_id")
+  economicStage                 String   @default("route_quote") @map("economic_stage")
+  realizedRevenue               Boolean  @default(false) @map("realized_revenue")
   createdAt                     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

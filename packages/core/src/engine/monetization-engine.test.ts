@@ -121,6 +121,10 @@ describe('aggregateMonetization', () => {
       fundsMoved: false,
       custody: false,
       realExecution: false,
+      routeId: null,
+      quoteId: null,
+      economicStage: 'route_quote',
+      realizedRevenue: false,
       ...priced,
       ...overrides,
     };
@@ -143,6 +147,49 @@ describe('aggregateMonetization', () => {
     expect(report.summary.grossProfitMinorUnits).toBe('15000');
     expect(report.byOrganization).toHaveLength(1);
     expect(report.fundsMoved).toBe(false);
+    expect(report.summary.realizedRevenueMinorUnits).toBe('0');
+  });
+
+  it('counts realized revenue only for settled events, never for route quotes or intents', () => {
+    const quoted = event({ id: 'mon_quote', economicStage: 'route_quote' });
+    const intent = event({ id: 'mon_intent', economicStage: 'execution_intent' });
+    const selected = event({ id: 'mon_selected', economicStage: 'route_selected' });
+    const settled = event({ id: 'mon_settled', economicStage: 'settled' });
+
+    const unrealized = aggregateMonetization([quoted, intent, selected]);
+    expect(unrealized.summary.realizedRevenueMinorUnits).toBe('0');
+    expect(unrealized.summary.platformRevenueMinorUnits).toBe('60000');
+
+    const withSettlement = aggregateMonetization([quoted, intent, selected, settled]);
+    expect(withSettlement.summary.realizedRevenueMinorUnits).toBe('20000');
+    expect(withSettlement.events.every((row) => row.realizedRevenue === false)).toBe(true);
+  });
+
+  it('matches Decimal arithmetic exactly on a near-MAX_SAFE_INTEGER TPV', () => {
+    const tpv = (2n ** 53n + 1n).toString();
+    const platform = '20000';
+    const priced = priceMonetization({
+      tpvMinorUnits: tpv,
+      providerCostMinorUnits: '30000',
+      platformRevenueMinorUnits: platform,
+    });
+    const report = aggregateMonetization([
+      event({
+        id: 'mon_huge',
+        tpvMinorUnits: priced.tpvMinorUnits,
+        providerCostMinorUnits: priced.providerCostMinorUnits,
+        platformRevenueMinorUnits: priced.platformRevenueMinorUnits,
+        partnerCommissionMinorUnits: priced.partnerCommissionMinorUnits,
+        grossProfitMinorUnits: priced.grossProfitMinorUnits,
+        takeRateBps: priced.takeRateBps,
+      }),
+    ]);
+    expect(report.summary.tpvMinorUnits).toBe(tpv);
+    expect(String(Number(tpv))).not.toBe(tpv);
+    expect(report.summary.partnerCommissionMinorUnits).toBe(priced.partnerCommissionMinorUnits);
+    expect(report.summary.grossProfitMinorUnits).toBe(priced.grossProfitMinorUnits);
+    expect(report.summary.takeRateBps).toBe(priced.takeRateBps);
+    expect(report.summary.realizedRevenueMinorUnits).toBe('0');
   });
 
   it('breaks down by rail, provider, date and revenue source', () => {

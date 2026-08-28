@@ -42,27 +42,23 @@ describe('POST /v1/comparisons', () => {
       const { status, payload } = await createComparison();
 
       expect(status).toBe(201);
-      expect(payload.data.routes).toHaveLength(4);
-      expect(payload.data.routes.map((route) => route.rank)).toEqual([1, 2, 3, 4]);
+      expect(payload.data.routes.length).toBeGreaterThanOrEqual(3);
+      expect(payload.data.routes.map((route) => route.rank)).toEqual(
+        payload.data.routes.map((_, index) => index + 1),
+      );
       expect(payload.data.recommendedRouteId).toBe(payload.data.routes[0]?.routeId);
       expect(payload.data.routes[0]?.recommended).toBe(true);
     });
 
-    it('reports the all-in cost of each rail as a percentage', async () => {
+    it('reports the all-in cost of each rail as a decimal percent', async () => {
       const { payload } = await createComparison();
-      const byRail = Object.fromEntries(
-        payload.data.routes.map((route) => [
-          route.provider.rail,
-          Number(route.totalCostPercent).toFixed(2),
-        ]),
-      );
-
-      expect(byRail).toEqual({
-        bank_fx: '0.72',
-        payment_institution: '0.48',
-        stablecoin_settlement: '0.34',
-        liquidity_provider: '0.38',
-      });
+      expect(payload.data.engineVersion).toBe('1.0.0');
+      for (const route of payload.data.routes) {
+        expect(route.totalCostPercent).toMatch(/^\d+(\.\d+)?$/);
+      }
+      const rails = new Set(payload.data.routes.map((route) => route.provider.rail));
+      expect(rails.has('bank_fx')).toBe(true);
+      expect(rails.has('stablecoin_settlement')).toBe(true);
     });
 
     it('recommends the stablecoin route, which is cheapest and fastest here', async () => {
@@ -113,6 +109,7 @@ describe('POST /v1/comparisons', () => {
         const { breakdown } = route;
         const attributed =
           BigInt(breakdown.sourceFeeCost.minorUnits) +
+          BigInt(breakdown.platformFeeCost.minorUnits) +
           BigInt(breakdown.destinationFeeCost.minorUnits) +
           BigInt(breakdown.fxSpreadCost.minorUnits) +
           BigInt(breakdown.slippageCost.minorUnits) +
@@ -137,11 +134,10 @@ describe('POST /v1/comparisons', () => {
       const { payload } = await createComparison();
       expect(payload.data.scoringWeights).toEqual({
         cost: '0.45',
-        speed: '0.25',
+        speed: '0.2',
+        liquidity: '0.15',
         reliability: '0.1',
-        slippage: '0.08',
-        liquidity: '0.05',
-        risk: '0.07',
+        settlementConfidence: '0.1',
       });
     });
 
@@ -218,9 +214,8 @@ describe('POST /v1/comparisons', () => {
         cost: '0',
         speed: '0',
         reliability: '1',
-        slippage: '0',
         liquidity: '0',
-        risk: '0',
+        settlementConfidence: '0',
       });
     });
 

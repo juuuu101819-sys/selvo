@@ -44,7 +44,7 @@ test.describe('CASE 1 — USD 100,000 → KRW compares traditional FX and stable
     const created = await request.post('/api/v1/comparisons', { data: { ...USD_100K_KRW } });
     expect(created.status()).toBe(201);
     const body = await jsonBody<ComparisonBody>(created);
-    expect(body.data.engineVersion).toBe('2.0.0');
+    expect(body.data.engineVersion).toBe('1.0.0');
     expect(body.data.routes.length).toBeGreaterThan(1);
 
     const rails = new Set(body.data.routes.map((route) => route.provider.rail));

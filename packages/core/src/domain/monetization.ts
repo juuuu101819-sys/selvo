@@ -27,6 +27,20 @@ export const MONETIZATION_TRANSACTION_TYPES = [
 ] as const;
 export type MonetizationTransactionType = (typeof MONETIZATION_TRANSACTION_TYPES)[number];
 
+/**
+ * Funnel stage of an economic record.
+ *
+ * Realized revenue is only `settled`. Route discovery, selection, and execution intent stay
+ * unrealized. This codebase never writes `settled` — that requires a verified external settlement.
+ */
+export const ECONOMIC_STAGES = [
+  'route_quote',
+  'route_selected',
+  'execution_intent',
+  'settled',
+] as const;
+export type EconomicStage = (typeof ECONOMIC_STAGES)[number];
+
 /** 25% of platform revenue — the $50 partner payout on a $200 routing fee. */
 export const DEFAULT_PARTNER_COMMISSION_BPS = '2500';
 
@@ -59,9 +73,12 @@ export function isMonetizationTransactionType(
   value: unknown,
 ): value is MonetizationTransactionType {
   return (
-    typeof value === 'string' &&
-    (MONETIZATION_TRANSACTION_TYPES as readonly string[]).includes(value)
+    typeof value === 'string' && (MONETIZATION_TRANSACTION_TYPES as readonly string[]).includes(value)
   );
+}
+
+export function isEconomicStage(value: unknown): value is EconomicStage {
+  return typeof value === 'string' && (ECONOMIC_STAGES as readonly string[]).includes(value);
 }
 
 export function revenueSourceForRail(rail: RailType): RevenueSource {
@@ -96,6 +113,10 @@ export interface MonetizationEvent {
   readonly fundsMoved: false;
   readonly custody: false;
   readonly realExecution: false;
+  readonly routeId: string | null;
+  readonly quoteId: string | null;
+  readonly economicStage: EconomicStage;
+  readonly realizedRevenue: false;
 }
 
 export interface MonetizationTotals {
@@ -109,6 +130,8 @@ export interface MonetizationTotals {
   readonly takeRateBps: string | null;
   readonly currency: string;
   readonly exponent: number;
+  /** Platform revenue on `settled` events only. Zero unless a verified settlement exists. */
+  readonly realizedRevenueMinorUnits: string;
 }
 
 export interface MonetizationBreakdownRow {

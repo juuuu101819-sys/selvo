@@ -17,6 +17,7 @@ import {
   aggregateMonetization,
   isMonetizationTransactionType,
   isRevenueSource,
+  isEconomicStage,
 } from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
@@ -187,6 +188,10 @@ export class PrismaDashboardRepository implements DashboardRepository {
           fundsMoved: false,
           custody: false,
           realExecution: false,
+          routeId: event.routeId,
+          quoteId: event.quoteId,
+          economicStage: event.economicStage,
+          realizedRevenue: false,
         },
         update: {
           occurredAt: new Date(event.occurredAt),
@@ -208,6 +213,10 @@ export class PrismaDashboardRepository implements DashboardRepository {
           fundsMoved: false,
           custody: false,
           realExecution: false,
+          routeId: event.routeId,
+          quoteId: event.quoteId,
+          economicStage: event.economicStage,
+          realizedRevenue: false,
         },
       });
     } catch (error) {
@@ -368,6 +377,9 @@ function toMonetizationEvent(row: {
   readonly partnerCommissionMinorUnits: { toFixed(decimalPlaces?: number): string };
   readonly grossProfitMinorUnits: { toFixed(decimalPlaces?: number): string };
   readonly takeRateBps: { toFixed(decimalPlaces?: number): string } | null;
+  readonly routeId: string | null;
+  readonly quoteId: string | null;
+  readonly economicStage: string;
 }): MonetizationEvent {
   const transactionType: MonetizationTransactionType = isMonetizationTransactionType(
     row.transactionType,
@@ -399,5 +411,9 @@ function toMonetizationEvent(row: {
     fundsMoved: false,
     custody: false,
     realExecution: false,
+    routeId: row.routeId,
+    quoteId: row.quoteId,
+    economicStage: isEconomicStage(row.economicStage) ? row.economicStage : 'route_quote',
+    realizedRevenue: false,
   };
 }

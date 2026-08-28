@@ -11,9 +11,11 @@ import {
   type MonetizationTotals,
   type MonetizationTransactionType,
   type RevenueSource,
+  type EconomicStage,
 } from '../domain/monetization.js';
 import { isRailType } from '../domain/rail.js';
 import type { ScoredRoute } from '../domain/route.js';
+import type { ScoredMultiRailRoute } from './routing-types.js';
 import { InvalidAmountError } from '../errors/index.js';
 import {
   CURRENCY_REGISTRY,
@@ -107,6 +109,9 @@ export function buildMonetizationEvent(
     readonly asset: string;
     readonly destinationAsset: string | null;
     readonly agentId: string | null;
+    readonly routeId?: string | null | undefined;
+    readonly quoteId?: string | null | undefined;
+    readonly economicStage?: EconomicStage | undefined;
   },
 ): MonetizationEvent {
   const priced = priceMonetization(input);
@@ -132,6 +137,10 @@ export function buildMonetizationEvent(
     fundsMoved: false,
     custody: false,
     realExecution: false,
+    routeId: input.routeId ?? null,
+    quoteId: input.quoteId ?? null,
+    economicStage: input.economicStage ?? 'route_quote',
+    realizedRevenue: false,
   };
 }
 
@@ -286,12 +295,16 @@ function totalsOf(
   let platform = 0n;
   let partner = 0n;
   let profit = 0n;
+  let realized = 0n;
   for (const event of events) {
     tpv += BigInt(event.tpvMinorUnits);
     provider += BigInt(event.providerCostMinorUnits);
     platform += BigInt(event.platformRevenueMinorUnits);
     partner += BigInt(event.partnerCommissionMinorUnits);
     profit += BigInt(event.grossProfitMinorUnits);
+    if (event.economicStage === 'settled') {
+      realized += BigInt(event.platformRevenueMinorUnits);
+    }
   }
   return {
     eventCount: events.length,
@@ -304,6 +317,7 @@ function totalsOf(
     takeRateBps: takeRate(platform, tpv),
     currency,
     exponent,
+    realizedRevenueMinorUnits: realized.toString(),
   };
 }
 
@@ -401,6 +415,9 @@ export function monetizationFromRecommendedFiatRoute(input: {
     asset: sourceAsset,
     destinationAsset: input.destinationAsset,
     agentId: null,
+    routeId: input.route.provider.id,
+    quoteId: input.comparisonId,
+    economicStage: 'route_quote',
     tpvMinorUnits: input.route.sendAmount.minorUnits.toString(),
     providerCostMinorUnits: convertDestMinorToSource({
       destMinorUnits: providerDest.minorUnits.toString(),
@@ -412,6 +429,65 @@ export function monetizationFromRecommendedFiatRoute(input: {
       destMinorUnits: input.route.breakdown.platformFeeCost.minorUnits.toString(),
       destAsset: input.route.breakdown.platformFeeCost.currency,
       sourceAsset,
+      midMarketRate,
+    }),
+  });
+}
+
+/**
+ * Attribute (never settle) platform/provider fees on a multi-rail recommended route.
+ *
+ * Used by `/routes` and `/comparisons`. `economicStage` distinguishes discovery from an
+ * execution-intent snapshot. Realized revenue stays false.
+ */
+export function monetizationFromMultiRailRoute(input: {
+  readonly organizationId: string;
+  readonly occurredAt: string;
+  readonly routingId: string;
+  readonly route: ScoredMultiRailRoute;
+  readonly economicStage: EconomicStage;
+  readonly eventId: string;
+  readonly quoteId: string | null;
+}): MonetizationEvent {
+  const priced = priceRouteMonetization(input.route);
+  return buildMonetizationEvent({
+    id: input.eventId,
+    organizationId: input.organizationId,
+    occurredAt: input.occurredAt,
+    transactionType: 'multi_rail_quote',
+    revenueSource: revenueSourceForRail(input.route.rail),
+    rail: input.route.rail,
+    providerId: input.route.provider.id,
+    providerName: input.route.provider.name,
+    currency: input.route.sendAmount.asset,
+    asset: input.route.sendAmount.asset,
+    destinationAsset: input.route.deliveredAmount.asset,
+    agentId: null,
+    routeId: input.route.routeId,
+    quoteId: input.quoteId,
+    economicStage: input.economicStage,
+    tpvMinorUnits: priced.tpvMinorUnits,
+    providerCostMinorUnits: priced.providerCostMinorUnits,
+    platformRevenueMinorUnits: priced.platformRevenueMinorUnits,
+  });
+}
+
+/** Decimal-safe fee split for a scored multi-rail route. Display metadata, not realized revenue. */
+export function priceRouteMonetization(route: ScoredMultiRailRoute): MonetizationComputation {
+  const source = route.sendAmount.asset;
+  const midMarketRate = route.midMarketRate.toFixed();
+  return priceMonetization({
+    tpvMinorUnits: route.sendAmount.minorUnits.toString(),
+    providerCostMinorUnits: convertDestMinorToSource({
+      destMinorUnits: route.breakdown.providerFee.minorUnits.toString(),
+      destAsset: route.breakdown.providerFee.asset,
+      sourceAsset: source,
+      midMarketRate,
+    }),
+    platformRevenueMinorUnits: convertDestMinorToSource({
+      destMinorUnits: route.breakdown.platformFee.minorUnits.toString(),
+      destAsset: route.breakdown.platformFee.asset,
+      sourceAsset: source,
       midMarketRate,
     }),
   });
@@ -441,6 +517,9 @@ export function monetizationFromQuotedAgentRoute(input: {
     asset: input.sourceAsset,
     destinationAsset: input.destinationAsset,
     agentId: input.agentId,
+    routeId: input.route.routeId ?? input.route.providerId,
+    quoteId: input.paymentIntentId,
+    economicStage: 'route_quote',
     tpvMinorUnits: input.amountMinorUnits,
     providerCostMinorUnits: input.route.providerFeeMinorUnits ?? '0',
     platformRevenueMinorUnits: input.route.platformFeeMinorUnits ?? '0',

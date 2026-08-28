@@ -15,6 +15,7 @@ export type {
   GraphSearchDto,
   MultiRailRouteDto,
   MultiRailRoutingDto,
+  RouteMonetizationDto,
   NormalizedFeeDto,
   NormalizedQuoteDto,
   PlannedRouteDto,

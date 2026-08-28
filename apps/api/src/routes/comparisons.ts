@@ -1,7 +1,5 @@
 import {
   NotFoundError,
-  serializeComparison,
-  serializeReplayResult,
   type ComparisonDto,
   type Principal,
   type ReplayResultDto,
@@ -72,16 +70,18 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
     });
 
     await recordComparisonMonetization({
-      comparison,
+      comparisonId: comparison.comparisonId,
+      organizationId: comparison.organizationId,
+      createdAt: comparison.createdAt,
+      routingId: comparison.routing.routingId,
+      route: comparison.routing.recommendedRoute,
       dashboard: container.persistence.dashboard,
       auditLogger: container.auditLogger,
       actor: principalOf(request).actor,
       requestId: request.id,
     });
 
-    return reply
-      .status(201)
-      .send(envelope<ComparisonDto>(request, serializeComparison(comparison)));
+    return reply.status(201).send(envelope<ComparisonDto>(request, comparison.dto));
   });
 
   app.get('/comparisons', async (request) => {
@@ -129,7 +129,7 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       actor: principalOf(request).actor,
       requestId: request.id,
     });
-    return envelope<ReplayResultDto>(request, serializeReplayResult(result));
+    return envelope<ReplayResultDto>(request, result);
   });
 
   app.get('/comparisons/:comparisonId/audit', async (request) => {

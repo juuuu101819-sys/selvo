@@ -1,5 +1,6 @@
 import { TrendingDown } from 'lucide-react';
 import type { ComparisonDto } from '@/lib/api/types';
+import { displayBarPercentFromDecimal, maxDecimal } from '@/lib/chart-display';
 import { formatMoney, formatPercent } from '@/lib/format';
 
 /**
@@ -16,7 +17,7 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
     return null;
   }
 
-  const maxCostBps = Math.max(...routes.map((route) => Number(route.totalCostBps)));
+  const maxCostBps = maxDecimal(routes.map((route) => route.totalCostBps));
   const insights = comparison.insights;
 
   return (
@@ -28,10 +29,8 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
 
       <ul className="mt-4 space-y-3">
         {routes.map((route) => {
-          const cost = Number(route.totalCostBps);
-          // A subsidised route can price below the benchmark; the bar floors at a sliver so the row
-          // is still visibly present rather than rendering as nothing.
-          const width = maxCostBps <= 0 ? 100 : Math.max((cost / maxCostBps) * 100, 2);
+          // Display-only CSS width. Not used in further calculation.
+          const width = displayBarPercentFromDecimal(route.totalCostBps, maxCostBps);
 
           return (
             <li key={route.routeId}>

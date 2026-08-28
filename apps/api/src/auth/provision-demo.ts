@@ -275,6 +275,10 @@ async function seedDashboardActivity(dashboard: DashboardRepository): Promise<vo
     fundsMoved: false,
     custody: false,
     realExecution: false,
+    routeId: null,
+    quoteId: null,
+    economicStage: 'route_quote',
+    realizedRevenue: false,
   });
 }
 

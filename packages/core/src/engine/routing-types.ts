@@ -1,4 +1,5 @@
 import type { ConversionKind } from '../domain/conversion.js';
+import type { PlatformPricingRule } from '../domain/platform-pricing.js';
 import type { ProviderCategory } from '../domain/provider-catalog.js';
 import type { ProviderDescriptor, ProviderLicensing } from '../domain/provider.js';
 import type { ProviderFailure } from '../domain/route.js';
@@ -128,6 +129,8 @@ export interface MultiRailRouting {
   readonly routeExplanation: string;
   readonly plannedRoutes: readonly PlannedRoute[];
   readonly providerFailures: readonly ProviderFailure[];
+  /** Commercial terms captured for replay. Not serialised on the public DTO. */
+  readonly pricingRules: readonly PlatformPricingRule[];
 }
 
 export const ROUTING_SCORE_FACTORS: readonly RoutingScoringFactor[] = [
