@@ -93,6 +93,7 @@ describe('GET /v1/meta', () => {
       multiRailMonetization: true,
       agentFinancialDashboard: true,
       b2bOnboarding: true,
+      platformInvoicing: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,

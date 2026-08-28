@@ -29,7 +29,8 @@ const DEFAULT_LIMIT = 50;
 export class InMemoryDashboardRepository implements DashboardRepository {
   private readonly quotes = new Map<string, DashboardQuote>();
   private readonly transactions = new Map<string, DashboardTransaction>();
-  private readonly monetization = new Map<string, MonetizationEvent>();
+
+  constructor(private readonly monetization: Map<string, MonetizationEvent> = new Map()) {}
 
   metrics(organizationId: string): Promise<DashboardMetrics> {
     return Promise.resolve(
@@ -114,11 +115,15 @@ export class InMemoryDashboardRepository implements DashboardRepository {
   }
 
   recordMonetizationEvent(event: MonetizationEvent): Promise<void> {
+    const existing = this.monetization.get(event.id);
     this.monetization.set(event.id, {
       ...event,
       fundsMoved: false,
       custody: false,
       realExecution: false,
+      realizedRevenue: false,
+      revenueRecognition: existing?.revenueRecognition ?? event.revenueRecognition ?? 'unrealized',
+      invoiceId: existing?.invoiceId ?? event.invoiceId ?? null,
     });
     return Promise.resolve();
   }

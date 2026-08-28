@@ -125,6 +125,8 @@ describe('aggregateMonetization', () => {
       quoteId: null,
       economicStage: 'route_quote',
       realizedRevenue: false,
+      revenueRecognition: 'unrealized',
+      invoiceId: null,
       ...priced,
       ...overrides,
     };
@@ -158,11 +160,28 @@ describe('aggregateMonetization', () => {
 
     const unrealized = aggregateMonetization([quoted, intent, selected]);
     expect(unrealized.summary.realizedRevenueMinorUnits).toBe('0');
+    expect(unrealized.summary.invoicedRevenueMinorUnits).toBe('0');
+    expect(unrealized.summary.collectedRevenueMinorUnits).toBe('0');
     expect(unrealized.summary.platformRevenueMinorUnits).toBe('60000');
 
     const withSettlement = aggregateMonetization([quoted, intent, selected, settled]);
     expect(withSettlement.summary.realizedRevenueMinorUnits).toBe('20000');
     expect(withSettlement.events.every((row) => row.realizedRevenue === false)).toBe(true);
+  });
+
+  it('counts invoiced platform revenue separately from settled realized revenue', () => {
+    const quoted = event({ id: 'mon_quote', economicStage: 'route_quote' });
+    const invoiced = event({
+      id: 'mon_intent',
+      economicStage: 'execution_intent',
+      revenueRecognition: 'invoiced',
+      invoiceId: 'inv_1',
+    });
+    const report = aggregateMonetization([quoted, invoiced]);
+    expect(report.summary.realizedRevenueMinorUnits).toBe('0');
+    expect(report.summary.invoicedRevenueMinorUnits).toBe('20000');
+    expect(report.summary.collectedRevenueMinorUnits).toBe('0');
+    expect(report.events.every((row) => row.realizedRevenue === false)).toBe(true);
   });
 
   it('matches Decimal arithmetic exactly on a near-MAX_SAFE_INTEGER TPV', () => {

@@ -559,6 +559,8 @@ export interface MonetizationTotalsDto {
   readonly currency: string;
   readonly exponent: number;
   readonly realizedRevenueMinorUnits: string;
+  readonly invoicedRevenueMinorUnits: string;
+  readonly collectedRevenueMinorUnits: string;
 }
 
 export interface MonetizationBreakdownRowDto {
@@ -600,6 +602,8 @@ export interface MonetizationEventDto {
   readonly quoteId: string | null;
   readonly economicStage: string;
   readonly realizedRevenue: false;
+  readonly revenueRecognition: string;
+  readonly invoiceId: string | null;
 }
 
 export interface MonetizationWorkedExampleDto {
@@ -627,6 +631,43 @@ export interface MonetizationReportDto {
   readonly events: readonly MonetizationEventDto[];
   readonly workedExample: MonetizationWorkedExampleDto;
   readonly fundsMoved: false;
+}
+
+export interface InvoiceLineDto {
+  readonly id: string;
+  readonly invoiceId: string;
+  readonly monetizationEventId: string;
+  readonly platformRevenueMinorUnits: string;
+  readonly economicStage: string;
+  readonly transactionType: string;
+  readonly revenueSource: string;
+  readonly occurredAt: string;
+}
+
+export interface InvoiceDto {
+  readonly id: string;
+  readonly invoiceNumber: string;
+  readonly organizationId: string;
+  readonly periodStart: string;
+  readonly periodEnd: string;
+  readonly currency: string;
+  readonly status: 'issued';
+  readonly collectionStatus: 'uncollected';
+  readonly issuerLegalEntity: 'unconfirmed';
+  readonly taxCalculation: 'deferred';
+  readonly subtotalMinorUnits: string;
+  readonly taxMinorUnits: '0';
+  readonly totalMinorUnits: string;
+  readonly issuedAt: string;
+  readonly issuedByActor: string;
+  readonly realizedRevenue: false;
+  readonly collected: false;
+  readonly lines: readonly InvoiceLineDto[];
+}
+
+export interface DashboardInvoicesPayload {
+  readonly invoices: readonly InvoiceDto[];
+  readonly collectionStatus: 'deferred';
 }
 
 export interface AssetAmountJson {

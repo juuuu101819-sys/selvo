@@ -372,7 +372,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     '/dashboard/revenue',
     'authenticated',
     'organization',
-    'Quoted vs realized revenue. Realized totals stay 0.',
+    'Quoted vs realized and invoiced revenue. Realized totals stay 0 until verified settlement. Invoiced is not collected.',
     ['Dashboard'],
   ),
   r('GET', '/dashboard/settings', 'authenticated', 'organization', 'Members, API key prefixes, and org auth settings (no secrets).', [
@@ -464,6 +464,39 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'onboarding_operator',
     'Attach an explicit CustomerPricing rule. No silent default take-rate.',
     ['Onboarding'],
+  ),
+
+  r(
+    'POST',
+    '/ops/billing/invoices/run',
+    'authenticated',
+    'onboarding_operator',
+    'Generate monthly platform-fee invoices from persisted monetization snapshots. Idempotent. Collection deferred.',
+    ['Billing'],
+  ),
+  r(
+    'GET',
+    '/ops/billing/reconciliation',
+    'authenticated',
+    'onboarding_operator',
+    'Internal quoted vs billable vs invoiced vs collected (always 0) reconciliation for a UTC month.',
+    ['Billing'],
+  ),
+  r(
+    'GET',
+    '/dashboard/invoices',
+    'authenticated',
+    'organization',
+    'Issued platform-fee invoices for this organization. Not cash received.',
+    ['Dashboard'],
+  ),
+  r(
+    'GET',
+    '/dashboard/invoices/:id',
+    'authenticated',
+    'organization',
+    'One issued invoice with line items tracing to monetization snapshot IDs.',
+    ['Dashboard'],
   ),
 
   r(

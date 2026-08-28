@@ -69,6 +69,8 @@ describe('InMemoryDashboardRepository tenancy', () => {
       quoteId: null,
       economicStage: 'route_quote',
       realizedRevenue: false,
+      revenueRecognition: 'unrealized',
+      invoiceId: null,
     });
     await store.recordMonetizationEvent({
       id: 'mon_secret',
@@ -96,6 +98,8 @@ describe('InMemoryDashboardRepository tenancy', () => {
       quoteId: null,
       economicStage: 'route_quote',
       realizedRevenue: false,
+      revenueRecognition: 'unrealized',
+      invoiceId: null,
     });
 
     const report = await store.revenue('org_a');

@@ -127,6 +127,11 @@ export type {
   PersistenceDriver,
   StoredComparison,
 } from './repositories.js';
+export type { BillingStore, IssueInvoiceInput } from './billing.js';
+export {
+  DeferredPlatformFeeCollector,
+  type PlatformFeeCollector,
+} from './payment-collector.js';
 export type {
   ExecutionIntent,
   ExecutionIntentRepository,

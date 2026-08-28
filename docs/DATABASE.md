@@ -87,7 +87,7 @@ Organization ──┬── OrganizationMember ── User ── MfaRecoveryCo
                ├── ExecutionIntent
                ├── Agent ── AgentCredential / AgentWalletReference / PaymentPolicy / PaymentIntent
                ├── Merchant
-               ├── MonetizationEvent
+               ├── MonetizationEvent ── Invoice / InvoiceLine
                └── AuditLog
 ```
 
@@ -207,6 +207,14 @@ attaches an explicit row; an organization with zero rows is **not** priced at a 
 rate. `markupBps: "0"` is an agreed zero, not a missing configuration. Calculation still goes only
 through `priceRouteMonetization`.
 
+**`Invoice` / `InvoiceLine`** — monthly platform-fee invoices. Line amounts are copied from
+`MonetizationEvent.platformRevenueMinorUnits`; billing does not re-price. Unique
+`(organization_id, period_start, currency)` and unique `invoice_lines.monetization_event_id` prevent
+double-billing. `tax_minor_units` is constrained to 0. `status` is `issued`, `collection_status` is
+`uncollected`. The issuer legal entity is stored as `unconfirmed`. `MonetizationEvent.revenue_recognition`
+is `unrealized | invoiced | collected`. `realized_revenue` may be true only when recognition is
+`collected`; this tree never writes `collected`.
+
 ### Reproducibility and audit
 
 **`Comparison`** — the immutable, replayable record: the snapshot the engine needs to recompute a
@@ -241,6 +249,9 @@ runs anywhere, and by execution against a real server in the integration suite.
 | The audit trail is immutable                                     | trigger `audit_logs_no_mutation`                                             |
 | API key scopes are the known three values                        | `api_keys_scopes_known`                                                      |
 | An execution intent is recorded, never executable or submitted   | `execution_intents_status_recorded`, `execution_intents_not_executable`, `execution_intents_not_submitted` |
+| Invoice tax is zero; status is issued; collection is uncollected | `invoices_tax_zero`, `invoices_status_issued`, `invoices_collection_uncollected` |
+| Realized revenue only with collected recognition                 | `monetization_events_realized_revenue_collected_chk` |
+| A snapshot appears on at most one invoice                        | unique `invoice_lines.monetization_event_id` |
 
 ## Working with the database locally
 

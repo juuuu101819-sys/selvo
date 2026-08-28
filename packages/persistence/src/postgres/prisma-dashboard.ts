@@ -18,6 +18,7 @@ import {
   isMonetizationTransactionType,
   isRevenueSource,
   isEconomicStage,
+  isRevenueRecognitionStatus,
 } from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import {
@@ -192,6 +193,8 @@ export class PrismaDashboardRepository implements DashboardRepository {
           quoteId: event.quoteId,
           economicStage: event.economicStage,
           realizedRevenue: false,
+          revenueRecognition: event.revenueRecognition,
+          invoiceId: event.invoiceId,
         },
         update: {
           occurredAt: new Date(event.occurredAt),
@@ -380,6 +383,8 @@ function toMonetizationEvent(row: {
   readonly routeId: string | null;
   readonly quoteId: string | null;
   readonly economicStage: string;
+  readonly revenueRecognition?: string;
+  readonly invoiceId?: string | null;
 }): MonetizationEvent {
   const transactionType: MonetizationTransactionType = isMonetizationTransactionType(
     row.transactionType,
@@ -415,5 +420,9 @@ function toMonetizationEvent(row: {
     quoteId: row.quoteId,
     economicStage: isEconomicStage(row.economicStage) ? row.economicStage : 'route_quote',
     realizedRevenue: false,
+    revenueRecognition: isRevenueRecognitionStatus(row.revenueRecognition)
+      ? row.revenueRecognition
+      : 'unrealized',
+    invoiceId: row.invoiceId ?? null,
   };
 }

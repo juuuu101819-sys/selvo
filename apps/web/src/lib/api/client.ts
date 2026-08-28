@@ -21,6 +21,8 @@ import type {
   OrgAuthSettingsDto,
   MetaDto,
   MonetizationReportDto,
+  DashboardInvoicesPayload,
+  InvoiceDto,
   MultiRailRoutingDto,
   ReplayResultDto,
   RouteGraphDto,
@@ -383,6 +385,27 @@ export function fetchDashboardRevenue(
   return request<MonetizationReportDto>({
     method: 'GET',
     path: '/api/v1/dashboard/revenue',
+    authorization,
+  });
+}
+
+export function fetchDashboardInvoices(
+  authorization: string,
+): Promise<ApiResult<DashboardInvoicesPayload>> {
+  return request<DashboardInvoicesPayload>({
+    method: 'GET',
+    path: '/api/v1/dashboard/invoices',
+    authorization,
+  });
+}
+
+export function fetchDashboardInvoice(
+  authorization: string,
+  id: string,
+): Promise<ApiResult<InvoiceDto>> {
+  return request<InvoiceDto>({
+    method: 'GET',
+    path: `/api/v1/dashboard/invoices/${encodeURIComponent(id)}`,
     authorization,
   });
 }

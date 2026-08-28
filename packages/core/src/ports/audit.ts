@@ -54,6 +54,8 @@ export const AUDIT_EVENT_TYPES = [
   'onboarding.kyb.submitted',
   'onboarding.kyb.reviewed',
   'onboarding.pricing.configured',
+  'billing.invoice.issued',
+  'billing.revenue.recognized',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

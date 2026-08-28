@@ -81,6 +81,24 @@ export function isEconomicStage(value: unknown): value is EconomicStage {
   return typeof value === 'string' && (ECONOMIC_STAGES as readonly string[]).includes(value);
 }
 
+/**
+ * Platform-fee revenue recognition on a quoted snapshot.
+ *
+ * `unrealized` — attributed, not invoiced.
+ * `invoiced` — copied onto an issued invoice. Not cash received.
+ * `collected` — confirmed payment against that invoice. This tree never writes `collected`
+ * while payment collection is deferred, so `realizedRevenue` stays false.
+ */
+export const REVENUE_RECOGNITION_STATUSES = ['unrealized', 'invoiced', 'collected'] as const;
+export type RevenueRecognitionStatus = (typeof REVENUE_RECOGNITION_STATUSES)[number];
+
+export function isRevenueRecognitionStatus(value: unknown): value is RevenueRecognitionStatus {
+  return (
+    typeof value === 'string' &&
+    (REVENUE_RECOGNITION_STATUSES as readonly string[]).includes(value)
+  );
+}
+
 export function revenueSourceForRail(rail: RailType): RevenueSource {
   return RAIL_REVENUE_SOURCE[rail];
 }
@@ -117,6 +135,8 @@ export interface MonetizationEvent {
   readonly quoteId: string | null;
   readonly economicStage: EconomicStage;
   readonly realizedRevenue: false;
+  readonly revenueRecognition: RevenueRecognitionStatus;
+  readonly invoiceId: string | null;
 }
 
 export interface MonetizationTotals {
@@ -132,6 +152,10 @@ export interface MonetizationTotals {
   readonly exponent: number;
   /** Platform revenue on `settled` events only. Zero unless a verified settlement exists. */
   readonly realizedRevenueMinorUnits: string;
+  /** Platform revenue on snapshots that have been invoiced or collected. */
+  readonly invoicedRevenueMinorUnits: string;
+  /** Platform revenue on snapshots with `revenueRecognition: collected`. Always zero this phase. */
+  readonly collectedRevenueMinorUnits: string;
 }
 
 export interface MonetizationBreakdownRow {

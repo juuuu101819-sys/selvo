@@ -920,6 +920,8 @@ async function seedMonetization(): Promise<void> {
       quoteId: event.quoteId,
       economicStage: event.economicStage,
       realizedRevenue: false,
+      revenueRecognition: event.revenueRecognition,
+      invoiceId: event.invoiceId,
     };
     await prisma.monetizationEvent.upsert({
       where: { id: event.id },

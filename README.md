@@ -66,7 +66,7 @@ policy            $1,000 per payment, $10,000/day, USD/USDC/KRW, 0.5% max slippa
 ```
 
 Dashboard pages (signed in): `/dashboard`, `/dashboard/quotes`, `/dashboard/transactions`,
-`/dashboard/providers`, `/dashboard/revenue`, `/dashboard/agents`, `/dashboard/agents/[id]`,
+`/dashboard/providers`, `/dashboard/revenue`, `/dashboard/invoices`, `/dashboard/agents`, `/dashboard/agents/[id]`,
 `/dashboard/agents/[id]/payments`, `/dashboard/agents/[id]/policies`, `/dashboard/onboarding`,
 `/dashboard/settings`. Each query is scoped to that organization; another
 tenant's quotes never appear.

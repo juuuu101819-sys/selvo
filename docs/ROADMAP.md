@@ -446,7 +446,47 @@ this session, so the flow is stubbed fail-closed rather than guessed:
 - **Dashboard:** `/dashboard/onboarding` checklist from live backend state (org → KYB → pricing →
   API key). Public `/invite` accepts the token.
 
-PHASE 30 remains blocked (no licensed partner of record). PHASE 32 billing is not in this phase.
-`POST /api/v1/executions` remains 501. Engine versions unchanged.
+PHASE 30 remains blocked (no licensed partner of record). PHASE 32 billing is implemented as
+invoice generation only (collection deferred). `POST /api/v1/executions` remains 501. Engine
+versions unchanged.
+
+## Phase 32 — Real transaction-based monetization ✅ implemented (invoicing only)
+
+Turns persisted `priceRouteMonetization` snapshots into issued platform-fee invoices. **Does not
+enable execution.** Business gates that were not confirmed outside this session:
+
+1. **Legal entity** that issues invoices — stored as `issuerLegalEntity: unconfirmed`.
+2. **Tax/VAT/sales tax** — `taxMinorUnits` is always `"0"`, `taxCalculation: deferred`.
+3. **Payment collection** — no processor. `collectionStatus: uncollected`. `DeferredPlatformFeeCollector`
+   refuses to mark an invoice paid. No card or bank credentials are stored.
+
+**Billable event (confirmed against product behavior):** there is no route-selection HTTP surface.
+`route_quote` is a route view and is **never billed**. Billing copies platform revenue from:
+
+- `economicStage === execution_intent` (recorded route choice; funds still do not move), and
+- `transactionType === enterprise_subscription` (contracted API fee),
+
+when `revenueRecognition` is still `unrealized` and platform revenue is positive.
+
+**Cadence:** UTC calendar month (`periodStart` must be `YYYY-MM-01T00:00:00.000Z`). One invoice per
+organization per month per currency.
+
+**Idempotency:** unique `(organizationId, periodStart, currency)` on invoices; unique
+`invoice_lines.monetization_event_id`. A second run for the same period returns the existing invoice
+and does not add lines.
+
+**Revenue recognition:** issuing an invoice sets snapshot `revenueRecognition` to `invoiced` and
+`invoiceId`. `realizedRevenue` stays **false**. The boolean may become true only when recognition is
+`collected` (CHECK constraint). This phase never writes `collected`. Settled-stage
+`realizedRevenueMinorUnits` is unchanged (still zero). Dashboard totals add `invoicedRevenueMinorUnits`
+and `collectedRevenueMinorUnits` (`"0"`).
+
+**Reconciliation:** `GET /api/v1/ops/billing/reconciliation` (operator key) shows quoted vs billable
+vs invoiced vs collected vs unbilled. Duplicate billed snapshot IDs must be empty.
+
+Operator auth reuses `ONBOARDING_OPERATOR_SECRET` / `X-Onboarding-Operator-Key`.
+`platformInvoicing` is true. `POST /api/v1/executions` remains 501. Engine versions unchanged.
+
+Do not proceed to PHASE 33 (execution enablement) from this work.
 
 

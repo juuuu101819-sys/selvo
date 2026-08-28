@@ -5,6 +5,7 @@ import type { AgentPaymentsRepository } from './agent-payments.js';
 import type { IdentityStore } from './identity.js';
 import type { OnboardingStore } from './onboarding.js';
 import type { RateLimitStore } from './rate-limit.js';
+import type { BillingStore } from './billing.js';
 
 /**
  * A persisted comparison. The stored form is the serialised DTO plus the snapshot needed for
@@ -64,6 +65,7 @@ export interface PersistenceDriver {
   readonly agentPayments: AgentPaymentsRepository;
   readonly rateLimits: RateLimitStore;
   readonly onboarding: OnboardingStore;
+  readonly billing: BillingStore;
   /** Verifies the store is reachable and the schema is present. */
   healthCheck(): Promise<void>;
   close(): Promise<void>;

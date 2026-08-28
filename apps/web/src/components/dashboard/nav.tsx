@@ -12,6 +12,7 @@ const LINKS = [
   { href: '/dashboard/transactions', label: 'Transactions', exact: false },
   { href: '/dashboard/providers', label: 'Providers', exact: false },
   { href: '/dashboard/revenue', label: 'Revenue', exact: false },
+  { href: '/dashboard/invoices', label: 'Invoices', exact: false },
   { href: '/dashboard/agents', label: 'Agents', exact: false },
   { href: '/dashboard/onboarding', label: 'Onboarding', exact: false },
   { href: '/dashboard/settings', label: 'Settings', exact: false },

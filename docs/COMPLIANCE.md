@@ -105,3 +105,19 @@ always returns `pending`. A vendor error leaves the org **unverified** — never
 Unverified and rejected orgs may explore sandbox quotes. They are not `realTransactionEligible`.
 Production-locked licensed quotes additionally require an explicit `CustomerPricing` row (no silent
 default take-rate). `POST /api/v1/executions` remains 501.
+
+## Platform-fee invoicing (PHASE 32) — collection not confirmed
+
+Issuing an invoice for quoted platform fees is not customer-transaction settlement and does not
+move funds. Legal entity, tax treatment, and payment collection were **not confirmed** outside this
+codebase:
+
+| Required confirmation | Status |
+| --------------------- | ------ |
+| Legal entity that issues invoices / collects payment | **Missing** — stored as `unconfirmed` |
+| Tax/VAT/sales-tax rules for the first customer cohort | **Missing** — tax line always 0 |
+| Payment collection mechanism | **Missing** — `DeferredPlatformFeeCollector`; no credentials stored |
+
+`realizedRevenue` stays false on invoiced snapshots until a confirmed collection adapter writes
+`collected`. `POST /api/v1/executions` remains 501.
+

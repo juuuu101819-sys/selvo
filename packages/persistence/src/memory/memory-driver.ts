@@ -3,14 +3,17 @@ import {
   type AuditEvent,
   type AuditEventType,
   type AuditLogRepository,
+  type BillingStore,
   type ComparisonRepository,
   type DashboardRepository,
   type ExecutionIntentRepository,
   type IdentityStore,
+  type MonetizationEvent,
   type PersistenceDriver,
   type StoredComparison,
 } from '@meridian/core';
 import { InMemoryAgentPaymentsRepository } from './memory-agent-payments.js';
+import { InMemoryBillingStore } from './memory-billing.js';
 import { InMemoryDashboardRepository } from './memory-dashboard.js';
 import { InMemoryExecutionIntentRepository } from './memory-execution-intents.js';
 import { InMemoryIdentityStore } from './memory-identity.js';
@@ -159,11 +162,18 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly comparisons = new InMemoryComparisonRepository();
   readonly auditLog = new InMemoryAuditLogRepository();
   readonly identity: IdentityStore = new InMemoryIdentityStore();
-  readonly dashboard: DashboardRepository = new InMemoryDashboardRepository();
+  readonly dashboard: DashboardRepository;
   readonly executionIntents: ExecutionIntentRepository = new InMemoryExecutionIntentRepository();
   readonly agentPayments = new InMemoryAgentPaymentsRepository();
   readonly rateLimits = new InMemoryRateLimitStore();
   readonly onboarding = new InMemoryOnboardingStore(this.identity);
+  readonly billing: BillingStore;
+
+  constructor() {
+    const monetization = new Map<string, MonetizationEvent>();
+    this.dashboard = new InMemoryDashboardRepository(monetization);
+    this.billing = new InMemoryBillingStore(monetization);
+  }
 
   healthCheck(): Promise<void> {
     return Promise.resolve();

@@ -112,6 +112,8 @@ export function buildMonetizationEvent(
     readonly routeId?: string | null | undefined;
     readonly quoteId?: string | null | undefined;
     readonly economicStage?: EconomicStage | undefined;
+    readonly revenueRecognition?: MonetizationEvent['revenueRecognition'] | undefined;
+    readonly invoiceId?: string | null | undefined;
   },
 ): MonetizationEvent {
   const priced = priceMonetization(input);
@@ -141,6 +143,8 @@ export function buildMonetizationEvent(
     quoteId: input.quoteId ?? null,
     economicStage: input.economicStage ?? 'route_quote',
     realizedRevenue: false,
+    revenueRecognition: input.revenueRecognition ?? 'unrealized',
+    invoiceId: input.invoiceId ?? null,
   };
 }
 
@@ -296,6 +300,8 @@ function totalsOf(
   let partner = 0n;
   let profit = 0n;
   let realized = 0n;
+  let invoiced = 0n;
+  let collected = 0n;
   for (const event of events) {
     tpv += BigInt(event.tpvMinorUnits);
     provider += BigInt(event.providerCostMinorUnits);
@@ -304,6 +310,12 @@ function totalsOf(
     profit += BigInt(event.grossProfitMinorUnits);
     if (event.economicStage === 'settled') {
       realized += BigInt(event.platformRevenueMinorUnits);
+    }
+    if (event.revenueRecognition === 'invoiced' || event.revenueRecognition === 'collected') {
+      invoiced += BigInt(event.platformRevenueMinorUnits);
+    }
+    if (event.revenueRecognition === 'collected') {
+      collected += BigInt(event.platformRevenueMinorUnits);
     }
   }
   return {
@@ -318,6 +330,8 @@ function totalsOf(
     currency,
     exponent,
     realizedRevenueMinorUnits: realized.toString(),
+    invoicedRevenueMinorUnits: invoiced.toString(),
+    collectedRevenueMinorUnits: collected.toString(),
   };
 }
 

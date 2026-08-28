@@ -84,6 +84,16 @@ test("settings list only this organization's members and never API secrets", asy
   await expect(page.getByText('MeridianDemo!2026')).toHaveCount(0);
 });
 
+test('invoices page starts empty and never claims cash was collected', async ({ page }) => {
+  await signIn(page);
+  await page.getByRole('navigation', { name: /Organization dashboard/i }).getByRole('link', { name: 'Invoices' }).click();
+
+  await expect(page.getByRole('heading', { name: /^Invoices$/i })).toBeVisible();
+  await expect(page.getByText('No invoices issued yet')).toBeVisible();
+  await expect(page.getByText(/payment collection is deferred/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Execute/i })).toHaveCount(0);
+});
+
 test('onboarding checklist reflects live unverified demo-tenant state', async ({ page }) => {
   await signIn(page);
   await page.getByRole('navigation', { name: /Organization dashboard/i }).getByRole('link', { name: 'Onboarding' }).click();

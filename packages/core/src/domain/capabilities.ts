@@ -94,6 +94,11 @@ export const PLATFORM_CAPABILITIES = {
    * CustomerPricing. Does not enable execution or licensed quotes by itself.
    */
   b2bOnboarding: true,
+  /**
+   * Monthly platform-fee invoices generated from persisted monetization snapshots.
+   * Payment collection is deferred. Distinct from `executeTransactions`.
+   */
+  platformInvoicing: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

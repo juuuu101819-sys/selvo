@@ -135,6 +135,17 @@ export {
   type MonetizationPriceInput,
 } from './monetization-engine.js';
 export {
+  draftInvoiceFromSnapshots,
+  invoiceNumberFor,
+  isBillableShape,
+  isBillableSnapshot,
+  reconcilePeriod,
+  runMonthlyBilling,
+  utcMonthWindow,
+  type BillingRunDependencies,
+  type BillingRunInput,
+} from './billing-engine.js';
+export {
   NlRoutingService,
   NL_INTERPRET_PIPELINE,
   NL_ROUTE_PIPELINE,

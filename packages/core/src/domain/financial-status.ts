@@ -18,7 +18,7 @@ export const DOCUMENTED_EXECUTION_INTENT_STATUS = 'recorded' as const;
 export const REALIZED_REVENUE = false;
 
 export interface FinancialStatusDoc {
-  readonly family: 'payment_intent' | 'execution_intent' | 'transaction_request' | 'quote';
+  readonly family: 'payment_intent' | 'execution_intent' | 'transaction_request' | 'quote' | 'invoice';
   readonly value: string;
   /** One-line financial meaning. Does not use `|` so API.md tables stay parseable. */
   readonly meaning: string;
@@ -165,11 +165,26 @@ export const EXECUTION_INTENT_STATUS_DOCS: Record<
   ),
 };
 
+export const INVOICE_STATUS_DOCS: Record<'issued' | 'uncollected', FinancialStatusDoc> = {
+  issued: doc(
+    'invoice',
+    'issued',
+    'Platform-fee invoice generated from monetization snapshots. Not cash received and not realized revenue.',
+  ),
+  uncollected: doc(
+    'invoice',
+    'uncollected',
+    'Collection is deferred. An issued invoice is not confirmed payment or realized revenue.',
+  ),
+};
+
 export const API_FINANCIAL_STATUS_DOCS: readonly FinancialStatusDoc[] = [
   ...PAYMENT_INTENT_STATUSES.map((status) => PAYMENT_INTENT_STATUS_DOCS[status]),
   EXECUTION_INTENT_STATUS_DOCS[DOCUMENTED_EXECUTION_INTENT_STATUS],
   ...TRANSACTION_REQUEST_STATUSES.map((status) => TRANSACTION_REQUEST_STATUS_DOCS[status]),
   ...QUOTE_STATUSES.map((status) => QUOTE_STATUS_DOCS[status]),
+  INVOICE_STATUS_DOCS.issued,
+  INVOICE_STATUS_DOCS.uncollected,
 ];
 
 export function financialStatusDocFor(

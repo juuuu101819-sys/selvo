@@ -278,6 +278,8 @@ async function seedDashboardActivity(dashboard: DashboardRepository): Promise<vo
     quoteId: null,
     economicStage: 'route_quote',
     realizedRevenue: false,
+    revenueRecognition: 'unrealized',
+    invoiceId: null,
   });
 }
 

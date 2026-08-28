@@ -129,6 +129,8 @@ Route View ≠ Route Selection ≠ Execution Intent ≠ External Provider Execut
 | quote | `expired` | Quote past expiresAt. Must not be ranked or selected. | no |
 | quote | `superseded` | Replaced by a newer quote from the same provider for the same request. | no |
 | quote | `withdrawn` | Provider withdrew or declined the price. Not a chargeback. | no |
+| invoice | `issued` | Platform-fee invoice generated from monetization snapshots. Not cash received and not realized revenue. | no |
+| invoice | `uncollected` | Collection is deferred. An issued invoice is not confirmed payment or realized revenue. | no |
 
 Retired payment-intent names (`AUTHORIZED`, `EXECUTION_PENDING`, `COMPLETED`) are not valid and are
 not aliased. A future `SETTLEMENT_CONFIRMED` status does not exist in this tree.
@@ -667,10 +669,50 @@ Organization-scoped multi-rail monetization report. Amounts are integer minor un
 Decimal only. `fundsMoved` is always false.
 
 Totals: TPV, gross revenue, provider cost, platform revenue, partner commission, gross profit, take
-rate. Breakdowns: rail, provider, currency, asset, organization, AI agent, transaction type, revenue
-source, date. Includes the canonical $100,000 worked example.
+rate, realized (settled-stage only), invoiced, collected. Breakdowns: rail, provider, currency,
+asset, organization, AI agent, transaction type, revenue source, date. Includes the canonical
+$100,000 worked example. Invoiced is not collected. Realized stays zero until a verified external
+settlement exists.
 
 Anonymous callers are `401`. Another tenant's events never appear.
+
+## `GET /api/v1/dashboard/invoices`
+
+Organization-scoped issued platform-fee invoices. Amounts are integer minor units copied from
+monetization snapshots — billing never recomputes take-rate. `collectionStatus` is `uncollected`.
+`realizedRevenue` and `collected` are always false. Payment collection is deferred.
+
+## `GET /api/v1/dashboard/invoices/:id`
+
+One invoice for this organization, including line items that each name a `monetizationEventId`.
+`404` for an unknown id or another organization's invoice.
+
+## `POST /api/v1/ops/billing/invoices/run`
+
+Operator-authenticated (`X-Onboarding-Operator-Key` vs `ONBOARDING_OPERATOR_SECRET`). Body:
+`{ "periodStart": "YYYY-MM-01T00:00:00.000Z", "organizationId?": "..." }`.
+
+Generates one invoice per organization per UTC calendar month per currency from billable snapshots:
+
+- `economicStage === "execution_intent"` with positive platform revenue, or
+- `transactionType === "enterprise_subscription"` with positive platform revenue
+
+`route_quote` (route view) is never billed. Totals are bigint sums of copied
+`platformRevenueMinorUnits`. Tax is always `"0"` (`taxCalculation: "deferred"`).
+`issuerLegalEntity` is `"unconfirmed"`. Unique `(organizationId, periodStart, currency)` makes a
+second run return the existing invoice (no double-bill). Unique `invoice_lines.monetization_event_id`
+prevents the same snapshot appearing on two invoices.
+
+Issued invoices set snapshot `revenueRecognition` to `invoiced` and `invoiceId`. `realizedRevenue`
+stays false. Collection is not implemented.
+
+Missing or wrong operator key: `401` (same as onboarding ops).
+
+## `GET /api/v1/ops/billing/reconciliation`
+
+Operator-authenticated. Query `periodStart` as above. Internal report: quoted platform revenue vs
+billable vs invoiced vs collected (`"0"`) vs unbilled billable, plus billed snapshot IDs and any
+duplicate IDs (should be empty).
 
 ## `GET /api/v1/dashboard/agents`
 

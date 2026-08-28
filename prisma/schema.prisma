@@ -244,6 +244,7 @@ model Organization {
   paymentIntents      PaymentIntent[]
   monetizationEvents  MonetizationEvent[]
   invites             OrganizationInvite[]
+  invoices            Invoice[]
 
   @@map("organizations")
 }
@@ -625,14 +626,64 @@ model MonetizationEvent {
   quoteId                       String?  @map("quote_id")
   economicStage                 String   @default("route_quote") @map("economic_stage")
   realizedRevenue               Boolean  @default(false) @map("realized_revenue")
+  revenueRecognition            String   @default("unrealized") @map("revenue_recognition")
+  invoiceId                     String?  @map("invoice_id")
   createdAt                     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice      Invoice?     @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  invoiceLine  InvoiceLine?
 
   @@index([organizationId, occurredAt(sort: Desc)])
   @@index([organizationId, revenueSource])
   @@index([organizationId, rail])
+  @@index([invoiceId])
   @@map("monetization_events")
+}
+
+/// Platform-fee invoice copied from monetization snapshots. Tax and collection are deferred.
+model Invoice {
+  id                   String   @id
+  invoiceNumber        String   @unique @map("invoice_number")
+  organizationId       String   @map("organization_id")
+  periodStart          DateTime @map("period_start") @db.Timestamptz(3)
+  periodEnd            DateTime @map("period_end") @db.Timestamptz(3)
+  currency             String   @db.VarChar(16)
+  status               String   @default("issued")
+  collectionStatus     String   @default("uncollected") @map("collection_status")
+  issuerLegalEntity    String   @default("unconfirmed") @map("issuer_legal_entity")
+  taxCalculation       String   @default("deferred") @map("tax_calculation")
+  subtotalMinorUnits   Decimal  @map("subtotal_minor_units") @db.Decimal(38, 0)
+  taxMinorUnits        Decimal  @map("tax_minor_units") @db.Decimal(38, 0)
+  totalMinorUnits      Decimal  @map("total_minor_units") @db.Decimal(38, 0)
+  issuedAt             DateTime @map("issued_at") @db.Timestamptz(3)
+  issuedByActor        String   @map("issued_by_actor")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lines        InvoiceLine[]
+  events       MonetizationEvent[]
+
+  @@unique([organizationId, periodStart, currency])
+  @@index([organizationId, issuedAt(sort: Desc)])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id                        String   @id
+  invoiceId                 String   @map("invoice_id")
+  monetizationEventId       String   @unique @map("monetization_event_id")
+  platformRevenueMinorUnits Decimal  @map("platform_revenue_minor_units") @db.Decimal(38, 0)
+  economicStage             String   @map("economic_stage")
+  transactionType           String   @map("transaction_type")
+  revenueSource             String   @map("revenue_source")
+  occurredAt                DateTime @map("occurred_at") @db.Timestamptz(3)
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  invoice           Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  monetizationEvent MonetizationEvent @relation(fields: [monetizationEventId], references: [id], onDelete: Restrict)
+
+  @@map("invoice_lines")
 }
 
 // ---------------------------------------------------------------------------

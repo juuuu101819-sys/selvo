@@ -10,6 +10,8 @@ export const PROTECTED_DASHBOARD_PATHS = [
   '/dashboard/transactions',
   '/dashboard/providers',
   '/dashboard/revenue',
+  '/dashboard/invoices',
+  '/dashboard/invoices/agt_example',
   '/dashboard/onboarding',
   '/dashboard/settings',
   '/dashboard/agents',

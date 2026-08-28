@@ -14,6 +14,7 @@ import {
   type PlatformPricingResolver,
   type RateLimitStore,
   type OnboardingStore,
+  type BillingStore,
   type StoredComparison,
 } from '@meridian/core';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -23,6 +24,7 @@ import { PrismaAgentPaymentsRepository } from './prisma-agent-payments.js';
 import { PrismaExecutionIntentRepository } from './prisma-execution-intents.js';
 import { PrismaIdentityStore } from './prisma-identity.js';
 import { PrismaOnboardingStore } from './prisma-onboarding.js';
+import { PrismaBillingStore } from './prisma-billing.js';
 import { PrismaRateLimitStore } from '../rate-limit/prisma-store.js';
 import { Prisma, PrismaClient } from '@prisma/client';
 
@@ -60,6 +62,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly agentPayments: PrismaAgentPaymentsRepository;
   readonly rateLimits: RateLimitStore;
   readonly onboarding: OnboardingStore;
+  readonly billing: BillingStore;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -87,6 +90,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.rateLimits = new PrismaRateLimitStore(this.client);
     this.pricing = new PrismaPlatformPricingResolver(this.client);
     this.onboarding = new PrismaOnboardingStore(this.client);
+    this.billing = new PrismaBillingStore(this.client);
   }
 
   /**
@@ -103,7 +107,9 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
                 AND to_regclass('public.execution_intents') IS NOT NULL
                 AND to_regclass('public.payment_intents') IS NOT NULL
                 AND to_regclass('public.rate_limit_buckets') IS NOT NULL
-                AND to_regclass('public.organization_invites') IS NOT NULL) AS present
+                AND to_regclass('public.organization_invites') IS NOT NULL
+                AND to_regclass('public.invoices') IS NOT NULL
+                AND to_regclass('public.invoice_lines') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(

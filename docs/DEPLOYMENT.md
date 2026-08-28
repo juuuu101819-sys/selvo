@@ -47,7 +47,7 @@ These are the only allowed gaps. They are scale/ops differences, not safety rela
 | Bind address | `127.0.0.1:47331` on the host (localhost only in compose) | Platform load balancer |
 | Postgres | Dedicated `meridian_staging` volume; published on `127.0.0.1:54332` | Platform-managed database; not published to developer laptops |
 | Data | Empty by default. Optional **labelled synthetic** operator (`--profile synthetic`) | Real organizations only after a separate authorization |
-| Billing | None. No invoices, subscriptions, or payouts (PA-M09 deferred; PHASE 32) | Same code; still no billing product |
+| Billing | Invoice generation and record-keeping only. No live payment collection, no tax calculation, issuer legal entity unconfirmed (PHASE 32). Partner payouts still not accounts payable. | Same: issued invoices are not cash received |
 | B2B onboarding | Sales-assisted / invite-only. KYB is manual review until a vendor is confirmed. No silent default take-rate. | Same. Real orgs stay `unverified` until an operator records KYB and attaches `CustomerPricing`. |
 | Licensed quotes | None. PHASE 30 is **blocked** until a named licensed partner of record is confirmed. Comparison/quote return **422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`). Production-locked `/quote` also requires completed onboarding (`403 ONBOARDING_INCOMPLETE` otherwise). | Same empty licensed registry until that confirmation exists |
 | Web app | Not in the API image. Point `API_BASE_URL` at staging if you run Next separately | Same split: API image vs web |

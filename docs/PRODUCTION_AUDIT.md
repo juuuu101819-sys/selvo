@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08 (index + CI already ran postgres tests), PA-M11–PA-M16, PA-L01–PA-L04 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M07, PA-M09, PA-M10, PA-L05, PA-L06) remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08 (index + CI already ran postgres tests), PA-M11–PA-M16, PA-L01–PA-L04 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M07, PA-M09 partner payouts / payment collection, PA-M10, PA-L05, PA-L06) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution.
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -34,7 +34,7 @@ It is **not production-ready** as a live financial service:
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
   (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
   naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
-  PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 (quote cache / circuit breaker) is closed. PA-M08, PA-M14, PA-M16, PA-L01, and PA-L02 are closed. Remaining Medium/Low items are feature-scale and deferred.
+  PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 (quote cache / circuit breaker) is closed. PA-M08, PA-M14, PA-M16, PA-L01, and PA-L02 are closed. PHASE 32 implemented invoice generation (PA-M09 invoices). Remaining Medium/Low items are feature-scale and deferred (payment collection, partner AP, cursor pagination, multi-rail fingerprint).
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -251,7 +251,7 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 - **File:** `apps/api/src/monetization/record.ts`; `apps/api/src/routes/routing.ts`; `apps/api/src/routes/comparisons.ts`; `apps/api/src/routes/execution-intents.ts`; `packages/core/src/engine/monetization-engine.ts`; `packages/core/src/domain/monetization.ts`
 - **Component:** `recordRouteQuoteMonetization` / `priceRouteMonetization` / `ECONOMIC_STAGES`
 - **Problem:** TPV and take-rate dashboards missed `/routes`. A route search could be mistaken for realized revenue if hooked naively.
-- **Fix:** `/routes` reuses the same Decimal monetization calculation as the comparison/quote flow (`priceRouteMonetization` / `monetizationFromMultiRailRoute`) and returns that metadata on the DTO (`provider cost`, platform fee, partner commission, gross margin, take rate, TPV). Authenticated discovery writes an auditable `ROUTE_QUOTE` (`economicStage: 'route_quote'`, `realizedRevenue: false`, `fundsMoved: false`). There is no route-selection HTTP surface, so no `route_selected` snapshot is created. An execution intent writes `economicStage: 'execution_intent'` with the same unrealized flags; fees are not invented when no live priced route is supplied. Nothing in this tree writes `economicStage: 'settled'` or sets `realizedRevenue: true`. `POST /api/v1/executions` remains 501. Aggregation counts realized revenue only for `settled` events, so realized totals stay `0`.
+- **Fix:** `/routes` reuses the same Decimal monetization calculation as the comparison/quote flow (`priceRouteMonetization` / `monetizationFromMultiRailRoute`) and returns that metadata on the DTO (`provider cost`, platform fee, partner commission, gross margin, take rate, TPV). Authenticated discovery writes an auditable `ROUTE_QUOTE` (`economicStage: 'route_quote'`, `realizedRevenue: false`, `fundsMoved: false`). There is no route-selection HTTP surface, so no `route_selected` snapshot is created. An execution intent writes `economicStage: 'execution_intent'` with the same unrealized flags; fees are not invented when no live priced route is supplied. Nothing in this tree writes `economicStage: 'settled'` or sets `realizedRevenue: true`. PHASE 32 invoices copy those snapshots and set `revenueRecognition: invoiced`; `realizedRevenue` remains false because payment collection is deferred (`collected` is never written). `POST /api/v1/executions` remains 501. Aggregation counts realized revenue only for `settled` events, so realized totals stay `0`.
 - **Tests:** `apps/api/src/routes/routing-monetization.test.ts` (A–G); `packages/core/src/engine/monetization-engine.test.ts` — settled vs quote/intent; large-TPV Decimal identity.
 - **Priority:** P1
 
@@ -400,14 +400,15 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M09 — No invoices, subscriptions, or partner-payout tables
 
-- **Status:** **DEFERRED** (feature-scale — billing domain)
-- **File:** `prisma/schema.prisma` (`MonetizationEvent` lines 480–511)
+- **Status:** **PARTIAL** (2026-08-28) — invoices implemented; collection and partner AP deferred
+- **File:** `prisma/schema.prisma` (`Invoice`, `InvoiceLine`, `MonetizationEvent.revenueRecognition`); `packages/core/src/engine/billing-engine.ts`; `apps/api/src/routes/billing.ts`
 - **Component:** billing
-- **Problem:** Referral/commission is an attributed field, not accounts payable. `enterprise_api_subscription` is a seeded demo event.
-- **Why it matters:** Business model (API fees, enterprise fees, partner commissions) is not operable. Correct that it is not a cash ledger.
-- **Recommended fix:** Separate billing domain when charging customers; keep `fundsMoved: false` on routing events.
+- **Problem:** Referral/commission is an attributed field, not accounts payable. `enterprise_api_subscription` is a seeded demo event. There was no invoice table.
+- **Why it matters:** Business model (API fees, enterprise fees, partner commissions) was not operable as billed revenue.
+- **After (PHASE 32):** Monthly invoices are generated exclusively from existing monetization snapshots (copied `platformRevenueMinorUnits`, line items name snapshot IDs). Billable events are `execution_intent` and `enterprise_subscription` with positive platform revenue. `route_quote` is never billed. Unique `(organization, period, currency)` and unique line `monetization_event_id` prevent double-billing. `revenueRecognition` becomes `invoiced`; `realizedRevenue` stays false until `collected`, which is never written. Tax is always 0. Issuer legal entity is `unconfirmed`. `DeferredPlatformFeeCollector` does not collect. Partner commission remains an attributed field, not accounts payable.
+- **Tests:** `packages/core/src/engine/billing-engine.test.ts`; `apps/api/src/routes/billing.test.ts`
 - **Priority:** P2
-- **Deferred because:** Invoices, subscriptions, and partner payouts are a new billing product, not a cleanup of existing quoting.
+- **Still deferred:** live payment collection, tax calculation, issuer legal entity, partner payouts as AP.
 
 #### PA-M10 — Multi-rail results have no comparison-style fingerprint/replay
 
@@ -604,7 +605,7 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 **Medium closed (prior):** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure), PA-M13 (dashboard session middleware), PA-M15 (failed-auth audit).
 
-**Medium still open (deferred, feature-scale):** PA-M07 (cursor pagination), PA-M09 (billing domain), PA-M10 (multi-rail fingerprint/replay; would bump engine version if public).
+**Medium still open (deferred, feature-scale):** PA-M07 (cursor pagination), PA-M09 remainder (payment collection, tax, partner AP), PA-M10 (multi-rail fingerprint/replay; would bump engine version if public).
 
 **Low closed:** PA-L01, PA-L02, PA-L03 (TOTP MFA + OIDC; SCIM still out of scope), PA-L04 (quote cache and circuit breaker; worker queue not added).
 
@@ -643,6 +644,25 @@ Do not add product features until this sequence is complete. Do not start delega
 
 ---
 
+## PHASE 32 — Realized-revenue pathway (platform fees)
+
+Invariant ②: Route View ≠ Route Selection ≠ Execution Intent ≠ External Provider Execution ≠ Verified Settlement ≠ Realized Revenue.
+
+This phase is the first place billed platform-fee revenue is recorded. It is **not** customer-transaction settlement.
+
+| Step | Trigger | `revenueRecognition` | `realizedRevenue` | Cash |
+| ---- | ------- | -------------------- | ----------------- | ---- |
+| Route view | Authenticated `/routes`, comparisons, agent quotes | `unrealized` | `false` | no |
+| Recorded route choice | `POST /execution-intents` (`economicStage: execution_intent`) | `unrealized` | `false` | no |
+| Subscription snapshot | Seeded/contracted `enterprise_subscription` | `unrealized` | `false` | no |
+| Invoice issued | Operator `POST /ops/billing/invoices/run` for a closed UTC month | `invoiced` | `false` | no |
+| Payment collected | Deferred — `DeferredPlatformFeeCollector` | would be `collected` | would be `true` iff collected | not implemented |
+| Customer settlement | Would require verified external settlement (`economicStage: settled`) | n/a | counted in `realizedRevenueMinorUnits` | not implemented; executions 501 |
+
+Billing never recomputes pricing. Line items name snapshot IDs. Tax is 0. Issuer is `unconfirmed`. Collection is deferred. Audit events `billing.invoice.issued` and `billing.revenue.recognized` record actor, timestamp, invoice id, and snapshot ids.
+
+---
+
 ## Controls to keep
 
 Do not “clean up” these as if they were incomplete features:
@@ -659,4 +679,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08, PA-M11–PA-M16, PA-L01–PA-L04 (SCIM out of scope; worker queue out of scope) were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M07, PA-M09, PA-M10, PA-L05, PA-L06, plus SCIM and worker queue.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08, PA-M11–PA-M16, PA-L01–PA-L04 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M07, PA-M09 collection/tax/partner AP, PA-M10, PA-L05, PA-L06, plus SCIM and worker queue.*

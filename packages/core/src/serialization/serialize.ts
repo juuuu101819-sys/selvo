@@ -9,6 +9,7 @@ import type {
   ScoredRoute,
 } from '../domain/index.js';
 import type { MonetizationEvent, MonetizationReport } from '../domain/monetization.js';
+import type { BillingRunResult, Invoice, ReconciliationReport } from '../domain/billing.js';
 import {
   ASSET_REGISTRY,
   CHAIN_REGISTRY,
@@ -94,6 +95,9 @@ import type {
   StablecoinSlippageDto,
   MonetizationReportDto,
   MonetizationEventDto,
+  InvoiceDto,
+  BillingRunResultDto,
+  ReconciliationReportDto,
   AgentDashboardDetailDto,
   AgentDashboardSummaryDto,
   AgentPolicyViolationDto,
@@ -1072,6 +1076,62 @@ function serializeMonetizationEvent(event: MonetizationEvent): MonetizationEvent
     quoteId: event.quoteId,
     economicStage: event.economicStage,
     realizedRevenue: false,
+    revenueRecognition: event.revenueRecognition,
+    invoiceId: event.invoiceId,
+  };
+}
+
+export function serializeInvoice(invoice: Invoice): InvoiceDto {
+  return {
+    id: invoice.id,
+    invoiceNumber: invoice.invoiceNumber,
+    organizationId: invoice.organizationId,
+    periodStart: invoice.periodStart,
+    periodEnd: invoice.periodEnd,
+    currency: invoice.currency,
+    status: 'issued',
+    collectionStatus: 'uncollected',
+    issuerLegalEntity: 'unconfirmed',
+    taxCalculation: 'deferred',
+    subtotalMinorUnits: invoice.subtotalMinorUnits,
+    taxMinorUnits: '0',
+    totalMinorUnits: invoice.totalMinorUnits,
+    issuedAt: invoice.issuedAt,
+    issuedByActor: invoice.issuedByActor,
+    realizedRevenue: false,
+    collected: false,
+    lines: invoice.lines.map((line) => ({ ...line })),
+  };
+}
+
+export function serializeBillingRunResult(result: BillingRunResult): BillingRunResultDto {
+  return {
+    periodStart: result.periodStart,
+    periodEnd: result.periodEnd,
+    cadence: 'utc_calendar_month',
+    invoices: result.invoices.map(serializeInvoice),
+    createdInvoiceIds: [...result.createdInvoiceIds],
+    reusedInvoiceIds: [...result.reusedInvoiceIds],
+    skippedOrganizationIds: [...result.skippedOrganizationIds],
+  };
+}
+
+export function serializeReconciliationReport(
+  report: ReconciliationReport,
+): ReconciliationReportDto {
+  return {
+    periodStart: report.periodStart,
+    periodEnd: report.periodEnd,
+    cadence: 'utc_calendar_month',
+    collectionStatus: 'deferred',
+    taxCalculation: 'deferred',
+    issuerLegalEntity: 'unconfirmed',
+    billedSnapshotIds: [...report.billedSnapshotIds],
+    byCurrency: report.byCurrency.map((row) => ({
+      ...row,
+      collectedPlatformRevenueMinorUnits: '0',
+      duplicateBilledSnapshotIds: [...row.duplicateBilledSnapshotIds],
+    })),
   };
 }
 

@@ -61,6 +61,16 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
       hint: 'Only a verified external settlement can realize revenue. Route quotes, selections, and execution intents stay at zero.',
     },
     {
+      title: 'Invoiced',
+      value: money(summary.invoicedRevenueMinorUnits),
+      hint: 'Platform fees copied onto issued invoices. Not cash received. Collection is deferred.',
+    },
+    {
+      title: 'Collected',
+      value: money(summary.collectedRevenueMinorUnits),
+      hint: 'Confirmed payment against an invoice. Always zero until a payment collector is wired.',
+    },
+    {
       title: 'Events',
       value: String(summary.eventCount),
       hint: 'Quoted and simulated activity only. Funds never moved. None of these events are realized revenue.',

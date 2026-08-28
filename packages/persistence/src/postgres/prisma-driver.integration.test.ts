@@ -85,6 +85,8 @@ describeIntegration('PostgreSQL schema', () => {
           'organization_oidc_connections',
           'oidc_authorization_states',
           'organization_invites',
+          'invoices',
+          'invoice_lines',
         ]),
       );
     });

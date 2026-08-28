@@ -131,6 +131,8 @@ describe('migrations', () => {
           'organization_oidc_connections',
           'oidc_authorization_states',
           'organization_invites',
+          'invoices',
+          'invoice_lines',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -239,6 +241,17 @@ describe('migrations', () => {
     expect(sql).toContain('"monetization_events_real_execution_false"');
     expect(sql).toContain('"tpv_minor_units" DECIMAL(38, 0)');
     expect(sql).toContain('"platform_revenue_minor_units" DECIMAL(38, 0)');
+  });
+
+  it('stores platform-fee invoices copied from snapshots, with tax and collection deferred', () => {
+    expect(sql).toContain('CREATE TABLE "invoices"');
+    expect(sql).toContain('CREATE TABLE "invoice_lines"');
+    expect(sql).toContain('"invoices_status_issued"');
+    expect(sql).toContain('"invoices_collection_uncollected"');
+    expect(sql).toContain('"invoices_tax_zero"');
+    expect(sql).toContain('"invoice_lines_monetization_event_id_key"');
+    expect(sql).toContain('"monetization_events_realized_revenue_collected_chk"');
+    expect(sql).toContain('"invoices_organization_id_period_start_currency_key"');
   });
 
   /**

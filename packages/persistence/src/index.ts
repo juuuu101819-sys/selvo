@@ -42,6 +42,7 @@ export { InMemoryExecutionIntentRepository } from './memory/memory-execution-int
 export { InMemoryDashboardRepository } from './memory/memory-dashboard.js';
 export { InMemoryIdentityStore } from './memory/memory-identity.js';
 export { InMemoryOnboardingStore } from './memory/memory-onboarding.js';
+export { InMemoryBillingStore } from './memory/memory-billing.js';
 export {
   InMemoryAuditLogRepository,
   InMemoryComparisonRepository,
@@ -52,6 +53,7 @@ export { PrismaDashboardRepository } from './postgres/prisma-dashboard.js';
 export { PrismaExecutionIntentRepository } from './postgres/prisma-execution-intents.js';
 export { PrismaIdentityStore } from './postgres/prisma-identity.js';
 export { PrismaOnboardingStore } from './postgres/prisma-onboarding.js';
+export { PrismaBillingStore } from './postgres/prisma-billing.js';
 export { PrismaPlatformPricingResolver } from './postgres/prisma-pricing-resolver.js';
 export {
   PrismaPersistenceDriver,
