@@ -80,6 +80,11 @@ const envSchema = z
      * Never stored on AppConfig; only {@link AppConfig.authSecretConfigured} is retained.
      */
     AUTH_SECRET: z.string().min(1).optional(),
+    /**
+     * Sales-ops secret for invite-only org provisioning and KYB/pricing review.
+     * Optional at process start (ops endpoints 401 if unset). Never copied onto AppConfig.
+     */
+    ONBOARDING_OPERATOR_SECRET: z.string().min(1).optional(),
 
     // Defaults taken from the engine rather than repeated here, so the running service and the
     // platform default cannot drift apart.
@@ -209,6 +214,23 @@ const envSchema = z
           code: 'custom',
           path: ['AUTH_SECRET'],
           message: `AUTH_SECRET must be at least ${PRODUCTION_AUTH_SECRET_MIN_LENGTH} characters. Do not use a demo or default secret.`,
+        });
+      }
+    }
+
+    if (env.ONBOARDING_OPERATOR_SECRET !== undefined) {
+      if (isForbiddenProductionSecret(env.ONBOARDING_OPERATOR_SECRET)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ONBOARDING_OPERATOR_SECRET'],
+          message:
+            'ONBOARDING_OPERATOR_SECRET must not be a demo password, demo secret, or default credential fallback.',
+        });
+      } else if (env.ONBOARDING_OPERATOR_SECRET.length < PRODUCTION_AUTH_SECRET_MIN_LENGTH) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['ONBOARDING_OPERATOR_SECRET'],
+          message: `ONBOARDING_OPERATOR_SECRET must be at least ${PRODUCTION_AUTH_SECRET_MIN_LENGTH} characters.`,
         });
       }
     }

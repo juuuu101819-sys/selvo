@@ -19,6 +19,7 @@ The artefact CI builds is the artefact staging runs. There is no second untested
 | `DATABASE_DRIVER` | `memory` allowed | `postgres` required | `postgres` required |
 | `DATABASE_URL` | optional | required, injected | required, injected |
 | `AUTH_SECRET` | optional | required, injected, ≥32 chars, not a demo/default | same |
+| `ONBOARDING_OPERATOR_SECRET` | optional; ops routes 401 if unset/wrong | optional; same 401 if unset/wrong; ≥32 chars, not a demo/default if set | same |
 | `SEED_DEMO_TENANTS` | auto-seed | `false`; `true` is a startup failure | same |
 | `PRODUCTION_ROUTING_AVAILABLE` | must be `false` | `false` until a licensed adapter exists | same |
 | `PRODUCTION_EXECUTION_AVAILABLE` | `false` | `false`; `true` is a startup failure | same |
@@ -46,8 +47,9 @@ These are the only allowed gaps. They are scale/ops differences, not safety rela
 | Bind address | `127.0.0.1:47331` on the host (localhost only in compose) | Platform load balancer |
 | Postgres | Dedicated `meridian_staging` volume; published on `127.0.0.1:54332` | Platform-managed database; not published to developer laptops |
 | Data | Empty by default. Optional **labelled synthetic** operator (`--profile synthetic`) | Real organizations only after a separate authorization |
-| Billing | None. No invoices, subscriptions, or payouts (PA-M09 deferred) | Same code; still no billing product |
-| Licensed quotes | None. PHASE 30 is **blocked** until a named licensed partner of record is confirmed. Comparison/quote return **422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`). | Same empty licensed registry until that confirmation exists |
+| Billing | None. No invoices, subscriptions, or payouts (PA-M09 deferred; PHASE 32) | Same code; still no billing product |
+| B2B onboarding | Sales-assisted / invite-only. KYB is manual review until a vendor is confirmed. No silent default take-rate. | Same. Real orgs stay `unverified` until an operator records KYB and attaches `CustomerPricing`. |
+| Licensed quotes | None. PHASE 30 is **blocked** until a named licensed partner of record is confirmed. Comparison/quote return **422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`). Production-locked `/quote` also requires completed onboarding (`403 ONBOARDING_INCOMPLETE` otherwise). | Same empty licensed registry until that confirmation exists |
 | Web app | Not in the API image. Point `API_BASE_URL` at staging if you run Next separately | Same split: API image vs web |
 | Log sink | `docker compose logs api` (JSON on stdout) | Same JSON; attach the platform’s log drain |
 
@@ -64,6 +66,7 @@ Nothing secret is committed. `.env`, `.env.staging`, and `.env.*` are gitignored
 | Secret | Staging source | Notes |
 | ------ | -------------- | ----- |
 | `STAGING_AUTH_SECRET` → `AUTH_SECRET` | Compose env-file / GitHub Actions job env / platform secret store | ≥32 characters. Rejected if it equals a documented demo password or agent secret. Never copied onto `AppConfig`. Never logged (pino redacts `*.AUTH_SECRET`). |
+| `ONBOARDING_OPERATOR_SECRET` | Same secret store | Optional. Sales-ops header `X-Onboarding-Operator-Key`. Compared as SHA-256; never copied onto `AppConfig`. Missing or wrong → the same 401. ≥32 characters if set; demo/default secrets rejected. Pino redacts `req.headers["x-onboarding-operator-key"]` and `*.invite.token`. |
 | `STAGING_DB_PASSWORD` → `DATABASE_URL` | Same | URL-injected. Pino redacts `*.DATABASE_URL`. |
 | `STAGING_OPERATOR_PASSWORD` | Only with `--profile synthetic` | Not the demo password. Optional. |
 | Future `PROVIDER_*` keys | Same secret store | Not used. No licensed adapter exists; do not invent placeholder partner credentials. Never commit. |
@@ -198,5 +201,20 @@ Do not set `PRODUCTION_EXECUTION_AVAILABLE=true`. Do not seed demo tenants.
 Do not set `PRODUCTION_ROUTING_AVAILABLE=true` until a licensed partner of record is recorded in
 [`COMPLIANCE.md`](./COMPLIANCE.md) and a real quoting adapter for that partner exists.
 
+## 7. B2B onboarding (invite-only)
+
+First-cohort onboarding is **sales-assisted**. There is no public signup. An operator with
+`ONBOARDING_OPERATOR_SECRET` calls `POST /api/v1/ops/onboarding/organizations`, sends the returned
+`invite.token` once to the owner, then records KYB and attaches negotiated `CustomerPricing`.
+
+- New orgs default to `kybStatus=unverified`, no pricing row, no API key.
+- KYB is a pluggable fail-closed gate. No vendor is contractually confirmed; the interim path is
+  manual review (`verified` / `rejected` with an audited reason). Vendor timeout/failure never
+  auto-approves.
+- Pricing must be an explicit `CustomerPricing` insert. Missing configuration is not a 0 bps
+  default. `priceRouteMonetization` remains the only calculation path.
+- Completing onboarding does **not** enable `POST /api/v1/executions` (still 501) and does not
+  register a licensed quoting adapter (PHASE 30 still blocked).
+
 Related: [`PRODUCTION_GATES.md`](./PRODUCTION_GATES.md), [`COMPLIANCE.md`](./COMPLIANCE.md),
-[`DATABASE.md`](./DATABASE.md).
+[`DATABASE.md`](./DATABASE.md), [`API.md`](./API.md).

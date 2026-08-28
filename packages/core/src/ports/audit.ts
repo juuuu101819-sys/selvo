@@ -48,6 +48,12 @@ export const AUDIT_EVENT_TYPES = [
   'auth.mfa.failed',
   'auth.mfa.enrolled',
   'auth.sso.failed',
+  'onboarding.organization.created',
+  'onboarding.invite.issued',
+  'onboarding.invite.accepted',
+  'onboarding.kyb.submitted',
+  'onboarding.kyb.reviewed',
+  'onboarding.pricing.configured',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

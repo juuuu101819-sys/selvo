@@ -7,6 +7,8 @@
 
 import type { ApiScope } from '../domain/api-scope.js';
 
+import type { KybStatus } from '../domain/onboarding.js';
+
 export type OrganizationRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type MembershipStatus = 'invited' | 'active' | 'suspended' | 'removed';
 export type RecordStatus = 'active' | 'suspended' | 'retired';
@@ -27,6 +29,10 @@ export interface IdentityOrganization {
   readonly status: RecordStatus;
   /** Off by default. When true, owner/admin must enroll TOTP before a session is issued. */
   readonly requireMfaForPrivilegedRoles: boolean;
+  readonly kybStatus: KybStatus;
+  readonly kybReason: string | null;
+  readonly kybReviewedAt: string | null;
+  readonly kybReviewedByActor: string | null;
 }
 
 export interface UserMfaRecord {
@@ -143,7 +149,7 @@ export interface UpsertUserInput {
   readonly id: string;
   readonly email: string;
   readonly displayName: string;
-  readonly passwordHash: string;
+  readonly passwordHash: string | null;
   readonly status?: RecordStatus;
 }
 
@@ -188,6 +194,15 @@ export interface IdentityStore {
   updateOrganizationAuthSettings(
     organizationId: string,
     input: { readonly requireMfaForPrivilegedRoles: boolean },
+  ): Promise<boolean>;
+  updateOrganizationKyb(
+    organizationId: string,
+    input: {
+      readonly kybStatus: KybStatus;
+      readonly kybReason: string | null;
+      readonly kybReviewedAt: string | null;
+      readonly kybReviewedByActor: string | null;
+    },
   ): Promise<boolean>;
   findUserMfa(userId: string): Promise<UserMfaRecord | null>;
   saveUserMfa(input: {

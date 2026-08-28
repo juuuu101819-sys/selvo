@@ -18,6 +18,7 @@ import type {
   UpsertOrganizationInput,
   UpsertUserInput,
   UserMfaRecord,
+  KybStatus,
 } from '@meridian/core';
 import { PersistenceError, parseApiScopes, uuidIdGenerator } from '@meridian/core';
 import type { PrismaClient } from '@prisma/client';
@@ -61,6 +62,31 @@ export class PrismaIdentityStore implements IdentityStore {
       return result.count > 0;
     } catch (error) {
       throw new PersistenceError('Failed to update organization auth settings.', {}, { cause: error });
+    }
+  }
+
+  async updateOrganizationKyb(
+    organizationId: string,
+    input: {
+      readonly kybStatus: KybStatus;
+      readonly kybReason: string | null;
+      readonly kybReviewedAt: string | null;
+      readonly kybReviewedByActor: string | null;
+    },
+  ): Promise<boolean> {
+    try {
+      const result = await this.client.organization.updateMany({
+        where: { id: organizationId },
+        data: {
+          kybStatus: input.kybStatus,
+          kybReason: input.kybReason,
+          kybReviewedAt: input.kybReviewedAt === null ? null : new Date(input.kybReviewedAt),
+          kybReviewedByActor: input.kybReviewedByActor,
+        },
+      });
+      return result.count > 0;
+    } catch (error) {
+      throw new PersistenceError('Failed to update organization KYB.', {}, { cause: error });
     }
   }
 
@@ -480,13 +506,14 @@ export class PrismaIdentityStore implements IdentityStore {
         email: input.email.toLowerCase(),
         displayName: input.displayName,
         passwordHash: input.passwordHash,
-        passwordSetAt: new Date(),
+        passwordSetAt: input.passwordHash === null ? null : new Date(),
         status: input.status ?? 'active',
       },
       update: {
         displayName: input.displayName,
-        passwordHash: input.passwordHash,
-        passwordSetAt: new Date(),
+        ...(input.passwordHash === null
+          ? {}
+          : { passwordHash: input.passwordHash, passwordSetAt: new Date() }),
       },
     });
   }
@@ -502,9 +529,14 @@ export class PrismaIdentityStore implements IdentityStore {
         userId: input.userId,
         role: input.role,
         status: input.status ?? 'active',
-        joinedAt: new Date(),
+        invitedAt: input.status === 'invited' ? new Date() : null,
+        joinedAt: input.status === 'invited' ? null : new Date(),
       },
-      update: { role: input.role, status: input.status ?? 'active' },
+      update: {
+        role: input.role,
+        status: input.status ?? 'active',
+        ...(input.status === 'active' ? { joinedAt: new Date() } : {}),
+      },
     });
   }
 
@@ -585,6 +617,10 @@ function toOrganization(row: {
   countryCode: string;
   status: IdentityOrganization['status'];
   requireMfaForPrivilegedRoles: boolean;
+  kybStatus: KybStatus;
+  kybReason: string | null;
+  kybReviewedAt: Date | null;
+  kybReviewedByActor: string | null;
 }): IdentityOrganization {
   return {
     id: row.id,
@@ -593,6 +629,10 @@ function toOrganization(row: {
     countryCode: row.countryCode,
     status: row.status,
     requireMfaForPrivilegedRoles: row.requireMfaForPrivilegedRoles,
+    kybStatus: row.kybStatus,
+    kybReason: row.kybReason,
+    kybReviewedAt: row.kybReviewedAt?.toISOString() ?? null,
+    kybReviewedByActor: row.kybReviewedByActor,
   };
 }
 

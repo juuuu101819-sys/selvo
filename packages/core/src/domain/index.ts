@@ -117,6 +117,22 @@ export {
 } from './api-scope.js';
 export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
 export {
+  DEFAULT_KYB,
+  KYB_STATUSES,
+  KYB_VENDOR_ID,
+  ONBOARDING_MODE,
+  ONBOARDING_STEPS,
+  PRICING_MODEL,
+  buildOnboardingSnapshot,
+  isKybStatus,
+  isKybVerified,
+  isRealTransactionEligible,
+  type KybStatus,
+  type OnboardingSnapshot,
+  type OnboardingStep,
+  type OnboardingStepId,
+} from './onboarding.js';
+export {
   CONVERSION_KINDS,
   conversionKindOf,
   isConversionKind,

@@ -92,6 +92,7 @@ describe('GET /v1/meta', () => {
       executionIntents: true,
       multiRailMonetization: true,
       agentFinancialDashboard: true,
+      b2bOnboarding: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,

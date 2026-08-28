@@ -84,6 +84,7 @@ describeIntegration('PostgreSQL schema', () => {
           'mfa_challenges',
           'organization_oidc_connections',
           'oidc_authorization_states',
+          'organization_invites',
         ]),
       );
     });

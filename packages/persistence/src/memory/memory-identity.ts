@@ -6,6 +6,7 @@ import type {
   IdentitySession,
   IdentityStore,
   IdentityUser,
+  KybStatus,
   MfaChallengeRecord,
   MfaRecoveryCodeRecord,
   OidcAuthorizationStateRecord,
@@ -19,7 +20,7 @@ import type {
   UpsertUserInput,
   UserMfaRecord,
 } from '@meridian/core';
-import { uuidIdGenerator } from '@meridian/core';
+import { DEFAULT_KYB, uuidIdGenerator } from '@meridian/core';
 
 interface StoredApiKey extends Omit<IdentityApiKey, 'revokedAt'> {
   readonly createdAt: string;
@@ -128,6 +129,23 @@ export class InMemoryIdentityStore implements IdentityStore {
       ...existing,
       requireMfaForPrivilegedRoles: input.requireMfaForPrivilegedRoles,
     });
+    return Promise.resolve(true);
+  }
+
+  updateOrganizationKyb(
+    organizationId: string,
+    input: {
+      readonly kybStatus: KybStatus;
+      readonly kybReason: string | null;
+      readonly kybReviewedAt: string | null;
+      readonly kybReviewedByActor: string | null;
+    },
+  ): Promise<boolean> {
+    const existing = this.organizations.get(organizationId);
+    if (existing === undefined) {
+      return Promise.resolve(false);
+    }
+    this.organizations.set(organizationId, { ...existing, ...input });
     return Promise.resolve(true);
   }
 
@@ -433,6 +451,10 @@ export class InMemoryIdentityStore implements IdentityStore {
       status: input.status ?? 'active',
       requireMfaForPrivilegedRoles:
         input.requireMfaForPrivilegedRoles ?? existing?.requireMfaForPrivilegedRoles ?? false,
+      kybStatus: existing?.kybStatus ?? DEFAULT_KYB.kybStatus,
+      kybReason: existing?.kybReason ?? DEFAULT_KYB.kybReason,
+      kybReviewedAt: existing?.kybReviewedAt ?? DEFAULT_KYB.kybReviewedAt,
+      kybReviewedByActor: existing?.kybReviewedByActor ?? DEFAULT_KYB.kybReviewedByActor,
     });
     return Promise.resolve();
   }

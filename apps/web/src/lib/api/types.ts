@@ -235,6 +235,7 @@ export interface MetaDto {
     readonly executionIntents?: boolean;
     readonly multiRailMonetization?: boolean;
     readonly agentFinancialDashboard?: boolean;
+    readonly b2bOnboarding?: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -468,6 +469,43 @@ export interface PublicApiKeyDto {
   readonly expiresAt: string | null;
   readonly scopes: readonly string[];
   readonly revokedAt: string | null;
+}
+
+export type KybStatusDto = 'unverified' | 'pending' | 'verified' | 'rejected';
+
+export interface OnboardingStepDto {
+  readonly id: 'organization' | 'kyb' | 'pricing' | 'api_key';
+  readonly label: string;
+  readonly complete: boolean;
+  readonly status: string;
+}
+
+/** Live onboarding checklist. Completeness is backend state, not a client-side progress fake. */
+export interface OnboardingSnapshotDto {
+  readonly mode: 'sales_assisted_invite_only';
+  readonly kybVendor: 'manual_review';
+  readonly pricingModel: 'negotiated_customer_pricing_rules';
+  readonly organizationId: string;
+  readonly organizationCreated: true;
+  readonly kybStatus: KybStatusDto;
+  readonly kybReason: string | null;
+  readonly kybReviewedAt: string | null;
+  readonly pricingConfigured: boolean;
+  readonly apiKeyIssued: boolean;
+  readonly realTransactionEligible: boolean;
+  readonly licensedProviderConfigured: boolean;
+  readonly steps: readonly OnboardingStepDto[];
+}
+
+export interface AcceptInviteDto {
+  readonly organizationId: string;
+  readonly email: string;
+  readonly accepted: true;
+}
+
+export interface KybSubmitDto {
+  readonly kybStatus: KybStatusDto;
+  readonly vendorId: string;
 }
 
 export interface DashboardSettingsDto {

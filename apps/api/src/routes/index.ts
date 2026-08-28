@@ -4,6 +4,7 @@ import { registerAuthentication, registerRequestLogging } from '../http/authenti
 import { registerRateLimiting } from '../http/rate-limit.js';
 import { registerAgentPaymentRoutes } from './agent-payments.js';
 import { registerNlRoutingRoutes } from './nl-routing.js';
+import { registerOnboardingRoutes } from './onboarding.js';
 import { registerApiKeyRoutes } from './api-keys.js';
 import { registerAuthRoutes } from './auth.js';
 import { registerMfaRoutes } from './auth-mfa.js';
@@ -70,6 +71,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerAgentPaymentRoutes(instance, container);
     registerNlRoutingRoutes(instance, container);
     registerDashboardRoutes(instance, container);
+    registerOnboardingRoutes(instance, container);
     registerExecutionIntentRoutes(instance, container);
     registerExecutionRoutes(instance, container);
   };

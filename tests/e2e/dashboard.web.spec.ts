@@ -84,6 +84,25 @@ test("settings list only this organization's members and never API secrets", asy
   await expect(page.getByText('MeridianDemo!2026')).toHaveCount(0);
 });
 
+test('onboarding checklist reflects live unverified demo-tenant state', async ({ page }) => {
+  await signIn(page);
+  await page.getByRole('navigation', { name: /Organization dashboard/i }).getByRole('link', { name: 'Onboarding' }).click();
+
+  await expect(page.getByRole('heading', { name: /Organization onboarding/i })).toBeVisible();
+  await expect(page.getByText('Not eligible for licensed quotes')).toBeVisible();
+  await expect(page.getByText('sales_assisted_invite_only')).toBeVisible();
+  await expect(page.getByText('manual_review')).toBeVisible();
+  await expect(page.getByText('No CustomerPricing row. There is no silent default take-rate.')).toBeVisible();
+  await expect(page.getByText('Licensed quoting is still blocked at the platform')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Submit for KYB review/i })).toBeVisible();
+});
+
+test('invite acceptance page is public', async ({ page }) => {
+  await page.goto('/invite');
+  await expect(page.getByRole('heading', { name: /Accept organization invite/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Execute/i })).toHaveCount(0);
+});
+
 test('public route comparison still works without signing in', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /Find the best financial route/i })).toBeVisible();

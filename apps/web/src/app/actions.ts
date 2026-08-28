@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, updateAgentPolicy, verifyMfa, startOidcLogin, completeOidcLogin, enrollMfa, confirmMfa, regenerateMfaRecovery, updateOrgAuthSettings } from '@/lib/api/client';
-import type { ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, LoginDto, MfaChallengeDto, MfaConfirmDto, MfaEnrollDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, OrgAuthSettingsDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { acceptInvite, createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, submitOnboardingKyb, updateAgentPolicy, verifyMfa, startOidcLogin, completeOidcLogin, enrollMfa, confirmMfa, regenerateMfaRecovery, updateOrgAuthSettings } from '@/lib/api/client';
+import type { AcceptInviteDto, ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, KybSubmitDto, LoginDto, MfaChallengeDto, MfaConfirmDto, MfaEnrollDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, OrgAuthSettingsDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
 import { isMfaChallenge } from '@/lib/api/types';
 import {
   clearSessionCookie,
@@ -387,6 +387,40 @@ function unauthenticatedPayment<T>(): ApiResult<T> {
       requestId: null,
     },
   };
+}
+
+export async function acceptOrganizationInvite(input: {
+  readonly token: string;
+  readonly password: string;
+  readonly displayName?: string;
+}): Promise<ApiResult<AcceptInviteDto>> {
+  return acceptInvite({
+    token: input.token,
+    password: input.password,
+    ...(input.displayName === undefined || input.displayName.trim() === ''
+      ? {}
+      : { displayName: input.displayName.trim() }),
+  });
+}
+
+export async function submitKybForReview(): Promise<ApiResult<KybSubmitDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return {
+      ok: false,
+      failure: {
+        code: 'UNAUTHENTICATED',
+        message: 'Sign in to submit KYB for review.',
+        details: {},
+        requestId: null,
+      },
+    };
+  }
+  const result = await submitOnboardingKyb(token);
+  if (result.ok) {
+    revalidatePath('/dashboard/onboarding');
+  }
+  return result;
 }
 
 export async function saveAgentPolicy(

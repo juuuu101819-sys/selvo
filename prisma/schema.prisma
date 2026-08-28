@@ -87,6 +87,13 @@ enum MembershipStatus {
   removed
 }
 
+enum KybStatus {
+  unverified
+  pending
+  verified
+  rejected
+}
+
 /// Recorded route choice only. There is no submitted, settled, or executed value (PA-L02).
 enum ExecutionIntentStatus {
   recorded
@@ -209,6 +216,11 @@ model Organization {
   metadata    Json         @default("{}")
   /// When true, owner/admin must enroll TOTP before a session is issued. Off by default.
   requireMfaForPrivilegedRoles Boolean @default(false) @map("require_mfa_for_privileged_roles")
+  /// Fail-closed KYB. Default unverified: sandbox exploration is allowed, licensed quotes are not.
+  kybStatus           KybStatus @default(unverified) @map("kyb_status")
+  kybReason           String?   @map("kyb_reason")
+  kybReviewedAt       DateTime? @map("kyb_reviewed_at") @db.Timestamptz(3)
+  kybReviewedByActor  String?   @map("kyb_reviewed_by_actor")
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -231,6 +243,7 @@ model Organization {
   paymentPolicies     PaymentPolicy[]
   paymentIntents      PaymentIntent[]
   monetizationEvents  MonetizationEvent[]
+  invites             OrganizationInvite[]
 
   @@map("organizations")
 }
@@ -285,6 +298,26 @@ model OrganizationMember {
   @@unique([organizationId, userId])
   @@index([userId])
   @@map("organization_members")
+}
+
+/// Sales-assisted invite. Raw token is shown once; only a hash is stored.
+model OrganizationInvite {
+  id              String           @id
+  organizationId  String           @map("organization_id")
+  email           String
+  role            OrganizationRole @default(owner)
+  tokenHash       String           @unique @map("token_hash")
+  tokenPrefix     String           @map("token_prefix")
+  expiresAt       DateTime         @map("expires_at") @db.Timestamptz(3)
+  acceptedAt      DateTime?        @map("accepted_at") @db.Timestamptz(3)
+  createdByActor  String           @map("created_by_actor")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("organization_invites")
 }
 
 /// Credential for a machine caller. Only a hash is stored; the secret is shown once on issue.

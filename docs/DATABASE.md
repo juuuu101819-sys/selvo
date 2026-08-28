@@ -76,6 +76,7 @@ Currency ──┬── ProviderCapability ── Provider ──┬── Rout
            └── CustomerPricing
 
 Organization ──┬── OrganizationMember ── User ── MfaRecoveryCode / MfaChallenge
+               ├── OrganizationInvite
                ├── OrganizationOidcConnection / OidcAuthorizationState
                ├── ApiKey
                ├── TransactionRequest ──┬── Quote ──┬── QuoteLeg
@@ -110,7 +111,10 @@ as corridor currencies: `CURRENCY_REGISTRY`, which governs what the API will pri
 
 ### Tenancy
 
-**`Organization`** — the tenant boundary every query is scoped by.
+**`Organization`** — the tenant boundary every query is scoped by. `kybStatus` defaults to
+`unverified` (`pending` / `verified` / `rejected` after review). `kybReason`, `kybReviewedAt`, and
+`kybReviewedByActor` record the manual-review decision. New orgs are not eligible for licensed
+quotes until `verified` **and** an in-force `CustomerPricing` row exists.
 
 **`User`** — a person. `passwordHash` is a tagged scrypt hash (the schema comment names Argon2id as
 the intended production KDF; scrypt needs no native addon, so local development stays installable).
@@ -119,6 +123,11 @@ Plaintext is never stored, logged or selected into a DTO.
 **`OrganizationMember`** — membership with a role (`owner`/`admin`/`member`/`viewer`). Membership is
 its own record rather than a column on `User`, so one person can act for several businesses — a group
 treasury function or an external accountant, both normal in this market and painful to retrofit.
+Sales-assisted onboarding inserts the first owner as `invited`; accepting the invite sets `active`.
+Invited users cannot log in until they accept.
+
+**`OrganizationInvite`** — hashed invite token (`miv_…` shown once), email, role, expiry, optional
+`acceptedAt`. Membership id equals invite id so accept upserts the same row. Plaintext is never stored.
 
 **`ApiKey`** — machine credential, hash only. Lookups go by `keyPrefix`; the secret is a per-key
 salted scrypt hash compared with the KDF's constant-time verify. `scopes` is a subset of `quote:read`, `route:read`,
@@ -193,7 +202,10 @@ charge in a dispute.
 **`CustomerPricing`** — overlapping rules resolved by `priority`, not one rate per customer, because
 real B2B pricing is negotiated per corridor and per rail. `effectiveFrom`/`effectiveTo` make a
 repricing an insert rather than an update, so a historical quote can always be explained by the terms
-that applied when it was issued. `Quote.customerPricingId` records which row applied.
+that applied when it was issued. `Quote.customerPricingId` records which row applied. Onboarding
+attaches an explicit row; an organization with zero rows is **not** priced at a platform default
+rate. `markupBps: "0"` is an agreed zero, not a missing configuration. Calculation still goes only
+through `priceRouteMonetization`.
 
 ### Reproducibility and audit
 

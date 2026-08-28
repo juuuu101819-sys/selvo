@@ -89,6 +89,11 @@ export const PLATFORM_CAPABILITIES = {
    * limits and policy controls. Distinct from `executeTransactions`. No custody, keys or wallets.
    */
   agentFinancialDashboard: true,
+  /**
+   * Sales-assisted B2B onboarding: invite-only org creation, fail-closed KYB, explicit
+   * CustomerPricing. Does not enable execution or licensed quotes by itself.
+   */
+  b2bOnboarding: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

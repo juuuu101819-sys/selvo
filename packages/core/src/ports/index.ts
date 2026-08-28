@@ -54,6 +54,18 @@ export type {
   UpsertUserInput,
   UserMfaRecord,
 } from './identity.js';
+export {
+  FailingKybVendor,
+  ManualReviewKybVendor,
+  type KybSubmissionResult,
+  type KybVendor,
+} from './kyb-vendor.js';
+export type {
+  CreateOrganizationInviteInput,
+  InsertNegotiatedPricingInput,
+  OnboardingStore,
+  OrganizationInviteRecord,
+} from './onboarding.js';
 export { FixedClock, systemClock, type Clock } from './clock.js';
 export type { FXProvider, FXQuote, FXQuoteRequest } from './fx-provider.js';
 export { SequentialIdGenerator, uuidIdGenerator, type IdGenerator } from './id-generator.js';

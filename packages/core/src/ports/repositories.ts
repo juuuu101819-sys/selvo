@@ -3,6 +3,7 @@ import type { DashboardRepository } from './dashboard.js';
 import type { ExecutionIntentRepository } from './execution-intent.js';
 import type { AgentPaymentsRepository } from './agent-payments.js';
 import type { IdentityStore } from './identity.js';
+import type { OnboardingStore } from './onboarding.js';
 import type { RateLimitStore } from './rate-limit.js';
 
 /**
@@ -62,6 +63,7 @@ export interface PersistenceDriver {
   readonly executionIntents: ExecutionIntentRepository;
   readonly agentPayments: AgentPaymentsRepository;
   readonly rateLimits: RateLimitStore;
+  readonly onboarding: OnboardingStore;
   /** Verifies the store is reachable and the schema is present. */
   healthCheck(): Promise<void>;
   close(): Promise<void>;

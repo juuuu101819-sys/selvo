@@ -22,6 +22,7 @@ export const ErrorCode = {
   REPRODUCIBILITY_MISMATCH: 'REPRODUCIBILITY_MISMATCH',
   EXECUTION_NOT_IMPLEMENTED: 'EXECUTION_NOT_IMPLEMENTED',
   POLICY_DENIED: 'POLICY_DENIED',
+  ONBOARDING_INCOMPLETE: 'ONBOARDING_INCOMPLETE',
   CONFIGURATION_ERROR: 'CONFIGURATION_ERROR',
   PERSISTENCE_ERROR: 'PERSISTENCE_ERROR',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
@@ -277,6 +278,23 @@ export class PolicyDeniedError extends AppError {
 
   constructor(rule: string, message: string, details: ErrorDetails = {}) {
     super(message, { rule, ...details });
+  }
+}
+
+/**
+ * The organization is not eligible for licensed-provider quotes or any future real execution.
+ * Sandbox exploration remains available. Distinct from {@link ForbiddenError} (missing role).
+ */
+export class OnboardingIncompleteError extends AppError {
+  readonly code = ErrorCode.ONBOARDING_INCOMPLETE;
+  readonly httpStatus = 403;
+
+  constructor(details: ErrorDetails) {
+    super(
+      'This organization is not eligible for licensed-provider quotes. Complete KYB verification ' +
+        'and contracted pricing first. Sandbox exploration remains available. Execution stays 501.',
+      details,
+    );
   }
 }
 

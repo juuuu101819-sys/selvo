@@ -429,3 +429,24 @@ quotes (replay fingerprints), deterministic calculations, authorization, audit l
 and API security (strict bodies, unauthenticated 401). Engine versions unchanged. No wallets, keys
 or custody. `POST /executions` remains 501.
 
+## Phase 31 — B2B customer onboarding ✅ implemented (invite-only, fail-closed)
+
+Sales-assisted first cohort. KYB vendor and pricing contract model were **not confirmed** outside
+this session, so the flow is stubbed fail-closed rather than guessed:
+
+- **Mode:** `sales_assisted_invite_only`. An operator creates the `Organization` and issues the
+  first owner invite. No public self-service signup.
+- **KYB:** `unverified` → `pending` → `verified` / `rejected` on `Organization`. Interim vendor is
+  `manual_review`. Automated KYB is a future `KybVendor` adapter; vendor errors never auto-approve.
+- **Pricing:** existing negotiated `CustomerPricing` rows (`negotiated_customer_pricing_rules`).
+  No silent default take-rate. `priceRouteMonetization` remains the only calculation path.
+- **Eligibility:** licensed quotes (production-locked) require `kybStatus === verified` **and** an
+  in-force `CustomerPricing` row. Sandbox exploration is allowed. Completing onboarding does not
+  enable execution.
+- **Dashboard:** `/dashboard/onboarding` checklist from live backend state (org → KYB → pricing →
+  API key). Public `/invite` accepts the token.
+
+PHASE 30 remains blocked (no licensed partner of record). PHASE 32 billing is not in this phase.
+`POST /api/v1/executions` remains 501. Engine versions unchanged.
+
+

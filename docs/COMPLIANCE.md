@@ -38,7 +38,9 @@ completed, comparison replayed, routing requested/completed/failed, graph reques
 stablecoin routing requested/completed/failed, DeFi routing requested/completed/failed, execution
 rejected, execution intent recorded, execution intent rejected (expired quote), API key issued/revoked, agent issued/revoked, payment intent
 lifecycle, `payment.policy.evaluated` (every allow and deny), `payment.policy.denied`, NL interpret
-and NL route completed, `monetization.recorded`. The audit repository exposes no update or delete operation.
+and NL route completed, `monetization.recorded`, `onboarding.organization.created`,
+`onboarding.invite.issued`, `onboarding.invite.accepted`, `onboarding.kyb.submitted`,
+`onboarding.kyb.reviewed`, `onboarding.pricing.configured`. The audit repository exposes no update or delete operation.
 
 ## Data handling
 
@@ -81,3 +83,25 @@ confirmed outside the coding session. Therefore:
 Staging and production remain empty of licensed adapters. Comparisons in those environments return
 **422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`). `PRODUCTION_ROUTING_AVAILABLE` must stay
 `false`. Do not set it true to “try” an unconfirmed partner.
+
+## B2B KYB (PHASE 31) — vendor not confirmed
+
+Onboarding a real organization does not change the non-custodial architecture: customer assets
+never touch the platform. It also does not enable execution.
+
+As of 2026-08-28 no KYB vendor is contractually confirmed. The flow is implemented anyway, fail
+closed:
+
+| Required confirmation | Status |
+| --------------------- | ------ |
+| Named KYB vendor / provider of record | **Missing** |
+| Contractual right to submit businesses for verification | **Missing** |
+| Automated approve/reject webhook | **Not implemented** — would be a `KybVendor` adapter |
+
+Interim mechanism: the organization owner/admin submits KYB (`unverified` → `pending`); an internal
+operator records `verified` or `rejected` with an audited reason. `ManualReviewKybVendor.submitForReview`
+always returns `pending`. A vendor error leaves the org **unverified** — never verified.
+
+Unverified and rejected orgs may explore sandbox quotes. They are not `realTransactionEligible`.
+Production-locked licensed quotes additionally require an explicit `CustomerPricing` row (no silent
+default take-rate). `POST /api/v1/executions` remains 501.

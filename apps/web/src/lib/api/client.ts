@@ -6,7 +6,10 @@ import type {
   DashboardMetricsPayload,
   DashboardProviderUsageDto,
   DashboardQuoteDto,
+  AcceptInviteDto,
   DashboardSettingsDto,
+  KybSubmitDto,
+  OnboardingSnapshotDto,
   DashboardTransactionDto,
   Envelope,
   GraphSearchDto,
@@ -339,6 +342,38 @@ export function fetchDashboardSettings(
     method: 'GET',
     path: '/api/v1/dashboard/settings',
     authorization,
+  });
+}
+
+export function fetchDashboardOnboarding(
+  authorization: string,
+): Promise<ApiResult<OnboardingSnapshotDto>> {
+  return request<OnboardingSnapshotDto>({
+    method: 'GET',
+    path: '/api/v1/dashboard/onboarding',
+    authorization,
+  });
+}
+
+export function submitOnboardingKyb(
+  authorization: string,
+): Promise<ApiResult<KybSubmitDto>> {
+  return request<KybSubmitDto>({
+    method: 'POST',
+    path: '/api/v1/dashboard/onboarding/kyb/submit',
+    authorization,
+  });
+}
+
+export function acceptInvite(input: {
+  readonly token: string;
+  readonly password?: string;
+  readonly displayName?: string;
+}): Promise<ApiResult<AcceptInviteDto>> {
+  return request<AcceptInviteDto>({
+    method: 'POST',
+    path: '/api/v1/onboarding/invites/accept',
+    body: input,
   });
 }
 

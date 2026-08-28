@@ -11,6 +11,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
 import { assertClaimedOrganization, capabilityPreHandler, requireScope } from '../http/require-organization.js';
+import { assertLicensedQuoteEligibility } from '../onboarding/eligibility.js';
 import {
   createFinancialQuoteSchema,
   parseOrThrow,
@@ -63,6 +64,12 @@ export function registerFinancialRoutingRoutes(
     const body = parseOrThrow(createFinancialQuoteSchema, request.body, 'body');
     assertClaimedOrganization(request, body.organizationId);
     const principal = requireScope(request, 'quote:read');
+    const snapshot = await container.persistence.onboarding.snapshot(
+      principal.organizationId,
+      container.clock.nowIso(),
+      container.config.productionGates.routingAvailable,
+    );
+    assertLicensedQuoteEligibility(container.config.productionLocked, snapshot);
     const resolved = resolveRouteRequest(body);
 
     const routing = await container.routing.evaluate({
@@ -87,6 +94,12 @@ export function registerFinancialRoutingRoutes(
     const body = parseOrThrow(searchRoutesSchema, request.body, 'body');
     assertClaimedOrganization(request, body.organizationId);
     const principal = requireScope(request, 'route:read');
+    const snapshot = await container.persistence.onboarding.snapshot(
+      principal.organizationId,
+      container.clock.nowIso(),
+      container.config.productionGates.routingAvailable,
+    );
+    assertLicensedQuoteEligibility(container.config.productionLocked, snapshot);
     const resolved = resolveSearchRoutesRequest(body);
 
     const graph = await container.routeGraph.discover({

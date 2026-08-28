@@ -43,6 +43,7 @@ hub: it does not custody funds, hold keys, act as principal, or execute transfer
 | `NOT_FOUND`                           | 404       | Unknown comparison, quote, transaction — or one that belongs to another organization.        |
 | `UNAUTHENTICATED`                     | 401       | Missing or unverifiable session / API key.                                                   |
 | `FORBIDDEN`                           | 403       | Authenticated, but the credential lacks the required scope or claimed org does not match.    |
+| `ONBOARDING_INCOMPLETE`               | 403       | Production-locked licensed quotes: KYB is not verified and/or no explicit CustomerPricing row exists. Sandbox exploration is not gated. |
 | `IDEMPOTENCY_CONFLICT`                | 409       | Idempotency key reused with a different payload.                                             |
 | `QUOTE_EXPIRED`                       | 409       | Quoted price is past `expiresAt`. `requoteRequired: true` — request a new quote.             |
 | `RATE_LIMITED`                        | 429       | Too many requests in the current window. `Retry-After` is set.                               |
@@ -65,12 +66,13 @@ for the same reason — never JSON numbers.
 | ----------------------------- | --------- | ------------------------------------------------------------------------------------------ |
 | `Idempotency-Key`             | request   | 8–128 chars. Replays return the original comparison.                                       |
 | `X-Meridian-Actor`            | request   | Unverified attribution for the audit trail, used only while no credential can be verified. |
+| `X-Onboarding-Operator-Key`   | request   | Sales-ops secret for invite-only org create, KYB review, and pricing attach. Compared as SHA-256. Missing/wrong → the same 401. Never logged. |
 | `Authorization` / `X-Api-Key` | request   | Session bearer (`mds_…`) or organization API key. Unverifiable credentials are `401`.      |
 | `X-Request-Id`                | response  | Correlates a response with its log and audit entries.                                      |
 | `Deprecation` / `Link`        | response  | Present on the legacy `/v1` prefix only.                                                   |
 
-**Authentication.** Public comparison, meta, health, provider catalog, assets and currencies stay
-available without a credential. Presenting `Authorization: Bearer mds_…` or `X-Api-Key` authenticates
+**Authentication.** Public comparison, meta, health, provider catalog, assets, currencies, and
+invite acceptance stay available without a credential. Presenting `Authorization: Bearer mds_…` or `X-Api-Key` authenticates
 a user or service principal whose `organizationId` scopes every tenant query. Organization API keys
 carry explicitly minted scopes (`quote:read`, `route:read`, `transaction:create`). Session users
 receive the scopes of their membership role at login (`viewer`/`member`: `quote:read` and
@@ -194,7 +196,8 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "paymentPolicyEngine": true,
   "executionIntents": true,
   "multiRailMonetization": true,
-  "agentFinancialDashboard": true
+  "agentFinancialDashboard": true,
+  "b2bOnboarding": true
 }
 ```
 
@@ -214,6 +217,8 @@ is true: quoted TPV, platform revenue, provider cost, partner commission, gross 
 rate are attributed on the revenue dashboard. `agentFinancialDashboard` is true: organization
 operators can inspect agent volume, fees, success rate, spending limits and policy denials, and
 patch allow-lists. The dashboard never custodies funds, holds keys, or generates wallets.
+`b2bOnboarding` is true: sales-assisted invite-only onboarding with fail-closed KYB and explicit
+CustomerPricing. Completing onboarding does not enable execution.
 `POST /api/v1/executions` remains 501.
 
 ## `GET /api/v1/openapi.json`
@@ -573,6 +578,75 @@ Revokes the session presented in `Authorization`. Idempotent for anonymous calle
 
 The verified principal's user, organization and role. `401` without a credential.
 
+## B2B onboarding (sales-assisted, invite-only)
+
+Self-service signup is not offered. An internal operator with `ONBOARDING_OPERATOR_SECRET` creates
+the `Organization`, issues the first owner `OrganizationMember` invite, records a KYB decision, and
+attaches an explicit `CustomerPricing` row. New organizations default to `kybStatus: unverified`,
+no pricing, no API key, and no elevated scopes.
+
+KYB vendor: **manual review** (no contractually confirmed vendor). Automated KYB is a future
+adapter behind the same fail-closed `KybVendor` port — vendor errors never auto-approve.
+Pricing model: existing negotiated `CustomerPricing` rules feeding `priceRouteMonetization`. There
+is **no silent default take-rate**. An organization is `realTransactionEligible` only when
+`kybStatus === "verified"` **and** at least one in-force `CustomerPricing` row exists (including an
+agreed `markupBps` of `"0"`).
+
+Sandbox `/quote` remains available for unverified orgs. Production-locked `/quote` and
+`/routes/search` return `403 ONBOARDING_INCOMPLETE` until eligible. Public `POST /comparisons` is
+unchanged. `POST /api/v1/executions` remains `501`. Completing onboarding does not enable
+execution and does not invent a licensed provider (PHASE 30 is still blocked).
+
+### `POST /api/v1/ops/onboarding/organizations`
+
+Operator header required. Creates the organization and an owner invite. The raw invite token
+(`miv_…`) is returned **once**; only a hash is stored. Invite TTL is 7 days.
+
+```jsonc
+{
+  "name": "Northwind Treasury",
+  "slug": "northwind-treasury",
+  "countryCode": "SG",
+  "ownerEmail": "owner@northwind.example.invalid",
+  "ownerDisplayName": "Northwind Owner"
+}
+```
+
+`201` with `kybStatus: "unverified"`, `pricingConfigured: false`, and `invite.token`. Duplicate
+slug is `400`. Missing/wrong operator key is `401` (same either way).
+
+### `POST /api/v1/onboarding/invites/accept`
+
+Public. Body: `token`, `password` (required when the invited user has no password yet; min 12
+characters; demo secrets rejected), optional `displayName`. Activates the invited membership.
+Does not verify KYB or attach pricing.
+
+### `GET /api/v1/dashboard/onboarding`
+
+Organization session. Returns the live checklist: organization created, KYB status, whether
+pricing is configured, whether an API key exists, `realTransactionEligible`, and
+`licensedProviderConfigured`. Completeness is backend state.
+
+### `POST /api/v1/dashboard/onboarding/kyb/submit`
+
+Owner or admin session. Submits KYB while `unverified` → `pending`. The interim vendor is
+`manual_review` and always returns pending. A vendor error leaves the org unverified.
+
+### `POST /api/v1/ops/onboarding/organizations/:id/kyb`
+
+Operator. Body: `{ "status": "verified" | "rejected", "reason": "..." }` (reason min 3 chars).
+Audited as `onboarding.kyb.reviewed` with actor and reason.
+
+### `POST /api/v1/ops/onboarding/organizations/:id/pricing`
+
+Operator. Body requires explicit `markupBps` (non-negative decimal string). Optional
+`discountBps`, `platformFeeMinorUnits`, `notes`. Inserts a blanket `CustomerPricing` row (any
+corridor / any rail). Does not bypass `priceRouteMonetization`.
+
+Audit events: `onboarding.organization.created`, `onboarding.invite.issued`,
+`onboarding.invite.accepted`, `onboarding.kyb.submitted`, `onboarding.kyb.reviewed`,
+`onboarding.pricing.configured`. Invite tokens and the operator header are redacted from logs.
+
 ## `GET /api/v1/dashboard/metrics`
 
 Organization-scoped totals and 30-day charts, computed from stored quotes and transaction requests:
@@ -682,7 +756,9 @@ in the body is a claim that must match the principal — it is never the source 
 ```
 
 Anonymous callers are `401`. A mismatched `organizationId` is `403`. Missing `quote:read` is `403`.
-`POST /api/v1/routes` remains the **public** (unscoped) multi-rail discovery endpoint. It is not
+When the process is production-locked, incomplete onboarding (`kybStatus` not `verified` and/or no
+explicit `CustomerPricing` row) is `403 ONBOARDING_INCOMPLETE`. Sandbox `/quote` is not gated that
+way. `POST /api/v1/routes` remains the **public** (unscoped) multi-rail discovery endpoint. It is not
 the billed `/quote` surface; see [Public vs authenticated quote surfaces](#public-vs-authenticated-quote-surfaces).
 
 ## `POST /api/v1/routes/search`
