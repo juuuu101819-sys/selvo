@@ -7,7 +7,7 @@ import {
   isForbiddenProductionSecret,
   randomToken,
   uuidIdGenerator,
-  type KybStatus,
+  type KybVendor,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -94,7 +94,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, container: AppCon
       requestId: request.id,
     },
   });
-  const kybVendor = new ManualReviewKybVendor();
+  const kybVendor: KybVendor = new ManualReviewKybVendor();
 
   app.post('/ops/onboarding/organizations', async (request, reply) => {
     requireOnboardingOperator(presentedOperatorKey(request), operatorSecret());
@@ -105,7 +105,6 @@ export function registerOnboardingRoutes(app: FastifyInstance, container: AppCon
     }
 
     const organizationId = uuidIdGenerator.generate('org');
-    const nowIso = container.clock.nowIso();
     await container.persistence.identity.upsertOrganization({
       id: organizationId,
       name: body.name,
@@ -182,7 +181,7 @@ export function registerOnboardingRoutes(app: FastifyInstance, container: AppCon
       envelope(request, {
         organizationId,
         slug: body.slug,
-        kybStatus: 'unverified' as KybStatus,
+        kybStatus: 'unverified',
         pricingConfigured: false,
         invite: { id: inviteId, token, expiresAt, email, role: 'owner' as const },
       }),

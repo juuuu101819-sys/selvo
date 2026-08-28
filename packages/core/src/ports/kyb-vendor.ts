@@ -21,7 +21,10 @@ export interface KybVendor {
 export class ManualReviewKybVendor implements KybVendor {
   readonly id = 'manual_review';
 
-  submitForReview(): Promise<KybSubmissionResult> {
+  submitForReview(_input: {
+    readonly organizationId: string;
+    readonly countryCode: string;
+  }): Promise<KybSubmissionResult> {
     return Promise.resolve({ vendorId: this.id, status: 'pending' });
   }
 }
@@ -30,7 +33,10 @@ export class ManualReviewKybVendor implements KybVendor {
 export class FailingKybVendor implements KybVendor {
   readonly id = 'failing_test_vendor';
 
-  submitForReview(): Promise<KybSubmissionResult> {
+  submitForReview(_input: {
+    readonly organizationId: string;
+    readonly countryCode: string;
+  }): Promise<KybSubmissionResult> {
     return Promise.reject(
       new PersistenceError('KYB vendor unavailable. The organization was not auto-approved.'),
     );
