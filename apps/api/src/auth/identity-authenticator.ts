@@ -81,7 +81,7 @@ export class IdentityAuthenticator implements Authenticator {
       subjectId: resolved.user.id,
       displayName: resolved.user.displayName,
       roles: [resolved.membership.role],
-      scopes: [...sessionScopesForRole(resolved.membership.role)],
+      scopes: sessionScopesForRole(resolved.membership.role),
       actor: resolved.user.email,
       verified: true,
     };

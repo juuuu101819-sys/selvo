@@ -362,7 +362,7 @@ export function registerAgentPaymentRoutes(
     '/payment-intents/:id/simulate',
     {
       preHandler: [
-        async () => {
+        () => {
           if (container.config.productionLocked) {
             throw new ExecutionNotImplementedError();
           }
