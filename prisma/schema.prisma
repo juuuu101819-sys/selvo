@@ -926,3 +926,14 @@ model AuditLog {
   @@index([organizationId, occurredAt(sort: Desc)])
   @@map("audit_logs")
 }
+
+/// Shared rate-limit windows. Used so replica processes share the same counters (PA-M02).
+model RateLimitBucket {
+  id              String   @id
+  bucketKey       String   @unique @map("bucket_key")
+  windowStartedAt DateTime @map("window_started_at") @db.Timestamptz(3)
+  hitCount        Int      @map("hit_count")
+  updatedAt       DateTime @map("updated_at") @db.Timestamptz(3)
+
+  @@map("rate_limit_buckets")
+}

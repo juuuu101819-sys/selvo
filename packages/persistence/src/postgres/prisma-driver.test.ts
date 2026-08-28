@@ -125,6 +125,7 @@ describe('migrations', () => {
           'payment_policies',
           'payment_intents',
           'monetization_events',
+          'rate_limit_buckets',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }

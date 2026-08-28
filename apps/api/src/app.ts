@@ -136,10 +136,10 @@ function registerJsonBodyParser(app: FastifyInstance): void {
       }
       try {
         done(null, JSON.parse(body));
-      } catch (error) {
+      } catch {
         done(
           new ValidationError('Request body is not valid JSON.', {
-            reason: error instanceof Error ? error.message : 'parse error',
+            reason: 'malformed_json',
           }),
         );
       }

@@ -114,6 +114,19 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
     return Promise.resolve();
   }
 
+  replaceCredentialSecretHash(id: string, secretHash: string): Promise<void> {
+    const prefix = this.credentialsById.get(id);
+    if (prefix === undefined) {
+      return Promise.resolve();
+    }
+    const current = this.credentialsByPrefix.get(prefix);
+    if (current === undefined) {
+      return Promise.resolve();
+    }
+    this.credentialsByPrefix.set(prefix, { ...current, secretHash });
+    return Promise.resolve();
+  }
+
   revokeCredentialsForAgent(
     agentId: string,
     organizationId: string,

@@ -113,6 +113,15 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
     );
   }
 
+  async replaceCredentialSecretHash(id: string, secretHash: string): Promise<void> {
+    await this.write(() =>
+      this.client.agentCredential.update({
+        where: { id },
+        data: { secretHash },
+      }),
+    );
+  }
+
   async revokeCredentialsForAgent(
     agentId: string,
     organizationId: string,

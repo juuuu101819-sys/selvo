@@ -121,7 +121,7 @@ describe('PA-C02 demo credential rejection', () => {
       persistence.identity,
       clock,
       persistence.agentPayments,
-      { rejectDemoSecrets: true },
+      { rejectDemoSecrets: true, sessionTokenPepper: 'test-session-pepper' },
     );
     const rejected = await rejecting.authenticate({
       authorization: `Bearer ${DEMO_AGENT_SECRET}`,
@@ -134,6 +134,7 @@ describe('PA-C02 demo credential rejection', () => {
       persistence.identity,
       clock,
       persistence.agentPayments,
+      { sessionTokenPepper: 'test-session-pepper' },
     );
     const accepted = await sandbox.authenticate({
       authorization: `Bearer ${DEMO_AGENT_SECRET}`,

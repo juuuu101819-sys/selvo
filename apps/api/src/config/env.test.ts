@@ -153,6 +153,8 @@ describe('PA-C03 database production gate', () => {
       routingAvailable: false,
       executionAvailable: false,
     });
+    expect(config.sessionTokenPepper).not.toBe(PRODUCTION_AUTH_SECRET);
+    expect(config.sessionTokenPepper).toHaveLength(64);
   });
 
   it('allows development + memory', () => {

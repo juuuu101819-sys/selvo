@@ -550,7 +550,7 @@ describe('GET /v1/comparisons/:comparisonId/audit', () => {
 
     expect(types).toContain('comparison.requested');
     expect(types).toContain('comparison.completed');
-    expect(body.data.events.every((event) => event.actor === 'treasury-ops')).toBe(true);
+    expect(body.data.events.every((event) => event.actor === 'anonymous')).toBe(true);
   });
 
   it('shows which provider quoted what for the comparison', async () => {

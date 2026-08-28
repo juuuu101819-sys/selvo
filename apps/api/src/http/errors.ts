@@ -1,76 +1,35 @@
-import { ErrorCode, isAppError, RateLimitedError, type ErrorCodeValue } from '@meridian/core';
+import { ErrorCode, isAppError } from '@meridian/core';
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { toPublicErrorResponse, type ErrorResponseBody } from './public-error.js';
 
-export interface ErrorResponseBody {
-  readonly error: {
-    readonly code: ErrorCodeValue;
-    readonly message: string;
-    readonly details: Readonly<Record<string, unknown>>;
-    readonly requestId: string;
-  };
-}
+export type { ErrorResponseBody } from './public-error.js';
 
 /**
  * Single serialisation point for every failure the API returns.
  *
- * Operational errors (bad input, a corridor nobody prices, a dead provider) carry their own code,
- * status and safe details through to the client. Anything else is logged in full and answered with
- * an opaque `INTERNAL_ERROR`, so a stack trace or a connection string can never leak into a
- * response body.
+ * Operational errors (bad input, a corridor nobody prices) carry a stable public code and a
+ * safe message. Anything else — Prisma, provider payloads, stack traces, Fastify parser wording —
+ * is logged in full under the same `requestId` and answered with an opaque DTO (PA-M03).
  */
 export function registerErrorHandling(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError, request: FastifyRequest, reply: FastifyReply) => {
     const requestId = request.id;
+    const mapped = toPublicErrorResponse(error, requestId);
 
-    if (isAppError(error)) {
-      if (error.operational) {
-        request.log.info(
-          { code: error.code, details: error.details, err: error },
-          'Request failed with an operational error',
-        );
-      } else {
-        request.log.error({ code: error.code, err: error }, 'Request failed with a defect');
-      }
-
-      if (error instanceof RateLimitedError) {
-        const retryAfter = error.details['retryAfterSeconds'];
-        if (typeof retryAfter === 'number') {
-          reply.header('Retry-After', String(retryAfter));
-        }
-      }
-
-      return reply.status(error.httpStatus).send({
-        error: {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          requestId,
-        },
-      } satisfies ErrorResponseBody);
+    if (isAppError(error) && error.operational) {
+      request.log.info(
+        { code: error.code, details: error.details, err: error, requestId },
+        'Request failed with an operational error',
+      );
+    } else {
+      request.log.error({ err: error, requestId }, 'Request failed; details withheld from client');
     }
 
-    // Fastify's own failures: malformed JSON, payload too large, unsupported media type.
-    if (typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
-      request.log.info({ err: error }, 'Malformed request rejected by the HTTP layer');
-      return reply.status(error.statusCode).send({
-        error: {
-          code: ErrorCode.VALIDATION_ERROR,
-          message: error.message,
-          details: {},
-          requestId,
-        },
-      } satisfies ErrorResponseBody);
+    if (mapped.retryAfterSeconds !== undefined) {
+      reply.header('Retry-After', String(mapped.retryAfterSeconds));
     }
 
-    request.log.error({ err: error }, 'Unhandled error');
-    return reply.status(500).send({
-      error: {
-        code: ErrorCode.INTERNAL_ERROR,
-        message: 'An unexpected error occurred.',
-        details: {},
-        requestId,
-      },
-    } satisfies ErrorResponseBody);
+    return reply.status(mapped.status).send(mapped.body);
   });
 
   app.setNotFoundHandler((request: FastifyRequest, reply: FastifyReply) =>

@@ -108,6 +108,22 @@ export class InMemoryIdentityStore implements IdentityStore {
     return this.resolve(session.userId, session.organizationId, session, null);
   }
 
+  replaceSessionTokenHash(id: string, tokenHash: string): Promise<void> {
+    const previousHash = this.sessionsById.get(id);
+    if (previousHash === undefined) {
+      return Promise.resolve();
+    }
+    const session = this.sessionsByHash.get(previousHash);
+    if (session === undefined) {
+      return Promise.resolve();
+    }
+    this.sessionsByHash.delete(previousHash);
+    const updated: StoredSession = { ...session, tokenHash };
+    this.sessionsByHash.set(tokenHash, updated);
+    this.sessionsById.set(id, tokenHash);
+    return Promise.resolve();
+  }
+
   revokeSession(id: string, nowIso: string): Promise<void> {
     const hash = this.sessionsById.get(id);
     if (hash === undefined) {
@@ -146,6 +162,19 @@ export class InMemoryIdentityStore implements IdentityStore {
     if (key !== undefined) {
       key.lastUsedAt = nowIso;
     }
+    return Promise.resolve();
+  }
+
+  replaceApiKeySecretHash(id: string, secretHash: string): Promise<void> {
+    const prefix = this.apiKeysById.get(id);
+    if (prefix === undefined) {
+      return Promise.resolve();
+    }
+    const key = this.apiKeysByPrefix.get(prefix);
+    if (key === undefined) {
+      return Promise.resolve();
+    }
+    this.apiKeysByPrefix.set(prefix, { ...key, secretHash });
     return Promise.resolve();
   }
 

@@ -80,10 +80,13 @@ that cannot be verified is `401 UNAUTHENTICATED`, never silently treated as anon
 `GET /api/v1/meta` reports the active scheme under `authentication` (`session+api_key`,
 `enforcing: true`).
 
-Organization API keys are hashed (SHA-256) before persist, never stored in plaintext, and support
-revocation, expiry and scopes. The raw secret is returned once on `POST /api/v1/api-keys`. Request
-logs redact `Authorization`, `X-Api-Key`, passwords, tokens, wallets and private keys. In-process
-rate limiting applies to `/api/v1` (`RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`).
+Organization API keys are hashed with per-key salted scrypt before persist, never stored in plaintext,
+and support revocation, expiry and scopes. Session tokens are HMAC-SHA-256 under a pepper derived from
+`AUTH_SECRET`. The raw API-key secret is returned once on `POST /api/v1/api-keys`. Request
+logs redact `Authorization`, `X-Api-Key`, passwords, tokens, wallets and private keys. Shared
+rate limiting (PostgreSQL `rate_limit_buckets` in production; in-process map with the memory driver)
+applies to `/api/v1` (`RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`). Exceeding the limit is HTTP 429 with
+`Retry-After`. Authenticated callers are limited by principal; anonymous callers by IP.
 
 Demo sandbox login: `treasury@demo-trading.example.invalid` / `MeridianDemo!2026`. Sessions last
 12 hours. Dashboard settings return API key **prefixes** only.

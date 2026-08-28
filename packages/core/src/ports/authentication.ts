@@ -37,11 +37,11 @@ export interface Principal {
   /** Rights granted to this caller. Empty for anonymous. Session users receive the scopes of their membership role. */
   readonly scopes: readonly ApiScope[];
   /**
-   * Label recorded on audit events. For an authenticated principal this is derived from the
-   * verified identity; for an anonymous one it is a caller-supplied hint and must not be trusted.
+   * Label recorded on audit events. Always derived from the verified session, API key, or agent
+   * credential. Anonymous callers are always `"anonymous"` — client-supplied actor fields are ignored.
    */
   readonly actor: string;
-  /** True when `actor` came from a verified credential rather than a request header. */
+  /** True when `actor` came from a verified credential rather than remaining anonymous. */
   readonly verified: boolean;
 }
 
@@ -63,7 +63,10 @@ export interface AuthenticationAttempt {
   readonly authorization: string | null;
   /** Raw API key header, if present. */
   readonly apiKey: string | null;
-  /** Unverified actor hint, used only when no credential is presented. */
+  /**
+   * Client-supplied actor hint (`X-Meridian-Actor`). Authenticators MUST ignore this for the
+   * principal and for audit attribution (PA-M04).
+   */
   readonly declaredActor: string | null;
 }
 

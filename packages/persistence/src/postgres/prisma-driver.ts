@@ -12,6 +12,7 @@ import {
   type JsonObject,
   type PersistenceDriver,
   type PlatformPricingResolver,
+  type RateLimitStore,
   type StoredComparison,
 } from '@meridian/core';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -20,6 +21,7 @@ import { PrismaDashboardRepository } from './prisma-dashboard.js';
 import { PrismaAgentPaymentsRepository } from './prisma-agent-payments.js';
 import { PrismaExecutionIntentRepository } from './prisma-execution-intents.js';
 import { PrismaIdentityStore } from './prisma-identity.js';
+import { PrismaRateLimitStore } from '../rate-limit/prisma-store.js';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const DEFAULT_LIST_LIMIT = 50;
@@ -54,6 +56,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly dashboard: DashboardRepository;
   readonly executionIntents: ExecutionIntentRepository;
   readonly agentPayments: PrismaAgentPaymentsRepository;
+  readonly rateLimits: RateLimitStore;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -78,6 +81,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.dashboard = new PrismaDashboardRepository(this.client);
     this.executionIntents = new PrismaExecutionIntentRepository(this.client);
     this.agentPayments = new PrismaAgentPaymentsRepository(this.client);
+    this.rateLimits = new PrismaRateLimitStore(this.client);
     this.pricing = new PrismaPlatformPricingResolver(this.client);
   }
 
@@ -93,7 +97,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
         SELECT (to_regclass('public.comparisons') IS NOT NULL
                 AND to_regclass('public.audit_logs') IS NOT NULL
                 AND to_regclass('public.execution_intents') IS NOT NULL
-                AND to_regclass('public.payment_intents') IS NOT NULL) AS present
+                AND to_regclass('public.payment_intents') IS NOT NULL
+                AND to_regclass('public.rate_limit_buckets') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(

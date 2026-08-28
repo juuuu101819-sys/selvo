@@ -5,8 +5,6 @@ import {
   type Principal,
 } from '@meridian/core';
 
-const MAX_ACTOR_LENGTH = 128;
-
 /**
  * The Phase 1 authenticator: accepts unauthenticated callers, and refuses to pretend.
  *
@@ -18,6 +16,8 @@ const MAX_ACTOR_LENGTH = 128;
  *
  * Replaced in Phase 2 by an authenticator that verifies API keys and session tokens against the
  * Organization, User and ApiKey tables the schema already defines.
+ *
+ * Client-supplied actor fields (`X-Meridian-Actor`) are ignored (PA-M04).
  */
 export class AnonymousAuthenticator implements Authenticator {
   readonly scheme = 'anonymous';
@@ -28,18 +28,6 @@ export class AnonymousAuthenticator implements Authenticator {
       return Promise.resolve(null);
     }
 
-    const declared = attempt.declaredActor?.trim() ?? '';
-    if (declared === '') {
-      return Promise.resolve(ANONYMOUS_PRINCIPAL);
-    }
-
-    return Promise.resolve({
-      ...ANONYMOUS_PRINCIPAL,
-      // Bounded so an unauthenticated header cannot be used to bloat the audit log, and flagged
-      // unverified so nothing downstream mistakes it for an identity.
-      actor: declared.slice(0, MAX_ACTOR_LENGTH),
-      displayName: declared.slice(0, MAX_ACTOR_LENGTH),
-      verified: false,
-    });
+    return Promise.resolve(ANONYMOUS_PRINCIPAL);
   }
 }

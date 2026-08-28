@@ -100,6 +100,8 @@ export interface AgentPaymentsRepository {
   createCredential(input: CreateAgentCredentialInput): Promise<void>;
   findCredentialByPrefix(keyPrefix: string): Promise<AgentCredential | null>;
   touchCredential(id: string, nowIso: string): Promise<void>;
+  /** Replaces an agent-credential secret hash in place (legacy SHA-256 → scrypt). */
+  replaceCredentialSecretHash(id: string, secretHash: string): Promise<void>;
   revokeCredentialsForAgent(agentId: string, organizationId: string, nowIso: string): Promise<void>;
 
   createWalletReference(input: CreateWalletReferenceInput): Promise<AgentWalletReference>;

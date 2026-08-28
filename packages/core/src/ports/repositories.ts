@@ -3,6 +3,7 @@ import type { DashboardRepository } from './dashboard.js';
 import type { ExecutionIntentRepository } from './execution-intent.js';
 import type { AgentPaymentsRepository } from './agent-payments.js';
 import type { IdentityStore } from './identity.js';
+import type { RateLimitStore } from './rate-limit.js';
 
 /**
  * A persisted comparison. The stored form is the serialised DTO plus the snapshot needed for
@@ -60,6 +61,7 @@ export interface PersistenceDriver {
   readonly dashboard: DashboardRepository;
   readonly executionIntents: ExecutionIntentRepository;
   readonly agentPayments: AgentPaymentsRepository;
+  readonly rateLimits: RateLimitStore;
   /** Verifies the store is reachable and the schema is present. */
   healthCheck(): Promise<void>;
   close(): Promise<void>;

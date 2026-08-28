@@ -119,12 +119,12 @@ Plaintext is never stored, logged or selected into a DTO.
 its own record rather than a column on `User`, so one person can act for several businesses — a group
 treasury function or an external accountant, both normal in this market and painful to retrofit.
 
-**`ApiKey`** — machine credential, hash only. Lookups go by `keyPrefix`; the secret is compared as a
-SHA-256 hash with a timing-safe check. `scopes` is a subset of `quote:read`, `route:read`,
+**`ApiKey`** — machine credential, hash only. Lookups go by `keyPrefix`; the secret is a per-key
+salted scrypt hash compared with the KDF's constant-time verify. `scopes` is a subset of `quote:read`, `route:read`,
 `transaction:create`. `expiresAt` and `revokedAt` are optional. The prefix is the only form returned
 to the dashboard; the raw secret is shown once on issue.
 
-**`Session`** — a hashed session token (`mds_…`) bound to one user and one organization, with an
+**`Session`** — an HMAC-SHA-256 session token (`mds_…`) bound to one user and one organization, with an
 expiry. Logout sets `revokedAt`. Raw tokens are never stored.
 
 **`ExecutionIntent`** — a recorded route choice. `status` is always `recorded`. `executable` and

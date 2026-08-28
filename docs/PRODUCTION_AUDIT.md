@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H13 were subsequently fixed in production code. Medium and Low issues (PA-M01–PA-M16, PA-L01–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M04, and PA-M12 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M05–PA-M11, PA-M13–PA-M16, PA-L01–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -34,7 +34,7 @@ It is **not production-ready** as a live financial service:
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
   (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
   naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
-  Remaining Medium/Low items are untouched and out of scope for the HIGH-issue sequence.
+  PA-M01–PA-M04 and PA-M12 are closed. Remaining Medium/Low items are out of scope for this phase.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -103,7 +103,7 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | 7 | Authentication | Session `mds_`, org key `mk_`, agent `mag_`. Invalid credentials 401. Passwords scrypt. |
 | 8 | Authorization | Roles exist but policy PATCH ignores them. Sessions get every API scope. |
 | 9 | Organization isolation | Queries keyed by principal `organizationId`. Cross-tenant 404 (tested). |
-| 10 | API key security | SHA-256 hash at rest, prefix lookup, scope CHECK. Unsalted. |
+| 10 | API key security | Salted scrypt at rest, prefix lookup, scope CHECK. Legacy SHA-256 re-hashed on use until 2026-11-28 (PA-M01). |
 | 11 | Financial calculations | Engines Decimal-safe. Dashboard averages use `Dec`/`bigint` (PA-H07). Display `Number()` remains in `format.ts` (PA-L01). |
 | 12 | Decimal precision | `DECIMAL(38,0)` amounts, `DECIMAL(38,18)` rates. |
 | 13 | Quote engine | `/comparisons` ranks via MultiRailRouter 1.0.0. Fiat `ENGINE_VERSION` 2.0.0 remains on `/meta` and in `RouteComparisonService` (not HTTP). Fingerprints + replay. |
@@ -117,9 +117,9 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | 21 | Revenue analytics | Quoted ledger + org dashboard. `/routes` and `/comparisons` write `ROUTE_QUOTE` events. Realized revenue stays zero until settlement (unimplemented). |
 | 22 | TPV analytics | `tpvMinorUnits` on monetization events; agent dashboard volume. |
 | 23 | Referral system | 25% of platform revenue in `priceMonetization`. No partner payout rail (correct). |
-| 24 | Audit logging | Append-only; closed event set. Failed logins not recorded. |
-| 25 | Rate limiting | In-process Map. Disabled in `NODE_ENV=test` unless overridden. |
-| 26 | Error handling | Typed `AppError`; 5xx opaque. Fastify 4xx may echo parser message. |
+| 24 | Audit logging | Append-only; closed event set. Failed logins not recorded. Anonymous actor is always `anonymous` (PA-M04). |
+| 25 | Rate limiting | Shared counters on the persistence driver (PostgreSQL in production). Disabled in `NODE_ENV=test` unless overridden. |
+| 26 | Error handling | Typed `AppError`; Fastify 4xx, Prisma, and provider payloads mapped to a safe DTO (PA-M03). |
 | 27 | Secrets management | Env Zod; `SecretResolver` for `PROVIDER_*`. Demo secrets in source. |
 | 28 | Demo/production separation | Production boot fail-closed for comparison registry. Demo seed sandbox-gated (PA-C02). Graph is demo-gated; production graph is empty until licensed metadata exists (PA-H06). |
 | 29 | Testing coverage | 845 unit/integration; 46 e2e (Phase 19). Gaps: production boot, postgres-default CI. Viewer PATCH and daily-spend reservation covered by PA-H01–H04. |
@@ -311,38 +311,46 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M01 — Unsalted SHA-256 for API keys, agent secrets, and session tokens
 
-- **File:** `packages/core/src/crypto/secrets.ts` (lines 80–94)
-- **Component:** `hashSecret` / `secretsMatch`
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/crypto/secrets.ts`; `apps/api/src/auth/identity-authenticator.ts`
+- **Component:** `hashCredential` / `verifyAndUpgradeCredential` / `hashSessionToken`
 - **Problem:** High-entropy tokens hashed with unsalted SHA-256. Passwords correctly use scrypt (lines 31–38).
 - **Why it matters:** DB dump + token reuse is easier to brute than a KDF. Mitigated by 32-byte random secrets.
-- **Recommended fix:** HMAC-SHA256 with a server pepper, or scrypt with per-secret salt. Timing-safe compare already present.
+- **Fix:** API keys and agent `mag_` secrets use per-secret salted scrypt (`hashCredential`), verified with the KDF compare (`timingSafeEqual` on derived keys). The raw secret is returned once on issue; subsequent list views expose only `keyPrefix`. Session tokens use HMAC-SHA-256 with a pepper derived from `AUTH_SECRET` (never stored on `AppConfig`) because sessions are looked up by hash. Legacy unsalted SHA-256 hashes remain verifiable until first successful use, at which point they are immediately re-hashed; leftover SHA-256 verification is refused after `2026-11-28T00:00:00.000Z`. Newly issued credentials never use SHA-256.
+- **Tests:** `packages/core/src/crypto/secrets.test.ts`; `apps/api/src/http/phase24-security.test.ts`
 - **Priority:** P1
 
 #### PA-M02 — In-process rate limiter
 
-- **File:** `apps/api/src/http/rate-limit.ts` (lines 16–58)
-- **Component:** `registerRateLimiting`
+- **Status:** **FIXED** (2026-08-28) — Option B, shared backend
+- **File:** `apps/api/src/http/rate-limit.ts`; `packages/persistence/src/rate-limit/`
+- **Component:** `registerRateLimiting` / `RateLimitStore`
 - **Problem:** Per-process `Map` keyed by org or IP. No shared store. Restarts reset buckets.
 - **Why it matters:** Multiple replicas multiply quota; anonymous `/comparisons` is IP-only.
-- **Recommended fix:** Redis (or equivalent) behind the same hook. Per-route budgets for quote fan-out.
+- **Fix:** Counters live on the persistence driver. Production (`DATABASE_DRIVER=postgres`, required by PA-C03) uses table `rate_limit_buckets` with an atomic `INSERT … ON CONFLICT` so every replica shares the window and a restart does not reset the distributed limit. The memory driver keeps an in-process map (single process by definition). There is no Redis in this repository; this is the roadmap's "Redis-based rate limit" item implemented on the existing shared store rather than a second backend. Identity precedence: verified API-key/agent/user `subjectId`, then IP for anonymous callers. Exceeding the limit returns HTTP 429 with `Retry-After`.
+- **Tests:** `apps/api/src/routes/rate-limit.test.ts`; `packages/persistence/src/rate-limit/fixed-window.test.ts`
 - **Priority:** P1
 
 #### PA-M03 — Fastify 4xx messages forwarded to clients
 
-- **File:** `apps/api/src/http/errors.ts` (lines 52–62)
-- **Component:** `setErrorHandler`
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/http/errors.ts`; `apps/api/src/http/public-error.ts`
+- **Component:** `setErrorHandler` / `toPublicErrorResponse`
 - **Problem:** Non-`AppError` 4xx uses `error.message`. 5xx is opaque (good).
 - **Why it matters:** Parser wording leakage (payload size, content-type).
-- **Recommended fix:** Map to a generic `VALIDATION_ERROR` message.
+- **Fix:** Every client error uses `{ error: { code, message, details, requestId } }`. Fastify 4xx, non-operational `AppError`, Prisma-shaped failures, and upstream provider payloads are mapped to a generic message with empty details. Server logs retain the original exception under the same `requestId`. Designed validation messages remain.
+- **Tests:** `apps/api/src/http/public-error.test.ts`
 - **Priority:** P2
 
 #### PA-M04 — Spoofable audit actor on anonymous requests
 
-- **File:** `apps/api/src/auth/identity-authenticator.ts` (lines 160–170)
-- **Component:** `anonymousFrom` / `X-Meridian-Actor`
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/auth/identity-authenticator.ts`; `apps/api/src/auth/anonymous-authenticator.ts`
+- **Component:** anonymous principal / `X-Meridian-Actor`
 - **Problem:** Unauthenticated callers can set `actor` on audit rows (e.g. execution 501).
 - **Why it matters:** Audit integrity, not fund movement.
-- **Recommended fix:** Ignore declared actor unless `verified: true`.
+- **Fix:** `actor` is taken only from the verified session, API key, or agent credential. Anonymous callers are always `"anonymous"`. `X-Meridian-Actor` and body fields such as `actorId` / `performedBy` are ignored for audit (strict request schemas also reject unknown identity fields). Every `AuditLog` write path already used `principal.actor` (or `'system'` / `'provision'`); fixing the principal fixes the writes.
+- **Tests:** `apps/api/src/http/authentication.test.ts`; `apps/api/src/http/phase24-security.test.ts`; `apps/api/src/routes/executions.test.ts`
 - **Priority:** P2
 
 #### PA-M05 — Overlapping public vs authenticated quote APIs; no OpenAPI
@@ -410,11 +418,13 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M12 — Cookie `secure` is off unless `COOKIE_SECURE=true`
 
-- **File:** `apps/web/src/lib/session.ts` (~lines 11–24)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/web/src/lib/session-cookie.ts`; `apps/web/src/lib/session.ts`
 - **Component:** session cookie
 - **Problem:** Default `secure: false` for local HTTP. Easy to forget in HTTPS production.
 - **Why it matters:** Session cookie theft on mixed-content or HTTPS deploys.
-- **Recommended fix:** Default `secure` true when `NODE_ENV=production`.
+- **Fix:** `HttpOnly=true`, `SameSite=Lax` (login is same-site POST; Strict would break email links into `/dashboard`). `Secure` is required when `PLATFORM_MODE=production` and cannot be set false (startup throw). `NODE_ENV=production` defaults Secure on. Playwright's HTTP server sets `COOKIE_SECURE=false` without `PLATFORM_MODE=production`. Request headers such as `X-Forwarded-Proto` are never read.
+- **Tests:** `apps/web/src/lib/session-cookie.test.ts`
 - **Priority:** P1
 
 #### PA-M13 — Next middleware only checks cookie presence
@@ -547,9 +557,11 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 ## C. Medium / low issues
 
-**Still open and out of scope for the CRITICAL/HIGH sequence.** Candidates for a future phase — do not treat this phase as having closed them.
+**Still open and out of scope for this phase.** PA-M01–PA-M04 and PA-M12 were closed in the API-security phase. Do not treat that phase as having closed the remainder.
 
-**Medium:** PA-M01–PA-M16 (secret hashing, rate limit, error leakage, anonymous actor, API overlap, docs drift, pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, unenforced preference, cookie secure flag, middleware, wallet wording, login audit, silent scopes).
+**Medium closed:** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M12 (cookie Secure).
+
+**Medium still open:** PA-M05–PA-M11, PA-M13–PA-M16 (API overlap, docs drift, pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, unenforced preference, middleware, wallet wording, login audit, silent scopes).
 
 **Low:** PA-L01–PA-L06 (display `Number()`, Prisma string status, SSO/MFA, cache/breakers, A2A/treasury/KYC-as-product, e2e memory).
 
@@ -564,7 +576,7 @@ A production-labelled **quoting** deployment (still non-custodial, still no sett
 3. ~~Durable postgres is required and migrations applied (PA-C03).~~ **PA-C03 FIXED** at configuration validation; operators must still provision and migrate a real database.
 4. ~~Policy PATCH and session scopes are least-privilege (PA-H01, PA-H02, PA-H03, PA-H04).~~ **PA-H01–H04 FIXED.**
 5. ~~Automated verify + audit gate exists (PA-H11, PA-H12).~~ **PA-H11–H12 FIXED.**
-6. HTTPS session cookies default secure (PA-M12).
+6. ~~HTTPS session cookies default secure (PA-M12).~~ **PA-M12 FIXED.**
 
 A production-labelled **partner-execution** deployment is **additionally** blocked by `docs/COMPLIANCE.md`: licensed partner of record, legal review, KYB/KYC, sanctions, transaction monitoring, written instruction. Software today correctly returns 501. Do not treat PA-C01 as a reason to weaken that 501.
 
@@ -580,7 +592,7 @@ Do not add product features until this sequence is complete. Do not start delega
 4. ~~**Docs:** simulation vs settlement naming (PA-H13).~~ **PA-H13 done.** Remaining: agents issued; public vs authenticated quote surfaces (PA-M06).
 5. ~~**Quote integrity:** freshness on multi-rail (PA-H09); platform fee on non-fiat corridors (PA-H10). Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
 6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
-7. **Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).
+7. ~~**Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).~~ **Done** with PostgreSQL-backed rate-limit counters (no Redis in this stack — that roadmap item overlaps PA-M02), salted scrypt API-key hashes, HMAC session tokens, and production cookie Secure. Error leakage (PA-M03) and audit-actor spoofing (PA-M04) closed in the same phase.
 8. **Phase 5 only after 1–7:** licensed read-only FX, payment, ramp, DEX APIs; persist `Quote` rows; then consider production mode.
 9. **Stop.** Partner execution remains 501 until the compliance gate.
 

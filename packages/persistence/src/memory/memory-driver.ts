@@ -14,6 +14,7 @@ import { InMemoryAgentPaymentsRepository } from './memory-agent-payments.js';
 import { InMemoryDashboardRepository } from './memory-dashboard.js';
 import { InMemoryExecutionIntentRepository } from './memory-execution-intents.js';
 import { InMemoryIdentityStore } from './memory-identity.js';
+import { InMemoryRateLimitStore } from '../rate-limit/memory-store.js';
 
 const DEFAULT_LIST_LIMIT = 50;
 
@@ -160,6 +161,7 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly dashboard: DashboardRepository = new InMemoryDashboardRepository();
   readonly executionIntents: ExecutionIntentRepository = new InMemoryExecutionIntentRepository();
   readonly agentPayments = new InMemoryAgentPaymentsRepository();
+  readonly rateLimits = new InMemoryRateLimitStore();
 
   healthCheck(): Promise<void> {
     return Promise.resolve();

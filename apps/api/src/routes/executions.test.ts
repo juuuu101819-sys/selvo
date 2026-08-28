@@ -71,7 +71,7 @@ describe('POST /v1/executions', () => {
     const rejection = events.find((event) => event.type === 'execution.rejected');
 
     expect(rejection).toBeDefined();
-    expect(rejection?.actor).toBe('over-eager-integrator');
+    expect(rejection?.actor).toBe('anonymous');
     expect(rejection?.payload['reason']).toMatch(/delegated settlement is not implemented/);
   });
 });

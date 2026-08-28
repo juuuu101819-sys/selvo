@@ -59,4 +59,7 @@ export {
   type ComparisonRow,
   type PrismaDriverOptions,
 } from './postgres/prisma-driver.js';
+export { InMemoryRateLimitStore } from './rate-limit/memory-store.js';
+export { PrismaRateLimitStore } from './rate-limit/prisma-store.js';
+export { consumeFixedWindow } from './rate-limit/fixed-window.js';
 export { readMigrations, locateMigrationRoot, MIGRATION_DIRECTORY } from './migrations.js';

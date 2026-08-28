@@ -99,8 +99,7 @@ in an httpOnly cookie and sends `Authorization: Bearer` to the API — the two p
 cookies.
 
 - `Principal` carries `organizationId`, `subjectId`, `roles` and a `verified` flag.
-- Session tokens (`mds_…`) are stored as SHA-256 hashes with a 12-hour TTL. Passwords use tagged
-  scrypt hashes.
+- Session tokens (`mds_…`) are stored as HMAC-SHA-256 digests (pepper derived from `AUTH_SECRET`) with a 12-hour TTL. Passwords and API keys / agent secrets use tagged scrypt hashes. Legacy unsalted SHA-256 hashes are re-hashed on first use until 2026-11-28.
 - API keys are looked up by a 16-character prefix; only the hash of the secret is stored.
 - Public comparison remains anonymous. A credential that cannot be verified is still a `401`.
 

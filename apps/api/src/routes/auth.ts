@@ -1,7 +1,9 @@
 import {
   UnauthenticatedError,
   hashSecret,
+  hashSessionToken,
   isDemoLoginCredential,
+  legacySha256VerificationAllowed,
   randomToken,
   uuidIdGenerator,
   verifyPassword,
@@ -79,7 +81,7 @@ export function registerAuthRoutes(app: FastifyInstance, container: AppContainer
       id: sessionId,
       userId: user.id,
       organizationId: organization.id,
-      tokenHash: hashSecret(token),
+      tokenHash: hashSessionToken(token, container.config.sessionTokenPepper),
       expiresAt,
     });
 
@@ -109,10 +111,17 @@ export function registerAuthRoutes(app: FastifyInstance, container: AppContainer
       const header = request.headers.authorization;
       const token = typeof header === 'string' ? /^Bearer\s+(\S+)$/i.exec(header)?.[1] : undefined;
       if (token !== undefined) {
-        const resolved = await container.persistence.identity.findValidSessionByTokenHash(
-          hashSecret(token),
+        const hmacHash = hashSessionToken(token, container.config.sessionTokenPepper);
+        let resolved = await container.persistence.identity.findValidSessionByTokenHash(
+          hmacHash,
           container.clock.nowIso(),
         );
+        if (resolved === null && legacySha256VerificationAllowed(container.clock.nowMs())) {
+          resolved = await container.persistence.identity.findValidSessionByTokenHash(
+            hashSecret(token),
+            container.clock.nowIso(),
+          );
+        }
         if (resolved?.session !== null && resolved?.session !== undefined) {
           await container.persistence.identity.revokeSession(
             resolved.session.id,

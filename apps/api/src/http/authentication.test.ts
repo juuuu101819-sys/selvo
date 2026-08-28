@@ -122,7 +122,7 @@ describe('anonymous authentication', () => {
   });
 
   describe('audit attribution', () => {
-    it('records the declared actor when no credential is presented', async () => {
+    it('ignores a spoofed X-Meridian-Actor header on anonymous requests (PA-M04)', async () => {
       const created = await harness.app.inject({
         method: 'POST',
         url: `${API_V1_PREFIX}/comparisons`,
@@ -133,7 +133,7 @@ describe('anonymous authentication', () => {
 
       const events = await harness.container.persistence.auditLog.listByComparison(comparisonId);
       expect(events.length).toBeGreaterThan(0);
-      expect(events.every((event) => event.actor === 'treasury-ops')).toBe(true);
+      expect(events.every((event) => event.actor === 'anonymous')).toBe(true);
     });
 
     it('falls back to "anonymous" when no actor is declared', async () => {
@@ -148,7 +148,7 @@ describe('anonymous authentication', () => {
       expect(events[0]?.actor).toBe('anonymous');
     });
 
-    it('bounds the declared actor so an unverified header cannot bloat the audit log', async () => {
+    it('does not copy an oversized unverified header onto the audit actor', async () => {
       const created = await harness.app.inject({
         method: 'POST',
         url: `${API_V1_PREFIX}/comparisons`,
@@ -158,7 +158,7 @@ describe('anonymous authentication', () => {
       const comparisonId = created.json<{ data: { comparisonId: string } }>().data.comparisonId;
 
       const events = await harness.container.persistence.auditLog.listByComparison(comparisonId);
-      expect(events[0]?.actor).toHaveLength(128);
+      expect(events[0]?.actor).toBe('anonymous');
     });
   });
 });

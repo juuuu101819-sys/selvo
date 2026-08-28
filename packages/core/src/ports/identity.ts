@@ -136,10 +136,14 @@ export interface IdentityStore {
     tokenHash: string,
     nowIso: string,
   ): Promise<ResolvedPrincipalRecord | null>;
+  /** Replaces a session token hash in place (legacy SHA-256 → HMAC-SHA-256). */
+  replaceSessionTokenHash(id: string, tokenHash: string): Promise<void>;
   revokeSession(id: string, nowIso: string): Promise<void>;
   touchSession(id: string, nowIso: string): Promise<void>;
   findApiKeyByPrefix(keyPrefix: string): Promise<IdentityApiKey | null>;
   touchApiKey(id: string, nowIso: string): Promise<void>;
+  /** Replaces an API-key secret hash in place (legacy SHA-256 → scrypt). */
+  replaceApiKeySecretHash(id: string, secretHash: string): Promise<void>;
   listMembers(organizationId: string): Promise<readonly PublicMember[]>;
   listApiKeys(organizationId: string): Promise<readonly PublicApiKey[]>;
   upsertOrganization(input: UpsertOrganizationInput): Promise<void>;

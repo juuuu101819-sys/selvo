@@ -253,11 +253,11 @@ Versioned organization API for quote, path search and catalogs, with hashed API 
   Not a second live quote engine. `POST /api/v1/routes` stays public
 - `GET /api/v1/providers` unchanged (8 catalog providers). `GET /api/v1/assets`,
   `GET /api/v1/currencies` public catalogs
-- Organization API keys: SHA-256 hashed secrets, never plaintext; revocation; expiry; scopes
+- Organization API keys: salted scrypt hashed secrets, never plaintext; revocation; expiry; scopes
   `quote:read`, `route:read`, `transaction:create`. Default issued scopes omit `transaction:create`
 - `transaction:create` writes an execution intent (`status: recorded`, `executable: false`,
   `submitted: false`). `POST /api/v1/executions` remains the audited 501
-- In-process rate limiting. Request logs redact credentials and never print API key secrets
+- Shared rate limiting on the persistence driver (PostgreSQL `rate_limit_buckets` in production). Request logs redact credentials and never print API key secrets
 - `financialRoutingApi` and `executionIntents` true. `executeTransactions` stays false.
   Comparison engine **2.0.0**, routing **1.0.0**, graph **1.0.0**, stablecoin **1.0.0**,
   DeFi **1.0.0** unchanged

@@ -1,10 +1,12 @@
 import {
   AGENT_CREDENTIAL_PREFIX,
   ANONYMOUS_PRINCIPAL,
-  sessionScopesForRole,
   hashSecret,
+  hashSessionToken,
+  legacySha256VerificationAllowed,
+  sessionScopesForRole,
   isDemoAgentSecret,
-  secretsMatch,
+  verifyAndUpgradeCredential,
   type AgentPaymentsRepository,
   type AuthenticationAttempt,
   type Authenticator,
@@ -13,9 +15,13 @@ import {
   type Principal,
 } from '@meridian/core';
 
-const MAX_ACTOR_LENGTH = 128;
 export const SESSION_PREFIX = 'mds_';
 export const API_KEY_PREFIX_LENGTH = 16;
+
+export interface IdentityAuthenticatorOptions {
+  readonly rejectDemoSecrets?: boolean;
+  readonly sessionTokenPepper: string;
+}
 
 /**
  * Verifies session tokens, organization API keys (`mk_`) and agent credentials (`mag_`).
@@ -23,6 +29,9 @@ export const API_KEY_PREFIX_LENGTH = 16;
  * Callers that present no credential remain anonymous so the public comparison page keeps working.
  * A credential that cannot be verified is rejected — returning anonymous here would let a client
  * that sent a token believe it was authenticated and scoped to a tenant.
+ *
+ * Audit `actor` is taken only from the verified session/key. `X-Meridian-Actor` and any
+ * client-supplied actor field are ignored (PA-M04).
  */
 export class IdentityAuthenticator implements Authenticator {
   readonly scheme = 'session+api_key';
@@ -32,7 +41,7 @@ export class IdentityAuthenticator implements Authenticator {
     private readonly identity: IdentityStore,
     private readonly clock: Clock,
     private readonly agentPayments: AgentPaymentsRepository,
-    private readonly options: { readonly rejectDemoSecrets?: boolean } = {},
+    private readonly options: IdentityAuthenticatorOptions,
   ) {}
 
   async authenticate(attempt: AuthenticationAttempt): Promise<Principal | null> {
@@ -42,7 +51,7 @@ export class IdentityAuthenticator implements Authenticator {
     if (attempt.apiKey !== null) {
       return this.fromPresentedSecret(attempt.apiKey);
     }
-    return anonymousFrom(attempt.declaredActor);
+    return ANONYMOUS_PRINCIPAL;
   }
 
   private async fromAuthorization(header: string): Promise<Principal | null> {
@@ -64,10 +73,15 @@ export class IdentityAuthenticator implements Authenticator {
   }
 
   private async fromSession(token: string): Promise<Principal | null> {
-    const resolved = await this.identity.findValidSessionByTokenHash(
-      hashSecret(token),
-      this.clock.nowIso(),
-    );
+    const nowIso = this.clock.nowIso();
+    const hmacHash = hashSessionToken(token, this.options.sessionTokenPepper);
+    let resolved = await this.identity.findValidSessionByTokenHash(hmacHash, nowIso);
+    if (resolved === null && legacySha256VerificationAllowed(this.clock.nowMs())) {
+      resolved = await this.identity.findValidSessionByTokenHash(hashSecret(token), nowIso);
+      if (resolved?.session !== null && resolved?.session !== undefined) {
+        await this.identity.replaceSessionTokenHash(resolved.session.id, hmacHash);
+      }
+    }
     if (resolved === null) {
       return null;
     }
@@ -105,8 +119,12 @@ export class IdentityAuthenticator implements Authenticator {
     if (key.expiresAt !== null && key.expiresAt <= this.clock.nowIso()) {
       return null;
     }
-    if (!secretsMatch(presented, key.secretHash)) {
+    const verified = await verifyAndUpgradeCredential(presented, key.secretHash, this.clock.nowMs());
+    if (!verified.ok) {
       return null;
+    }
+    if (verified.upgradedHash !== undefined) {
+      await this.identity.replaceApiKeySecretHash(key.id, verified.upgradedHash);
     }
     const organization = await this.identity.findOrganization(key.organizationId);
     if (organization === null || organization.status !== 'active') {
@@ -136,8 +154,16 @@ export class IdentityAuthenticator implements Authenticator {
     if (credential.expiresAt !== null && credential.expiresAt <= this.clock.nowIso()) {
       return null;
     }
-    if (!secretsMatch(presented, credential.secretHash)) {
+    const verified = await verifyAndUpgradeCredential(
+      presented,
+      credential.secretHash,
+      this.clock.nowMs(),
+    );
+    if (!verified.ok) {
       return null;
+    }
+    if (verified.upgradedHash !== undefined) {
+      await this.agentPayments.replaceCredentialSecretHash(credential.id, verified.upgradedHash);
     }
     const agent = await this.agentPayments.findAgent(credential.agentId, credential.organizationId);
     if (agent === null || agent.status !== 'active') {
@@ -160,17 +186,4 @@ export class IdentityAuthenticator implements Authenticator {
       verified: true,
     };
   }
-}
-
-function anonymousFrom(declaredActor: string | null): Principal {
-  const declared = declaredActor?.trim() ?? '';
-  if (declared === '') {
-    return ANONYMOUS_PRINCIPAL;
-  }
-  return {
-    ...ANONYMOUS_PRINCIPAL,
-    actor: declared.slice(0, MAX_ACTOR_LENGTH),
-    displayName: declared.slice(0, MAX_ACTOR_LENGTH),
-    verified: false,
-  };
 }

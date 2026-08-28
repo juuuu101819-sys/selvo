@@ -1,7 +1,7 @@
 import {
   DEFAULT_API_KEY_SCOPES,
   NotFoundError,
-  hashSecret,
+  hashCredential,
   parseApiScopes,
   randomToken,
   uuidIdGenerator,
@@ -22,8 +22,9 @@ interface Envelope<TData> {
 /**
  * Organization API key management.
  *
- * Secrets are hashed (SHA-256) before persist. The raw secret is returned once on issue and never
- * logged. Listing returns prefixes, scopes, expiry and revocation — never the hash.
+ * Secrets are hashed with per-key salted scrypt before persist. The raw secret is returned once
+ * on issue and never logged. Listing returns prefixes, scopes, expiry and revocation — never the
+ * hash.
  */
 export function registerApiKeyRoutes(app: FastifyInstance, container: AppContainer): void {
   const envelope = <TData>(request: FastifyRequest, data: TData): Envelope<TData> => ({
@@ -56,7 +57,7 @@ export function registerApiKeyRoutes(app: FastifyInstance, container: AppContain
       id,
       organizationId: principal.organizationId,
       keyPrefix,
-      secretHash: hashSecret(secret),
+      secretHash: await hashCredential(secret),
       label: body.label,
       createdAt,
       scopes,

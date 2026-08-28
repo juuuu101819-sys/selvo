@@ -98,6 +98,11 @@ export {
   type RecordedQuoteInput,
 } from './quote-recorder.js';
 export type {
+  RateLimitConsumeInput,
+  RateLimitConsumeResult,
+  RateLimitStore,
+} from './rate-limit.js';
+export type {
   AuditLogRepository,
   ComparisonRepository,
   PersistenceDriver,
@@ -157,5 +162,21 @@ export {
   demoAgentPaymentIntents,
   demoAgentPolicyViolations,
 } from '../auth/demo-agent-dashboard.js';
-export { hashPassword, hashSecret, randomToken, secretsMatch, verifyPassword } from '../crypto/secrets.js';
+export {
+  LEGACY_SHA256_DEADLINE_ISO,
+  LEGACY_SHA256_DEADLINE_MS,
+  deriveSessionTokenPepper,
+  hashCredential,
+  hashPassword,
+  hashSecret,
+  hashSessionToken,
+  isLegacySha256Digest,
+  legacySha256VerificationAllowed,
+  randomToken,
+  secretsMatch,
+  sessionTokensMatch,
+  verifyAndUpgradeCredential,
+  verifyPassword,
+  type CredentialVerification,
+} from '../crypto/secrets.js';
 export type { RouteProvider, SecretResolver } from './route-provider.js';

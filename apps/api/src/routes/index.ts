@@ -44,7 +44,11 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     // Registered inside the plugin so authentication is scoped to the versioned API by Fastify's
     // encapsulation, rather than applied globally and then excepted route by route.
     registerAuthentication(instance, container.authenticator);
-    registerRateLimiting(instance, container.config.rateLimit);
+    registerRateLimiting(instance, {
+      settings: container.config.rateLimit,
+      store: container.persistence.rateLimits,
+      nowMs: () => container.clock.nowMs(),
+    });
     registerRequestLogging(instance);
     registerVersionedHealthRoute(instance);
     registerMetaRoutes(instance, container);

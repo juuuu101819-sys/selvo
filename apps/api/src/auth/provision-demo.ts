@@ -29,7 +29,6 @@ import {
   OTHER_USER_ID,
   OTHER_USER_PASSWORD,
   hashPassword,
-  hashSecret,
   randomToken,
   type AgentPaymentsRepository,
   type AuditLogRepository,
@@ -305,7 +304,7 @@ async function provisionDemoAgent(
       agentId: DEMO_AGENT_ID,
       organizationId: DEMO_ORGANIZATION_ID,
       keyPrefix: DEMO_AGENT_SECRET.slice(0, API_KEY_PREFIX_LENGTH),
-      secretHash: hashSecret(DEMO_AGENT_SECRET),
+      secretHash: await hashPassword(DEMO_AGENT_SECRET),
       scopes: DEFAULT_AGENT_SCOPES,
       createdAt,
       expiresAt: null,
@@ -407,4 +406,4 @@ async function seedAgentDashboardAudits(
   }
 }
 
-export { hashSecret };
+export { hashPassword, hashSecret } from '@meridian/core';

@@ -112,6 +112,17 @@ export class PrismaIdentityStore implements IdentityStore {
     };
   }
 
+  async replaceSessionTokenHash(id: string, tokenHash: string): Promise<void> {
+    try {
+      await this.client.session.update({
+        where: { id },
+        data: { tokenHash },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to rotate the session token hash.', {}, { cause: error });
+    }
+  }
+
   async revokeSession(id: string, nowIso: string): Promise<void> {
     try {
       await this.client.session.updateMany({
@@ -147,6 +158,17 @@ export class PrismaIdentityStore implements IdentityStore {
       });
     } catch {
       // Same as touchSession: telemetry, not a correctness signal.
+    }
+  }
+
+  async replaceApiKeySecretHash(id: string, secretHash: string): Promise<void> {
+    try {
+      await this.client.apiKey.update({
+        where: { id },
+        data: { secretHash },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to rotate the API key hash.', {}, { cause: error });
     }
   }
 

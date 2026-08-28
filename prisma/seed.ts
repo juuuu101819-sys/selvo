@@ -43,7 +43,6 @@ import {
   demoAgentPolicyViolations,
   demoMonetizationEvents,
   hashPassword,
-  hashSecret,
   isCurrencyCode,
   noopLogger,
   serializeComparison,
@@ -534,11 +533,11 @@ async function seedDemoAgent(): Promise<void> {
       agentId: DEMO_AGENT_ID,
       organizationId: DEMO_ORGANIZATION_ID,
       keyPrefix: DEMO_AGENT_SECRET.slice(0, 16),
-      secretHash: hashSecret(DEMO_AGENT_SECRET),
+      secretHash: await hashPassword(DEMO_AGENT_SECRET),
       scopes: [...DEFAULT_AGENT_SCOPES],
       createdAt,
     },
-    update: { secretHash: hashSecret(DEMO_AGENT_SECRET), scopes: [...DEFAULT_AGENT_SCOPES] },
+    update: { secretHash: await hashPassword(DEMO_AGENT_SECRET), scopes: [...DEFAULT_AGENT_SCOPES] },
   });
   await prisma.agentWalletReference.upsert({
     where: { id: DEMO_WALLET_REFERENCE_ID },

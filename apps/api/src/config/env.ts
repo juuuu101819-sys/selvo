@@ -4,6 +4,7 @@ import {
   DEFAULT_SCORING_WEIGHTS,
   PLATFORM_MODES,
   PRODUCTION_AUTH_SECRET_MIN_LENGTH,
+  deriveSessionTokenPepper,
   isForbiddenProductionSecret,
   parseRoutingWeights,
   parseScoringWeights,
@@ -198,6 +199,12 @@ export interface AppConfig {
   readonly productionGates: ProductionGates;
   /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
   readonly authSecretConfigured: boolean;
+  /**
+   * HMAC key for session-token hashing, derived from AUTH_SECRET (never AUTH_SECRET itself).
+   * Development/test without AUTH_SECRET uses a documented non-secret derivation so HMAC is still
+   * used. Production-locked processes already require AUTH_SECRET.
+   */
+  readonly sessionTokenPepper: string;
   readonly seedDemoTenants: boolean;
   readonly host: string;
   readonly port: number;
@@ -282,6 +289,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       executionAvailable: false,
     },
     authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
+    sessionTokenPepper: deriveSessionTokenPepper(env.AUTH_SECRET, { productionLocked }),
     seedDemoTenants: env.SEED_DEMO_TENANTS,
     host: env.API_HOST,
     port: env.API_PORT,

@@ -203,7 +203,10 @@ export function createContainer(options: ContainerOptions): AppContainer {
     persistence.identity,
     clock,
     persistence.agentPayments,
-    { rejectDemoSecrets: config.productionLocked },
+    {
+      rejectDemoSecrets: config.productionLocked,
+      sessionTokenPepper: config.sessionTokenPepper,
+    },
   );
 
   const agentPayments = new AgentPaymentService({
