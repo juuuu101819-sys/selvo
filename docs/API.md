@@ -44,6 +44,7 @@ hub: it does not custody funds, hold keys, act as principal, or execute transfer
 | `UNAUTHENTICATED`                     | 401       | Missing or unverifiable session / API key.                                                   |
 | `FORBIDDEN`                           | 403       | Authenticated, but the credential lacks the required scope or claimed org does not match.    |
 | `IDEMPOTENCY_CONFLICT`                | 409       | Idempotency key reused with a different payload.                                             |
+| `QUOTE_EXPIRED`                       | 409       | Quoted price is past `expiresAt`. `requoteRequired: true` — request a new quote.             |
 | `RATE_LIMITED`                        | 429       | Too many requests in the current window. `Retry-After` is set.                               |
 | `EXECUTION_NOT_IMPLEMENTED`           | 501       | Deliberate refusal to move money.                                                            |
 | `PROVIDER_TIMEOUT` / `PROVIDER_ERROR` | 504 / 502 | Upstream provider failed. Usually reported per-route in `providerFailures` instead.          |
@@ -401,7 +402,10 @@ Returns `201` with a comparison containing:
 
 - `routes` — ranked best-first, each with `totalCost`, `totalCostPercent`, `deliveredAmount`,
   `benchmarkAmount`, `midMarketRate`, `offeredRate`, `effectiveRate`, `slippageBps`, `settlement`,
-  a full `breakdown`, a `score` and its `scoreComponents`.
+  a full `breakdown`, a `score` and its `scoreComponents`, and `quote.freshness` (`ageMs`,
+  `ageSeconds`, `state`, `maxAgeMs`) so a client can see how fresh each compared rail was.
+  Quotes past `expiresAt` or older than the rail freshness window are omitted from `routes` and
+  appear in `providerFailures` (`QUOTE_EXPIRED` / `QUOTE_STALE`).
 - `recommendedRouteId` — the rank-1 route.
 - `insights` — cheapest, fastest and most expensive routes, plus savings against the most expensive
   route and against the cheapest bank-FX baseline.
@@ -609,11 +613,12 @@ prefixes, never secrets or hashes.
 
 Requires `transaction:create` (organization API keys minted with that scope — never human sessions).
 Records a route choice with `status: "recorded"`, `executable: false`, `submitted: false`. This is
-not a payment. An expired `quoteExpiresAt` is rejected with `409 QUOTE_EXPIRED` and audited as
-`execution.intent.rejected` **before** Policy Engine evaluation. A payment intent id that has
-already passed the Policy Engine (`ROUTED`, `AUTHORIZED`, `EXECUTION_PENDING`, or `COMPLETED`) is
-required; omitting it is `403 POLICY_DENIED` (`policy_required`). The gate re-evaluates policy
-fail-closed immediately before persist. `POST /api/v1/executions` remains the audited `501`.
+not a payment. An expired `quoteExpiresAt` is rejected with `409 QUOTE_EXPIRED` (`requoteRequired:
+true`) and audited as `execution.intent.rejected` **before** Policy Engine evaluation. A payment
+intent id that has already passed the Policy Engine (`ROUTED`, `AUTHORIZED`, `EXECUTION_PENDING`, or
+`COMPLETED`) is required; omitting it is `403 POLICY_DENIED` (`policy_required`). The gate
+re-evaluates policy fail-closed immediately before persist. `POST /api/v1/executions` remains the
+audited `501`.
 
 ## AI agent payments
 
@@ -639,7 +644,9 @@ not receive payment scopes by default.
 
 Create accepts `instruction` (e.g. `"Pay 500 USD to merchant X"`) and/or structured fields, plus
 `Idempotency-Key`. Same key and payload replay the original intent; a different payload is
-`409 IDEMPOTENCY_CONFLICT`. Policy denials are `403 POLICY_DENIED` (distinct from `VALIDATION_ERROR`
+`409 IDEMPOTENCY_CONFLICT`. Selecting a route after `quoteExpiresAt` (or the selected option's own
+expiry) is `409 QUOTE_EXPIRED` with `requoteRequired: true` — the agent must quote again rather than
+proceed on stale pricing. Policy denials are `403 POLICY_DENIED` (distinct from `VALIDATION_ERROR`
 and `FORBIDDEN`).
 
 The policy engine evaluates, fail-closed:

@@ -82,6 +82,8 @@ class StubVenue implements FinancialProvider {
       indicatedRate: this.indicatedRate,
       midMarketRate: this.source === 'ETH' ? '3500' : '1',
       amountMinorUnits: request.amountMinorUnits,
+      timestamp: request.requestedAt,
+      expiresAt: new Date(Date.parse(request.requestedAt) + 120_000).toISOString(),
       fees: [
         {
           code: 'swap',
@@ -157,6 +159,8 @@ class StubFx implements FinancialProvider {
       indicatedRate: '1380',
       midMarketRate: '1385',
       amountMinorUnits: request.amountMinorUnits,
+      timestamp: request.requestedAt,
+      expiresAt: new Date(Date.parse(request.requestedAt) + 120_000).toISOString(),
     });
   }
 
@@ -217,6 +221,8 @@ class StubRamp implements FinancialProvider {
       indicatedRate: '1382',
       midMarketRate: '1385',
       amountMinorUnits: request.amountMinorUnits,
+      timestamp: request.requestedAt,
+      expiresAt: new Date(Date.parse(request.requestedAt) + 120_000).toISOString(),
     });
   }
 

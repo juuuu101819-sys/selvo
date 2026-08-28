@@ -69,10 +69,11 @@ export function registerExecutionIntentRoutes(
           },
         });
         throw new QuoteExpiredError(
-          'The quote has expired. Record a new execution intent after requoting.',
+          'The quote has expired. Request a new quote.',
           {
             quoteExpiresAt: body.quoteExpiresAt,
             routeId: body.routeId,
+            requoteRequired: true,
           },
         );
       }

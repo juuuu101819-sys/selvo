@@ -8,6 +8,7 @@ import {
   isQuoteUsable,
   type FreshnessPolicy,
 } from './quote-freshness.js';
+import { freshnessPolicyForRail } from './rail-freshness.js';
 
 const NOW = Date.parse('2026-03-01T12:00:00.000Z');
 
@@ -199,5 +200,16 @@ describe('assertQuoteUsable', () => {
         expiresAt: '2026-03-01T12:02:00.000Z',
       });
     }
+  });
+});
+
+describe('rail freshness windows', () => {
+  it('gives DEX a shorter max-age than bank FX', () => {
+    expect(freshnessPolicyForRail('dex_liquidity').maxAgeMs).toBeLessThan(
+      freshnessPolicyForRail('bank_fx').maxAgeMs,
+    );
+    expect(freshnessPolicyForRail('stablecoin_settlement').maxAgeMs).toBeLessThan(
+      freshnessPolicyForRail('bank_fx').maxAgeMs,
+    );
   });
 });

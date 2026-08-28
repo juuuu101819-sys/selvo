@@ -126,6 +126,10 @@ describe('POST /v1/comparisons', () => {
         expect(route.quote.providerId).toBe(route.provider.id);
         expect(route.quote.quotedAt).toBe('2026-03-01T09:00:00.000Z');
         expect(route.quote.expiresAt).not.toBeNull();
+        expect(route.quote.freshness).not.toBeNull();
+        expect(route.quote.freshness?.ageMs).toBe(0);
+        expect(route.quote.freshness?.ageSeconds).toBe('0');
+        expect(route.quote.freshness?.state).toBe('fresh');
         expect(route.quote.pricingVersion).toBe('sandbox-pricing-2026.02');
       }
     });

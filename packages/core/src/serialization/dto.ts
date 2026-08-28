@@ -49,6 +49,16 @@ export interface RouteProviderDto {
   readonly pricingVersion: string;
 }
 
+export interface QuoteFreshnessDto {
+  readonly quotedAt: string;
+  readonly expiresAt: string;
+  readonly ageMs: number;
+  readonly ageSeconds: string;
+  readonly maxAgeMs: number;
+  readonly state: 'fresh' | 'stale' | 'expired' | 'clock_skewed';
+  readonly usableForMs: number | null;
+}
+
 export interface RouteQuoteDto {
   readonly providerId: string;
   readonly quotedAt: string;
@@ -56,6 +66,7 @@ export interface RouteQuoteDto {
   readonly quoteReference: string | null;
   readonly pricingVersion: string;
   readonly intermediaryAsset: string | null;
+  readonly freshness: QuoteFreshnessDto | null;
 }
 
 export interface RouteDto {
@@ -222,7 +233,7 @@ export interface RoutedAppliedFeeDto {
   readonly label: string;
   readonly side: FeeSide;
   readonly kind: 'fixed' | 'proportional';
-  readonly bucket: 'provider' | 'platform' | 'network' | 'gas' | 'other';
+  readonly bucket: 'provider' | 'platform' | 'network' | 'gas' | 'liquidity' | 'surcharge' | 'other';
   readonly chargedBy: 'provider' | 'platform';
   readonly asset: string;
   readonly amount: AssetAmountDto;
@@ -235,6 +246,8 @@ export interface RoutingCostBreakdownDto {
   readonly platformFee: AssetAmountDto;
   readonly networkFee: AssetAmountDto;
   readonly gasFee: AssetAmountDto;
+  readonly liquidityFee: AssetAmountDto;
+  readonly surchargeFee: AssetAmountDto;
   readonly spreadCost: AssetAmountDto;
   readonly slippageCost: AssetAmountDto;
   readonly roundingAdjustment: AssetAmountDto;
@@ -293,6 +306,7 @@ export interface MultiRailRouteDto {
   readonly reliabilityScore: string;
   readonly settlementConfidence: string;
   readonly estimatedSettlementTime: SettlementDto;
+  readonly quoteFreshness: QuoteFreshnessDto;
   readonly breakdown: RoutingCostBreakdownDto;
   readonly compliance: ComplianceEligibilityDto;
   readonly routeScore: string;

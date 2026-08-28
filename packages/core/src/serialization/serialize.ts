@@ -22,6 +22,7 @@ import { DEFI_ROUTING_ENGINE_VERSION } from '../engine/defi-config.js';
 import type { DefiRoute, DefiRouting } from '../engine/defi-types.js';
 import { STABLECOIN_ROUTING_ENGINE_VERSION } from '../engine/stablecoin-config.js';
 import type { MultiRailRouting, ScoredMultiRailRoute } from '../engine/routing-types.js';
+import type { QuoteFreshnessView } from '../quotes/quote-freshness.js';
 import { priceRouteMonetization } from '../engine/monetization-engine.js';
 import type { StablecoinRoute, StablecoinRouting } from '../engine/stablecoin-types.js';
 import {
@@ -83,6 +84,7 @@ import type {
   NormalizedQuoteDto,
   ProviderFailureDto,
   ReplayResultDto,
+  QuoteFreshnessDto,
   RouteDto,
   RouteGraphDto,
   RouteSearchDto,
@@ -142,6 +144,18 @@ export function serializeReplayResult(result: ReplayResult): ReplayResultDto {
   };
 }
 
+function serializeQuoteFreshness(view: QuoteFreshnessView): QuoteFreshnessDto {
+  return {
+    quotedAt: view.quotedAt,
+    expiresAt: view.expiresAt,
+    ageMs: view.ageMs,
+    ageSeconds: view.ageSeconds,
+    maxAgeMs: view.maxAgeMs,
+    state: view.state,
+    usableForMs: view.usableForMs,
+  };
+}
+
 export function serializeRoute(route: ScoredRoute): RouteDto {
   return {
     routeId: route.routeId,
@@ -162,6 +176,7 @@ export function serializeRoute(route: ScoredRoute): RouteDto {
       quoteReference: route.quote.quoteReference,
       pricingVersion: route.quote.pricingVersion,
       intermediaryAsset: route.quote.intermediaryAsset,
+      freshness: null,
     },
     sendAmount: route.sendAmount.toJSON(),
     deliveredAmount: route.deliveredAmount.toJSON(),
@@ -379,6 +394,7 @@ export function serializeMultiRailRoute(route: ScoredMultiRailRoute): MultiRailR
     reliabilityScore: route.reliabilityScore.toFixed(),
     settlementConfidence: route.settlementConfidence.toFixed(),
     estimatedSettlementTime: route.settlement,
+    quoteFreshness: serializeQuoteFreshness(route.quoteFreshness),
     breakdown: {
       appliedFees: route.breakdown.appliedFees.map((fee) => ({
         code: fee.code,
@@ -395,6 +411,8 @@ export function serializeMultiRailRoute(route: ScoredMultiRailRoute): MultiRailR
       platformFee: route.breakdown.platformFee.toJSON(),
       networkFee: route.breakdown.networkFee.toJSON(),
       gasFee: route.breakdown.gasFee.toJSON(),
+      liquidityFee: route.breakdown.liquidityFee.toJSON(),
+      surchargeFee: route.breakdown.surchargeFee.toJSON(),
       spreadCost: route.breakdown.spreadCost.toJSON(),
       slippageCost: route.breakdown.slippageCost.toJSON(),
       roundingAdjustment: route.breakdown.roundingAdjustment.toJSON(),

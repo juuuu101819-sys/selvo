@@ -1,5 +1,6 @@
 export {
   StubRouteProvider,
+  bindNormalizedQuoteToRequest,
   buildNormalizedQuote,
   buildProviderDescriptor,
   buildProviderQuote,

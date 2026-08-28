@@ -16,9 +16,9 @@ import type { RailType } from './rail.js';
 export interface PlatformPricingRule {
   readonly id: string;
   readonly organizationId: string;
-  /** Narrowing filters. `null` means "any". */
-  readonly sourceCurrency: CurrencyCode | null;
-  readonly targetCurrency: CurrencyCode | null;
+  /** Narrowing filters. `null` means "any". Asset codes (ISO fiat, USDC, ETH), not ISO-only. */
+  readonly sourceCurrency: string | null;
+  readonly targetCurrency: string | null;
   readonly rail: RailType | null;
   readonly providerId: ProviderId | null;
   /** The platform's take, in basis points of the send notional. */
@@ -28,6 +28,15 @@ export interface PlatformPricingRule {
   /** Flat platform charge, in minor units of `feeCurrency`. */
   readonly platformFeeMinorUnits: string;
   readonly feeCurrency: CurrencyCode | null;
+  /**
+   * Optional configured infrastructure surcharge, in basis points of the send notional.
+   *
+   * Distinct from {@link markupBps}: a DeFi/cross-chain surcharge is an explicit fee component,
+   * never implied by multiplying the take-rate by hop count.
+   */
+  readonly surchargeBps?: string | null;
+  readonly surchargeCode?: string | null;
+  readonly surchargeLabel?: string | null;
   /** Highest wins when several rules match. */
   readonly priority: number;
   readonly effectiveFrom: string;
@@ -46,8 +55,8 @@ export interface PlatformPricing {
 
 export interface PricingCriteria {
   readonly organizationId: string;
-  readonly sourceCurrency: CurrencyCode;
-  readonly targetCurrency: CurrencyCode;
+  readonly sourceCurrency: string;
+  readonly targetCurrency: string;
   readonly rail: RailType;
   readonly providerId: ProviderId;
   /** Instant the terms are evaluated at, so a historical quote resolves historical terms. */

@@ -9,9 +9,17 @@ import type { PlatformMode } from '../domain/provider.js';
 import type { Decimal } from '../money/index.js';
 import type { AssetAmount } from '../money/asset-amount.js';
 import type { NormalizedQuote } from '../ports/financial-provider.js';
+import type { QuoteFreshnessView } from '../quotes/quote-freshness.js';
 import type { RoutingScoringFactor, SerializedRoutingWeights } from './routing-config.js';
 
-export type RoutingFeeBucket = 'provider' | 'platform' | 'network' | 'gas' | 'other';
+export type RoutingFeeBucket =
+  | 'provider'
+  | 'platform'
+  | 'network'
+  | 'gas'
+  | 'liquidity'
+  | 'surcharge'
+  | 'other';
 
 export interface RoutedAppliedFee {
   readonly code: string;
@@ -31,6 +39,9 @@ export interface RoutingCostBreakdown {
   readonly platformFee: AssetAmount;
   readonly networkFee: AssetAmount;
   readonly gasFee: AssetAmount;
+  readonly liquidityFee: AssetAmount;
+  /** Configured DeFi/cross-chain surcharge, never implied by hop count. */
+  readonly surchargeFee: AssetAmount;
   readonly spreadCost: AssetAmount;
   readonly slippageCost: AssetAmount;
   readonly roundingAdjustment: AssetAmount;
@@ -58,6 +69,20 @@ export interface PlannedRoute {
   readonly explanation: string;
 }
 
+export interface RoutingConfiguredSurcharge {
+  readonly code: string;
+  readonly label: string;
+  readonly rateBps: Decimal;
+}
+
+export interface RoutingPlatformCharge {
+  readonly ruleId: string | null;
+  readonly markupBps: Decimal;
+  readonly discountBps: Decimal;
+  readonly flatFee: AssetAmount | null;
+  readonly surcharge: RoutingConfiguredSurcharge | null;
+}
+
 export interface PricedMultiRailRoute {
   readonly routeId: string;
   readonly available: true;
@@ -68,6 +93,8 @@ export interface PricedMultiRailRoute {
   readonly category: ProviderCategory;
   readonly conversionKind: ConversionKind;
   readonly quote: NormalizedQuote;
+  readonly quoteFreshness: QuoteFreshnessView;
+  readonly platformCharge: RoutingPlatformCharge;
   readonly sendAmount: AssetAmount;
   readonly deliveredAmount: AssetAmount;
   readonly benchmarkAmount: AssetAmount;

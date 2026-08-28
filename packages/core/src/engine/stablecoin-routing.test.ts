@@ -80,6 +80,8 @@ class StubRamp implements FinancialProvider {
       indicatedRate: this.indicatedRate,
       midMarketRate: '1',
       amountMinorUnits: request.amountMinorUnits,
+      timestamp: request.requestedAt,
+      expiresAt: new Date(Date.parse(request.requestedAt) + 120_000).toISOString(),
       fees: [
         {
           code: 'ramp',
@@ -155,6 +157,8 @@ class StubPool implements FinancialProvider {
       indicatedRate: '0.9996',
       midMarketRate: '1',
       amountMinorUnits: request.amountMinorUnits,
+      timestamp: request.requestedAt,
+      expiresAt: new Date(Date.parse(request.requestedAt) + 120_000).toISOString(),
       slippage: {
         kind: 'tiered',
         notionalCurrency: 'USD',

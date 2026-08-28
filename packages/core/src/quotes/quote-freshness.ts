@@ -1,4 +1,5 @@
 import { QuoteExpiredError, StaleQuoteError, ValidationError } from '../errors/index.js';
+import { Dec } from '../money/decimal.js';
 import type { ProviderQuoteEnvelope } from '../ports/provider-adapter.js';
 
 export interface FreshnessPolicy {
@@ -92,6 +93,44 @@ export function assessQuoteFreshness(
   }
 
   return { state: 'fresh', ageMs: Math.max(ageMs, 0), usableForMs: -expiredForMs };
+}
+
+/**
+ * Client-visible freshness of one quote at a given instant.
+ *
+ * `ageSeconds` is a decimal string so clients never see a binary float for a figure they will
+ * compare across rails.
+ */
+export interface QuoteFreshnessView {
+  readonly quotedAt: string;
+  readonly expiresAt: string;
+  readonly ageMs: number;
+  readonly ageSeconds: string;
+  readonly maxAgeMs: number;
+  readonly state: QuoteFreshness['state'];
+  readonly usableForMs: number | null;
+}
+
+export function quoteFreshnessView(
+  quote: Pick<ProviderQuoteEnvelope, 'timestamp' | 'expiresAt'>,
+  nowMs: number,
+  policy: FreshnessPolicy = DEFAULT_FRESHNESS_POLICY,
+): QuoteFreshnessView {
+  const freshness = assessQuoteFreshness(quote, nowMs, policy);
+  const quotedAtMs = parseInstant(quote.timestamp, 'timestamp');
+  const ageMs =
+    freshness.state === 'clock_skewed' ? nowMs - quotedAtMs : Math.max(freshness.ageMs, 0);
+  const maxAgeMs = freshness.state === 'stale' ? freshness.maxAgeMs : policy.maxAgeMs;
+  const usableForMs = freshness.state === 'fresh' ? freshness.usableForMs : null;
+  return {
+    quotedAt: quote.timestamp,
+    expiresAt: quote.expiresAt,
+    ageMs,
+    ageSeconds: new Dec(ageMs).div(1_000).toFixed(),
+    maxAgeMs,
+    state: freshness.state,
+    usableForMs,
+  };
 }
 
 export function isQuoteUsable(

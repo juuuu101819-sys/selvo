@@ -15,6 +15,8 @@ import {
 } from '../money/index.js';
 import { AssetAmount } from '../money/asset-amount.js';
 import type { NormalizedFee, NormalizedQuote } from '../ports/financial-provider.js';
+import type { QuoteFreshnessView } from '../quotes/quote-freshness.js';
+import { quoteFreshnessView, DEFAULT_FRESHNESS_POLICY } from '../quotes/quote-freshness.js';
 import { spreadBpsOf } from './platform-pricing.js';
 import type {
   ComplianceEligibility,
@@ -22,19 +24,24 @@ import type {
   RoutedAppliedFee,
   RoutingCostBreakdown,
   RoutingFeeBucket,
+  RoutingPlatformCharge,
 } from './routing-types.js';
 
 const USD_PEGGED = new Set(['USD', 'USDC', 'USDT']);
 
-export interface RoutingPlatformCharge {
-  readonly markupBps: Decimal;
-  readonly discountBps: Decimal;
-}
+export type { RoutingConfiguredSurcharge, RoutingPlatformCharge } from './routing-types.js';
 
 export const NO_ROUTING_PLATFORM_CHARGE: RoutingPlatformCharge = {
+  ruleId: null,
   markupBps: new Dec(0),
   discountBps: new Dec(0),
+  flatFee: null,
+  surcharge: null,
 };
+
+function defaultQuoteFreshness(quote: NormalizedQuote): QuoteFreshnessView {
+  return quoteFreshnessView(quote, Date.parse(quote.timestamp), DEFAULT_FRESHNESS_POLICY);
+}
 
 /**
  * Prices one normalised quote against the mid-market benchmark.
@@ -56,6 +63,7 @@ export class MultiRailCostEngine {
     provider: ProviderDescriptor,
     capabilities: ProviderCapabilityProfile,
     platform: RoutingPlatformCharge = NO_ROUTING_PLATFORM_CHARGE,
+    freshness: QuoteFreshnessView | null = null,
   ): PricedMultiRailRoute {
     const source = quote.sourceAsset;
     const dest = quote.targetAsset;
@@ -150,9 +158,6 @@ export class MultiRailCostEngine {
     const breakdown = buildBreakdown({
       dest,
       applied,
-      sourceFeeTotal: sourceFees.total,
-      platformFeeTotal: platformFees.total,
-      destinationFeeTotal: destinationFees.total,
       convertible,
       midMarketRate,
       offeredRate,
@@ -175,6 +180,8 @@ export class MultiRailCostEngine {
       category,
       conversionKind: quote.conversionKind,
       quote,
+      quoteFreshness: freshness ?? defaultQuoteFreshness(quote),
+      platformCharge: platform,
       sendAmount,
       deliveredAmount,
       benchmarkAmount,
@@ -217,6 +224,10 @@ export function settlementConfidenceOf(settlement: SettlementEstimate): Decimal 
 }
 
 export function hopsOf(quote: NormalizedQuote, provider: ProviderDescriptor): readonly string[] {
+  const hopsMeta = quote.metadata['hops'];
+  if (Array.isArray(hopsMeta) && hopsMeta.every((hop) => typeof hop === 'string')) {
+    return hopsMeta;
+  }
   const intermediary = quote.metadata['intermediaryAsset'];
   if (typeof intermediary === 'string' && intermediary.trim() !== '') {
     return [quote.sourceAsset, provider.name, intermediary, quote.targetAsset];
@@ -317,21 +328,61 @@ function applyPlatformFees(
   platform: RoutingPlatformCharge,
   sendAmount: AssetAmount,
 ): { fees: readonly RoutedAppliedFee[]; total: AssetAmount } {
-  if (platform.markupBps.isZero()) {
-    return { fees: [], total: AssetAmount.zero(sendAmount.asset) };
+  const applied: RoutedAppliedFee[] = [];
+
+  if (!platform.markupBps.isZero()) {
+    applied.push({
+      code: 'platform_markup',
+      label: 'Meridian platform fee',
+      side: 'source',
+      kind: 'proportional',
+      bucket: 'platform',
+      chargedBy: 'platform',
+      asset: sendAmount.asset,
+      amount: sendAmount.multiplyByRatio(bpsToRatio(platform.markupBps), Rounding.HALF_UP),
+      rateBps: platform.markupBps,
+    });
   }
-  const fee: RoutedAppliedFee = {
-    code: 'platform_markup',
-    label: 'Meridian platform fee',
-    side: 'source',
-    kind: 'proportional',
-    bucket: 'platform',
-    chargedBy: 'platform',
-    asset: sendAmount.asset,
-    amount: sendAmount.multiplyByRatio(bpsToRatio(platform.markupBps), Rounding.HALF_UP),
-    rateBps: platform.markupBps,
+
+  if (platform.flatFee !== null && !platform.flatFee.isZero()) {
+    const flat =
+      platform.flatFee.asset === sendAmount.asset
+        ? platform.flatFee
+        : AssetAmount.fromDecimal(sendAmount.asset, platform.flatFee.toDecimal(), Rounding.HALF_UP);
+    applied.push({
+      code: 'platform_flat',
+      label: 'Meridian platform flat fee',
+      side: 'source',
+      kind: 'fixed',
+      bucket: 'platform',
+      chargedBy: 'platform',
+      asset: sendAmount.asset,
+      amount: flat,
+      rateBps: null,
+    });
+  }
+
+  if (platform.surcharge !== null && !platform.surcharge.rateBps.isZero()) {
+    applied.push({
+      code: platform.surcharge.code,
+      label: platform.surcharge.label,
+      side: 'source',
+      kind: 'proportional',
+      bucket: 'surcharge',
+      chargedBy: 'platform',
+      asset: sendAmount.asset,
+      amount: sendAmount.multiplyByRatio(bpsToRatio(platform.surcharge.rateBps), Rounding.HALF_UP),
+      rateBps: platform.surcharge.rateBps,
+    });
+  }
+
+  return {
+    fees: applied,
+    total: AssetAmount.sum(
+      sendAmount.asset,
+      applied.map((fee) => fee.amount),
+    ),
   };
-  return { fees: [fee], total: fee.amount };
 }
 
 function convertWithinQuote(input: {
@@ -420,9 +471,6 @@ function liquidityHeadroom(quote: NormalizedQuote, sendAmount: AssetAmount): Dec
 function buildBreakdown(input: {
   dest: string;
   applied: readonly RoutedAppliedFee[];
-  sourceFeeTotal: AssetAmount;
-  platformFeeTotal: AssetAmount;
-  destinationFeeTotal: AssetAmount;
   convertible: AssetAmount;
   midMarketRate: Decimal;
   offeredRate: Decimal;
@@ -432,7 +480,6 @@ function buildBreakdown(input: {
   const {
     dest,
     applied,
-    platformFeeTotal,
     convertible,
     midMarketRate,
     offeredRate,
@@ -443,7 +490,22 @@ function buildBreakdown(input: {
   const toDest = (amount: AssetAmount): AssetAmount =>
     amount.asset === dest ? amount : applyRate(amount, dest, midMarketRate, Rounding.HALF_UP);
 
-  const platformFeeCost = toDest(platformFeeTotal);
+  const sumBucket = (bucket: RoutingFeeBucket): AssetAmount =>
+    AssetAmount.sum(
+      dest,
+      applied.filter((fee) => fee.bucket === bucket).map((fee) => toDest(fee.amount)),
+    );
+
+  const platformFeeCost = sumBucket('platform');
+  const surchargeFee = sumBucket('surcharge');
+  const networkFee = sumBucket('network');
+  const gasFee = sumBucket('gas');
+  const liquidityFee = sumBucket('liquidity');
+  const providerOnly = AssetAmount.sum(dest, [
+    sumBucket('provider'),
+    sumBucket('other'),
+  ]);
+
   const spreadCost = AssetAmount.fromDecimal(
     dest,
     convertible.toDecimal().times(midMarketRate.minus(offeredRate)),
@@ -455,26 +517,13 @@ function buildBreakdown(input: {
     Rounding.HALF_UP,
   );
 
-  const networkFee = AssetAmount.sum(
-    dest,
-    applied.filter((fee) => fee.bucket === 'network').map((fee) => toDest(fee.amount)),
-  );
-  const gasFee = AssetAmount.sum(
-    dest,
-    applied.filter((fee) => fee.bucket === 'gas').map((fee) => toDest(fee.amount)),
-  );
-  const providerOnly = AssetAmount.sum(
-    dest,
-    applied
-      .filter((fee) => fee.bucket === 'provider' || fee.bucket === 'other')
-      .map((fee) => toDest(fee.amount)),
-  );
-
   const attributed = AssetAmount.sum(dest, [
     providerOnly,
     platformFeeCost,
+    surchargeFee,
     networkFee,
     gasFee,
+    liquidityFee,
     spreadCost,
     slippageCost,
   ]);
@@ -485,6 +534,8 @@ function buildBreakdown(input: {
     platformFee: platformFeeCost,
     networkFee,
     gasFee,
+    liquidityFee,
+    surchargeFee,
     spreadCost,
     slippageCost,
     roundingAdjustment: totalCost.subtract(attributed),
@@ -496,11 +547,19 @@ function bucketOf(fee: NormalizedFee): RoutingFeeBucket {
   const code = fee.code.toLowerCase();
   if (code.includes('gas')) return 'gas';
   if (code.includes('network')) return 'network';
+  if (code.includes('surcharge')) return 'surcharge';
   if (code.includes('platform')) return 'platform';
+  if (
+    code.includes('liquidity') ||
+    code.includes('dex') ||
+    code.includes('amm') ||
+    code.includes('pool')
+  ) {
+    return 'liquidity';
+  }
   if (
     code.includes('provider') ||
     code.includes('ramp') ||
-    code.includes('pool') ||
     code.includes('aggregator') ||
     code.includes('spread') ||
     code.includes('fee')

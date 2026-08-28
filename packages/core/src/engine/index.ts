@@ -48,7 +48,13 @@ export {
   type RoutingWeightsInput,
   type SerializedRoutingWeights,
 } from './routing-config.js';
-export { MultiRailCostEngine, settlementConfidenceOf, hopsOf } from './routing-cost.js';
+export {
+  MultiRailCostEngine,
+  NO_ROUTING_PLATFORM_CHARGE,
+  settlementConfidenceOf,
+  hopsOf,
+} from './routing-cost.js';
+export { admitNormalizedQuote } from './quote-admission.js';
 export { MultiRailScorer } from './routing-scorer.js';
 export { explainRecommendation, explainRoute } from './routing-explanation.js';
 export {
@@ -82,6 +88,7 @@ export type {
   RoutedAppliedFee,
   RoutingCostBreakdown,
   RoutingFeeBucket,
+  RoutingPlatformCharge,
   RoutingRequest,
   RoutingScoreComponents,
   ScoredMultiRailRoute,

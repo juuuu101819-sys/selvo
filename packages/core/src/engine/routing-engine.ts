@@ -5,7 +5,7 @@ import type {
   ProviderFailure,
   RailType,
 } from '../domain/index.js';
-import { assetKind, isFiatAsset } from '../domain/asset.js';
+import { assetKind } from '../domain/asset.js';
 import { conversionKindOf } from '../domain/conversion.js';
 import {
   NoRoutesAvailableError,
@@ -15,8 +15,9 @@ import {
   isAppError,
   toAppError,
 } from '../errors/index.js';
-import { Dec, isCurrencyCode, type Decimal } from '../money/index.js';
+import { Dec, type Decimal } from '../money/index.js';
 import { AssetAmount } from '../money/asset-amount.js';
+import { Rounding } from '../money/decimal.js';
 import type {
   AuditLogger,
   Clock,
@@ -29,6 +30,9 @@ import type {
 } from '../ports/index.js';
 import { selectPricingRule } from './platform-pricing.js';
 import type { FinancialProviderRegistry } from './financial-registry.js';
+import { admitNormalizedQuote } from './quote-admission.js';
+import { freshnessPolicyForRail } from '../quotes/rail-freshness.js';
+import { quoteFreshnessView } from '../quotes/quote-freshness.js';
 import { NO_ROUTING_PLATFORM_CHARGE, type RoutingPlatformCharge } from './routing-cost.js';
 import type { MultiRailCostEngine } from './routing-cost.js';
 import {
@@ -71,7 +75,11 @@ export interface MultiRailRouterDependencies {
 }
 
 type QuoteOutcome =
-  | { readonly ok: true; readonly quote: NormalizedQuote; readonly provider: FinancialProvider }
+  | {
+      readonly ok: true;
+      readonly quote: NormalizedQuote;
+      readonly provider: FinancialProvider;
+    }
   | { readonly ok: false; readonly failure: ProviderFailure };
 
 /**
@@ -177,17 +185,20 @@ export class MultiRailRouter {
     }
 
     const pricingRules = await this.loadPricingRules(input);
+    const rankingAtMs = clock.nowMs();
     const priced: PricedMultiRailRoute[] = [];
     const pricingFailures: ProviderFailure[] = [];
 
     for (const { quote, provider } of quotes) {
       try {
+        const freshness = admitNormalizedQuote(quote, provider.descriptor.rail, rankingAtMs);
         priced.push(
           this.deps.costEngine.price(
             quote,
             provider.descriptor,
             provider.getCapabilities(),
             this.platformCharge(input, provider.descriptor, pricingRules, requestedAt),
+            freshness,
           ),
         );
       } catch (error) {
@@ -287,6 +298,11 @@ export class MultiRailRouter {
         continue;
       }
       try {
+        const freshness = quoteFreshnessView(
+          quote,
+          Date.parse(snapshot.request.requestedAt),
+          freshnessPolicyForRail(descriptor.rail),
+        );
         priced.push(
           this.deps.costEngine.price(
             quote,
@@ -306,6 +322,7 @@ export class MultiRailRouter {
               snapshot.pricingRules,
               snapshot.request.requestedAt,
             ),
+            freshness,
           ),
         );
       } catch (error) {
@@ -371,14 +388,7 @@ export class MultiRailRouter {
     input: RoutingEngineInput,
   ): Promise<readonly PlatformPricingRule[]> {
     const resolver = this.deps.pricingResolver;
-    if (
-      resolver === undefined ||
-      input.organizationId === null ||
-      !isFiatAsset(input.sourceAsset) ||
-      !isFiatAsset(input.destinationAsset) ||
-      !isCurrencyCode(input.sourceAsset) ||
-      !isCurrencyCode(input.destinationAsset)
-    ) {
+    if (resolver === undefined || input.organizationId === null) {
       return [];
     }
 
@@ -404,12 +414,7 @@ export class MultiRailRouter {
     pricingRules: readonly PlatformPricingRule[],
     requestedAt: string,
   ): RoutingPlatformCharge {
-    if (
-      input.organizationId === null ||
-      pricingRules.length === 0 ||
-      !isCurrencyCode(input.sourceAsset) ||
-      !isCurrencyCode(input.destinationAsset)
-    ) {
+    if (input.organizationId === null || pricingRules.length === 0) {
       return NO_ROUTING_PLATFORM_CHARGE;
     }
 
@@ -424,9 +429,25 @@ export class MultiRailRouter {
     if (rule === null) {
       return NO_ROUTING_PLATFORM_CHARGE;
     }
+
+    const surchargeBps = rule.surchargeBps === undefined || rule.surchargeBps === null
+      ? null
+      : parseDecimal(rule.surchargeBps);
+    const surcharge =
+      surchargeBps === null || surchargeBps.isZero()
+        ? null
+        : {
+            code: rule.surchargeCode ?? 'infrastructure_surcharge',
+            label: rule.surchargeLabel ?? 'Configured infrastructure surcharge',
+            rateBps: surchargeBps,
+          };
+
     return {
+      ruleId: rule.id,
       markupBps: parseDecimal(rule.markupBps),
       discountBps: parseDecimal(rule.discountBps),
+      flatFee: flatFeeInSource(rule, input.sourceAsset),
+      surcharge,
     };
   }
 
@@ -469,9 +490,13 @@ export class MultiRailRouter {
           sourceAsset: quote.sourceAsset,
           targetAsset: quote.targetAsset,
           indicatedRate: quote.indicatedRate,
+          timestamp: quote.timestamp,
+          expiresAt: quote.expiresAt,
           executable: false,
         },
       });
+
+      admitNormalizedQuote(quote, provider.descriptor.rail, clock.nowMs());
 
       return { ok: true, quote, provider };
     } catch (error) {
@@ -525,4 +550,24 @@ export function plannedRoutesOf(sourceAsset: string, destinationAsset: string): 
 
 function parseDecimal(value: string): Decimal {
   return new Dec(value);
+}
+
+const USD_PEGGED = new Set(['USD', 'USDC', 'USDT']);
+
+function flatFeeInSource(rule: PlatformPricingRule, sourceAsset: string): AssetAmount | null {
+  if (rule.platformFeeMinorUnits === '0') {
+    return null;
+  }
+  const feeAsset = rule.feeCurrency ?? sourceAsset;
+  const declared = AssetAmount.ofMinorUnits(feeAsset, rule.platformFeeMinorUnits);
+  if (declared.isZero()) {
+    return null;
+  }
+  if (declared.asset === sourceAsset) {
+    return declared;
+  }
+  if (USD_PEGGED.has(declared.asset) && USD_PEGGED.has(sourceAsset)) {
+    return AssetAmount.fromDecimal(sourceAsset, declared.toDecimal(), Rounding.HALF_UP);
+  }
+  return declared.asset === sourceAsset ? declared : null;
 }

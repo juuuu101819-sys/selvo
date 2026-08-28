@@ -106,6 +106,9 @@ export interface NormalizedQuoteOverrides {
   readonly liquidityDepth?: string | null;
   readonly slippage?: SlippageModel;
   readonly intermediaryAsset?: string | null;
+  readonly timestamp?: string;
+  readonly expiresAt?: string;
+  readonly hops?: readonly string[];
 }
 
 export function buildNormalizedQuote(overrides: NormalizedQuoteOverrides = {}): NormalizedQuote {
@@ -113,8 +116,8 @@ export function buildNormalizedQuote(overrides: NormalizedQuoteOverrides = {}): 
   const targetAsset = overrides.targetAsset ?? 'KRW';
   return {
     providerId: overrides.providerId ?? 'test-provider',
-    timestamp: '2026-01-01T00:00:00.000Z',
-    expiresAt: '2026-01-01T00:02:00.000Z',
+    timestamp: overrides.timestamp ?? '2026-01-01T00:00:00.000Z',
+    expiresAt: overrides.expiresAt ?? '2026-01-01T00:02:00.000Z',
     quoteReference: 'test-quote',
     conversionKind: overrides.conversionKind ?? 'fiat_fiat',
     sourceAsset,
@@ -140,10 +143,25 @@ export function buildNormalizedQuote(overrides: NormalizedQuoteOverrides = {}): 
     reliabilityScore: overrides.reliabilityScore ?? '0.99',
     executable: false,
     chainId: null,
-    metadata:
-      overrides.intermediaryAsset === undefined
+    metadata: {
+      ...(overrides.intermediaryAsset === undefined
         ? {}
-        : { intermediaryAsset: overrides.intermediaryAsset },
+        : { intermediaryAsset: overrides.intermediaryAsset }),
+      ...(overrides.hops === undefined ? {} : { hops: [...overrides.hops] }),
+    },
+  };
+}
+
+export function bindNormalizedQuoteToRequest(
+  quote: NormalizedQuote,
+  request: { readonly requestedAt: string; readonly amountMinorUnits: string },
+  ttlMs = 120_000,
+): NormalizedQuote {
+  return {
+    ...quote,
+    amountMinorUnits: request.amountMinorUnits,
+    timestamp: request.requestedAt,
+    expiresAt: new Date(Date.parse(request.requestedAt) + ttlMs).toISOString(),
   };
 }
 

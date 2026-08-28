@@ -29,6 +29,8 @@ describe('MultiRailCostEngine', () => {
       route.breakdown.platformFee,
       route.breakdown.networkFee,
       route.breakdown.gasFee,
+      route.breakdown.liquidityFee,
+      route.breakdown.surchargeFee,
       route.breakdown.spreadCost,
       route.breakdown.slippageCost,
       route.breakdown.roundingAdjustment,

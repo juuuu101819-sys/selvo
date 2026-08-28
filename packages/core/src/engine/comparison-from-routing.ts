@@ -7,8 +7,10 @@ import type {
   ComparisonDto,
   ComparisonInsightsDto,
   CostBreakdownDto,
+  QuoteFreshnessDto,
   RouteDto,
 } from '../serialization/dto.js';
+import type { QuoteFreshnessView } from '../quotes/quote-freshness.js';
 import type { ScoringWeightsInput } from './engine-config.js';
 import type { RoutingWeightsInput } from './routing-config.js';
 import type { MultiRailRouting, ScoredMultiRailRoute } from './routing-types.js';
@@ -102,6 +104,7 @@ function serializeRouteFromMultiRail(route: ScoredMultiRailRoute): RouteDto {
       quoteReference: route.quote.quoteReference,
       pricingVersion: route.provider.pricingVersion,
       intermediaryAsset: intermediary,
+      freshness: freshnessDto(route.quoteFreshness),
     },
     sendAmount: moneyFromAsset(route.sendAmount.asset, route.sendAmount.minorUnits.toString()),
     deliveredAmount: moneyFromAsset(
@@ -125,9 +128,9 @@ function serializeRouteFromMultiRail(route: ScoredMultiRailRoute): RouteDto {
     riskScore: route.settlementConfidence.toDecimalPlaces(6).toFixed(),
     liquidityHeadroom: route.liquidityHeadroom === null ? null : route.liquidityHeadroom.toFixed(),
     platformPricing: {
-      ruleId: null,
-      markupBps: '0',
-      discountBps: '0',
+      ruleId: route.platformCharge.ruleId,
+      markupBps: route.platformCharge.markupBps.toFixed(),
+      discountBps: route.platformCharge.discountBps.toFixed(),
       flatFee: null,
     },
     settlement: { ...route.settlement },
@@ -143,9 +146,23 @@ function serializeRouteFromMultiRail(route: ScoredMultiRailRoute): RouteDto {
   };
 }
 
+function freshnessDto(view: QuoteFreshnessView): QuoteFreshnessDto {
+  return {
+    quotedAt: view.quotedAt,
+    expiresAt: view.expiresAt,
+    ageMs: view.ageMs,
+    ageSeconds: view.ageSeconds,
+    maxAgeMs: view.maxAgeMs,
+    state: view.state,
+    usableForMs: view.usableForMs,
+  };
+}
+
 function breakdownFromRouting(route: ScoredMultiRailRoute): CostBreakdownDto {
   const dest = route.totalCost.asset;
-  const destinationFee = route.breakdown.networkFee.add(route.breakdown.gasFee);
+  const destinationFee = route.breakdown.networkFee
+    .add(route.breakdown.gasFee)
+    .add(route.breakdown.liquidityFee);
   return {
     appliedFees: route.breakdown.appliedFees.map(
       (fee): AppliedFeeDto => ({

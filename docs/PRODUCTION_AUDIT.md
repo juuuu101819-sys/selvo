@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H08 were subsequently fixed in production code. PA-H09–PA-H13 remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H10 were subsequently fixed in production code. PA-H11–PA-H13 remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -31,7 +31,8 @@ It is **not production-ready** as a live financial service:
 - Authorization on agent policy and session scopes is least-privilege for owner/admin policy writes,
   role-derived session scopes, mandatory Policy Engine evaluation before execution intents, and
   atomic daily-spend reservation (PA-H01–H04). Routing consistency and financial-data integrity
-  issues PA-H05–PA-H08 are fixed. Remaining HIGH items PA-H09–PA-H13 are untouched.
+  issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
+  (PA-H09–PA-H10) are fixed. Remaining HIGH items PA-H11–PA-H13 are untouched.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -104,13 +105,13 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | 11 | Financial calculations | Engines Decimal-safe. Dashboard averages use `Dec`/`bigint` (PA-H07). Display `Number()` remains in `format.ts` (PA-L01). |
 | 12 | Decimal precision | `DECIMAL(38,0)` amounts, `DECIMAL(38,18)` rates. |
 | 13 | Quote engine | `/comparisons` ranks via MultiRailRouter 1.0.0. Fiat `ENGINE_VERSION` 2.0.0 remains on `/meta` and in `RouteComparisonService` (not HTTP). Fingerprints + replay. |
-| 14 | Multi-rail routing | 1.0.0 ranks tradfi+stablecoin+DeFi. No freshness assert (PA-H09). `/comparisons` now shares this engine. |
+| 14 | Multi-rail routing | 1.0.0 ranks tradfi+stablecoin+DeFi. Rail-configured freshness excludes expired quotes (PA-H09). `/comparisons` shares this engine. |
 | 15 | Route graph | Demo topology only when `includeDemoAdapters` is true. Production / no licensed metadata → empty graph (PA-H06). Never executable. |
 | 16 | Stablecoin abstraction | Helios ramp + Solstice rail. No RPC. USDT→KRW graph-only. |
 | 17 | DeFi abstraction | Read-only DEX/AMM/aggregator. Ranked on `/comparisons` via MultiRailRouter when the corridor is quoted. `defiExecution: false`. |
 | 18 | AI agent infrastructure | Issue/revoke, intents, NL, dashboard. Simulator, not partner. |
 | 19 | Policy engine | Fail-closed for agents. Daily spend under-counts in-flight. Execution intents ungated. |
-| 20 | Fee engine | Provider vs platform split; CustomerPricing fiat-only on multi-rail. |
+| 20 | Fee engine | Provider vs platform split; CustomerPricing applies to fiat, stablecoin, and DeFi corridors once per route (PA-H10). |
 | 21 | Revenue analytics | Quoted ledger + org dashboard. `/routes` and `/comparisons` write `ROUTE_QUOTE` events. Realized revenue stays zero until settlement (unimplemented). |
 | 22 | TPV analytics | `tpvMinorUnits` on monetization events; agent dashboard volume. |
 | 23 | Referral system | 25% of platform revenue in `priceMonetization`. No partner payout rail (correct). |
@@ -254,20 +255,22 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-H09 — Multi-rail quoting does not apply comparison-grade freshness
 
-- **File:** `packages/core/src/engine/routing-engine.ts` (`requestQuote`, lines 326–369); freshness lives in `packages/core/src/quotes/quote-freshness.ts` and `comparison-service.ts`
-- **Component:** `MultiRailRouter.requestQuote`
-- **Problem:** Fiat comparisons call `assertQuoteUsable`. Multi-rail and agent quotes do not. Agent flow only checks `quoteExpiresAt` later.
-- **Why it matters:** Stale catalog quotes can be ranked and selected.
-- **Recommended fix:** Reuse `DEFAULT_FRESHNESS_POLICY` on catalog `getQuote` results.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/quotes/rail-freshness.ts`; `packages/core/src/quotes/quote-selection.ts`; `packages/core/src/engine/quote-admission.ts`; `packages/core/src/engine/routing-engine.ts`; `packages/core/src/engine/agent-payment-service.ts`
+- **Component:** `MultiRailRouter` / `admitNormalizedQuote`
+- **Problem:** Fiat comparisons called `assertQuoteUsable`. Multi-rail and agent quotes did not. A DEX price that had already expired could be ranked next to a still-valid bank FX quote, and a stale recommended quote could still be selected.
+- **Fix:** Every normalised quote must carry `timestamp` and `expiresAt`. Rail-configured freshness windows (`RAIL_FRESHNESS_POLICY`: bank FX 120s, stablecoin 45s, DEX 12s) are applied at ingestion and again at ranking. A quote past `expiresAt` or older than the rail max-age becomes a per-provider failure (`QUOTE_EXPIRED` / `QUOTE_STALE`), never a ranked option. Comparison and `/routes` DTOs expose `quote.freshness` / `quoteFreshness` (`ageMs`, `ageSeconds`, `state`). Selecting a route or recording an execution intent against an expired quote throws `QUOTE_EXPIRED` with `requoteRequired: true`. Replay does not re-apply the live admission check.
+- **Tests:** `packages/core/src/engine/routing-engine.test.ts` — expired DEX excluded, valid FX ranked; age metadata on all three rails. `packages/core/src/quotes/quote-selection.test.ts` and `apps/api/src/routes/quote-freshness-selection.test.ts` — select after expiry is 409 with `requoteRequired`.
 - **Priority:** P1
 
 #### PA-H10 — Customer platform pricing is skipped on non-fiat multi-rail corridors
 
-- **File:** `packages/core/src/engine/routing-engine.ts` (platform charge / `NO_ROUTING_PLATFORM_CHARGE`, ~263–318)
-- **Component:** `MultiRailRouter.loadPricingRules`
-- **Problem:** `CustomerPricing` applies on fiat↔fiat. Stablecoin and DeFi legs get no platform fee.
-- **Why it matters:** Fee engine and take-rate are incomplete for two of three rails.
-- **Recommended fix:** Define asset-aware platform charges without inventing unagreed markups (memory driver currently charges zero by design — `container.ts` lines 118–124).
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/engine/routing-engine.ts`; `packages/core/src/engine/routing-cost.ts`; `packages/core/src/domain/platform-pricing.ts`
+- **Component:** `MultiRailRouter.loadPricingRules` / `MultiRailCostEngine` / `priceRouteMonetization`
+- **Problem:** `CustomerPricing` applied on fiat↔fiat. Stablecoin and DeFi legs received no platform fee, so take-rate was incomplete for two of three rails.
+- **Fix:** The same `selectPricingRule` / `MultiRailCostEngine` path loads and applies negotiated terms for any corridor (fiat, stablecoin, DeFi) when an organisation has terms. Platform markup is charged once on the customer notional, not multiplied by hop count. Provider, network, gas, and liquidity costs remain per-leg. A configured DeFi/cross-chain surcharge is an explicit `surcharge` fee component (`defi_surcharge`), never implied by take-rate × legs. Memory still charges zero when no resolver/terms exist. Arithmetic stays on `Dec`/`bigint` across 2-, 6-, and 18-decimal assets. Monetization still uses `priceRouteMonetization` — no second fee engine.
+- **Tests:** `packages/core/src/engine/routing-platform-fees.test.ts` — A–G: equivalent fiat vs stablecoin-assisted take-rate; DeFi multi-hop per-leg costs + one platform fee; 1-leg vs 3-leg same platform fee; identifiable surcharge; Decimal reconciliation; 6- and 18-decimal precision; repeated calculation does not compound.
 - **Priority:** P1
 
 #### PA-H11 — No CI, container, or deploy manifest
@@ -529,8 +532,8 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 | PA-H06 | Route graph always demo. | **FIXED** — demo graph only when demo adapters are on; otherwise empty or licensed metadata only |
 | PA-H07 | Dashboard/chart `Number()` on financial metrics. | **FIXED** — Decimal/`bigint` aggregates; display-only CSS conversion at the chart boundary |
 | PA-H08 | Monetization/TPV not recorded on multi-rail HTTP. | **FIXED** — `/routes` returns quoted monetization; `ROUTE_QUOTE` ≠ realized revenue; execution stays 501 |
-| PA-H09 | Multi-rail missing quote freshness. | Open |
-| PA-H10 | Platform fees skip non-fiat multi-rail corridors. | Open |
+| PA-H09 | Multi-rail missing quote freshness. | **FIXED** — rail-configured freshness; expired quotes excluded; age in DTO; stale selection requires re-quote |
+| PA-H10 | Platform fees skip non-fiat multi-rail corridors. | **FIXED** — canonical take-rate once per route on fiat/stablecoin/DeFi; explicit surcharge; Decimal reconciliation |
 | PA-H11 | No CI / container / deploy config. | Open |
 | PA-H12 | Prisma `deepmerge-ts` high advisory. | Open |
 | PA-H13 | `COMPLETED`/`AUTHORIZED` naming resembles settlement. | Open |
@@ -568,7 +571,7 @@ Do not add product features until this sequence is complete. Do not start delega
 2. ~~**Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.~~ **Done.**
 3. **CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).
 4. **Docs:** agents issued; public vs authenticated quote surfaces; simulation vs settlement naming (PA-M06, PA-H13).
-5. **Quote integrity:** freshness on multi-rail (PA-H09). ~~Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
+5. ~~**Quote integrity:** freshness on multi-rail (PA-H09); platform fee on non-fiat corridors (PA-H10). Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
 6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
 7. **Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).
 8. **Phase 5 only after 1–7:** licensed read-only FX, payment, ramp, DEX APIs; persist `Quote` rows; then consider production mode.
@@ -592,4 +595,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H08 were fixed in later changes; PA-H09–PA-H13 and below were not implemented in those changes.*
+*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H10 were fixed in later changes; PA-H11–PA-H13 and below were not implemented in those changes.*

@@ -74,6 +74,15 @@ export interface RouteDto {
     readonly quoteReference: string | null;
     readonly pricingVersion: string;
     readonly intermediaryAsset: string | null;
+    readonly freshness: {
+      readonly quotedAt: string;
+      readonly expiresAt: string;
+      readonly ageMs: number;
+      readonly ageSeconds: string;
+      readonly maxAgeMs: number;
+      readonly state: string;
+      readonly usableForMs: number | null;
+    } | null;
   };
   readonly sendAmount: MoneyJson;
   readonly deliveredAmount: MoneyJson;
@@ -571,6 +580,15 @@ export interface MultiRailRouteDto {
   readonly reliabilityScore: string;
   readonly settlementConfidence: string;
   readonly estimatedSettlementTime: SettlementDto;
+  readonly quoteFreshness?: {
+    readonly quotedAt: string;
+    readonly expiresAt: string;
+    readonly ageMs: number;
+    readonly ageSeconds: string;
+    readonly maxAgeMs: number;
+    readonly state: string;
+    readonly usableForMs: number | null;
+  };
   readonly routeScore: string;
   readonly scoreComponents: {
     readonly cost: string;
@@ -586,6 +604,8 @@ export interface MultiRailRouteDto {
     readonly platformFee: AssetAmountJson;
     readonly networkFee: AssetAmountJson;
     readonly gasFee: AssetAmountJson;
+    readonly liquidityFee?: AssetAmountJson;
+    readonly surchargeFee?: AssetAmountJson;
     readonly spreadCost: AssetAmountJson;
     readonly slippageCost: AssetAmountJson;
   };

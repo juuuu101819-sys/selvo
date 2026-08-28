@@ -19,6 +19,7 @@ import type {
   NormalizedQuoteRequest,
 } from '../ports/index.js';
 import type { FinancialProviderRegistry } from './financial-registry.js';
+import { admitNormalizedQuote } from './quote-admission.js';
 import { NO_ROUTING_PLATFORM_CHARGE, type MultiRailCostEngine } from './routing-cost.js';
 import { DEFI_ROUTING_ENGINE_VERSION } from './defi-config.js';
 import { explainDefiRouting, projectDefiRoute } from './defi-project.js';
@@ -158,6 +159,11 @@ export class DefiRouter {
             entry.provider.descriptor,
             entry.provider.getCapabilities(),
             NO_ROUTING_PLATFORM_CHARGE,
+            admitNormalizedQuote(
+              entry.quote,
+              entry.provider.descriptor.rail,
+              this.deps.clock.nowMs(),
+            ),
           ),
           provider: entry.provider,
         });
@@ -309,6 +315,8 @@ export class DefiRouter {
           layer: 'defi',
         } satisfies JsonObject,
       });
+
+      admitNormalizedQuote(quote, provider.descriptor.rail, clock.nowMs());
 
       return { ok: true, quote, provider };
     } catch (error) {

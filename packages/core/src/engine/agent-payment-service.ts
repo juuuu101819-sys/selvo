@@ -23,6 +23,7 @@ import {
   isAppError,
 } from '../errors/index.js';
 import { assertAssetCode, toAssetMinorUnits } from '../domain/asset.js';
+import { assertSelectionQuoteFresh } from '../quotes/quote-selection.js';
 import type { JsonObject } from '../domain/json.js';
 import type {
   AgentPaymentsRepository,
@@ -369,7 +370,6 @@ export class AgentPaymentService {
             { status: intent.status },
           );
         }
-        this.assertQuoteFresh(intent);
 
         const selected = intent.quotedRoutes.find((route) => route.routeId === input.routeId);
         if (selected === undefined) {
@@ -377,6 +377,7 @@ export class AgentPaymentService {
             routeId: input.routeId,
           });
         }
+        this.assertQuoteFresh(intent, selected);
 
         const policy = await this.requirePolicy(
           intent.organizationId,
@@ -771,10 +772,13 @@ export class AgentPaymentService {
     return intent;
   }
 
-  private assertQuoteFresh(intent: PaymentIntent): void {
-    if (intent.quoteExpiresAt !== null && intent.quoteExpiresAt <= this.deps.clock.nowIso()) {
-      throw new QuoteExpiredError('The quoted routes have expired. Request a new quote.');
-    }
+  private assertQuoteFresh(intent: PaymentIntent, selected?: QuotedRouteOption): void {
+    assertSelectionQuoteFresh({
+      nowIso: this.deps.clock.nowIso(),
+      quoteExpiresAt: intent.quoteExpiresAt,
+      selectedExpiresAt: selected?.expiresAt ?? intent.quoteExpiresAt,
+      routeId: selected?.routeId,
+    });
   }
 
   private async assertPolicy(

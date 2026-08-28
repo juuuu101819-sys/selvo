@@ -1,10 +1,10 @@
 import type { PlatformPricingRule } from '../domain/platform-pricing.js';
-import type { CurrencyCode } from '../money/currency.js';
 
 export interface PricingRuleQuery {
   readonly organizationId: string;
-  readonly sourceCurrency: CurrencyCode;
-  readonly targetCurrency: CurrencyCode;
+  /** Source asset of the customer route (ISO fiat or on-chain ticker). */
+  readonly sourceCurrency: string;
+  readonly targetCurrency: string;
   /** Instant the terms are evaluated at. */
   readonly at: string;
 }

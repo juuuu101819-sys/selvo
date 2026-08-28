@@ -10,10 +10,11 @@ import {
   type AuditLogger,
   type FinancialProvider,
   type NormalizedQuoteRequest,
+  type PlatformPricingResolver,
   type ProviderContext,
   type ProviderHealth,
 } from '../ports/index.js';
-import { buildNormalizedQuote, buildProviderDescriptor } from '../testing/index.js';
+import { bindNormalizedQuoteToRequest, buildNormalizedQuote, buildProviderDescriptor } from '../testing/index.js';
 import { FinancialProviderRegistry } from './financial-registry.js';
 import { MultiRailCostEngine } from './routing-cost.js';
 import { MultiRailRouter } from './routing-engine.js';
@@ -44,6 +45,7 @@ class StubFinancialProvider implements FinancialProvider {
     private readonly quote: ReturnType<typeof buildNormalizedQuote> | null,
     private readonly source: string,
     private readonly target: string,
+    private readonly preserveQuoteTimes = false,
   ) {
     this.descriptor = buildProviderDescriptor(descriptor);
   }
@@ -69,7 +71,13 @@ class StubFinancialProvider implements FinancialProvider {
     if (this.quote === null || !this.supportsNormalized(request)) {
       throw new UnsupportedCorridorError(request.sourceAsset, request.targetAsset);
     }
-    return { ...this.quote, amountMinorUnits: request.amountMinorUnits };
+    if (this.preserveQuoteTimes) {
+      return { ...this.quote, amountMinorUnits: request.amountMinorUnits };
+    }
+    return bindNormalizedQuoteToRequest(
+      { ...this.quote, amountMinorUnits: request.amountMinorUnits },
+      request,
+    );
   }
 
   async getSettlementEstimate(request: NormalizedQuoteRequest, context: ProviderContext) {
@@ -95,17 +103,24 @@ class StubFinancialProvider implements FinancialProvider {
   }
 }
 
-function router(providers: readonly FinancialProvider[]): MultiRailRouter {
+function router(
+  providers: readonly FinancialProvider[],
+  options: {
+    readonly clock?: FixedClock;
+    readonly pricingResolver?: PlatformPricingResolver;
+  } = {},
+): MultiRailRouter {
   return new MultiRailRouter({
     mode: 'sandbox',
     registry: FinancialProviderRegistry.create('sandbox', providers),
     costEngine: new MultiRailCostEngine(),
     defaultWeights: defaultRoutingWeights(),
-    clock: new FixedClock('2026-03-01T09:00:00.000Z'),
+    clock: options.clock ?? new FixedClock('2026-03-01T09:00:00.000Z'),
     ids: new SequentialIdGenerator(),
     auditLogger: new RecordingAuditLogger(),
     logger: noopLogger,
     providerTimeoutMs: 1_000,
+    ...(options.pricingResolver === undefined ? {} : { pricingResolver: options.pricingResolver }),
   });
 }
 
@@ -186,5 +201,117 @@ describe('MultiRailRouter', () => {
       first.routes[0]?.deliveredAmount.minorUnits,
     );
     expect(second.routeExplanation).toBe(first.routeExplanation);
+  });
+
+  it('excludes a DEX quote past its short expiry while ranking a still-valid FX quote', async () => {
+    const clock = new FixedClock('2026-03-01T12:00:45.000Z');
+    const result = await router(
+      [
+        new StubFinancialProvider(
+          { id: 'dex', name: 'Amm Pool', rail: 'dex_liquidity' },
+          buildNormalizedQuote({
+            providerId: 'dex',
+            timestamp: '2026-03-01T12:00:00.000Z',
+            expiresAt: '2026-03-01T12:00:30.000Z',
+            indicatedRate: '1298',
+          }),
+          'USD',
+          'KRW',
+          true,
+        ),
+        new StubFinancialProvider(
+          { id: 'bank', name: 'Northgate Bank', rail: 'bank_fx' },
+          buildNormalizedQuote({
+            providerId: 'bank',
+            timestamp: '2026-03-01T12:00:00.000Z',
+            expiresAt: '2026-03-01T12:02:00.000Z',
+            indicatedRate: '1290',
+          }),
+          'USD',
+          'KRW',
+          true,
+        ),
+      ],
+      { clock },
+    ).evaluate({
+      organizationId: null,
+      sourceAsset: 'USD',
+      destinationAsset: 'KRW',
+      amountMinorUnits: '10000000',
+      weights: null,
+      actor: 'test',
+      requestId: 'req_freshness',
+    });
+
+    expect(result.routes.map((route) => route.provider.id)).toEqual(['bank']);
+    expect(result.providerFailures.some((failure) => failure.providerId === 'dex')).toBe(true);
+    expect(result.providerFailures.find((failure) => failure.providerId === 'dex')?.code).toBe(
+      'QUOTE_EXPIRED',
+    );
+  });
+
+  it('records quote age in comparison metadata for tradfi, stablecoin, and DeFi rails', async () => {
+    const clock = new FixedClock('2026-03-01T12:00:08.000Z');
+    const result = await router(
+      [
+        new StubFinancialProvider(
+          { id: 'bank', name: 'Northgate Bank', rail: 'bank_fx' },
+          buildNormalizedQuote({
+            providerId: 'bank',
+            timestamp: '2026-03-01T12:00:00.000Z',
+            expiresAt: '2026-03-01T12:02:00.000Z',
+          }),
+          'USD',
+          'KRW',
+          true,
+        ),
+        new StubFinancialProvider(
+          { id: 'solstice', name: 'Solstice', rail: 'stablecoin_settlement' },
+          buildNormalizedQuote({
+            providerId: 'solstice',
+            timestamp: '2026-03-01T12:00:03.000Z',
+            expiresAt: '2026-03-01T12:00:48.000Z',
+            intermediaryAsset: 'USDC',
+          }),
+          'USD',
+          'KRW',
+          true,
+        ),
+        new StubFinancialProvider(
+          { id: 'dex', name: 'Amm Pool', rail: 'dex_liquidity' },
+          buildNormalizedQuote({
+            providerId: 'dex',
+            timestamp: '2026-03-01T12:00:06.000Z',
+            expiresAt: '2026-03-01T12:00:18.000Z',
+          }),
+          'USD',
+          'KRW',
+          true,
+        ),
+      ],
+      { clock },
+    ).evaluate({
+      organizationId: null,
+      sourceAsset: 'USD',
+      destinationAsset: 'KRW',
+      amountMinorUnits: '10000000',
+      weights: null,
+      actor: 'test',
+      requestId: 'req_ages',
+    });
+
+    const ages = Object.fromEntries(
+      result.routes.map((route) => [route.provider.id, route.quoteFreshness]),
+    );
+    expect(ages['bank']?.ageMs).toBe(8_000);
+    expect(ages['bank']?.ageSeconds).toBe('8');
+    expect(ages['bank']?.state).toBe('fresh');
+    expect(ages['solstice']?.ageMs).toBe(5_000);
+    expect(ages['solstice']?.ageSeconds).toBe('5');
+    expect(ages['dex']?.ageMs).toBe(2_000);
+    expect(ages['dex']?.ageSeconds).toBe('2');
+    expect(result.routes.every((route) => route.quote.timestamp && route.quote.expiresAt)).toBe(
+      true,
+    );
   });
 });

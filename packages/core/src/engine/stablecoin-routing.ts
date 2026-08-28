@@ -18,6 +18,7 @@ import type {
   NormalizedQuoteRequest,
 } from '../ports/index.js';
 import type { FinancialProviderRegistry } from './financial-registry.js';
+import { admitNormalizedQuote } from './quote-admission.js';
 import { NO_ROUTING_PLATFORM_CHARGE, type MultiRailCostEngine } from './routing-cost.js';
 import { STABLECOIN_ROUTING_ENGINE_VERSION } from './stablecoin-config.js';
 import { explainStablecoinRouting, projectStablecoinRoute } from './stablecoin-project.js';
@@ -147,6 +148,7 @@ export class StablecoinRouter {
         provider.descriptor,
         provider.getCapabilities(),
         NO_ROUTING_PLATFORM_CHARGE,
+        admitNormalizedQuote(quote, provider.descriptor.rail, this.deps.clock.nowMs()),
       ),
     );
     priced.sort((left, right) => {
@@ -257,6 +259,8 @@ export class StablecoinRouter {
           layer: 'stablecoin',
         } satisfies JsonObject,
       });
+
+      admitNormalizedQuote(quote, provider.descriptor.rail, clock.nowMs());
 
       return { ok: true, quote, provider };
     } catch (error) {

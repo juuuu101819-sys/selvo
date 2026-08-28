@@ -113,6 +113,14 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
           <dt>Quoted at</dt>
           <dd className="font-mono">{formatTimestamp(route.quote.quotedAt)}</dd>
         </div>
+        {route.quote.freshness !== null && route.quote.freshness !== undefined && (
+          <div className="flex gap-1">
+            <dt>Quote age</dt>
+            <dd className="font-mono">
+              {route.quote.freshness.ageSeconds}s ({route.quote.freshness.state})
+            </dd>
+          </div>
+        )}
         {route.quote.expiresAt !== null && (
           <div className="flex gap-1">
             <dt>Quote expires</dt>
