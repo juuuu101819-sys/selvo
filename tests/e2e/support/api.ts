@@ -67,9 +67,10 @@ export interface ComparisonRouteBody {
     readonly cost: string;
     readonly speed: string;
     readonly reliability: string;
-    readonly slippage: string;
-    readonly liquidity: string;
-    readonly risk: string;
+    readonly liquidity?: string;
+    readonly settlementConfidence?: string;
+    readonly slippage?: string;
+    readonly risk?: string;
   };
 }
 

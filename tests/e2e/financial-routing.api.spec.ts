@@ -445,10 +445,19 @@ test.describe('CASE 8 — High slippage', () => {
     if (highest === undefined || lowest === undefined) {
       return;
     }
-    expect(Number(highest.scoreComponents.slippage)).toBeLessThanOrEqual(
-      Number(lowest.scoreComponents.slippage),
-    );
     expect(Number(highest.slippageBps)).toBeGreaterThanOrEqual(Number(lowest.slippageBps));
+    // MultiRail prices slippage into all-in cost. There is no separate slippage score factor.
+    expect(highest.scoreComponents.slippage).toBeUndefined();
+    expect(lowest.scoreComponents.slippage).toBeUndefined();
+    const costliest = [...body.data.routes].sort(
+      (left, right) => Number(right.totalCostBps) - Number(left.totalCostBps),
+    )[0];
+    const cheapest = [...body.data.routes].sort(
+      (left, right) => Number(left.totalCostBps) - Number(right.totalCostBps),
+    )[0];
+    expect(Number(costliest?.scoreComponents.cost)).toBeLessThanOrEqual(
+      Number(cheapest?.scoreComponents.cost),
+    );
   });
 
   test('rejects selecting a route after policy PATCH lowers maxSlippageBps', async ({ request }) => {
