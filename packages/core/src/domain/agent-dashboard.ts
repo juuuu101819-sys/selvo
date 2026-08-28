@@ -1,4 +1,4 @@
-import type { PaymentIntentStatus, RoutePreference } from './agent-payments.js';
+import { PAYMENT_INTENT_STATUSES, type PaymentIntentStatus, type RoutePreference } from './agent-payments.js';
 
 /**
  * Organization-scoped AI-agent financial dashboard.
@@ -66,14 +66,4 @@ export interface AgentDashboardDetail {
   readonly privateKeysHeld: false;
 }
 
-export const AGENT_DASHBOARD_VOLUME_STATUSES: readonly PaymentIntentStatus[] = [
-  'CREATED',
-  'QUOTING',
-  'QUOTED',
-  'AUTHORIZED',
-  'ROUTED',
-  'EXECUTION_PENDING',
-  'COMPLETED',
-  'FAILED',
-  'EXPIRED',
-];
+export const AGENT_DASHBOARD_VOLUME_STATUSES: readonly PaymentIntentStatus[] = PAYMENT_INTENT_STATUSES;

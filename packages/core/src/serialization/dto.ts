@@ -1,4 +1,4 @@
-import type { FeeSide, PlatformMode, ProviderLicensing, RailType } from '../domain/index.js';
+import type { FeeSide, PaymentIntentStatus, PlatformMode, ProviderLicensing, RailType } from '../domain/index.js';
 import type { MoneyJson, RateJson } from '../money/index.js';
 
 /**
@@ -779,7 +779,7 @@ export interface PaymentIntentDto {
   readonly routePreference: string | null;
   readonly maxFeeBps: string | null;
   readonly expiresAt: string;
-  readonly status: string;
+  readonly status: PaymentIntentStatus;
   readonly quotedRoutes: readonly QuotedRouteOptionDto[];
   readonly quoteExpiresAt: string | null;
   readonly selectedRouteId: string | null;

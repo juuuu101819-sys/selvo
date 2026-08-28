@@ -444,7 +444,7 @@ export class AgentPaymentService {
           input.organizationId,
           input.agentId,
         );
-        if (intent.status === 'AUTHORIZED') {
+        if (intent.status === 'POLICY_APPROVED') {
           return intent;
         }
         if (intent.status !== 'ROUTED') {
@@ -479,7 +479,7 @@ export class AgentPaymentService {
 
         const authorized = await this.deps.agentPayments.updateIntent({
           ...intent,
-          status: 'AUTHORIZED',
+          status: 'POLICY_APPROVED',
           authorizedAt: this.deps.clock.nowIso(),
           updatedAt: this.deps.clock.nowIso(),
         });
@@ -514,7 +514,7 @@ export class AgentPaymentService {
       agentId: input.agentId,
       paymentIntentId: input.paymentIntentId,
     });
-    if (existing.status === 'COMPLETED' && existing.simulation !== null) {
+    if (existing.status === 'SIMULATION_COMPLETED' && existing.simulation !== null) {
       return existing;
     }
     return this.deps.agentPayments.withExclusiveAgentAccess(
@@ -526,13 +526,13 @@ export class AgentPaymentService {
           agentId: input.agentId,
           paymentIntentId: input.paymentIntentId,
         });
-        if (intent.status === 'COMPLETED' && intent.simulation !== null) {
+        if (intent.status === 'SIMULATION_COMPLETED' && intent.simulation !== null) {
           return intent;
         }
         if (intent.status === 'EXPIRED') {
           throw new QuoteExpiredError('This payment intent has expired.');
         }
-        if (intent.status !== 'AUTHORIZED') {
+        if (intent.status !== 'POLICY_APPROVED') {
           throw new ValidationError(
             `A payment intent in status ${intent.status} cannot be simulated.`,
             { status: intent.status },
@@ -564,7 +564,7 @@ export class AgentPaymentService {
 
         const pending = await this.deps.agentPayments.updateIntent({
           ...intent,
-          status: 'EXECUTION_PENDING',
+          status: 'SIMULATION_PENDING',
           updatedAt: this.deps.clock.nowIso(),
         });
 
@@ -576,7 +576,7 @@ export class AgentPaymentService {
 
         const completed = await this.deps.agentPayments.updateIntent({
           ...pending,
-          status: 'COMPLETED',
+          status: 'SIMULATION_COMPLETED',
           simulatedAt: simulation.occurredAt,
           simulation,
           fundsMoved: false,
@@ -635,9 +635,9 @@ export class AgentPaymentService {
         });
         if (
           intent.status !== 'ROUTED' &&
-          intent.status !== 'AUTHORIZED' &&
-          intent.status !== 'EXECUTION_PENDING' &&
-          intent.status !== 'COMPLETED'
+          intent.status !== 'POLICY_APPROVED' &&
+          intent.status !== 'SIMULATION_PENDING' &&
+          intent.status !== 'SIMULATION_COMPLETED'
         ) {
           throw new PolicyDeniedError(
             'policy_required',
@@ -739,7 +739,7 @@ export class AgentPaymentService {
     if (intent.status === 'EXPIRED') {
       throw new QuoteExpiredError('This payment intent has expired.');
     }
-    if (intent.status === 'FAILED' || intent.status === 'COMPLETED') {
+    if (intent.status === 'FAILED' || intent.status === 'SIMULATION_COMPLETED') {
       throw new ValidationError(`A payment intent in status ${intent.status} cannot be changed.`, {
         status: intent.status,
       });
@@ -748,7 +748,7 @@ export class AgentPaymentService {
   }
 
   private async expireIfNeeded(intent: PaymentIntent): Promise<PaymentIntent> {
-    if (intent.status === 'EXPIRED' || intent.status === 'COMPLETED' || intent.status === 'FAILED') {
+    if (intent.status === 'EXPIRED' || intent.status === 'SIMULATION_COMPLETED' || intent.status === 'FAILED') {
       return intent;
     }
     const now = this.deps.clock.nowIso();

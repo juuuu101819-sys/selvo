@@ -237,4 +237,11 @@ describe('migrations', () => {
       expect(enumLine).not.toContain(forbidden);
     }
   });
+
+  it('renames settlement-like payment-intent statuses in a later CHECK', () => {
+    expect(sql).toContain("'POLICY_APPROVED'");
+    expect(sql).toContain("'SIMULATION_PENDING'");
+    expect(sql).toContain("'SIMULATION_COMPLETED'");
+    expect(sql).toContain('UPDATE "payment_intents" SET "status" = \'SIMULATION_COMPLETED\' WHERE "status" = \'COMPLETED\'');
+  });
 });

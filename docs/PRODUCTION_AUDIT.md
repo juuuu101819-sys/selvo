@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H10 were subsequently fixed in production code. PA-H11–PA-H13 remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, and PA-H01–PA-H13 were subsequently fixed in production code. Medium and Low issues (PA-M01–PA-M16, PA-L01–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -32,7 +32,9 @@ It is **not production-ready** as a live financial service:
   role-derived session scopes, mandatory Policy Engine evaluation before execution intents, and
   atomic daily-spend reservation (PA-H01–H04). Routing consistency and financial-data integrity
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
-  (PA-H09–PA-H10) are fixed. Remaining HIGH items PA-H11–PA-H13 are untouched.
+  (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
+  naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
+  Remaining Medium/Low items are untouched and out of scope for the HIGH-issue sequence.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -74,7 +76,7 @@ Parser contract (`packages/core/src/domain/optimization-preference.ts` lines 34�
 NL_DID_NOT_COMPUTE = ['exchange_rates', 'fees', 'slippage', 'settlement_amounts']
 ```
 
-`payment-instruction.ts` is a regex/merchant resolver, not a pricing engine. No balance lookup. Settlement status on NL results is typed `executable: false`, `submitted: false`, `fundsMoved: false`. `COMPLETED` on the payment-intent path is **simulation only** (`sandbox-simulator.ts`).
+`payment-instruction.ts` is a regex/merchant resolver, not a pricing engine. No balance lookup. Settlement status on NL results is typed `executable: false`, `submitted: false`, `fundsMoved: false`. `SIMULATION_COMPLETED` on the payment-intent path is **simulation only** (`sandbox-simulator.ts`).
 
 ### Decimal-safe financial calculations — PASS on the money path; display-only conversion at chart CSS
 
@@ -125,7 +127,7 @@ Sandbox adapters: `licensing: 'unlicensed_sandbox'`, `modes: ['sandbox']`. Produ
 | 31 | Scalability | Memory default; in-process limiter; JSON `quoted_routes` on intents. |
 | 32 | Deployment configuration | `.env.example` present. No Dockerfile, no CI workflows, no `vercel.json`. |
 | 33 | Dependency vulnerabilities | `npm audit --omit=dev`: 3 **high** via Prisma → `deepmerge-ts` GHSA-ggr8-5vv4-36mx. 0 critical. |
-| 34 | Regulatory-risk boundaries | 501 + flags + CHECKs are the software boundary. `COMPLETED` / `AUTHORIZED` naming can look like settlement. KYC/sanctions not implemented (correct until Phase 7). |
+| 34 | Regulatory-risk boundaries | 501 + flags + CHECKs are the software boundary. Payment-intent statuses no longer use settlement-like names (PA-H13). KYC/sanctions not implemented (correct until Phase 7). |
 
 ---
 
@@ -199,7 +201,7 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 - **File:** `apps/api/src/routes/execution-intents.ts`; `packages/core/src/engine/agent-payment-service.ts`
 - **Component:** `registerExecutionIntentRoutes` / `gateExecutionIntent`
 - **Problem:** Only `transaction:create` and quote-expiry were checked. Combined with PA-H02, any session user could persist a route choice without Policy Engine evaluation.
-- **Fix:** Quote expiry is still checked first. A `paymentIntentId` is then required; omitting it is `403 POLICY_DENIED` (`policy_required`). `gateExecutionIntent` re-evaluates policy fail-closed (missing policy, evaluation errors, and non-gated statuses all reject). Allowed statuses are `ROUTED`, `AUTHORIZED`, `EXECUTION_PENDING`, and `COMPLETED`. Select, authorize, simulate, NL routing, and the HTTP execution-intent route all funnel through that gate or `assertPolicy`.
+- **Fix:** Quote expiry is still checked first. A `paymentIntentId` is then required; omitting it is `403 POLICY_DENIED` (`policy_required`). `gateExecutionIntent` re-evaluates policy fail-closed (missing policy, evaluation errors, and non-gated statuses all reject). Allowed statuses are `ROUTED`, `POLICY_APPROVED`, `SIMULATION_PENDING`, and `SIMULATION_COMPLETED`. Select, authorize, simulate, NL routing, and the HTTP execution-intent route all funnel through that gate or `assertPolicy`.
 - **Tests:** `apps/api/src/routes/execution-intents.test.ts`; `apps/api/src/routes/policy-hardening.test.ts` (API, service, NL, missing policy)
 - **Priority:** P0
 
@@ -208,8 +210,8 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 - **Status:** **FIXED** (2026-08-28)
 - **File:** `packages/core/src/domain/agent-payments.ts`; `packages/core/src/engine/agent-payment-service.ts`; persistence agent-payment stores
 - **Component:** `DAILY_SPENDING_STATUSES` / `withExclusiveAgentAccess`
-- **Problem:** Only `AUTHORIZED`, `EXECUTION_PENDING`, and `COMPLETED` counted. Concurrent `QUOTED` intents could each pass the daily check and then select in parallel.
-- **Fix:** `ROUTED` is reserved spend. Select, authorize, simulate, and the execution-intent gate run inside `withExclusiveAgentAccess` (in-process mutex in memory; `SELECT … FOR UPDATE` on the agent policy row in Postgres). Check-and-reserve is a single locked operation; `excludeIntentId` prevents double-counting a row already reserved. `FAILED`/`EXPIRED` are omitted from the status set, so those transitions release the reservation. `COMPLETED` keeps the amount as permanent spend.
+- **Problem:** Only later lifecycle statuses counted. Concurrent `QUOTED` intents could each pass the daily check and then select in parallel.
+- **Fix:** `ROUTED` is reserved spend. Select, authorize, simulate, and the execution-intent gate run inside `withExclusiveAgentAccess` (in-process mutex in memory; `SELECT … FOR UPDATE` on the agent policy row in Postgres). Check-and-reserve is a single locked operation; `excludeIntentId` prevents double-counting a row already reserved. `FAILED`/`EXPIRED` are omitted from the status set, so those transitions release the reservation. `SIMULATION_COMPLETED` keeps the amount as permanent spend.
 - **Tests:** `apps/api/src/routes/policy-hardening.test.ts` — five parallel 400-unit intents against a 1,000-unit cap, six rounds; exactly two succeed each round
 - **Priority:** P0 (control correctness); P2 (money impact)
 
@@ -275,29 +277,32 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-H11 — No CI, container, or deploy manifest
 
-- **File:** repository root (no `.github/workflows`, no `Dockerfile`, no `vercel.json`, no `environment.json`)
-- **Component:** deployment
-- **Problem:** `npm run verify` and Playwright exist locally only. `next.config.ts` has no production headers/asset policy beyond defaults.
-- **Why it matters:** Production cannot be gated on lint/typecheck/test/e2e or `npm audit`.
-- **Recommended fix:** CI workflow running `verify`, e2e, optional `TEST_DATABASE_URL`, and `npm audit`. Container or platform config for API + web.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `.github/workflows/ci.yml`; `Dockerfile`; `.dockerignore`; `package.json` (`audit:deps`); `README.md`
+- **Component:** CI / production image
+- **Problem:** `npm run verify` and Playwright existed locally only. A regression in PHASE 20–22 financial-safety properties could merge without automated verification. No production container, and `npm install` could drift from the lockfile.
+- **Fix:** GitHub Actions workflow `.github/workflows/ci.yml` runs on every push and pull request with no `continue-on-error`. Jobs: (1) `npm ci`, Prisma migrate against CI Postgres, `lint`, `typecheck`, unit+integration (including `TEST_DATABASE_URL` persistence tests), `npm run audit:deps`; (2) production build + Playwright e2e; (3) `docker build --target api` of a fail-closed production image (`NODE_ENV=production`, `PLATFORM_MODE=production`, `DATABASE_DRIVER=postgres`, routing/execution flags false, no baked `AUTH_SECRET` or demo credentials). README documents the workflow path.
+- **Tests:** `apps/api/src/ops/ci-hardening.test.ts` — workflow contains `npm ci`, verify, e2e, audit, docker build, and no `continue-on-error`; Dockerfile matches PA-C01–C03 gates.
 - **Priority:** P0 for process; P1 for images
 
 #### PA-H12 — Prisma `deepmerge-ts` high advisory (GHSA-ggr8-5vv4-36mx)
 
-- **File:** lockfile / `prisma@7.10.0` → `@prisma/config` → `deepmerge-ts < 8`
-- **Component:** CLI/config merge (dev/build path)
-- **Problem:** `npm audit --omit=dev` reports 3 high (same advisory, no CVSS). Force-fix would downgrade Prisma 7 → 6.
-- **Why it matters:** Stack exhaustion on recursive merge in Prisma config tooling, not the quote engine. Still a production-dependency finding.
-- **Recommended fix:** Wait for Prisma to bump `deepmerge-ts`, or isolate CLI. Do not `--force` to Prisma 6 without a dedicated phase.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `package.json` `overrides.deepmerge-ts`; `package-lock.json`; `.github/workflows/ci.yml` (`npm run audit:deps`)
+- **Component:** Prisma CLI config merge (`prisma@7.10.0` → `@prisma/config` → `deepmerge-ts`)
+- **Problem:** `npm audit` reported 3 high findings, all GHSA-ggr8-5vv4-36mx / CVE-2026-40345 (stack exhaustion on recursive object graphs). `deepmerge-ts < 8.0.0` was pinned at `7.1.5` by `@prisma/config@7.10.0`. `npm audit fix` wanted to downgrade Prisma 7 → 6. Prisma 7.10.0 was still the latest stable; the upstream bump in prisma/prisma#30054 had not shipped.
+- **Fix:** Root `overrides` pins `deepmerge-ts` to **8.0.2** (patched ≥ 8.0.0) without changing Prisma 7.10.0. `npm audit --audit-level=moderate` is clean. CI runs that audit on every change so a new moderate-or-higher advisory fails the pipeline. Prefer removing the override once Prisma publishes `@prisma/config` with `deepmerge-ts >= 8`.
+- **Tests:** `apps/api/src/ops/ci-hardening.test.ts` asserts the override and the CI audit step. Persistence integration tests still run when `TEST_DATABASE_URL` is set.
 - **Priority:** P1
 
 #### PA-H13 — Payment statuses `AUTHORIZED` / `EXECUTION_PENDING` / `COMPLETED` read as settlement
 
-- **File:** `packages/core/src/domain/agent-payments.ts` (status enum); `packages/core/src/engine/sandbox-simulator.ts` (lines 18–27); `apps/api/src/routes/agent-payments.ts` simulate handler
-- **Component:** agent payment lifecycle
-- **Problem:** Simulator sets `COMPLETED` with `fundsMoved: false`. API names match licensed payment rails.
-- **Why it matters:** Auditors or integrators can treat simulation as execution. Software flags are correct; naming is the risk.
-- **Recommended fix:** Before any public production API, rename to simulation statuses **or** require every client-facing payload to lead with `realExecution: false` / `simulated: true` in docs and OpenAPI examples. Do not silently “look executable.”
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/domain/agent-payments.ts`; `packages/core/src/domain/financial-status.ts`; `packages/core/src/engine/agent-payment-service.ts`; `docs/API.md`; `prisma/migrations/20260828120000_payment_intent_status_rename/migration.sql`
+- **Component:** payment-intent / execution-intent lifecycle
+- **Problem:** Simulator set `COMPLETED` with `fundsMoved: false`. `AUTHORIZED` and `EXECUTION_PENDING` matched licensed payment-rail vocabulary, so API consumers could read simulation as settlement.
+- **Fix:** Atomic rename (old names fully removed, no alias): `AUTHORIZED` → `POLICY_APPROVED`, `EXECUTION_PENDING` → `SIMULATION_PENDING`, `COMPLETED` → `SIMULATION_COMPLETED`. Execution-intent status remains `recorded` (not a payment). A catalog in `financial-status.ts` states that every API-reachable financial status implies `fundsMoved: false` and realized revenue `false`. `docs/API.md` lists each value with a one-line financial meaning. Postgres CHECK is migrated in lockstep. `POST /api/v1/executions` remains 501.
+- **Tests:** `packages/core/src/domain/financial-status.test.ts`; `apps/api/src/ops/status-documentation.test.ts` — every catalog status has an API.md row with realized revenue `no`; retired names are absent.
 - **Priority:** P1 (appearance); P2 (before external developers)
 
 ---
@@ -534,13 +539,15 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 | PA-H08 | Monetization/TPV not recorded on multi-rail HTTP. | **FIXED** — `/routes` returns quoted monetization; `ROUTE_QUOTE` ≠ realized revenue; execution stays 501 |
 | PA-H09 | Multi-rail missing quote freshness. | **FIXED** — rail-configured freshness; expired quotes excluded; age in DTO; stale selection requires re-quote |
 | PA-H10 | Platform fees skip non-fiat multi-rail corridors. | **FIXED** — canonical take-rate once per route on fiat/stablecoin/DeFi; explicit surcharge; Decimal reconciliation |
-| PA-H11 | No CI / container / deploy config. | Open |
-| PA-H12 | Prisma `deepmerge-ts` high advisory. | Open |
-| PA-H13 | `COMPLETED`/`AUTHORIZED` naming resembles settlement. | Open |
+| PA-H11 | No CI / container / deploy config. | **FIXED** — GitHub Actions `npm ci` + lint/typecheck/test/e2e/audit/docker build; fail-closed production image |
+| PA-H12 | Prisma `deepmerge-ts` high advisory. | **FIXED** — `deepmerge-ts@8.0.2` override; `npm audit --audit-level=moderate` clean; CI audit step |
+| PA-H13 | `COMPLETED`/`AUTHORIZED` naming resembles settlement. | **FIXED** — `POLICY_APPROVED` / `SIMULATION_PENDING` / `SIMULATION_COMPLETED`; API.md catalog; no aliases |
 
 ---
 
 ## C. Medium / low issues
+
+**Still open and out of scope for the CRITICAL/HIGH sequence.** Candidates for a future phase — do not treat this phase as having closed them.
 
 **Medium:** PA-M01–PA-M16 (secret hashing, rate limit, error leakage, anonymous actor, API overlap, docs drift, pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, unenforced preference, cookie secure flag, middleware, wallet wording, login audit, silent scopes).
 
@@ -556,7 +563,7 @@ A production-labelled **quoting** deployment (still non-custodial, still no sett
 2. ~~Demo tenant provision and seed cannot run in that environment (PA-C02).~~ **PA-C02 FIXED.**
 3. ~~Durable postgres is required and migrations applied (PA-C03).~~ **PA-C03 FIXED** at configuration validation; operators must still provision and migrate a real database.
 4. ~~Policy PATCH and session scopes are least-privilege (PA-H01, PA-H02, PA-H03, PA-H04).~~ **PA-H01–H04 FIXED.**
-5. Automated verify + audit gate exists (PA-H11, PA-H12).
+5. ~~Automated verify + audit gate exists (PA-H11, PA-H12).~~ **PA-H11–H12 FIXED.**
 6. HTTPS session cookies default secure (PA-M12).
 
 A production-labelled **partner-execution** deployment is **additionally** blocked by `docs/COMPLIANCE.md`: licensed partner of record, legal review, KYB/KYC, sanctions, transaction monitoring, written instruction. Software today correctly returns 501. Do not treat PA-C01 as a reason to weaken that 501.
@@ -569,8 +576,8 @@ Do not add product features until this sequence is complete. Do not start delega
 
 1. ~~**Sandbox-gate demo identity** (PA-C02) and **refuse memory in production mode** (PA-C03).~~ **Done.** See `docs/PRODUCTION_GATES.md`.
 2. ~~**Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.~~ **Done.**
-3. **CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).
-4. **Docs:** agents issued; public vs authenticated quote surfaces; simulation vs settlement naming (PA-M06, PA-H13).
+3. ~~**CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).~~ **PA-H11 and PA-H12 done.** PA-M08 (broader postgres CI/index work) remains Medium.
+4. ~~**Docs:** simulation vs settlement naming (PA-H13).~~ **PA-H13 done.** Remaining: agents issued; public vs authenticated quote surfaces (PA-M06).
 5. ~~**Quote integrity:** freshness on multi-rail (PA-H09); platform fee on non-fiat corridors (PA-H10). Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
 6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
 7. **Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).
@@ -595,4 +602,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H10 were fixed in later changes; PA-H11–PA-H13 and below were not implemented in those changes.*
+*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H13 were fixed in later changes. All CRITICAL and HIGH issues are closed. Medium (PA-M01–PA-M16) and Low (PA-L01–PA-L06) issues remain open and out of scope for those changes.*

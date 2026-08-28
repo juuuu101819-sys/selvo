@@ -224,7 +224,7 @@ describe('PA-H04 daily spend reservation is atomic across concurrent selects', (
         asset: 'USD',
         fromInclusive: '2026-03-01T00:00:00.000Z',
         toExclusive: '2026-03-02T00:00:00.000Z',
-        statuses: ['ROUTED', 'AUTHORIZED', 'EXECUTION_PENDING', 'COMPLETED'],
+        statuses: ['ROUTED', 'POLICY_APPROVED', 'SIMULATION_PENDING', 'SIMULATION_COMPLETED'],
       });
       expect(reserved).toBe('80000');
     }

@@ -167,6 +167,21 @@ export type {
   ScoredRoute,
 } from './route.js';
 export {
+  API_FINANCIAL_STATUS_DOCS,
+  DOCUMENTED_EXECUTION_INTENT_STATUS,
+  PAYMENT_INTENT_STATUS_DOCS,
+  QUOTE_STATUSES,
+  QUOTE_STATUS_DOCS,
+  REALIZED_REVENUE,
+  RETIRED_PAYMENT_INTENT_STATUSES,
+  TRANSACTION_REQUEST_STATUSES,
+  TRANSACTION_REQUEST_STATUS_DOCS,
+  financialStatusDocFor,
+  type FinancialStatusDoc,
+  type StoredQuoteStatus,
+  type TransactionRequestStatus,
+} from './financial-status.js';
+export {
   AGENT_CREDENTIAL_PREFIX,
   AGENT_STATUSES,
   AGENT_WALLET_KINDS,

@@ -33,7 +33,7 @@ export function summarizeAgentDashboard(input: {
   );
   const reporting = reportingAsset(scoped, input.policy);
   const comparable = scoped.filter((intent) => intent.sourceAsset === reporting.asset);
-  const completed = scoped.filter((intent) => intent.status === 'COMPLETED');
+  const completed = scoped.filter((intent) => intent.status === 'SIMULATION_COMPLETED');
   const failed = scoped.filter((intent) => intent.status === 'FAILED');
   const quoted = scoped.filter((intent) => intent.quotedRoutes.length > 0);
   const preferred = preferredRoutesOf(scoped);

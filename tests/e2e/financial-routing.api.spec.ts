@@ -215,14 +215,16 @@ test.describe('CASE 3 — AI agent Pay 500 USD', () => {
       headers: agentHeaders(),
     });
     expect(authorized.status()).toBe(200);
-    expect((await jsonBody<Envelope<PaymentIntentBody>>(authorized)).data.status).toBe('AUTHORIZED');
+    expect((await jsonBody<Envelope<PaymentIntentBody>>(authorized)).data.status).toBe(
+      'POLICY_APPROVED',
+    );
 
     const simulated = await request.post(`/api/v1/payment-intents/${intent.data.id}/simulate`, {
       headers: agentHeaders(),
     });
     expect(simulated.status()).toBe(200);
     const done = await jsonBody<Envelope<PaymentIntentBody>>(simulated);
-    expect(done.data.status).toBe('COMPLETED');
+    expect(done.data.status).toBe('SIMULATION_COMPLETED');
     assertNeverExecutes(done.data);
     const simulation = defined(done.data.simulation, 'sandbox simulation receipt');
     expect(simulation.simulated).toBe(true);

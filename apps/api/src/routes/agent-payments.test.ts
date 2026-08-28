@@ -152,7 +152,7 @@ describe('AI agent payment infrastructure', () => {
       headers: agentHeaders(),
     });
     expect(authorized.statusCode).toBe(200);
-    expect(authorized.json<ApiEnvelope<PaymentIntentBody>>().data.status).toBe('AUTHORIZED');
+    expect(authorized.json<ApiEnvelope<PaymentIntentBody>>().data.status).toBe('POLICY_APPROVED');
 
     const simulated = await harness.app.inject({
       method: 'POST',
@@ -161,7 +161,7 @@ describe('AI agent payment infrastructure', () => {
     });
     expect(simulated.statusCode).toBe(200);
     const done = simulated.json<ApiEnvelope<PaymentIntentBody>>().data;
-    expect(done.status).toBe('COMPLETED');
+    expect(done.status).toBe('SIMULATION_COMPLETED');
     expect(done.fundsMoved).toBe(false);
     expect(done.custody).toBe(false);
     expect(done.realExecution).toBe(false);

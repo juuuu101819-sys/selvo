@@ -49,8 +49,8 @@ export default async function AgentsPage() {
           <p className="flex items-start gap-1.5">
             <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
             <span>
-              Sandbox simulation only. COMPLETED means the simulator finished. Wallet references are
-              external handles; controlledByPlatform is always false.
+              Sandbox simulation only. SIMULATION_COMPLETED means the simulator finished. Wallet
+              references are external handles; controlledByPlatform is always false.
             </span>
           </p>
         </div>

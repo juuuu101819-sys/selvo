@@ -274,12 +274,12 @@ AI Agent → Financial Router → Financial Rail → External Provider
 
 - Domain: `Agent`, `AgentWalletReference` (external handle, `controlledByPlatform: false`), `Merchant`, `PaymentPolicy`, `PaymentIntent`
 - Intent fields: `agentId`, `sourceAsset`, `destinationAsset`, `amount`, `recipient`, `purpose`, `routePreference`, `maxFee`, `expiresAt`, `status`
-- Statuses: `CREATED` → `QUOTING` → `QUOTED` → `ROUTED` → `AUTHORIZED` → `EXECUTION_PENDING` → `COMPLETED`, plus `FAILED` and `EXPIRED`
+- Statuses: `CREATED` → `QUOTING` → `QUOTED` → `ROUTED` → `POLICY_APPROVED` → `SIMULATION_PENDING` → `SIMULATION_COMPLETED`, plus `FAILED` and `EXPIRED`
 - Sandbox instruction `"Pay 500 USD to merchant X"` parses into a structured intent
-- Flow: create intent → quote (existing `MultiRailRouter`) → select route → authorize → simulate via in-process demo provider
+- Flow: create intent → quote (existing `MultiRailRouter`) → select route → policy-approve → simulate via in-process demo provider
 - Hashed agent credentials (`mag_`), scopes `payment:create` / `payment:quote` / `payment:authorize` plus `quote:read`
 - Idempotency keys on create. Policy engine: max amount, allowed assets, recipients, providers, max fee, daily spending
-- `COMPLETED` means the simulator finished. `fundsMoved`, `custody` and `realExecution` stay false. `POST /executions` remains 501
+- `SIMULATION_COMPLETED` means the simulator finished. `fundsMoved`, `custody` and `realExecution` stay false. `POST /executions` remains 501
 - `agentPayments` and `agentPaymentSimulation` true. `executeTransactions`, `delegateExecution`, `custodyFunds`, `holdPrivateKeys`, `controlCustomerWallets`, `operateAsPrincipal`, `defiExecution` stay false
 - Interaction model `agent_business` available. Engine versions unchanged
 

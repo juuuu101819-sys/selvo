@@ -439,7 +439,9 @@ model PaymentPolicy {
   @@map("payment_policies")
 }
 
-/// Structured agent payment. Simulation may complete; funds never move.
+/// Structured agent payment. Simulation may finish (`SIMULATION_COMPLETED`); funds never move.
+/// Status is a closed string set enforced by CHECK (see migrations). Values that read as
+/// licensed-rail settlement (`AUTHORIZED`, `COMPLETED`, `EXECUTION_PENDING`) are not valid.
 model PaymentIntent {
   id                  String    @id
   organizationId      String    @map("organization_id")

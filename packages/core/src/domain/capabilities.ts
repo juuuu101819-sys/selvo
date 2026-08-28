@@ -25,8 +25,8 @@ export const PLATFORM_CAPABILITIES = {
    */
   agentPayments: true,
   /**
-   * Sandbox execution simulator for agent payment intents. `COMPLETED` means the simulation
-   * finished. Funds never move. Distinct from `executeTransactions`.
+   * Sandbox execution simulator for agent payment intents. `SIMULATION_COMPLETED` means the
+   * sandbox finished. Funds never move. Distinct from `executeTransactions`.
    */
   agentPaymentSimulation: true,
   /**

@@ -90,6 +90,45 @@ Demo sandbox login: `treasury@demo-trading.example.invalid` / `MeridianDemo!2026
 
 ---
 
+## Financial status values
+
+Every status the API returns is documented here. **None imply realized revenue, verified
+settlement, or that funds moved.** Live partner execution is still `POST /api/v1/executions` → 501.
+The revenue-recognition chain is:
+
+```
+Route View ≠ Route Selection ≠ Execution Intent ≠ External Provider Execution ≠ Verified Settlement ≠ Realized Revenue
+```
+
+`fundsMoved`, `custody`, and `realExecution` stay `false` on every implemented payload.
+
+| Family | Status | Financial meaning | Realized revenue |
+| ------ | ------ | ----------------- | ---------------- |
+| payment_intent | `CREATED` | Intent accepted. No quote yet. No funds reserved or moved. | no |
+| payment_intent | `QUOTING` | Router is collecting indicative quotes. Not an execution in flight. | no |
+| payment_intent | `QUOTED` | Indicative quotes attached. Route view only. Not a selection and not a payment. | no |
+| payment_intent | `ROUTED` | A quoted route was selected. Daily simulated spend is reserved. Not provider execution. | no |
+| payment_intent | `POLICY_APPROVED` | Policy Engine approved the selected route. Not card authorization and not a funds hold. | no |
+| payment_intent | `SIMULATION_PENDING` | Sandbox simulator is about to run. No external provider is instructed. | no |
+| payment_intent | `SIMULATION_COMPLETED` | Sandbox simulator finished. fundsMoved stays false. Not verified settlement or realized revenue. | no |
+| payment_intent | `FAILED` | Intent processing failed (policy or simulation). No rail payment was submitted, so none failed at a partner. | no |
+| payment_intent | `EXPIRED` | Intent or quote validity window elapsed. Pricing must be re-quoted. No funds moved. | no |
+| execution_intent | `recorded` | Route choice persisted. executable and submitted stay false. Not provider execution. | no |
+| transaction_request | `draft` | Customer request recorded, not yet priced. Not a payment. | no |
+| transaction_request | `quoted` | At least one live indicative quote. Route view only. | no |
+| transaction_request | `quotes_expired` | Every quote passed expiry. Re-quote required. No funds moved. | no |
+| transaction_request | `quote_selected` | Customer indicated which quote they intend to use. Non-binding. No funds move. | no |
+| transaction_request | `cancelled` | Withdrawn by the customer or the platform. Not a reversed settlement. | no |
+| quote | `active` | Indicative quote still inside its freshness window. Non-binding. | no |
+| quote | `expired` | Quote past expiresAt. Must not be ranked or selected. | no |
+| quote | `superseded` | Replaced by a newer quote from the same provider for the same request. | no |
+| quote | `withdrawn` | Provider withdrew or declined the price. Not a chargeback. | no |
+
+Retired payment-intent names (`AUTHORIZED`, `EXECUTION_PENDING`, `COMPLETED`) are not valid and are
+not aliased. A future `SETTLEMENT_CONFIRMED` status does not exist in this tree.
+
+---
+
 ## `GET /api/v1/health`
 
 The service health contract. A fixed three-field response, no envelope, nothing derived from runtime
@@ -519,7 +558,8 @@ Detail for one agent in this organization: spending snapshot, preferred routes, 
 
 ## `GET /api/v1/dashboard/agents/:id/payments`
 
-Payment history (serialized intents) for one agent. `COMPLETED` is simulated.
+Payment history (serialized intents) for one agent. `SIMULATION_COMPLETED` is sandbox simulation
+only (`fundsMoved: false`, `realExecution: false`).
 
 ## `GET /api/v1/dashboard/agents/:id/policies`
 
@@ -615,8 +655,8 @@ Requires `transaction:create` (organization API keys minted with that scope — 
 Records a route choice with `status: "recorded"`, `executable: false`, `submitted: false`. This is
 not a payment. An expired `quoteExpiresAt` is rejected with `409 QUOTE_EXPIRED` (`requoteRequired:
 true`) and audited as `execution.intent.rejected` **before** Policy Engine evaluation. A payment
-intent id that has already passed the Policy Engine (`ROUTED`, `AUTHORIZED`, `EXECUTION_PENDING`, or
-`COMPLETED`) is required; omitting it is `403 POLICY_DENIED` (`policy_required`). The gate
+intent id that has already passed the Policy Engine (`ROUTED`, `POLICY_APPROVED`, `SIMULATION_PENDING`, or
+`SIMULATION_COMPLETED`) is required; omitting it is `403 POLICY_DENIED` (`policy_required`). The gate
 re-evaluates policy fail-closed immediately before persist. `POST /api/v1/executions` remains the
 audited `501`.
 
@@ -672,7 +712,7 @@ errors fail closed.
 Quoted routes snapshot `routeScore`, `slippageBps`, `liquidityHeadroom`, `chainId`, and
 `jurisdictions` from the routing engine. The router itself is unchanged.
 
-Simulate sets `COMPLETED` with `simulated: true` and `fundsMoved: false`. It does not call a real
+Simulate sets `SIMULATION_COMPLETED` with `simulated: true` and `fundsMoved: false`. It does not call a real
 provider. `POST /api/v1/executions` is still 501.
 
 ## AI agent natural-language routing

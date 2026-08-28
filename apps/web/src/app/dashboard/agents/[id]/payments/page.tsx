@@ -43,8 +43,8 @@ export default async function DashboardAgentPaymentsPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Payment history</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Intents for {detail.data.summary.name}. Status COMPLETED is a sandbox simulation. Funds
-          never move.
+          Intents for {detail.data.summary.name}. Status SIMULATION_COMPLETED is a sandbox
+          simulation. Funds never move.
         </p>
       </div>
       <AgentSubnav

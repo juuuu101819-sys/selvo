@@ -17,17 +17,24 @@ export type AgentStatus = (typeof AGENT_STATUSES)[number];
  *
  * The platform never custodies an agent wallet, never holds keys, and never moves funds.
  * `AgentWalletReference` is a handle to an account the agent (or its operator) controls outside
- * Meridian. Sandbox `COMPLETED` means the simulator finished — not that money moved.
+ * Meridian. Financial meaning of each status is in `financial-status.ts`. None imply settlement.
  */
 
+/**
+ * Payment-intent lifecycle. These names must not read as licensed-rail settlement.
+ *
+ * - `POLICY_APPROVED` — Policy Engine approved the selected route. Not a card authorization.
+ * - `SIMULATION_PENDING` / `SIMULATION_COMPLETED` — sandbox simulator only. Funds do not move.
+ * - There is no `SETTLEMENT_CONFIRMED` value; live execution remains 501.
+ */
 export const PAYMENT_INTENT_STATUSES = [
   'CREATED',
   'QUOTING',
   'QUOTED',
-  'AUTHORIZED',
   'ROUTED',
-  'EXECUTION_PENDING',
-  'COMPLETED',
+  'POLICY_APPROVED',
+  'SIMULATION_PENDING',
+  'SIMULATION_COMPLETED',
   'FAILED',
   'EXPIRED',
 ] as const;
@@ -59,9 +66,9 @@ export type PolicyRule = (typeof POLICY_RULES)[number];
 /** Statuses that consume the agent's daily simulated spending capacity, including in-flight reservations. */
 export const DAILY_SPENDING_STATUSES: readonly PaymentIntentStatus[] = [
   'ROUTED',
-  'AUTHORIZED',
-  'EXECUTION_PENDING',
-  'COMPLETED',
+  'POLICY_APPROVED',
+  'SIMULATION_PENDING',
+  'SIMULATION_COMPLETED',
 ];
 
 export const AGENT_CREDENTIAL_PREFIX = 'mag_';

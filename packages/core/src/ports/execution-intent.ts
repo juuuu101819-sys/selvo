@@ -1,8 +1,10 @@
 /**
  * An execution intent is a recorded choice of route, not a payment.
  *
- * `transaction:create` writes one of these. Status is always `recorded`. `executable` and
+ * `transaction:create` writes one of these. Status is always `recorded` — the choice was persisted,
+ * not that a partner ran, settlement was verified, or revenue was realized. `executable` and
  * `submitted` are always false: Meridian does not move money, hold a key, or instruct a partner.
+ * There is no `completed` / `settled` value on this model.
  */
 
 export const EXECUTION_INTENT_STATUS = 'recorded' as const;

@@ -108,17 +108,41 @@ curl -s -X POST http://127.0.0.1:47311/api/v1/defi-routes \
 ```bash
 npm run verify       # lint, typecheck, unit and integration tests
 npm run test:e2e     # Playwright: API contract, eight routing cases, browser journey, mobile layout
+npm run audit:deps   # npm audit; fails on moderate or higher (CI gate)
 
 npm run lint
 npm run typecheck
 npm test
 ```
 
+CI runs the same gates on every push and pull request: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+(`npm ci`, lint, typecheck, unit+integration against Postgres, Playwright e2e including the
+production build, `npm run audit:deps`, and a fail-closed production container build).
+
+[![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
+
 Vitest covers unit tests over the financial calculations, a provider conformance check every
 adapter must pass, and integration tests exercising the real Fastify app in-process. Playwright
 drives the built app over real HTTP, including the eight financial-routing cases (corridor
 comparison, agent pipeline, fail-closed policy, unavailable provider, expired quote, liquidity and
 slippage) and the non-custodial invariants.
+
+## Production container
+
+The API image is fail-closed (`PLATFORM_MODE=production`, `DATABASE_DRIVER=postgres`, routing and
+execution flags false). It does not bake `AUTH_SECRET`, `DATABASE_URL`, or demo credentials.
+
+```bash
+docker build --target api -t meridian-api .
+docker run --rm -p 47311:47311 \
+  -e DATABASE_URL=postgresql://user:pass@db:5432/meridian \
+  -e AUTH_SECRET=replace-with-a-32-character-operator-secret \
+  meridian-api
+```
+
+Operators must supply `AUTH_SECRET` (≥32 characters, not a documented demo value) and a real
+Postgres URL. Setting `PRODUCTION_EXECUTION_AVAILABLE=true` or `SEED_DEMO_TENANTS=true` is a
+startup failure. See [docs/PRODUCTION_GATES.md](./docs/PRODUCTION_GATES.md).
 
 ## Repository layout
 
