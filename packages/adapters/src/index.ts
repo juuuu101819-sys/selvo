@@ -59,7 +59,7 @@ export {
   type QuoteCacheOptions,
 } from './resilience/quote-cache.js';
 export {
-  ResilientFinancialProvider,
+  wrapFinancialProvider,
   wrapFinancialProvidersWithQuoteResilience,
   type QuoteResilienceOptions,
 } from './resilience/with-quote-resilience.js';
