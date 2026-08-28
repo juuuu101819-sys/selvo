@@ -55,6 +55,22 @@ function looksLikeProviderPayload(error: unknown): boolean {
   return record.response !== undefined || record.providerPayload !== undefined;
 }
 
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value === 'string') {
+    return isUnsafeText(value) ? undefined : value;
+  }
+  if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map(sanitizeValue).filter((item) => item !== undefined);
+  }
+  if (typeof value === 'object') {
+    return sanitizeDetails(value as Record<string, unknown>);
+  }
+  return undefined;
+}
+
 function sanitizeDetails(
   details: Readonly<Record<string, unknown>> | undefined,
 ): Record<string, unknown> {
@@ -66,20 +82,9 @@ function sanitizeDetails(
     if (UNSAFE_DETAIL_KEY.test(key)) {
       continue;
     }
-    if (typeof value === 'string') {
-      if (isUnsafeText(value)) {
-        continue;
-      }
-      safe[key] = value;
-      continue;
-    }
-    if (typeof value === 'number' || typeof value === 'boolean' || value === null) {
-      safe[key] = value;
-      continue;
-    }
-    if (Array.isArray(value) && value.every((item) => typeof item === 'string' || typeof item === 'number')) {
-      const filtered = value.filter((item) => typeof item !== 'string' || !isUnsafeText(item));
-      safe[key] = filtered;
+    const sanitized = sanitizeValue(value);
+    if (sanitized !== undefined) {
+      safe[key] = sanitized;
     }
   }
   return safe;
