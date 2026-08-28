@@ -59,6 +59,7 @@ export const POLICY_RULES = [
   'minimum_route_score',
   'minimum_liquidity',
   'maximum_slippage',
+  'preferred_route_preference',
   'route_policy',
 ] as const;
 export type PolicyRule = (typeof POLICY_RULES)[number];
@@ -176,7 +177,11 @@ export interface PaymentPolicy {
   readonly minLiquidityHeadroom: string;
   readonly dailySpendingLimitMinorUnits: string;
   readonly dailySpendingAsset: string;
-  /** Default optimization when the intent does not name one. Null means the engine default. */
+  /**
+   * Policy-locked ranking preference. When set, it is the MultiRailRouter weight input on every
+   * quote and a select-time control (non-recommended routes are denied). Intent `routePreference`
+   * is used only when this is null. Null means the engine default weights.
+   */
   readonly preferredRoutePreference: RoutePreference | null;
   readonly createdAt: string;
   readonly updatedAt: string;

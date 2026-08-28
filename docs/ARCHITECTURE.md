@@ -41,7 +41,8 @@ made. Nothing below rebuilds the application.
   `delegateExecution` (instruct a partner). Both false.
 - `PLATFORM_CAPABILITIES` is the single source of truth for meta, tests and docs.
 - `Principal.economicActor` (`human` | `business` | `ai_agent`) without a new auth kind. Sessions
-  are humans; API keys are businesses; agents are not issued.
+  are humans; organization API keys (`mk_`) are businesses; AI-agent credentials (`mag_`) are
+  issued via `POST /api/v1/agents` (see [AGENTS.md](./AGENTS.md)).
 
 ### Missing abstractions added (types and ports only)
 
@@ -61,7 +62,8 @@ made. Nothing below rebuilds the application.
 - Prisma schema and enums (`dex_liquidity` already existed).
 - Sandbox adapters and pricing datasets.
 - Comparison UI and dashboard behaviour.
-- No DEX *execution*, no agent credentials, no delegated execution. Read-only DeFi quotes live on
+- No DEX *execution*, no delegated execution. Agent credentials (`mag_`) **are** issued in the
+  sandbox (`POST /api/v1/agents`; [AGENTS.md](./AGENTS.md)). Read-only DeFi quotes live on
   `POST /provider-quotes`.
 
 ### HTTP surface of this phase

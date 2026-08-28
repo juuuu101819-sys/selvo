@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PolicyDeniedError } from '../errors/index.js';
 import { parsePayInstruction, resolveMerchant } from './payment-instruction.js';
-import { evaluatePaymentPolicy, filterRoutesByPolicy } from './payment-policy.js';
+import { evaluatePaymentPolicy, filterRoutesByPolicy, deniedRuleWhenNoPolicyRoutes, effectiveRoutePreference } from './payment-policy.js';
 import type { Merchant, PaymentPolicy, QuotedRouteOption } from './agent-payments.js';
 
 const merchant: Merchant = {
@@ -244,6 +244,26 @@ describe('evaluatePaymentPolicy', () => {
     ).toBe(true);
   });
 
+  it('denies selecting a non-recommended route when preferredRoutePreference is set', () => {
+    expect(
+      deniedRule(() =>
+        evaluatePaymentPolicy(
+          policy,
+          input({ selectedRoute: quoted({ recommended: false, routeId: 'r-other' }) }),
+        ),
+      ),
+    ).toBe('preferred_route_preference');
+  });
+
+  it('does not lock selection when preferredRoutePreference is null', () => {
+    expect(
+      evaluatePaymentPolicy(
+        { ...policy, preferredRoutePreference: null },
+        input({ selectedRoute: quoted({ recommended: false }) }),
+      ).allowed,
+    ).toBe(true);
+  });
+
   it('matches a wildcard jurisdiction against a specific country list', () => {
     expect(
       evaluatePaymentPolicy(
@@ -277,5 +297,53 @@ describe('filterRoutesByPolicy', () => {
       quoted({ routeId: 'polygon', chainId: 'eip155:137' }),
     ];
     expect(filterRoutesByPolicy(policy, null, mixed).map((route) => route.routeId)).toEqual(['fiat']);
+  });
+
+  it('excludes a provider omitted from the allowlist', () => {
+    const mixed = [
+      quoted({ routeId: 'allowed', providerId: 'sandbox-veridian-payments' }),
+      quoted({
+        routeId: 'denied',
+        providerId: 'sandbox-northgate-bank',
+        recommended: false,
+      }),
+    ];
+    expect(filterRoutesByPolicy(policy, null, mixed).map((route) => route.routeId)).toEqual([
+      'allowed',
+    ]);
+  });
+
+  it('returns no routes for an empty allowlist — never all providers', () => {
+    expect(filterRoutesByPolicy({ ...policy, allowedProviderIds: [] }, null, routes)).toEqual([]);
+  });
+});
+
+describe('effectiveRoutePreference', () => {
+  it('uses the policy preference over the intent preference', () => {
+    expect(effectiveRoutePreference(policy, 'fastest')).toBe('lowest_cost');
+  });
+
+  it('falls back to the intent preference when the policy field is null', () => {
+    expect(effectiveRoutePreference({ ...policy, preferredRoutePreference: null }, 'fastest')).toBe(
+      'fastest',
+    );
+  });
+});
+
+describe('deniedRuleWhenNoPolicyRoutes', () => {
+  it('names allowed_providers when the allowlist is empty', () => {
+    expect(
+      deniedRuleWhenNoPolicyRoutes({ ...policy, allowedProviderIds: [] }, null, [
+        quoted(),
+      ]),
+    ).toBe('allowed_providers');
+  });
+
+  it('names allowed_providers when no priced route is on the allowlist', () => {
+    expect(
+      deniedRuleWhenNoPolicyRoutes(policy, null, [
+        quoted({ providerId: 'sandbox-northgate-bank' }),
+      ]),
+    ).toBe('allowed_providers');
   });
 });

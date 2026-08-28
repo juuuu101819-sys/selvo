@@ -17,6 +17,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { SERVICE_NAME, SERVICE_VERSION } from '../config/service.js';
 import { principalOf } from '../http/authentication.js';
+import { API_SURFACE_CONTRACT, API_V1_ROUTE_CATALOG } from '../openapi/catalog.js';
 import type { AppContainer } from '../container.js';
 
 /**
@@ -126,6 +127,24 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
         enforcing: container.authenticator.enforcing,
         principalKind: principalOf(request).kind,
         economicActor: principalOf(request).economicActor,
+      },
+      apiSurfaces: {
+        openapi: API_SURFACE_CONTRACT.openapiPath,
+        publicDiscovery: API_SURFACE_CONTRACT.publicDiscovery,
+        authenticatedBilled: API_SURFACE_CONTRACT.authenticatedBilled,
+        paH08: API_SURFACE_CONTRACT.paH08,
+        public: API_V1_ROUTE_CATALOG.filter((route) => route.surface === 'public').map((route) => ({
+          method: route.method,
+          path: `/api/v1${route.path}`,
+          auth: route.auth,
+        })),
+        authenticated: API_V1_ROUTE_CATALOG.filter((route) => route.surface === 'authenticated').map(
+          (route) => ({
+            method: route.method,
+            path: `/api/v1${route.path}`,
+            auth: route.auth,
+          }),
+        ),
       },
       persistenceDriver: container.persistence.kind,
       pricing: container.pricing,

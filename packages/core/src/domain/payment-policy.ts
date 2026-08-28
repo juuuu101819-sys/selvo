@@ -1,6 +1,11 @@
 import { PolicyDeniedError } from '../errors/index.js';
 import { Dec } from '../money/index.js';
-import type { PaymentPolicy, PolicyRule, QuotedRouteOption } from './agent-payments.js';
+import type {
+  PaymentPolicy,
+  PolicyRule,
+  QuotedRouteOption,
+  RoutePreference,
+} from './agent-payments.js';
 
 export interface PolicyEvaluationInput {
   readonly amountMinorUnits: string;
@@ -38,8 +43,51 @@ export function evaluatePaymentPolicy(
   assertAllowedProvider(policy, input);
   if (input.selectedRoute !== null) {
     assertRoutePolicy(policy, input.maxFeeBps, input.selectedRoute);
+    assertPreferredRoutePreference(policy, input.selectedRoute);
   }
   return { allowed: true, aiUsed: false, failClosed: true };
+}
+
+/**
+ * Policy preference wins. Intent preference is a ranking input only when the policy field is null.
+ * Public `/routes` does not use this — it has no payment policy.
+ */
+export function effectiveRoutePreference(
+  policy: PaymentPolicy,
+  intentPreference: RoutePreference | null,
+): RoutePreference | null {
+  return policy.preferredRoutePreference ?? intentPreference;
+}
+
+/**
+ * Why a ranking pass produced zero policy-eligible routes. Never returns a silent fallback.
+ * An empty provider allowlist is `allowed_providers`, not “treat as all providers”.
+ */
+export function deniedRuleWhenNoPolicyRoutes(
+  policy: PaymentPolicy,
+  intentMaxFeeBps: string | null,
+  priced: readonly QuotedRouteOption[],
+): PolicyRule {
+  if (policy.allowedProviderIds.length === 0) {
+    return 'allowed_providers';
+  }
+  const rules = [
+    ...new Set(
+      priced
+        .map((route) => routeAllowedByPolicy(policy, intentMaxFeeBps, route))
+        .filter((rule): rule is PolicyRule => rule !== null),
+    ),
+  ];
+  if (rules.length === 1) {
+    const only = rules[0];
+    if (only !== undefined) {
+      return only;
+    }
+  }
+  if (priced.every((route) => !policy.allowedProviderIds.includes(route.providerId))) {
+    return 'allowed_providers';
+  }
+  return 'route_policy';
 }
 
 export function feeCapBps(policy: PaymentPolicy, intentMaxFeeBps: string | null): string {
@@ -74,6 +122,23 @@ export function routeAllowedByPolicy(
       return typeof rule === 'string' ? (rule as PolicyRule) : 'route_policy';
     }
     throw error;
+  }
+}
+
+function assertPreferredRoutePreference(policy: PaymentPolicy, route: QuotedRouteOption): void {
+  if (policy.preferredRoutePreference === null) {
+    return;
+  }
+  if (!route.recommended) {
+    deny(
+      'preferred_route_preference',
+      `Selected route is not the ${policy.preferredRoutePreference} recommendation locked by policy.`,
+      {
+        preferredRoutePreference: policy.preferredRoutePreference,
+        selectedRouteId: route.routeId,
+        recommended: false,
+      },
+    );
   }
 }
 

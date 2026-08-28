@@ -155,7 +155,9 @@ That is a **consumer of the routing hub**, not a second product. The same Discov
 pipeline, the same non-custodial contract, the same organization tenancy. Do not build a parallel
 agent-payments stack.
 
-Not in this phase: agent credentials, agent wallets, agent-to-agent settlement, treasury automation.
+Not in this phase: agent-to-agent settlement, treasury automation. Sandbox **agent credentials**
+(`mag_`) and external wallet references **are issued** (`POST /api/v1/agents`; see
+[AGENTS.md](./AGENTS.md)). They never custody funds, hold keys, or execute live payments.
 
 ---
 

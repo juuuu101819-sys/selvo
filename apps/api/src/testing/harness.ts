@@ -3,12 +3,14 @@ import type { FastifyInstance } from 'fastify';
 import { createApp } from '../app.js';
 import { loadConfig, type AppConfig } from '../config/env.js';
 import type { AppContainer } from '../container.js';
+import type { ImplementedRoute } from '../openapi/implemented.js';
 
 export interface TestHarness {
   readonly app: FastifyInstance;
   readonly container: AppContainer;
   readonly clock: FixedClock;
   readonly config: AppConfig;
+  readonly implementedRoutes: readonly ImplementedRoute[];
   /** Reads the persisted audit trail, so assertions check what was stored, not what was rendered. */
   auditEvents(): Promise<readonly AuditEvent[]>;
   close(): Promise<void>;
@@ -34,7 +36,7 @@ export async function createTestHarness(
   });
 
   const clock = new FixedClock('2026-03-01T09:00:00.000Z');
-  const { app, container } = await createApp({ config, clock });
+  const { app, container, implementedRoutes } = await createApp({ config, clock });
   await app.ready();
 
   return {
@@ -42,6 +44,7 @@ export async function createTestHarness(
     container,
     clock,
     config,
+    implementedRoutes,
     auditEvents: () => container.persistence.auditLog.list({ limit: 500 }),
     close: () => app.close(),
   };

@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M04, and PA-M12 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M05–PA-M11, PA-M13–PA-M16, PA-L01–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, and PA-M12 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M07–PA-M10, PA-M13–PA-M16, PA-L01–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -34,7 +34,7 @@ It is **not production-ready** as a live financial service:
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
   (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
   naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
-  PA-M01–PA-M04 and PA-M12 are closed. Remaining Medium/Low items are out of scope for this phase.
+  PA-M01–PA-M06, PA-M11, and PA-M12 are closed. Remaining Medium/Low items are out of scope for this phase.
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -355,20 +355,24 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M05 — Overlapping public vs authenticated quote APIs; no OpenAPI
 
-- **File:** `apps/api/src/routes/index.ts`; `docs/API.md`; no OpenAPI artefact
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/openapi/catalog.ts`; `apps/api/src/routes/openapi.ts`; `docs/API.md`; `GET /api/v1/meta` `apiSurfaces`
 - **Component:** `/comparisons`, `/routes`, `/quote`, `/stablecoin-routes`, `/defi-routes`
 - **Problem:** `/quote` requires `quote:read`; `/routes` is anonymous and uses the same multi-rail engine. Web restates DTOs in `apps/web/src/lib/api/types.ts`.
 - **Why it matters:** Auth bypass by using the public twin; contract drift.
-- **Recommended fix:** Authenticate catalog quotes or document public vs billed surfaces. Generate OpenAPI from Zod.
+- **Fix:** Surfaces are classified in one catalog. Public discovery (`/comparisons`, `/routes`, stablecoin/DeFi/catalog quotes) stays anonymous and indicative. Authenticated `POST /quote` (`quote:read`) is the org-scoped billed window (`quoteExpiresAt`); anonymous is 401. Public `/routes` still returns quoted, unrealized monetization (`realizedRevenue: false`, `fundsMoved: false`) — PA-H08 is unchanged. `GET /api/v1/openapi.json` serves OpenAPI 3.0.3 generated from the catalog. A coverage test requires every implemented `/api/v1` route to appear in the spec.
+- **Tests:** `apps/api/src/openapi/openapi.test.ts`; `apps/api/src/routes/api-surface.test.ts`
 - **Priority:** P1
 
 #### PA-M06 — Docs still say agents are not issued
 
-- **File:** `docs/ARCHITECTURE.md` (lines 43–44, 64–65); `docs/MASTER_PRODUCT_DEFINITION.md` (later “not in this phase” language)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `docs/AGENTS.md`; `docs/ARCHITECTURE.md`; `docs/MASTER_PRODUCT_DEFINITION.md`; `docs/API.md`
 - **Component:** documentation
 - **Problem:** `POST /api/v1/agents` issues `mag_` credentials (`apps/api/src/routes/agent-payments.ts`).
 - **Why it matters:** Operators following architecture text will mis-assess the attack surface.
-- **Recommended fix:** Update §0 to Phases 14–18 reality. Do not change code.
+- **Fix:** Architecture §0 and the master product definition now state that sandbox `mag_` credentials are issued. `docs/AGENTS.md` documents create, `DEFAULT_AGENT_SCOPES`, difference from `mds_` / `mk_`, and revoke-then-reissue (there is no rotate-in-place endpoint — that gap is explicit). Issuance code was not changed.
+- **Tests:** `apps/api/src/routes/agent-payments.test.ts` — prefix, scopes, one-time secret
 - **Priority:** P1
 
 #### PA-M07 — List pagination is limit-only
@@ -409,11 +413,13 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M11 — `preferredRoutePreference` is not a policy rule
 
-- **File:** `packages/core/src/domain/payment-policy.ts`; policy fields on `PaymentPolicy`
-- **Component:** policy engine
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `packages/core/src/domain/payment-policy.ts`; `packages/core/src/engine/agent-payment-service.ts`
+- **Component:** policy engine / agent quote
 - **Problem:** Stored and shown on the dashboard; `evaluatePaymentPolicy` does not enforce it.
 - **Why it matters:** Operators may believe agents are locked to lowest-cost.
-- **Recommended fix:** Enforce on quote/select or label the field as a default, not a control.
+- **Fix:** Policy `preferredRoutePreference` is the ranking-weight input to the existing `MultiRailRouter.evaluate` (intent preference is used only when the policy field is null). After ranking, allowlists still filter; an empty or non-matching allowlist is `POLICY_DENIED` (`allowed_providers`) with `allowedRouteCount: 0` — the preference is never silently ignored. On select, a non-recommended route is `preferred_route_preference` when the policy field is set. Public `/routes` is unchanged (no payment policy).
+- **Tests:** `packages/core/src/domain/payment-policy.test.ts`; `apps/api/src/routes/route-preference.test.ts`
 - **Priority:** P2
 
 #### PA-M12 — Cookie `secure` is off unless `COOKIE_SECURE=true`
@@ -557,11 +563,11 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 ## C. Medium / low issues
 
-**Still open and out of scope for this phase.** PA-M01–PA-M04 and PA-M12 were closed in the API-security phase. Do not treat that phase as having closed the remainder.
+**Still open and out of scope for this phase.** PA-M01–PA-M06, PA-M11, and PA-M12 are closed. Do not treat this phase as having closed the remainder.
 
-**Medium closed:** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M12 (cookie Secure).
+**Medium closed:** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure).
 
-**Medium still open:** PA-M05–PA-M11, PA-M13–PA-M16 (API overlap, docs drift, pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, unenforced preference, middleware, wallet wording, login audit, silent scopes).
+**Medium still open:** PA-M07–PA-M10, PA-M13–PA-M16 (pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, middleware, wallet wording, login audit, silent scopes).
 
 **Low:** PA-L01–PA-L06 (display `Number()`, Prisma string status, SSO/MFA, cache/breakers, A2A/treasury/KYC-as-product, e2e memory).
 
@@ -589,7 +595,7 @@ Do not add product features until this sequence is complete. Do not start delega
 1. ~~**Sandbox-gate demo identity** (PA-C02) and **refuse memory in production mode** (PA-C03).~~ **Done.** See `docs/PRODUCTION_GATES.md`.
 2. ~~**Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.~~ **Done.**
 3. ~~**CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).~~ **PA-H11 and PA-H12 done.** PA-M08 (broader postgres CI/index work) remains Medium.
-4. ~~**Docs:** simulation vs settlement naming (PA-H13).~~ **PA-H13 done.** Remaining: agents issued; public vs authenticated quote surfaces (PA-M06).
+4. ~~**Docs:** simulation vs settlement naming (PA-H13).~~ **PA-H13 done.** ~~Agents issued; public vs authenticated quote surfaces (PA-M06, PA-M05).~~ **PA-M05 and PA-M06 done.**
 5. ~~**Quote integrity:** freshness on multi-rail (PA-H09); platform fee on non-fiat corridors (PA-H10). Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
 6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
 7. ~~**Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).~~ **Done** with PostgreSQL-backed rate-limit counters (no Redis in this stack — that roadmap item overlaps PA-M02), salted scrypt API-key hashes, HMAC session tokens, and production cookie Secure. Error leakage (PA-M03) and audit-actor spoofing (PA-M04) closed in the same phase.
@@ -614,4 +620,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, and PA-H01–PA-H13 were fixed in later changes. All CRITICAL and HIGH issues are closed. Medium (PA-M01–PA-M16) and Low (PA-L01–PA-L06) issues remain open and out of scope for those changes.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, and PA-M12 were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium (PA-M07–PA-M10, PA-M13–PA-M16) and Low (PA-L01–PA-L06) issues remain open.*

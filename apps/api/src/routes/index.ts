@@ -12,6 +12,7 @@ import { registerDefiRoutes } from './defi-routes.js';
 import { registerExecutionIntentRoutes } from './execution-intents.js';
 import { registerExecutionRoutes } from './executions.js';
 import { registerFinancialRoutingRoutes } from './financial-routing.js';
+import { registerOpenApiRoute } from './openapi.js';
 import { registerProviderCatalogRoutes } from './providers.js';
 import { registerRouteGraphRoutes } from './route-graph.js';
 import { registerRoutingRoutes } from './routing.js';
@@ -52,6 +53,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerRequestLogging(instance);
     registerVersionedHealthRoute(instance);
     registerMetaRoutes(instance, container);
+    registerOpenApiRoute(instance);
     registerAuthRoutes(instance, container);
     registerComparisonRoutes(instance, container);
     registerRoutingRoutes(instance, container);

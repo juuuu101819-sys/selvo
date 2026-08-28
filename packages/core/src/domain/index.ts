@@ -220,6 +220,8 @@ export {
   type ParsedPaymentInstruction,
 } from './payment-instruction.js';
 export {
+  deniedRuleWhenNoPolicyRoutes,
+  effectiveRoutePreference,
   evaluatePaymentPolicy,
   feeCapBps,
   filterRoutesByPolicy,

@@ -163,7 +163,8 @@ process restarted.
 Everything a client needs to build a request: product identity, routing pipeline, platform mode,
 engine version, declared capabilities, rail families, interaction models, pricing dataset versions,
 registered providers, rails (with family and `available` / `planned` status), supported currencies
-with their minor-unit exponents, and the default scoring weights.
+with their minor-unit exponents, the default scoring weights, and `apiSurfaces` (public vs
+authenticated quote classification plus the OpenAPI path).
 
 The `capabilities` block is the machine-readable form of the compliance boundary
 (`PLATFORM_CAPABILITIES` in core — do not fork a second copy):
@@ -213,6 +214,32 @@ rate are attributed on the revenue dashboard. `agentFinancialDashboard` is true:
 operators can inspect agent volume, fees, success rate, spending limits and policy denials, and
 patch allow-lists. The dashboard never custodies funds, holds keys, or generates wallets.
 `POST /api/v1/executions` remains 501.
+
+## `GET /api/v1/openapi.json`
+
+Machine-readable OpenAPI 3 contract for every `/api/v1` route. Public. Each operation is tagged
+`x-meridian-surface: public | authenticated` and `x-meridian-auth`. The same table is published on
+`GET /api/v1/meta` under `apiSurfaces`. Tests fail if a Fastify handler is added without a catalog
+row.
+
+Agent credential issuance: [AGENTS.md](./AGENTS.md).
+
+## Public vs authenticated quote surfaces
+
+Public discovery and the authenticated billed quote **share MultiRailRouter**. They are not the
+same HTTP contract.
+
+| Surface | Routes | Auth | Ranking | Response |
+| ------- | ------ | ---- | ------- | -------- |
+| Public discovery | `POST /comparisons`, `POST /routes`, `POST /stablecoin-routes`, `POST /defi-routes`, `POST /provider-quotes`, graph/catalog GETs | None. Anonymous is served. | Platform-default or request weights. No organization payment policy. | Indicative. Catalog provider names (same as `GET /providers`). `POST /routes` includes quoted `monetization` with `realizedRevenue: false` and `fundsMoved: false` (PA-H08). No `quoteExpiresAt`. No billed Quote row. |
+| Authenticated billed quote | `POST /quote` | `quote:read` (session, `mk_`, or `mag_`). Anonymous is **401**. | Same engine. `organizationId` from the verified principal. | Slim DTO: `requestId`, `routes`, `recommendedRoute`, `quoteExpiresAt`. **No** `monetization` object (take-rate / TPV figures stay on discovery `/routes` as quoted, unrealized economics). |
+| Authenticated path discovery | `POST /routes/search` | `route:read`. Anonymous is **401**. | Graph + catalog. Not a second quote engine. | Paths and matching providers. `executable: false`. |
+| Agent payment quote | `POST /payment-intents/:id/quote` | `mag_` `payment:quote` | Same MultiRailRouter. Policy `preferredRoutePreference` is the ranking-weight input; allowlists filter the ranked set. Empty allowlist is `POLICY_DENIED`, never a silent fallback. | Payment-intent DTO with `quotedRoutes`. |
+
+Using public `/routes` is **not** an authentication bypass of `/quote`. `/quote` is the
+org-scoped billed window (`quoteExpiresAt`). Public `/routes` is indicative discovery; its
+monetization snapshot is a `ROUTE_QUOTE`, never realized revenue. Dashboard revenue aggregation
+is authenticated-only.
 
 ## `GET /api/v1/providers`
 
@@ -629,7 +656,8 @@ in the body is a claim that must match the principal — it is never the source 
 ```
 
 Anonymous callers are `401`. A mismatched `organizationId` is `403`. Missing `quote:read` is `403`.
-`POST /api/v1/routes` remains the public (unscoped) multi-rail endpoint.
+`POST /api/v1/routes` remains the **public** (unscoped) multi-rail discovery endpoint. It is not
+the billed `/quote` surface; see [Public vs authenticated quote surfaces](#public-vs-authenticated-quote-surfaces).
 
 ## `POST /api/v1/routes/search`
 
@@ -665,9 +693,10 @@ audited `501`.
 
 ## AI agent payments
 
-Agents authenticate with `X-Api-Key: mag_...` (hashed, revocable). Human sessions never receive
-`payment:*` scopes; only `mag_` credentials drive the agent payment API. Organization `mk_` keys do
-not receive payment scopes by default.
+Agents authenticate with `X-Api-Key: mag_...` (hashed, revocable). Issuance, scopes, and
+revocation are documented in [AGENTS.md](./AGENTS.md) and match `POST /api/v1/agents`. Human
+sessions never receive `payment:*` scopes; only `mag_` credentials drive the agent payment API.
+Organization `mk_` keys do not receive payment scopes by default.
 
 | Method | Path | Scope |
 | ------ | ---- | ----- |
@@ -705,6 +734,7 @@ The policy engine evaluates, fail-closed:
 - minimum route score (missing score denies)
 - minimum liquidity (unknown headroom denies when the minimum is greater than 0)
 - maximum slippage (missing slippage denies)
+- preferred route preference (when set: ranking input to MultiRailRouter, and select must use the recommended route)
 
 Every decision writes `payment.policy.evaluated` (`allowed`, `aiUsed: false`, `failClosed: true`).
 Denials also write `payment.policy.denied`. The engine runs at intent create, quote, select,

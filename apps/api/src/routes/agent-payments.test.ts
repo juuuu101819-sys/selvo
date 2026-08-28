@@ -335,6 +335,54 @@ describe('AI agent payment infrastructure', () => {
     expect(response.json<ApiError>().error.code).toBe('EXECUTION_NOT_IMPLEMENTED');
   });
 
+  it('issues a mag_ credential once with DEFAULT_AGENT_SCOPES and never stores the secret', async () => {
+    const session = await login(DEMO_USER_EMAIL, DEMO_USER_PASSWORD);
+    const minted = await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/agents`,
+      headers: { authorization: `Bearer ${session}` },
+      payload: { name: 'Issuance contract agent' },
+    });
+    expect(minted.statusCode).toBe(201);
+    const issued = minted.json<
+      ApiEnvelope<{ id: string; secret: string; scopes: readonly string[]; keyPrefix: string | null }>
+    >().data;
+    expect(issued.secret.startsWith('mag_')).toBe(true);
+    expect(issued.secret.startsWith('mk_')).toBe(false);
+    expect(issued.secret.startsWith('mds_')).toBe(false);
+    expect(issued.scopes).toEqual(['quote:read', 'payment:create', 'payment:quote', 'payment:authorize']);
+    expect(issued.scopes).not.toContain('agent_policy:write');
+    expect(issued.scopes).not.toContain('transaction:create');
+    expect(issued.keyPrefix).toBe(issued.secret.slice(0, 16));
+
+    const listed = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/agents`,
+      headers: { authorization: `Bearer ${session}` },
+    });
+    expect(listed.statusCode).toBe(200);
+    expect(listed.body).not.toContain(issued.secret);
+    const agents = listed.json<
+      ApiEnvelope<{ agents: { id: string; scopes: readonly string[]; keyPrefix: string | null }[] }>
+    >().data.agents;
+    const listedAgent = agents.find((agent) => agent.id === issued.id);
+    expect(listedAgent?.scopes).toEqual(issued.scopes);
+    expect(listedAgent?.keyPrefix).toBe(issued.keyPrefix);
+
+    const me = await harness.app.inject({
+      method: 'GET',
+      url: `${API_V1_PREFIX}/agents/me`,
+      headers: { 'x-api-key': issued.secret },
+    });
+    expect(me.statusCode).toBe(200);
+
+    await harness.app.inject({
+      method: 'POST',
+      url: `${API_V1_PREFIX}/agents/${issued.id}/revoke`,
+      headers: { authorization: `Bearer ${session}` },
+    });
+  });
+
   it('rejects a revoked agent credential', async () => {
     const session = await login(DEMO_USER_EMAIL, DEMO_USER_PASSWORD);
     const minted = await harness.app.inject({

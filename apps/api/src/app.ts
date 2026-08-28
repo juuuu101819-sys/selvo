@@ -7,6 +7,7 @@ import { shouldProvisionDemoTenants, type AppConfig } from './config/env.js';
 import { createContainer, type AppContainer } from './container.js';
 import { registerErrorHandling } from './http/errors.js';
 import { PinoLoggerAdapter } from './logging/pino-logger.js';
+import { registerImplementedRouteCollector, type ImplementedRoute } from './openapi/implemented.js';
 import { registerRoutes } from './routes/index.js';
 
 /** One megabyte is far more than any comparison request needs, and bounds the attack surface. */
@@ -15,6 +16,7 @@ const MAX_BODY_BYTES = 1_048_576;
 export interface BuiltApp {
   readonly app: FastifyInstance;
   readonly container: AppContainer;
+  readonly implementedRoutes: readonly ImplementedRoute[];
 }
 
 export interface CreateAppOptions {
@@ -89,6 +91,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
   registerJsonBodyParser(app);
 
   registerErrorHandling(app);
+  const snapshotImplementedRoutes = registerImplementedRouteCollector(app);
   await registerRoutes(app, container);
 
   // Demo tenants are sandbox fixtures. Production-locked processes never seed them. Tests seed
@@ -113,7 +116,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
     await container.close();
   });
 
-  return { app, container };
+  return { app, container, implementedRoutes: snapshotImplementedRoutes() };
 }
 
 /**

@@ -181,10 +181,12 @@ the financial logic testable without a server, a database or a network.
 
 ## Authentication
 
-The API verifies session tokens (`Authorization: Bearer mds_…`) and organization API keys
-(`X-Api-Key`). A missing credential is still served as anonymous on public routes (compare, meta,
-health). A credential that cannot be verified is rejected with `401` — never silently treated as
-anonymous.
+The API verifies session tokens (`Authorization: Bearer mds_…`), organization API keys (`mk_`,
+`X-Api-Key`), and agent credentials (`mag_`). A missing credential is still served as anonymous on
+public discovery routes (compare, meta, health, OpenAPI). A credential that cannot be verified is
+rejected with `401` — never silently treated as anonymous.
+
+Machine-readable contract: `GET /api/v1/openapi.json`. Agent issuance: [docs/AGENTS.md](./docs/AGENTS.md).
 
 Dashboard routes require a verified principal with an `organizationId`. Every metrics, quote,
 transaction and settings query filters on that id in the store itself. Cross-tenant resource ids

@@ -12,7 +12,12 @@ import {
 } from '../domain/agent-payments.js';
 import { parsePayInstruction, resolveMerchant } from '../domain/payment-instruction.js';
 import { routePreferenceFromOptimization } from '../domain/optimization-preference.js';
-import { evaluatePaymentPolicy, filterRoutesByPolicy } from '../domain/payment-policy.js';
+import {
+  deniedRuleWhenNoPolicyRoutes,
+  effectiveRoutePreference,
+  evaluatePaymentPolicy,
+  filterRoutesByPolicy,
+} from '../domain/payment-policy.js';
 import {
   IdempotencyConflictError,
   NoRoutesAvailableError,
@@ -242,7 +247,9 @@ export class AgentPaymentService {
       updatedAt: this.deps.clock.nowIso(),
     });
 
-    const weights = weightsForRoutePreference(quoting.routePreference);
+    const weights = weightsForRoutePreference(
+      effectiveRoutePreference(policy, quoting.routePreference),
+    );
     try {
       const routing = await this.deps.routing.evaluate({
         organizationId: quoting.organizationId,
@@ -260,13 +267,15 @@ export class AgentPaymentService {
       }
       const allowed = filterRoutesByPolicy(policy, quoting.maxFeeBps, quoted);
       if (allowed.length === 0) {
+        const rule = deniedRuleWhenNoPolicyRoutes(policy, quoting.maxFeeBps, quoted);
         const denied = new PolicyDeniedError(
-          'route_policy',
+          rule,
           'No priced route satisfies this agent policy.',
           {
             failClosed: true,
             pricedRouteCount: quoted.length,
             allowedRouteCount: 0,
+            reason: rule,
           },
         );
         await this.recordPolicyDecision({
