@@ -176,6 +176,13 @@ describe('PA-C02 production secret gate', () => {
     expect(issues).not.toMatch(PRODUCTION_AUTH_SECRET);
   });
 
+  it('rejects a too-short production AUTH_SECRET that is not a known demo value', () => {
+    const issues = issuesOf(productionSource({ AUTH_SECRET: 'short-but-unique-value' }));
+    expect(issues).toMatch(/AUTH_SECRET/);
+    expect(issues).toMatch(/at least 32/);
+    expect(issues).not.toContain('short-but-unique-value');
+  });
+
   it('rejects the documented demo password as AUTH_SECRET', () => {
     const issues = issuesOf(productionSource({ AUTH_SECRET: 'MeridianDemo!2026' }));
     expect(issues).toMatch(/AUTH_SECRET/);

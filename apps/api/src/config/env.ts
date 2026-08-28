@@ -164,18 +164,18 @@ const envSchema = z
             'AUTH_SECRET is required when NODE_ENV=production or PLATFORM_MODE=production. ' +
             'Set an explicit production secret via the environment; demo and default credentials are rejected.',
         });
-      } else if (authSecret.length < PRODUCTION_AUTH_SECRET_MIN_LENGTH) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['AUTH_SECRET'],
-          message: `AUTH_SECRET must be at least ${PRODUCTION_AUTH_SECRET_MIN_LENGTH} characters. Do not use a demo or default secret.`,
-        });
       } else if (isForbiddenProductionSecret(authSecret)) {
         ctx.addIssue({
           code: 'custom',
           path: ['AUTH_SECRET'],
           message:
             'AUTH_SECRET must not be a demo password, demo secret, or default credential fallback.',
+        });
+      } else if (authSecret.length < PRODUCTION_AUTH_SECRET_MIN_LENGTH) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['AUTH_SECRET'],
+          message: `AUTH_SECRET must be at least ${PRODUCTION_AUTH_SECRET_MIN_LENGTH} characters. Do not use a demo or default secret.`,
         });
       }
     }
