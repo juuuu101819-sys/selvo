@@ -638,7 +638,7 @@ Do not add product features until this sequence is complete. Do not start delega
 5. ~~**Quote integrity:** freshness on multi-rail (PA-H09); platform fee on non-fiat corridors (PA-H10). Decimal dashboard aggregates (PA-H07); monetization hooks on `/routes` (PA-H08).~~ **Done.**
 6. **Rail honesty:** ~~`/comparisons` dual engine (PA-H05); mode-gate demo graph (PA-H06).~~ **Done.** Remaining: align `defi` registry status on catalog meta if product wants family filters to expand.
 7. ~~**Operational:** redis rate limit, peppered API-key hashes, secure cookies (PA-M01, PA-M02, PA-M12).~~ **Done** with PostgreSQL-backed rate-limit counters (no Redis in this stack — that roadmap item overlaps PA-M02), salted scrypt API-key hashes, HMAC session tokens, and production cookie Secure. Error leakage (PA-M03) and audit-actor spoofing (PA-M04) closed in the same phase.
-8. **Phase 5 only after 1–7:** licensed read-only FX, payment, ramp, DEX APIs; persist `Quote` rows; then consider production mode.
+8. **Phase 5 / PHASE 30 only after a named licensed partner of record is confirmed** (see `docs/COMPLIANCE.md`). Do not invent a partner, wrap sandbox pricing, or relabel a demo adapter as `licensed_partner`. Until then staging/production keep an empty licensed registry and 422 on quote/comparison.
 9. **Stop.** Partner execution remains 501 until the compliance gate.
 
 ---

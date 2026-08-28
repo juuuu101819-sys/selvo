@@ -47,7 +47,7 @@ These are the only allowed gaps. They are scale/ops differences, not safety rela
 | Postgres | Dedicated `meridian_staging` volume; published on `127.0.0.1:54332` | Platform-managed database; not published to developer laptops |
 | Data | Empty by default. Optional **labelled synthetic** operator (`--profile synthetic`) | Real organizations only after a separate authorization |
 | Billing | None. No invoices, subscriptions, or payouts (PA-M09 deferred) | Same code; still no billing product |
-| Licensed quotes | None. Comparison/quote return **422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`) | Same until PHASE 30 adds a real adapter |
+| Licensed quotes | None. PHASE 30 is **blocked** until a named licensed partner of record is confirmed. Comparison/quote return **422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`). | Same empty licensed registry until that confirmation exists |
 | Web app | Not in the API image. Point `API_BASE_URL` at staging if you run Next separately | Same split: API image vs web |
 | Log sink | `docker compose logs api` (JSON on stdout) | Same JSON; attach the platform’s log drain |
 
@@ -66,7 +66,7 @@ Nothing secret is committed. `.env`, `.env.staging`, and `.env.*` are gitignored
 | `STAGING_AUTH_SECRET` → `AUTH_SECRET` | Compose env-file / GitHub Actions job env / platform secret store | ≥32 characters. Rejected if it equals a documented demo password or agent secret. Never copied onto `AppConfig`. Never logged (pino redacts `*.AUTH_SECRET`). |
 | `STAGING_DB_PASSWORD` → `DATABASE_URL` | Same | URL-injected. Pino redacts `*.DATABASE_URL`. |
 | `STAGING_OPERATOR_PASSWORD` | Only with `--profile synthetic` | Not the demo password. Optional. |
-| Future `PROVIDER_*` keys | Same secret store | Not used until a licensed adapter exists. Never commit. |
+| Future `PROVIDER_*` keys | Same secret store | Not used. No licensed adapter exists; do not invent placeholder partner credentials. Never commit. |
 
 CI generates fresh hex secrets per staging-smoke job; they are not stored in the repo.
 
@@ -195,6 +195,8 @@ docker run --rm -p 47311:47311 \
 ```
 
 Do not set `PRODUCTION_EXECUTION_AVAILABLE=true`. Do not seed demo tenants.
+Do not set `PRODUCTION_ROUTING_AVAILABLE=true` until a licensed partner of record is recorded in
+[`COMPLIANCE.md`](./COMPLIANCE.md) and a real quoting adapter for that partner exists.
 
 Related: [`PRODUCTION_GATES.md`](./PRODUCTION_GATES.md), [`COMPLIANCE.md`](./COMPLIANCE.md),
 [`DATABASE.md`](./DATABASE.md).

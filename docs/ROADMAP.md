@@ -124,13 +124,16 @@ without rebuilding it.
 **Explicitly excluded:** DeFi quoting or execution, real-money execution, AI-agent payment
 initiation, engine-version bump, schema changes.
 
-## Phase 5 — Live provider adapters _(not started)_
+## Phase 5 — Live provider adapters _(blocked — no partner of record)_
 
 Replace sandbox pricing with real read-only quote APIs from licensed partners: per-adapter
 credential resolution, circuit breakers, upstream rate limiting, quote caching with TTL honouring
-`expiresAt`, and per-provider reconciliation of quoted vs. observed cost. Re-express the four
-dataset rails as `FXProvider`/`PaymentProvider`/`LiquidityProvider` behind bridges, read provider
-capability from the database, and persist quotes through the `quotes` table.
+`expiresAt`, and per-provider reconciliation of quoted vs. observed cost.
+
+**Not started.** PHASE 30 requires a contractually confirmed licensed provider, the exact quoting
+API scope, and issued `PROVIDER_*` secrets. None of those exist as of 2026-08-28. Do not implement
+a placeholder partner. Staging/production stay on the empty licensed registry (PA-C01).
+`POST /executions` remains 501.
 
 ## Phase 6 — Corridor intelligence _(not started)_
 

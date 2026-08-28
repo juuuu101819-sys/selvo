@@ -59,3 +59,25 @@ All of the following must exist first, and this document must be updated to reco
 
 Until then the platform compares routes and hands the caller a recommendation. The caller transacts
 with the licensed provider directly. Meridian does not become the transacting party.
+
+## Before any live licensed-quote adapter (Phase 5 / PHASE 30)
+
+Read-only quoting against a real licensed API is a **separate** gate from delegated execution.
+`POST /api/v1/executions` stays 501 either way. The following must be recorded here **before** an
+adapter is written — inventing a partner, wrapping a sandbox feed, or relabelling a demo adapter as
+`licensed_partner` is forbidden (PA-C01).
+
+As of 2026-08-28 this gate is **not satisfied**. No licensed provider or partner of record has been
+confirmed outside the coding session. Therefore:
+
+| Required confirmation | Status |
+| --------------------- | ------ |
+| Named licensed provider / partner of record | **Missing** |
+| Contractual right to call their quoting API (sandbox and/or production) | **Missing** |
+| Scope: quoting only vs quoting + future execution | **Missing** — even if their API can execute, this phase would implement quoting only |
+| Credential source (`PROVIDER_<ID>_*` via staging/production secret store) | **Not issued** |
+| Corridors / rails in scope | **Not designated** |
+
+Staging and production remain empty of licensed adapters. Comparisons in those environments return
+**422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`). `PRODUCTION_ROUTING_AVAILABLE` must stay
+`false`. Do not set it true to “try” an unconfirmed partner.
