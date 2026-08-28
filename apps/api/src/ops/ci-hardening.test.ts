@@ -74,7 +74,7 @@ describe('CI hardening (PA-H11, PA-H12)', () => {
     expect(compose).toMatch(/healthcheck:/);
     expect(compose).not.toMatch(/MeridianDemo/);
     expect(compose).not.toMatch(/mag_demo_agent01/);
-    expect(compose).not.toMatch(/AUTH_SECRET:\s*['\"]?[a-zA-Z0-9]{16,}/);
+    expect(compose).not.toMatch(/AUTH_SECRET:\s*['"]?[a-zA-Z0-9]{16,}/);
     expect(read('.env.staging.example')).toMatch(/STAGING_AUTH_SECRET=/);
     expect(read('.env.staging.example')).not.toMatch(/MeridianDemo/);
   });
