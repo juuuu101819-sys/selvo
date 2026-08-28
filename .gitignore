@@ -19,6 +19,7 @@ playwright/.cache/
 .env
 .env.*
 !.env.example
+!.env.staging.example
 
 *.log
 npm-debug.log*

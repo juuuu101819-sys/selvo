@@ -1,0 +1,114 @@
+# Meridian staging stack.
+#
+# Same fail-closed gates as production (PA-C01–C03). Staging is not a relaxed sandbox.
+# Secrets are injected from the environment / `--env-file`. Nothing here is a real secret.
+#
+#   cp .env.staging.example .env.staging   # fill STAGING_* values; never commit that file
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging up --build -d
+#   until curl -sf http://127.0.0.1:47331/health; do sleep 2; done
+#   STAGING_API_BASE_URL=http://127.0.0.1:47331 npm run test:staging-smoke
+#
+# Optional synthetic operator (labelled, not the demo tenant):
+#   docker compose -f docker-compose.staging.yml --env-file .env.staging --profile synthetic up --build -d
+#
+# Do not `up --wait` the whole project: migrate/provision are oneshot and exit.
+#
+# Logs: docker compose -f docker-compose.staging.yml logs -f api
+# Rollback: docs/DEPLOYMENT.md
+
+name: meridian-staging
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: meridian
+      POSTGRES_PASSWORD: ${STAGING_DB_PASSWORD:?STAGING_DB_PASSWORD must be set}
+      POSTGRES_DB: meridian_staging
+    restart: unless-stopped
+    volumes:
+      - staging_pg:/var/lib/postgresql/data
+    ports:
+      - '127.0.0.1:54332:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U meridian -d meridian_staging']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+      args:
+        GIT_SHA: ${MERIDIAN_IMAGE_TAG:-unknown}
+    restart: 'no'
+    environment:
+      DATABASE_URL: postgresql://meridian:${STAGING_DB_PASSWORD}@postgres:5432/meridian_staging
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+      args:
+        GIT_SHA: ${MERIDIAN_IMAGE_TAG:-unknown}
+    environment:
+      NODE_ENV: production
+      PLATFORM_MODE: production
+      DEPLOY_ENV: staging
+      DATABASE_DRIVER: postgres
+      DATABASE_URL: postgresql://meridian:${STAGING_DB_PASSWORD}@postgres:5432/meridian_staging
+      AUTH_SECRET: ${STAGING_AUTH_SECRET:?STAGING_AUTH_SECRET must be set}
+      PRODUCTION_ROUTING_AVAILABLE: 'false'
+      PRODUCTION_EXECUTION_AVAILABLE: 'false'
+      SEED_DEMO_TENANTS: 'false'
+      MERIDIAN_IMAGE_TAG: ${MERIDIAN_IMAGE_TAG:-unknown}
+      API_HOST: 0.0.0.0
+      API_PORT: '47311'
+      LOG_LEVEL: info
+      LOG_PRETTY: 'false'
+    ports:
+      - '127.0.0.1:47331:47311'
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:47311/health']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  provision-operator:
+    profiles: ['synthetic']
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrate
+      args:
+        GIT_SHA: ${MERIDIAN_IMAGE_TAG:-unknown}
+    environment:
+      NODE_ENV: production
+      PLATFORM_MODE: production
+      DEPLOY_ENV: staging
+      DATABASE_URL: postgresql://meridian:${STAGING_DB_PASSWORD}@postgres:5432/meridian_staging
+      STAGING_OPERATOR_EMAIL: ${STAGING_OPERATOR_EMAIL:?STAGING_OPERATOR_EMAIL required with --profile synthetic}
+      STAGING_OPERATOR_PASSWORD: ${STAGING_OPERATOR_PASSWORD:?STAGING_OPERATOR_PASSWORD required with --profile synthetic}
+    restart: 'no'
+    command: ['npx', 'tsx', 'apps/api/src/ops/provision-staging-operator.ts']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  staging_pg:

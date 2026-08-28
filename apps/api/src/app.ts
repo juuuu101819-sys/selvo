@@ -59,6 +59,8 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
           '*.secret',
           '*.AUTH_SECRET',
           '*.authSecret',
+          '*.DATABASE_URL',
+          '*.databaseUrl',
           '*.apiKey',
           '*.token',
           '*.wallet',

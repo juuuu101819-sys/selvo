@@ -4,9 +4,17 @@
 # production mode, postgres only, demo tenants off, routing/execution flags false.
 # AUTH_SECRET and DATABASE_URL are required at runtime and must never be baked in.
 # POST /api/v1/executions remains 501. No demo providers or credentials are compiled into ENV.
+#
+# Targets:
+#   build   — compile workspace (devDependencies still present)
+#   migrate — `prisma migrate deploy` (needs the Prisma CLI)
+#   api     — pruned runtime image (CI builds this target)
 
 FROM node:22-bookworm-slim AS build
 WORKDIR /app
+
+ARG GIT_SHA=unknown
+ENV MERIDIAN_IMAGE_TAG=${GIT_SHA}
 
 COPY package.json package-lock.json ./
 COPY packages/core/package.json packages/core/
@@ -24,11 +32,22 @@ COPY packages packages
 COPY apps/api apps/api
 
 RUN npx prisma generate \
-  && npm run build \
-  && npm prune --omit=dev
+  && npm run build
+
+FROM build AS migrate
+ENV NODE_ENV=production \
+    DATABASE_DRIVER=postgres
+# Prisma CLI remains available (this stage is not pruned). DATABASE_URL is injected at runtime.
+CMD ["npx", "prisma", "migrate", "deploy"]
+
+FROM build AS pruned
+RUN npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS api
 WORKDIR /app
+
+ARG GIT_SHA=unknown
+ENV MERIDIAN_IMAGE_TAG=${GIT_SHA}
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends wget ca-certificates \
@@ -46,12 +65,12 @@ ENV NODE_ENV=production \
     API_PORT=47311 \
     LOG_LEVEL=info
 
-COPY --from=build --chown=meridian:meridian /app/package.json /app/package-lock.json ./
-COPY --from=build --chown=meridian:meridian /app/node_modules ./node_modules
-COPY --from=build --chown=meridian:meridian /app/packages ./packages
-COPY --from=build --chown=meridian:meridian /app/apps/api ./apps/api
-COPY --from=build --chown=meridian:meridian /app/prisma ./prisma
-COPY --from=build --chown=meridian:meridian /app/prisma.config.ts ./
+COPY --from=pruned --chown=meridian:meridian /app/package.json /app/package-lock.json ./
+COPY --from=pruned --chown=meridian:meridian /app/node_modules ./node_modules
+COPY --from=pruned --chown=meridian:meridian /app/packages ./packages
+COPY --from=pruned --chown=meridian:meridian /app/apps/api ./apps/api
+COPY --from=pruned --chown=meridian:meridian /app/prisma ./prisma
+COPY --from=pruned --chown=meridian:meridian /app/prisma.config.ts ./
 
 USER meridian
 EXPOSE 47311

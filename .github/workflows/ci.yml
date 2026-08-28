@@ -86,3 +86,63 @@ jobs:
             echo 'Production image must not bake demo credentials or AUTH_SECRET' >&2
             exit 1
           fi
+
+  staging:
+    name: staging compose smoke
+    runs-on: ubuntu-latest
+    needs: [verify, container]
+    env:
+      CI: true
+      MERIDIAN_IMAGE_TAG: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install (lockfile)
+        run: npm ci
+      - name: Generate staging secrets
+        run: |
+          echo "STAGING_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "STAGING_DB_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+          echo "STAGING_OPERATOR_EMAIL=ops@staging.example.invalid" >> "$GITHUB_ENV"
+          echo "STAGING_OPERATOR_PASSWORD=$(openssl rand -hex 24)" >> "$GITHUB_ENV"
+      - name: Build staging images (same Dockerfile --target api as the container job)
+        run: docker compose -f docker-compose.staging.yml --profile synthetic build
+      - name: Start Postgres
+        run: docker compose -f docker-compose.staging.yml up -d postgres
+      - name: Wait for Postgres
+        run: |
+          for i in $(seq 1 30); do
+            docker compose -f docker-compose.staging.yml exec -T postgres pg_isready -U meridian -d meridian_staging && exit 0
+            sleep 2
+          done
+          echo 'Postgres did not become ready' >&2
+          exit 1
+      - name: Apply migrations
+        run: docker compose -f docker-compose.staging.yml run --rm migrate
+      - name: Provision labelled synthetic operator
+        run: docker compose -f docker-compose.staging.yml --profile synthetic run --rm provision-operator
+      - name: Start API
+        run: docker compose -f docker-compose.staging.yml up -d api
+      - name: Wait for API health and ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:47331/health >/dev/null && curl -sf http://127.0.0.1:47331/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'Staging API did not become ready' >&2
+          exit 1
+      - name: Staging smoke
+        env:
+          STAGING_API_BASE_URL: http://127.0.0.1:47331
+        run: npm run test:staging-smoke
+      - name: Staging logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.staging.yml logs
+      - name: Stop staging stack
+        if: always()
+        run: docker compose -f docker-compose.staging.yml --profile synthetic down -v

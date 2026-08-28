@@ -36,6 +36,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "pretest:e2e": "npm run build && npm run build --workspace @meridian/web",
+    "test:staging-smoke": "vitest run apps/api/src/ops/staging-smoke.test.ts",
+    "staging:local": "bash scripts/run-local-staging.sh",
     "db:seed": "npm run build --silent && prisma db seed",
     "db:reset": "npm run build --silent && prisma migrate reset --force"
   },

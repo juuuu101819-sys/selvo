@@ -27,6 +27,10 @@ describe('CI hardening (PA-H11, PA-H12)', () => {
     expect(workflow).toContain('npm run test:e2e');
     expect(workflow).toContain('npm run audit:deps');
     expect(workflow).toMatch(/docker build/);
+    expect(workflow).toContain('docker-compose.staging.yml');
+    expect(workflow).toContain('npm run test:staging-smoke');
+    expect(workflow).toContain('docker compose -f docker-compose.staging.yml run --rm migrate');
+    expect(workflow).toContain('needs: [verify, container]');
     expect(workflow).not.toMatch(/continue-on-error:\s*true/);
   });
 
@@ -54,5 +58,24 @@ describe('CI hardening (PA-H11, PA-H12)', () => {
     expect(dockerfile).not.toMatch(/PRODUCTION_EXECUTION_AVAILABLE=true/);
     expect(dockerfile).not.toMatch(/SEED_DEMO_TENANTS=true/);
     expect(dockerignore).toContain('.env');
+  });
+
+  it('defines a staging compose stack that injects secrets and does not bake them', () => {
+    const compose = read('docker-compose.staging.yml');
+    expect(compose).toContain('DEPLOY_ENV: staging');
+    expect(compose).toContain('PLATFORM_MODE: production');
+    expect(compose).toContain('DATABASE_DRIVER: postgres');
+    expect(compose).toContain("PRODUCTION_ROUTING_AVAILABLE: 'false'");
+    expect(compose).toContain("PRODUCTION_EXECUTION_AVAILABLE: 'false'");
+    expect(compose).toContain("SEED_DEMO_TENANTS: 'false'");
+    expect(compose).toContain('STAGING_AUTH_SECRET:?');
+    expect(compose).toContain('STAGING_DB_PASSWORD:?');
+    expect(compose).toContain('127.0.0.1:47331:47311');
+    expect(compose).toMatch(/healthcheck:/);
+    expect(compose).not.toMatch(/MeridianDemo/);
+    expect(compose).not.toMatch(/mag_demo_agent01/);
+    expect(compose).not.toMatch(/AUTH_SECRET:\s*['\"]?[a-zA-Z0-9]{16,}/);
+    expect(read('.env.staging.example')).toMatch(/STAGING_AUTH_SECRET=/);
+    expect(read('.env.staging.example')).not.toMatch(/MeridianDemo/);
   });
 });

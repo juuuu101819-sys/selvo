@@ -7,6 +7,8 @@ Meridian remains **non-custodial**. `POST /api/v1/executions` is an audited **50
 compliance gate in `docs/COMPLIANCE.md` is satisfied. These gates do not weaken that restriction.
 
 A process is **production-locked** when `NODE_ENV=production` **or** `PLATFORM_MODE=production`.
+`DEPLOY_ENV=staging` is a label for the same lock: staging is not a relaxed sandbox. See
+[`DEPLOYMENT.md`](./DEPLOYMENT.md).
 
 ---
 
@@ -144,7 +146,10 @@ available.
 5. `PRODUCTION_ROUTING_AVAILABLE=false` until a real licensed adapter is registered
 6. `PRODUCTION_EXECUTION_AVAILABLE=false`
 7. `SEED_DEMO_TENANTS` unset or false
-8. Confirm `GET /api/v1/meta` → `productionGates.routingAvailable === false`,
-   `productionGates.executionAvailable === false`, `execution.statusCode === 501`
+8. Staging deployments set `DEPLOY_ENV=staging` (still production-locked). Production may omit it
+   (defaults to `production`) or set it explicitly.
+9. Confirm `GET /api/v1/meta` → `productionGates.routingAvailable === false`,
+   `productionGates.executionAvailable === false`, `execution.statusCode === 501`,
+   `deployment.environment` is `staging` or `production`, `persistenceDriver` is `postgres`
 
-Do not enable delegated execution from this document.
+Do not enable delegated execution from this document. Staging procedure: [`DEPLOYMENT.md`](./DEPLOYMENT.md).

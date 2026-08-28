@@ -75,6 +75,7 @@ describe('PA-C01 production provider gate', () => {
         data: {
           productionGates: { routingAvailable: boolean; executionAvailable: boolean };
           execution: { implemented: boolean; statusCode: number };
+          deployment: { environment: string };
           providers: unknown[];
           providerCatalog: { providers: unknown[] };
         };
@@ -84,9 +85,31 @@ describe('PA-C01 production provider gate', () => {
         executionAvailable: false,
       });
       expect(data.execution).toMatchObject({ implemented: false, statusCode: 501 });
+      expect(data.deployment.environment).toBe('production');
       expect(data.providers).toEqual([]);
       expect(data.providerCatalog.providers).toEqual([]);
       expect(JSON.stringify(meta.json())).not.toContain(PRODUCTION_AUTH_SECRET);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it('returns 422 rather than sandbox quotes when the licensed registry is empty', async () => {
+    const { app } = await createApp({ config: productionConfig() });
+    try {
+      await app.ready();
+      const compared = await app.inject({
+        method: 'POST',
+        url: `${API_V1_PREFIX}/comparisons`,
+        payload: { sourceCurrency: 'USD', targetCurrency: 'KRW', amount: '1000.00' },
+      });
+      expect(compared.statusCode).toBe(422);
+      expect(compared.json<{ error: { code: string } }>().error.code).toMatch(
+        /UNSUPPORTED_CORRIDOR|NO_ROUTES_AVAILABLE/,
+      );
+
+      const executed = await app.inject({ method: 'POST', url: `${API_V1_PREFIX}/executions` });
+      expect(executed.statusCode).toBe(501);
     } finally {
       await app.close();
     }

@@ -53,6 +53,7 @@ describe('GET /v1/meta', () => {
         capabilities: Record<string, boolean>;
         execution: { implemented: boolean; delegated: boolean; statusCode: number };
         productionGates: { routingAvailable: boolean; executionAvailable: boolean };
+        deployment: { environment: string; imageTag: string | null };
         pipeline: { id: string; status: string }[];
         railFamilies: { id: string; status: string }[];
         rails: { type: string; family: string; status: string }[];
@@ -101,6 +102,7 @@ describe('GET /v1/meta', () => {
       routingAvailable: false,
       executionAvailable: false,
     });
+    expect(body.deployment).toEqual({ environment: 'development', imageTag: null });
     expect(body.pipeline).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'discover', status: 'available' }),

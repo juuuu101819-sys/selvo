@@ -158,6 +158,7 @@ describe('PA-C03 database production gate', () => {
     expect(config.dataEncryptionKey).not.toBe(PRODUCTION_AUTH_SECRET);
     expect(config.dataEncryptionKey).toHaveLength(64);
     expect(config.dataEncryptionKey).not.toBe(config.sessionTokenPepper);
+    expect(config.deployment).toEqual({ environment: 'production', imageTag: null });
   });
 
   it('allows development + memory', () => {
@@ -249,6 +250,72 @@ describe('PA-C01 production routing and execution flags', () => {
       PRODUCTION_ROUTING_AVAILABLE: 'true',
     });
     expect(issues).toMatch(/PRODUCTION_ROUTING_AVAILABLE/);
+  });
+});
+
+describe('DEPLOY_ENV staging parity', () => {
+  it('defaults a production-locked process to deployment.environment=production', () => {
+    expect(loadConfig(productionSource()).deployment.environment).toBe('production');
+  });
+
+  it('accepts DEPLOY_ENV=staging with the same fail-closed gates as production', () => {
+    const config = loadConfig(productionSource({ DEPLOY_ENV: 'staging', MERIDIAN_IMAGE_TAG: 'abc123' }));
+    expect(config.deployment).toEqual({ environment: 'staging', imageTag: 'abc123' });
+    expect(config.productionLocked).toBe(true);
+    expect(config.database.driver).toBe('postgres');
+    expect(config.productionGates.executionAvailable).toBe(false);
+    expect(shouldProvisionDemoTenants(config)).toBe(false);
+  });
+
+  it('fails closed when DEPLOY_ENV=staging uses the memory driver', () => {
+    const issues = issuesOf(
+      productionSource({ DEPLOY_ENV: 'staging', DATABASE_DRIVER: 'memory', DATABASE_URL: undefined }),
+    );
+    expect(issues).toMatch(/DATABASE_DRIVER/);
+    expect(issues).toMatch(/memory is forbidden/);
+  });
+
+  it('fails closed when DEPLOY_ENV=staging tries to seed demo tenants', () => {
+    const issues = issuesOf(productionSource({ DEPLOY_ENV: 'staging', SEED_DEMO_TENANTS: 'true' }));
+    expect(issues).toMatch(/SEED_DEMO_TENANTS/);
+  });
+
+  it('fails closed when DEPLOY_ENV=staging is not production-locked', () => {
+    const issues = issuesOf({
+      NODE_ENV: 'development',
+      PLATFORM_MODE: 'sandbox',
+      DEPLOY_ENV: 'staging',
+    });
+    expect(issues).toMatch(/DEPLOY_ENV/);
+    expect(issues).toMatch(/not a relaxed sandbox/);
+  });
+
+  it('rejects labelling a production-locked process as development', () => {
+    const issues = issuesOf(productionSource({ DEPLOY_ENV: 'development' }));
+    expect(issues).toMatch(/DEPLOY_ENV/);
+  });
+
+  it('rejects the same forbidden drivers and demo secrets in staging as in production', () => {
+    const memoryProduction = issuesOf(
+      productionSource({ DATABASE_DRIVER: 'memory', DATABASE_URL: undefined }),
+    );
+    const memoryStaging = issuesOf(
+      productionSource({
+        DEPLOY_ENV: 'staging',
+        DATABASE_DRIVER: 'memory',
+        DATABASE_URL: undefined,
+      }),
+    );
+    expect(memoryProduction).toMatch(/memory is forbidden/);
+    expect(memoryStaging).toMatch(/memory is forbidden/);
+
+    const demoProduction = issuesOf(productionSource({ AUTH_SECRET: 'MeridianDemo!2026' }));
+    const demoStaging = issuesOf(
+      productionSource({ DEPLOY_ENV: 'staging', AUTH_SECRET: 'MeridianDemo!2026' }),
+    );
+    expect(demoProduction).toMatch(/AUTH_SECRET/);
+    expect(demoStaging).toMatch(/AUTH_SECRET/);
+    expect(demoStaging).not.toContain('MeridianDemo!2026');
   });
 });
 

@@ -64,6 +64,15 @@ const envSchema = z
      */
     PRODUCTION_EXECUTION_AVAILABLE: booleanFlag,
 
+    /**
+     * Deployment label. Safety rules come from production-lock (PA-C01–C03), not from this value.
+     * `staging` and `production` both require a production-locked process. Staging is not a
+     * relaxed sandbox.
+     */
+    DEPLOY_ENV: z.enum(['development', 'staging', 'production']).optional(),
+    /** Build/image identifier for rollback. Never a secret. */
+    MERIDIAN_IMAGE_TAG: z.string().min(1).max(128).optional(),
+
     SEED_DEMO_TENANTS: booleanFlag,
 
     /**
@@ -147,6 +156,28 @@ const envSchema = z
       });
     }
 
+    const deployEnv =
+      env.DEPLOY_ENV ?? (productionLocked ? 'production' : 'development');
+
+    if ((deployEnv === 'staging' || deployEnv === 'production') && !productionLocked) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DEPLOY_ENV'],
+        message:
+          `DEPLOY_ENV=${deployEnv} requires NODE_ENV=production or PLATFORM_MODE=production. ` +
+          'Staging is not a relaxed sandbox; it uses the same fail-closed gates as production.',
+      });
+    }
+
+    if (productionLocked && deployEnv === 'development') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DEPLOY_ENV'],
+        message:
+          'A production-locked process cannot be labelled DEPLOY_ENV=development. Use staging or production.',
+      });
+    }
+
     if (productionLocked && env.SEED_DEMO_TENANTS) {
       ctx.addIssue({
         code: 'custom',
@@ -192,11 +223,20 @@ export interface ProductionGates {
   readonly executionAvailable: boolean;
 }
 
+export type DeployEnvironment = 'development' | 'staging' | 'production';
+
+export interface DeploymentInfo {
+  readonly environment: DeployEnvironment;
+  /** Image or git tag from MERIDIAN_IMAGE_TAG. Not a secret. */
+  readonly imageTag: string | null;
+}
+
 export interface AppConfig {
   readonly nodeEnv: RawEnv['NODE_ENV'];
   readonly mode: RawEnv['PLATFORM_MODE'];
   /** True when NODE_ENV=production or PLATFORM_MODE=production. */
   readonly productionLocked: boolean;
+  readonly deployment: DeploymentInfo;
   readonly productionGates: ProductionGates;
   /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
   readonly authSecretConfigured: boolean;
@@ -265,6 +305,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   const env = parsed.data;
   const productionLocked = isProductionLocked(env.NODE_ENV, env.PLATFORM_MODE);
+  const deployEnv: DeployEnvironment =
+    env.DEPLOY_ENV ?? (productionLocked ? 'production' : 'development');
 
   const weights = {
     cost: env.ROUTE_WEIGHT_COST,
@@ -290,6 +332,10 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     nodeEnv: env.NODE_ENV,
     mode: env.PLATFORM_MODE,
     productionLocked,
+    deployment: {
+      environment: deployEnv,
+      imageTag: env.MERIDIAN_IMAGE_TAG ?? null,
+    },
     productionGates: {
       routingAvailable: env.PRODUCTION_ROUTING_AVAILABLE,
       executionAvailable: false,

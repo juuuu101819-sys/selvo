@@ -142,7 +142,14 @@ docker run --rm -p 47311:47311 \
 
 Operators must supply `AUTH_SECRET` (≥32 characters, not a documented demo value) and a real
 Postgres URL. Setting `PRODUCTION_EXECUTION_AVAILABLE=true` or `SEED_DEMO_TENANTS=true` is a
-startup failure. See [docs/PRODUCTION_GATES.md](./docs/PRODUCTION_GATES.md).
+startup failure. Staging uses this same image and the same gates; it is not a relaxed sandbox.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) and [docs/PRODUCTION_GATES.md](docs/PRODUCTION_GATES.md).
+
+```bash
+docker compose -f docker-compose.staging.yml --env-file .env.staging up --build -d
+STAGING_API_BASE_URL=http://127.0.0.1:47331 npm run test:staging-smoke
+# without Docker: scripts/run-local-staging.sh start
+```
 
 ## Repository layout
 
