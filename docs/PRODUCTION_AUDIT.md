@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** No production code was modified. This document is the only artefact of the audit.
+**Constraint:** PA-C01, PA-C02 and PA-C03 were subsequently fixed in production code. No other audit items were implemented in that change. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -24,8 +24,8 @@ The codebase is a **sandbox-complete routing hub** with strong non-custodial str
 
 It is **not production-ready** as a live financial service:
 
-- There are no licensed partner adapters; `PLATFORM_MODE=production` refuses to boot.
-- Persistence defaults to in-memory; demo credentials can be provisioned outside a sandbox gate.
+- Licensed partner adapters still do not exist; production now starts **read-only** with routing and execution independently unavailable (`docs/PRODUCTION_GATES.md`). Claiming `PRODUCTION_ROUTING_AVAILABLE=true` without a licensed adapter fails closed. Execution cannot be enabled.
+- Persistence defaults to in-memory **only** in development/test; production-locked processes require PostgreSQL and reject demo credentials.
 - Traditional FX, stablecoin, and DeFi are **not equal rails** on the original comparison API; they are equal only inside the multi-rail catalog.
 - Partner execution and settlement are deliberately unimplemented (`POST /api/v1/executions` → 501).
 - Authorization on agent policy and session scopes is weaker than the role model implies.
@@ -137,29 +137,32 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-C01 — Production mode has no licensed adapters and cannot start
 
-- **File:** `apps/api/src/container.ts` (lines 269–279); `packages/core/src/engine/provider-registry.ts` (lines 71–89)
-- **Component:** `buildProviders` / `ProviderRegistry.create`
-- **Problem:** `PLATFORM_MODE=production` registers an empty `RouteProvider` list. The registry then throws: production requires at least one `licensed_partner` adapter. Zero licensed implementations exist in `packages/adapters`.
-- **Why it matters:** A production deploy of the current tree cannot serve quotes. That is fail-closed (good) and also a hard go-live blocker for the hub.
-- **Recommended fix:** Do not “fix” by admitting sandbox adapters. Add licensed read-only adapters (existing Phase 5) and keep the registry check.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/container.ts`; `packages/core/src/engine/provider-registry.ts`; `apps/api/src/config/env.ts`
+- **Component:** `buildProviders` / `ProviderRegistry.create` / `PRODUCTION_ROUTING_AVAILABLE`
+- **Problem:** `PLATFORM_MODE=production` registered an empty `RouteProvider` list. The registry then threw: production required at least one `licensed_partner` adapter. Zero licensed implementations exist in `packages/adapters`.
+- **Fix:** Demo providers, demo catalog adapters, and the demo graph are never loaded in production. `PRODUCTION_ROUTING_AVAILABLE` and `PRODUCTION_EXECUTION_AVAILABLE` are independent. Default both false: the process may start read-only with an empty registry and meta `productionGates.executionAvailable === false`. `PRODUCTION_ROUTING_AVAILABLE=true` still fails closed (no licensed adapters are invented). `PRODUCTION_EXECUTION_AVAILABLE=true` is always a startup failure; `POST /executions` remains 501.
+- **Tests:** `apps/api/src/production-gates.test.ts`, `apps/api/src/config/env.test.ts` (PA-C01), `packages/core/src/engine/provider-registry.test.ts` (`allowEmpty`), `packages/adapters/src/demo/financial-catalog.test.ts` (`includeDemoAdapters: false`)
 - **Priority:** P1 (product); P0 as a named production blocker
 
 #### PA-C02 — Demo tenants provision whenever `NODE_ENV` is not `test`
 
-- **File:** `apps/api/src/app.ts` (lines 92–107); `packages/core/src/auth/demo-tenant.ts` (lines 14–31)
-- **Component:** `createApp` → `provisionDemoTenants`
-- **Problem:** Documented password `MeridianDemo!2026` and agent secret `mag_demo_agent01_sandbox_only_not_production` are committed. Provision runs for `NODE_ENV=development` **and** `NODE_ENV=production` (the condition is `nodeEnv !== 'test' || SEED_DEMO_TENANTS`). Comments say sandbox-only; there is no `PLATFORM_MODE` gate. `prisma/seed.ts` writes the same hashes.
-- **Why it matters:** A hosted process labelled production that still runs `PLATFORM_MODE=sandbox` (the only mode that boots today) exposes known owner and agent credentials. Funds still cannot move, but quoting, simulation, dashboard, and API-key minting can.
-- **Recommended fix:** Provision demo tenants only when `PLATFORM_MODE=sandbox` **and** an explicit `SEED_DEMO_TENANTS=true` (or `NODE_ENV=development`). Refuse demo login when `PLATFORM_MODE=production`. Never run `db:seed` in production pipelines.
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/app.ts`; `apps/api/src/config/env.ts`; `packages/core/src/auth/production-credentials.ts`; `packages/core/src/auth/demo-tenant.ts`
+- **Component:** `createApp` → `provisionDemoTenants` / `AUTH_SECRET`
+- **Problem:** Documented password `MeridianDemo!2026` and agent secret `mag_demo_agent01_sandbox_only_not_production` are committed. Provision ran for `NODE_ENV=development` **and** `NODE_ENV=production`. Comments said sandbox-only; there was no production-locked gate. `prisma/seed.ts` wrote the same hashes.
+- **Fix:** Production-locked processes (`NODE_ENV=production` or `PLATFORM_MODE=production`) never seed demo tenants, reject demo login with the generic 401, reject the documented agent secret, require an explicit `AUTH_SECRET` (≥32 characters, not a demo/default value), and refuse `SEED_DEMO_TENANTS=true`. The secret is never stored on `AppConfig` or logged. `prisma/seed.ts` refuses to run. Login UI shows demo credentials only when API `mode=sandbox`.
+- **Tests:** `apps/api/src/config/env.test.ts` (PA-C02), `packages/core/src/auth/production-credentials.test.ts`, `apps/api/src/production-gates.test.ts` (provision + agent secret)
 - **Priority:** P0
 
 #### PA-C03 — In-memory persistence is the default, including for a “production” Node environment
 
-- **File:** `apps/api/src/config/env.ts` (line 39); `.env.example` (DATABASE_DRIVER)
+- **Status:** **FIXED** (2026-08-28)
+- **File:** `apps/api/src/config/env.ts`; `.env.example`
 - **Component:** `loadConfig`
-- **Problem:** `DATABASE_DRIVER` defaults to `memory`. There is no startup rule that `PLATFORM_MODE=production` requires `postgres`. Quotes, audit, intents, and sessions die with the process.
-- **Why it matters:** Operators can believe they have an API in production while holding no durable audit trail — a regulatory and operational failure even without settlement.
-- **Recommended fix:** Fail startup if `PLATFORM_MODE=production` and driver ≠ `postgres`. Prefer postgres (or explicit opt-in memory) for any long-lived sandbox too.
+- **Problem:** `DATABASE_DRIVER` defaults to `memory`. There was no startup rule that production required `postgres`. Quotes, audit, intents, and sessions could die with the process.
+- **Fix:** If `NODE_ENV=production` or `PLATFORM_MODE=production`, `DATABASE_DRIVER=memory` fails closed. Production requires `postgres` and `DATABASE_URL`. The driver is not switched automatically and does not fall back to memory. Development and test may still use memory.
+- **Tests:** `apps/api/src/config/env.test.ts` (PA-C03): production+memory FAIL; production+postgres PASS config validation; development+memory allowed; test+memory allowed
 - **Priority:** P0
 
 ---
@@ -215,8 +218,8 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 - **File:** `apps/api/src/container.ts` (lines 180–187); `packages/core/src/graph/demo-graph.ts` (lines 10–26)
 - **Component:** `RouteGraphService` / `buildDemoFinancialGraph`
-- **Problem:** Graph construction does not depend on `PLATFORM_MODE`. Includes graph-only venue `demo-peninsula-settlement`.
-- **Why it matters:** After licensed adapters exist, `/route-graph` would still advertise synthetic edges unless this is replaced.
+- **Problem:** Graph construction did not depend on `PLATFORM_MODE` and included graph-only venue `demo-peninsula-settlement`. Production now uses an empty graph (PA-C01). Remaining work: a production graph from licensed venue metadata rather than an empty topology.
+- **Why it matters:** After licensed adapters exist, `/route-graph` must advertise those venues, not synthetic edges and not a permanent empty graph.
 - **Recommended fix:** Mode-gate the demo graph; production graph from licensed venue metadata only.
 - **Priority:** P1
 
@@ -493,13 +496,13 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 ## A. Critical issues
 
-| ID | Summary |
-| -- | ------- |
-| PA-C01 | `PLATFORM_MODE=production` cannot start: no licensed partner adapters. |
-| PA-C02 | Demo password and `mag_` secret can be provisioned when `NODE_ENV=production`. |
-| PA-C03 | Default `DATABASE_DRIVER=memory` is not forbidden in production. |
+| ID | Summary | Status |
+| -- | ------- | ------ |
+| PA-C01 | `PLATFORM_MODE=production` cannot start: no licensed partner adapters. | **FIXED** — read-only start; routing/execution independently unavailable; no fake licensed adapters |
+| PA-C02 | Demo password and `mag_` secret can be provisioned when `NODE_ENV=production`. | **FIXED** — production-locked processes reject demo credentials and require `AUTH_SECRET` |
+| PA-C03 | Default `DATABASE_DRIVER=memory` is not forbidden in production. | **FIXED** — production-locked + memory fails closed; postgres required |
 
-No critical issue is “the app secretly moves money.” Custody and live execution were **not** found.
+No critical issue is “the app secretly moves money.” Custody and live execution were **not** found. Operator contract: `docs/PRODUCTION_GATES.md`.
 
 ---
 
@@ -535,9 +538,9 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 A production-labelled **quoting** deployment (still non-custodial, still no settlement) is blocked until:
 
-1. Licensed read-only adapters exist **or** production is explicitly forbidden in deploy config (PA-C01).
-2. Demo tenant provision and seed cannot run in that environment (PA-C02).
-3. Durable postgres is required and migrations applied (PA-C03).
+1. ~~Licensed read-only adapters exist **or** production is explicitly forbidden in deploy config (PA-C01).~~ **PA-C01 FIXED:** production starts read-only unless `PRODUCTION_ROUTING_AVAILABLE=true` *and* a licensed adapter exists (none do; the flag fails closed). Licensed adapters remain a product requirement before live quotes.
+2. ~~Demo tenant provision and seed cannot run in that environment (PA-C02).~~ **PA-C02 FIXED.**
+3. ~~Durable postgres is required and migrations applied (PA-C03).~~ **PA-C03 FIXED** at configuration validation; operators must still provision and migrate a real database.
 4. Policy PATCH and session scopes are least-privilege (PA-H01, PA-H02, PA-H03, PA-H04).
 5. Automated verify + audit gate exists (PA-H11, PA-H12).
 6. HTTPS session cookies default secure (PA-M12).
@@ -550,7 +553,7 @@ A production-labelled **partner-execution** deployment is **additionally** block
 
 Do not add product features until this sequence is complete. Do not start delegated execution in this sequence.
 
-1. **Sandbox-gate demo identity** (PA-C02) and **refuse memory in production mode** (PA-C03).
+1. ~~**Sandbox-gate demo identity** (PA-C02) and **refuse memory in production mode** (PA-C03).~~ **Done.** See `docs/PRODUCTION_GATES.md`.
 2. **Authorization:** owner/admin policy PATCH; shrink session scopes; policy-gate execution intents; reserve daily spend (PA-H01–H04). Tests for viewer PATCH and multi-intent daily cap.
 3. **CI:** `verify`, e2e, postgres integration when URL present, `npm audit` (PA-H11, PA-M08, PA-H12).
 4. **Docs:** agents issued; public vs authenticated quote surfaces; simulation vs settlement naming (PA-M06, PA-H13).
@@ -578,4 +581,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of audit. No production code was changed. Wait for the next instruction before implementing any fix.*
+*End of original audit. PA-C01, PA-C02 and PA-C03 were fixed in a later change; HIGH and below were not implemented in that change.*
