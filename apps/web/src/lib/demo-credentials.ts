@@ -9,4 +9,5 @@ export const DEMO_LOGIN = {
   email: 'treasury@demo-trading.example.invalid',
   password: 'MeridianDemo!2026',
   organization: 'Meridian Demo Trading Co',
+  organizationSlug: 'demo-trading-co',
 } as const;

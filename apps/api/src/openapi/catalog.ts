@@ -65,11 +65,60 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'System',
   ]),
 
-  r('POST', '/auth/login', 'public', 'none', 'Issue a human session token (mds_).', ['Auth']),
+  r('POST', '/auth/login', 'public', 'none', 'Issue a human session token (mds_). MFA-enrolled accounts receive 202 until TOTP/recovery verification.', ['Auth']),
   r('POST', '/auth/logout', 'authenticated', 'session', 'Revoke the current session.', ['Auth']),
   r('GET', '/auth/me', 'authenticated', 'session+api_key+agent', 'Current verified principal.', [
     'Auth',
   ]),
+  r('GET', '/auth/mfa', 'authenticated', 'session', 'Current user MFA enrollment status.', ['Auth']),
+  r(
+    'POST',
+    '/auth/mfa/enroll',
+    'authenticated',
+    'session',
+    'Start TOTP enrollment. Returns the secret and otpauth URL once.',
+    ['Auth'],
+  ),
+  r(
+    'POST',
+    '/auth/mfa/confirm',
+    'authenticated',
+    'session',
+    'Confirm TOTP enrollment and issue recovery codes once.',
+    ['Auth'],
+  ),
+  r(
+    'POST',
+    '/auth/mfa/recovery/regenerate',
+    'authenticated',
+    'session',
+    'Replace recovery codes after a current TOTP code.',
+    ['Auth'],
+  ),
+  r(
+    'POST',
+    '/auth/mfa/verify',
+    'public',
+    'none',
+    'Complete MFA after password login. Issues the same session as password login.',
+    ['Auth'],
+  ),
+  r(
+    'POST',
+    '/auth/oidc/start',
+    'public',
+    'none',
+    'Begin org-level OIDC login. Returns an authorization URL when SSO is enabled.',
+    ['Auth'],
+  ),
+  r(
+    'POST',
+    '/auth/oidc/callback',
+    'public',
+    'none',
+    'Finish OIDC login. Unmapped identities are rejected. Issues a PA-H02 session.',
+    ['Auth'],
+  ),
 
   r(
     'POST',
@@ -326,9 +375,17 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'Quoted vs realized revenue. Realized totals stay 0.',
     ['Dashboard'],
   ),
-  r('GET', '/dashboard/settings', 'authenticated', 'organization', 'Members and API key prefixes.', [
+  r('GET', '/dashboard/settings', 'authenticated', 'organization', 'Members, API key prefixes, and org auth settings (no secrets).', [
     'Dashboard',
   ]),
+  r(
+    'PATCH',
+    '/dashboard/settings/auth',
+    'authenticated',
+    'owner_admin',
+    'Toggle MFA enforcement and configure org OIDC. Client secret is write-only.',
+    ['Dashboard'],
+  ),
   r('GET', '/dashboard/agents', 'authenticated', 'organization', 'Agent financial summaries.', [
     'Dashboard',
   ]),

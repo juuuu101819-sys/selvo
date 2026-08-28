@@ -155,6 +155,9 @@ describe('PA-C03 database production gate', () => {
     });
     expect(config.sessionTokenPepper).not.toBe(PRODUCTION_AUTH_SECRET);
     expect(config.sessionTokenPepper).toHaveLength(64);
+    expect(config.dataEncryptionKey).not.toBe(PRODUCTION_AUTH_SECRET);
+    expect(config.dataEncryptionKey).toHaveLength(64);
+    expect(config.dataEncryptionKey).not.toBe(config.sessionTokenPepper);
   });
 
   it('allows development + memory', () => {

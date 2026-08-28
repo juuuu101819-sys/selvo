@@ -11,6 +11,11 @@ import type {
   Envelope,
   GraphSearchDto,
   LoginDto,
+  MfaChallengeDto,
+  MfaConfirmDto,
+  MfaEnrollDto,
+  MfaStatusDto,
+  OrgAuthSettingsDto,
   MetaDto,
   MonetizationReportDto,
   MultiRailRoutingDto,
@@ -176,12 +181,102 @@ export function replayComparison(
   });
 }
 
-export function login(email: string, password: string): Promise<ApiResult<LoginDto>> {
-  return request<LoginDto>({
+export function login(email: string, password: string): Promise<ApiResult<LoginDto | MfaChallengeDto>> {
+  return request<LoginDto | MfaChallengeDto>({
     method: 'POST',
     path: '/api/v1/auth/login',
     body: { email, password },
     actor: 'web-app',
+  });
+}
+
+export function verifyMfa(
+  challengeToken: string,
+  code: string,
+): Promise<ApiResult<LoginDto>> {
+  return request<LoginDto>({
+    method: 'POST',
+    path: '/api/v1/auth/mfa/verify',
+    body: { challengeToken, code },
+    actor: 'web-app',
+  });
+}
+
+export function fetchMfaStatus(authorization: string): Promise<ApiResult<MfaStatusDto>> {
+  return request<MfaStatusDto>({
+    method: 'GET',
+    path: '/api/v1/auth/mfa',
+    authorization,
+  });
+}
+
+export function enrollMfa(authorization: string): Promise<ApiResult<MfaEnrollDto>> {
+  return request<MfaEnrollDto>({
+    method: 'POST',
+    path: '/api/v1/auth/mfa/enroll',
+    authorization,
+  });
+}
+
+export function confirmMfa(authorization: string, code: string): Promise<ApiResult<MfaConfirmDto>> {
+  return request<MfaConfirmDto>({
+    method: 'POST',
+    path: '/api/v1/auth/mfa/confirm',
+    body: { code },
+    authorization,
+  });
+}
+
+export function regenerateMfaRecovery(
+  authorization: string,
+  code: string,
+): Promise<ApiResult<{ recoveryCodes: readonly string[] }>> {
+  return request<{ recoveryCodes: readonly string[] }>({
+    method: 'POST',
+    path: '/api/v1/auth/mfa/recovery/regenerate',
+    body: { code },
+    authorization,
+  });
+}
+
+export function startOidcLogin(
+  organizationSlug: string,
+): Promise<ApiResult<{ authorizationUrl: string; expiresAt: string }>> {
+  return request<{ authorizationUrl: string; expiresAt: string }>({
+    method: 'POST',
+    path: '/api/v1/auth/oidc/start',
+    body: { organizationSlug },
+    actor: 'web-app',
+  });
+}
+
+export function completeOidcLogin(code: string, state: string): Promise<ApiResult<LoginDto>> {
+  return request<LoginDto>({
+    method: 'POST',
+    path: '/api/v1/auth/oidc/callback',
+    body: { code, state },
+    actor: 'web-app',
+  });
+}
+
+export function updateOrgAuthSettings(
+  authorization: string,
+  body: {
+    readonly requireMfaForPrivilegedRoles?: boolean;
+    readonly oidc?: {
+      readonly issuer?: string;
+      readonly clientId?: string;
+      readonly clientSecret?: string;
+      readonly redirectUri?: string;
+      readonly enabled?: boolean;
+    };
+  },
+): Promise<ApiResult<OrgAuthSettingsDto>> {
+  return request<OrgAuthSettingsDto>({
+    method: 'PATCH',
+    path: '/api/v1/dashboard/settings/auth',
+    body,
+    authorization,
   });
 }
 

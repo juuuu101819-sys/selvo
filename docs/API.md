@@ -89,7 +89,8 @@ applies to `/api/v1` (`RATE_LIMIT_MAX`, `RATE_LIMIT_WINDOW_MS`). Exceeding the l
 `Retry-After`. Authenticated callers are limited by principal; anonymous callers by IP.
 
 Demo sandbox login: `treasury@demo-trading.example.invalid` / `MeridianDemo!2026`. Sessions last
-12 hours. Dashboard settings return API key **prefixes** only.
+12 hours. Dashboard settings return API key **prefixes** only. Optional MFA and OIDC:
+[AUTH.md](./AUTH.md).
 
 ---
 
@@ -538,6 +539,31 @@ The append-only audit trail for one comparison: `comparison.requested`, one
 
 Returns `201` with `token`, `expiresAt`, `user`, `organization` and `role`. Unknown email and wrong
 password share one error message. The token is shown once; only its hash is stored.
+
+When the user has enrolled TOTP, this endpoint returns `202` with `mfaRequired`, `challengeToken`
+and `expiresAt` instead of a session. Complete sign-in with `POST /api/v1/auth/mfa/verify`.
+Organizations may require MFA for owner/admin; that flag is off by default. See [AUTH.md](./AUTH.md).
+
+## `POST /api/v1/auth/mfa/verify`
+
+Public. `{ challengeToken, code }` where `code` is a TOTP or a single-use recovery code. Issues the
+same session as password login.
+
+## `GET /api/v1/auth/mfa` / `POST /api/v1/auth/mfa/enroll` / `POST /api/v1/auth/mfa/confirm`
+
+Authenticated human session. Enrollment returns the TOTP secret once; confirm returns recovery
+codes once. Secrets are AES-256-GCM at rest.
+
+## `POST /api/v1/auth/oidc/start` / `POST /api/v1/auth/oidc/callback`
+
+Public OIDC start/callback. Start takes `{ organizationSlug }`. Callback takes `{ code, state }`.
+Unmapped federated identities are rejected. Issued sessions use PA-H02 scopes for the existing
+membership role.
+
+## `PATCH /api/v1/dashboard/settings/auth`
+
+Owner/admin. Toggles `requireMfaForPrivilegedRoles` and writes org OIDC config. Client secrets are
+write-only.
 
 ## `POST /api/v1/auth/logout`
 

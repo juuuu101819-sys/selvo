@@ -195,8 +195,9 @@ return `404`, not `403`, so callers cannot probe whether another organization's 
 Sessions last 12 hours. The web app stores the raw token in an httpOnly `meridian_session` cookie
 and forwards it to the API on the server; the two processes do not share a cookie domain.
 
-SSO, SAML, SCIM and MFA remain out of scope. See [docs/STACK.md](./docs/STACK.md) and
-[docs/API.md](./docs/API.md).
+SSO (OIDC) and TOTP MFA are optional, off by default, and documented in
+[docs/AUTH.md](./docs/AUTH.md). SAML and SCIM remain out of scope. See
+[docs/STACK.md](./docs/STACK.md) and [docs/API.md](./docs/API.md).
 
 ## Notes on the numbers
 

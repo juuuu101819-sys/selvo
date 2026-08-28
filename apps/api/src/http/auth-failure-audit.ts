@@ -4,6 +4,8 @@ import type { FastifyRequest } from 'fastify';
 
 export const AUTH_LOGIN_FAILED = 'auth.login.failed' as const;
 export const AUTH_CREDENTIAL_FAILED = 'auth.credential.failed' as const;
+export const AUTH_MFA_FAILED = 'auth.mfa.failed' as const;
+export const AUTH_SSO_FAILED = 'auth.sso.failed' as const;
 
 export type AuthFailureCategory =
   | 'login_failed'
@@ -150,5 +152,51 @@ export async function recordCredentialFailure(
     providerId: null,
     organizationId: null,
     payload: payloadFor(presented, { sourceIp: sourceIpOf(request) }),
+  });
+}
+
+export async function recordMfaFailure(
+  auditLogger: AuditLogger,
+  request: FastifyRequest,
+  userId: string,
+  reason: 'invalid_code' | 'enrollment_required' | 'invalid_challenge',
+): Promise<void> {
+  await auditLogger.record({
+    type: AUTH_MFA_FAILED,
+    actor: 'anonymous',
+    requestId: request.id,
+    comparisonId: null,
+    providerId: null,
+    organizationId: null,
+    payload: {
+      category: 'mfa_failed',
+      identifierKind: 'user',
+      identifierHash: hashAttemptedIdentifier(userId),
+      reason,
+      sourceIp: sourceIpOf(request),
+    },
+  });
+}
+
+export async function recordSsoFailure(
+  auditLogger: AuditLogger,
+  request: FastifyRequest,
+  reason: 'unmapped_identity' | 'invalid_state' | 'idp_rejected' | 'not_configured',
+  identifier?: string,
+): Promise<void> {
+  await auditLogger.record({
+    type: AUTH_SSO_FAILED,
+    actor: 'anonymous',
+    requestId: request.id,
+    comparisonId: null,
+    providerId: null,
+    organizationId: null,
+    payload: {
+      category: 'sso_failed',
+      identifierKind: identifier === undefined ? 'unknown' : 'email',
+      ...(identifier === undefined ? {} : { identifierHash: hashAttemptedIdentifier(identifier) }),
+      reason,
+      sourceIp: sourceIpOf(request),
+    },
   });
 }

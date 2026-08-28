@@ -10,8 +10,9 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ErrorState } from '@/components/states';
-import { fetchDashboardSettings } from '@/lib/api/client';
+import { fetchDashboardSettings, fetchMfaStatus } from '@/lib/api/client';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
+import { SecuritySettings } from './security-settings';
 
 export default async function DashboardSettingsPage() {
   const session = await loadDashboardSession();
@@ -24,7 +25,9 @@ export default async function DashboardSettingsPage() {
     return <ErrorState failure={result.failure} />;
   }
 
-  const { organization, members, apiKeys, role } = result.data;
+  const { organization, members, apiKeys, role, auth } = result.data;
+  const mfa = await fetchMfaStatus(session.token);
+  const canManageOrg = role === 'owner' || role === 'admin' || session.me.role === 'owner' || session.me.role === 'admin';
 
   return (
     <div className="space-y-8">
@@ -94,6 +97,24 @@ export default async function DashboardSettingsPage() {
         keys={apiKeys}
         canManage={role === 'owner' || role === 'admin' || session.me.role === 'owner'}
       />
+
+      {mfa.ok ? (
+        <SecuritySettings
+          mfa={mfa.data}
+          requireMfaForPrivilegedRoles={auth?.requireMfaForPrivilegedRoles ?? false}
+          oidc={
+            auth?.oidc ?? {
+              configured: false,
+              enabled: false,
+              issuer: null,
+              clientId: null,
+              redirectUri: null,
+              hasClientSecret: false,
+            }
+          }
+          canManageOrg={canManageOrg}
+        />
+      ) : null}
     </div>
   );
 }

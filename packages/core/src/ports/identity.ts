@@ -25,6 +25,56 @@ export interface IdentityOrganization {
   readonly slug: string;
   readonly countryCode: string;
   readonly status: RecordStatus;
+  /** Off by default. When true, owner/admin must enroll TOTP before a session is issued. */
+  readonly requireMfaForPrivilegedRoles: boolean;
+}
+
+export interface UserMfaRecord {
+  readonly userId: string;
+  readonly totpSecretCiphertext: string | null;
+  readonly pendingTotpSecretCiphertext: string | null;
+  readonly mfaEnabledAt: string | null;
+}
+
+export interface MfaRecoveryCodeRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly codeHash: string;
+  readonly usedAt: string | null;
+}
+
+export interface MfaChallengeRecord {
+  readonly id: string;
+  readonly userId: string;
+  readonly organizationId: string;
+  readonly tokenHash: string;
+  readonly expiresAt: string;
+  readonly consumedAt: string | null;
+}
+
+export interface OidcConnectionRecord {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly clientSecretCiphertext: string | null;
+  readonly redirectUri: string;
+  readonly enabled: boolean;
+}
+
+export interface PublicOidcConnection {
+  readonly configured: boolean;
+  readonly enabled: boolean;
+  readonly issuer: string | null;
+  readonly clientId: string | null;
+  readonly redirectUri: string | null;
+  readonly hasClientSecret: boolean;
+}
+
+export interface OidcAuthorizationStateRecord {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly nonceCiphertext: string;
 }
 
 export interface IdentityMembership {
@@ -103,6 +153,17 @@ export interface UpsertOrganizationInput {
   readonly slug: string;
   readonly countryCode: string;
   readonly status?: RecordStatus;
+  readonly requireMfaForPrivilegedRoles?: boolean;
+}
+
+export interface UpsertOidcConnectionInput {
+  readonly id: string;
+  readonly organizationId: string;
+  readonly issuer: string;
+  readonly clientId: string;
+  readonly clientSecretCiphertext: string | null;
+  readonly redirectUri: string;
+  readonly enabled: boolean;
 }
 
 export interface UpsertMembershipInput {
@@ -123,6 +184,43 @@ export interface IdentityStore {
   findUserByEmail(email: string): Promise<IdentityUser | null>;
   findUserById(id: string): Promise<IdentityUser | null>;
   findOrganization(id: string): Promise<IdentityOrganization | null>;
+  findOrganizationBySlug(slug: string): Promise<IdentityOrganization | null>;
+  updateOrganizationAuthSettings(
+    organizationId: string,
+    input: { readonly requireMfaForPrivilegedRoles: boolean },
+  ): Promise<boolean>;
+  findUserMfa(userId: string): Promise<UserMfaRecord | null>;
+  saveUserMfa(input: {
+    readonly userId: string;
+    readonly totpSecretCiphertext: string | null;
+    readonly pendingTotpSecretCiphertext: string | null;
+    readonly mfaEnabledAt: string | null;
+  }): Promise<void>;
+  listUnusedRecoveryCodes(userId: string): Promise<readonly MfaRecoveryCodeRecord[]>;
+  replaceRecoveryCodes(userId: string, hashes: readonly string[]): Promise<void>;
+  consumeRecoveryCode(id: string, userId: string, nowIso: string): Promise<boolean>;
+  createMfaChallenge(input: {
+    readonly id: string;
+    readonly tokenHash: string;
+    readonly userId: string;
+    readonly organizationId: string;
+    readonly expiresAt: string;
+  }): Promise<void>;
+  findValidMfaChallengeByTokenHash(
+    tokenHash: string,
+    nowIso: string,
+  ): Promise<MfaChallengeRecord | null>;
+  consumeMfaChallenge(id: string, nowIso: string): Promise<boolean>;
+  findOidcConnection(organizationId: string): Promise<OidcConnectionRecord | null>;
+  upsertOidcConnection(input: UpsertOidcConnectionInput): Promise<void>;
+  createOidcState(input: {
+    readonly id: string;
+    readonly stateHash: string;
+    readonly nonceCiphertext: string;
+    readonly organizationId: string;
+    readonly expiresAt: string;
+  }): Promise<void>;
+  consumeOidcState(stateHash: string, nowIso: string): Promise<OidcAuthorizationStateRecord | null>;
   findActiveMembership(userId: string, organizationId: string): Promise<IdentityMembership | null>;
   listMembershipsForUser(userId: string): Promise<readonly IdentityMembership[]>;
   createSession(input: {

@@ -101,15 +101,18 @@ export {
   DEFAULT_API_KEY_SCOPES,
   ORGANIZATION_API_KEY_SCOPES,
   ORGANIZATION_SESSION_ROLES,
+  PRIVILEGED_ORGANIZATION_ROLES,
   SESSION_API_SCOPES,
   SESSION_SCOPES_BY_ROLE,
   isApiScope,
   isOrganizationSessionRole,
+  isPrivilegedOrganizationRole,
   parseApiScopes,
   principalHasCapability,
   sessionScopesForRole,
   type ApiScope,
   type OrganizationSessionRole,
+  type PrivilegedOrganizationRole,
 } from './api-scope.js';
 export { PLATFORM_CAPABILITIES, type PlatformCapabilities } from './capabilities.js';
 export {

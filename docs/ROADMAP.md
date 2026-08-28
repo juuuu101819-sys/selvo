@@ -63,8 +63,8 @@ capability is still read from adapters rather than from the database (Phase 3).
 - Web app at `/login` and `/dashboard/*`, with an httpOnly session cookie forwarded to the API.
 - Documented demo tenant: `treasury@demo-trading.example.invalid` / `MeridianDemo!2026`.
 - Authorization tests covering two organizations and a service API key.
-
-Still excluded: enterprise SSO, SAML, SCIM, MFA, and making PostgreSQL the default driver.
+- Optional TOTP MFA and org-level OIDC (off by default). See [AUTH.md](./AUTH.md). SCIM is still
+  excluded.
 
 ## Phase 3 — Market data and provider architecture ✅ implemented
 

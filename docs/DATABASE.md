@@ -75,7 +75,8 @@ Currency ──┬── ProviderCapability ── Provider ──┬── Rout
            ├── Quote / QuoteLeg / Fee
            └── CustomerPricing
 
-Organization ──┬── OrganizationMember ── User
+Organization ──┬── OrganizationMember ── User ── MfaRecoveryCode / MfaChallenge
+               ├── OrganizationOidcConnection / OidcAuthorizationState
                ├── ApiKey
                ├── TransactionRequest ──┬── Quote ──┬── QuoteLeg
                │                        │           └── Fee
@@ -126,6 +127,12 @@ to the dashboard; the raw secret is shown once on issue.
 
 **`Session`** — an HMAC-SHA-256 session token (`mds_…`) bound to one user and one organization, with an
 expiry. Logout sets `revokedAt`. Raw tokens are never stored.
+
+**`MfaRecoveryCode` / `MfaChallenge`** — hashed recovery codes and hashed MFA login challenges.
+TOTP seeds live on `User` as AES-256-GCM ciphertext (`totp_secret_ciphertext`).
+
+**`OrganizationOidcConnection` / `OidcAuthorizationState`** — org-level OIDC. Client secret and
+OIDC nonce are ciphertext. Enabled defaults to false.
 
 **`ExecutionIntent`** — a recorded route choice. `status` is always `recorded`. `executable` and
 `submitted` are always false (CHECK constraints). Amounts are `DECIMAL(38,0)` minor units of the

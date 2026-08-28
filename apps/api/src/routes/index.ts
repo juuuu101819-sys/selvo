@@ -6,6 +6,8 @@ import { registerAgentPaymentRoutes } from './agent-payments.js';
 import { registerNlRoutingRoutes } from './nl-routing.js';
 import { registerApiKeyRoutes } from './api-keys.js';
 import { registerAuthRoutes } from './auth.js';
+import { registerMfaRoutes } from './auth-mfa.js';
+import { registerOidcRoutes } from './auth-oidc.js';
 import { registerComparisonRoutes } from './comparisons.js';
 import { registerDashboardRoutes } from './dashboard.js';
 import { registerDefiRoutes } from './defi-routes.js';
@@ -55,6 +57,8 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerMetaRoutes(instance, container);
     registerOpenApiRoute(instance);
     registerAuthRoutes(instance, container);
+    registerMfaRoutes(instance, container);
+    registerOidcRoutes(instance, container);
     registerComparisonRoutes(instance, container);
     registerRoutingRoutes(instance, container);
     registerRouteGraphRoutes(instance, container);

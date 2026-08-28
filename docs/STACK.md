@@ -21,7 +21,7 @@ target stack. What was added or changed is marked below.
 | Validation               | Zod 4                                             | Request schemas, environment schema, pricing dataset schema.                          |
 | Unit / integration tests | Vitest 3                                          | Domain unit tests and in-process Fastify integration tests.                           |
 | End-to-end tests         | Playwright                                        | **Added.** API contract, browser journey and mobile layout projects.                  |
-| Authentication           | Sessions + API keys                               | Organization-scoped. No SSO. Passwords hashed with scrypt.                            |
+| Authentication           | Sessions + API keys, optional TOTP MFA and OIDC | Organization-scoped. MFA/SSO off by default. Passwords hashed with scrypt. TOTP seeds and IdP client secrets AES-256-GCM at rest. See docs/AUTH.md. |
 
 ## Directory structure
 
@@ -103,7 +103,8 @@ cookies.
 - API keys are looked up by a 16-character prefix; only the hash of the secret is stored.
 - Public comparison remains anonymous. A credential that cannot be verified is still a `401`.
 
-Deliberately absent: SSO, SAML, SCIM, MFA and federated identity.
+Deliberately absent: SAML and SCIM. Optional TOTP MFA and org-level OIDC are documented in
+[AUTH.md](./AUTH.md) and are off by default.
 
 ## Known advisory
 

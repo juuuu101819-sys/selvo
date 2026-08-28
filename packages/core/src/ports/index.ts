@@ -38,14 +38,21 @@ export type {
   IdentityUser,
   IssuedSession,
   MembershipStatus,
+  MfaChallengeRecord,
+  MfaRecoveryCodeRecord,
+  OidcAuthorizationStateRecord,
+  OidcConnectionRecord,
   OrganizationRole,
   PublicApiKey,
   PublicMember,
+  PublicOidcConnection,
   RecordStatus,
   ResolvedPrincipalRecord,
   UpsertMembershipInput,
+  UpsertOidcConnectionInput,
   UpsertOrganizationInput,
   UpsertUserInput,
+  UserMfaRecord,
 } from './identity.js';
 export { FixedClock, systemClock, type Clock } from './clock.js';
 export type { FXProvider, FXQuote, FXQuoteRequest } from './fx-provider.js';
@@ -179,4 +186,27 @@ export {
   verifyPassword,
   type CredentialVerification,
 } from '../crypto/secrets.js';
+export {
+  dataEncryptionKeyFromHex,
+  decryptAtRest,
+  deriveDataEncryptionKey,
+  deriveDataEncryptionKeyHex,
+  encryptAtRest,
+} from '../crypto/encryption.js';
+export {
+  decodeBase32,
+  encodeBase32,
+  generateTotpSecret,
+  otpauthUrl,
+  totpAt,
+  verifyTotp,
+} from '../crypto/totp.js';
+export {
+  RECOVERY_CODE_COUNT,
+  RECOVERY_CODE_PATTERN,
+  generateRecoveryCodes,
+  isRecoveryCodeShape,
+  normalizeRecoveryCode,
+} from '../crypto/recovery-codes.js';
+export { mfaGateForLogin, type MfaLoginGate } from '../auth/mfa-gate.js';
 export type { RouteProvider, SecretResolver } from './route-provider.js';

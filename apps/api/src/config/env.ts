@@ -4,6 +4,7 @@ import {
   DEFAULT_SCORING_WEIGHTS,
   PLATFORM_MODES,
   PRODUCTION_AUTH_SECRET_MIN_LENGTH,
+  deriveDataEncryptionKeyHex,
   deriveSessionTokenPepper,
   isForbiddenProductionSecret,
   parseRoutingWeights,
@@ -205,6 +206,11 @@ export interface AppConfig {
    * used. Production-locked processes already require AUTH_SECRET.
    */
   readonly sessionTokenPepper: string;
+  /**
+   * AES-256 key (hex) for TOTP secrets and OIDC client secrets at rest, derived from AUTH_SECRET.
+   * AUTH_SECRET itself is never retained.
+   */
+  readonly dataEncryptionKey: string;
   readonly seedDemoTenants: boolean;
   readonly host: string;
   readonly port: number;
@@ -290,6 +296,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
     sessionTokenPepper: deriveSessionTokenPepper(env.AUTH_SECRET, { productionLocked }),
+    dataEncryptionKey: deriveDataEncryptionKeyHex(env.AUTH_SECRET, { productionLocked }),
     seedDemoTenants: env.SEED_DEMO_TENANTS,
     host: env.API_HOST,
     port: env.API_PORT,

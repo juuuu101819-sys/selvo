@@ -6,14 +6,20 @@ import type {
   IdentitySession,
   IdentityStore,
   IdentityUser,
+  MfaChallengeRecord,
+  MfaRecoveryCodeRecord,
+  OidcAuthorizationStateRecord,
+  OidcConnectionRecord,
   PublicApiKey,
   PublicMember,
   ResolvedPrincipalRecord,
   UpsertMembershipInput,
+  UpsertOidcConnectionInput,
   UpsertOrganizationInput,
   UpsertUserInput,
+  UserMfaRecord,
 } from '@meridian/core';
-import { PersistenceError, parseApiScopes } from '@meridian/core';
+import { PersistenceError, parseApiScopes, uuidIdGenerator } from '@meridian/core';
 import type { PrismaClient } from '@prisma/client';
 
 export class PrismaIdentityStore implements IdentityStore {
@@ -34,6 +40,249 @@ export class PrismaIdentityStore implements IdentityStore {
   async findOrganization(id: string): Promise<IdentityOrganization | null> {
     const row = await this.query(() => this.client.organization.findUnique({ where: { id } }));
     return row === null ? null : toOrganization(row);
+  }
+
+  async findOrganizationBySlug(slug: string): Promise<IdentityOrganization | null> {
+    const row = await this.query(() =>
+      this.client.organization.findUnique({ where: { slug: slug.trim().toLowerCase() } }),
+    );
+    return row === null ? null : toOrganization(row);
+  }
+
+  async updateOrganizationAuthSettings(
+    organizationId: string,
+    input: { readonly requireMfaForPrivilegedRoles: boolean },
+  ): Promise<boolean> {
+    try {
+      const result = await this.client.organization.updateMany({
+        where: { id: organizationId },
+        data: { requireMfaForPrivilegedRoles: input.requireMfaForPrivilegedRoles },
+      });
+      return result.count > 0;
+    } catch (error) {
+      throw new PersistenceError('Failed to update organization auth settings.', {}, { cause: error });
+    }
+  }
+
+  async findUserMfa(userId: string): Promise<UserMfaRecord | null> {
+    const row = await this.query(() =>
+      this.client.user.findUnique({
+        where: { id: userId },
+        select: {
+          id: true,
+          totpSecretCiphertext: true,
+          pendingTotpSecretCiphertext: true,
+          mfaEnabledAt: true,
+        },
+      }),
+    );
+    if (row === null) {
+      return null;
+    }
+    return {
+      userId: row.id,
+      totpSecretCiphertext: row.totpSecretCiphertext,
+      pendingTotpSecretCiphertext: row.pendingTotpSecretCiphertext,
+      mfaEnabledAt: row.mfaEnabledAt?.toISOString() ?? null,
+    };
+  }
+
+  async saveUserMfa(input: {
+    readonly userId: string;
+    readonly totpSecretCiphertext: string | null;
+    readonly pendingTotpSecretCiphertext: string | null;
+    readonly mfaEnabledAt: string | null;
+  }): Promise<void> {
+    try {
+      await this.client.user.update({
+        where: { id: input.userId },
+        data: {
+          totpSecretCiphertext: input.totpSecretCiphertext,
+          pendingTotpSecretCiphertext: input.pendingTotpSecretCiphertext,
+          mfaEnabledAt: input.mfaEnabledAt === null ? null : new Date(input.mfaEnabledAt),
+        },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to save MFA enrollment.', {}, { cause: error });
+    }
+  }
+
+  async listUnusedRecoveryCodes(userId: string): Promise<readonly MfaRecoveryCodeRecord[]> {
+    const rows = await this.query(() =>
+      this.client.mfaRecoveryCode.findMany({
+        where: { userId, usedAt: null },
+      }),
+    );
+    return rows.map((row) => ({
+      id: row.id,
+      userId: row.userId,
+      codeHash: row.codeHash,
+      usedAt: null,
+    }));
+  }
+
+  async replaceRecoveryCodes(userId: string, hashes: readonly string[]): Promise<void> {
+    try {
+      await this.client.$transaction([
+        this.client.mfaRecoveryCode.deleteMany({ where: { userId } }),
+        this.client.mfaRecoveryCode.createMany({
+          data: hashes.map((codeHash) => ({
+            id: uuidIdGenerator.generate('mrc'),
+            userId,
+            codeHash,
+          })),
+        }),
+      ]);
+    } catch (error) {
+      throw new PersistenceError('Failed to replace MFA recovery codes.', {}, { cause: error });
+    }
+  }
+
+  async consumeRecoveryCode(id: string, userId: string, nowIso: string): Promise<boolean> {
+    try {
+      const result = await this.client.mfaRecoveryCode.updateMany({
+        where: { id, userId, usedAt: null },
+        data: { usedAt: new Date(nowIso) },
+      });
+      return result.count > 0;
+    } catch (error) {
+      throw new PersistenceError('Failed to consume an MFA recovery code.', {}, { cause: error });
+    }
+  }
+
+  async createMfaChallenge(input: {
+    readonly id: string;
+    readonly tokenHash: string;
+    readonly userId: string;
+    readonly organizationId: string;
+    readonly expiresAt: string;
+  }): Promise<void> {
+    try {
+      await this.client.mfaChallenge.create({
+        data: {
+          id: input.id,
+          tokenHash: input.tokenHash,
+          userId: input.userId,
+          organizationId: input.organizationId,
+          expiresAt: new Date(input.expiresAt),
+        },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to create an MFA challenge.', {}, { cause: error });
+    }
+  }
+
+  async findValidMfaChallengeByTokenHash(
+    tokenHash: string,
+    nowIso: string,
+  ): Promise<MfaChallengeRecord | null> {
+    const row = await this.query(() =>
+      this.client.mfaChallenge.findUnique({ where: { tokenHash } }),
+    );
+    if (row === null || row.consumedAt !== null || row.expiresAt.toISOString() <= nowIso) {
+      return null;
+    }
+    return {
+      id: row.id,
+      userId: row.userId,
+      organizationId: row.organizationId,
+      tokenHash: row.tokenHash,
+      expiresAt: row.expiresAt.toISOString(),
+      consumedAt: null,
+    };
+  }
+
+  async consumeMfaChallenge(id: string, nowIso: string): Promise<boolean> {
+    try {
+      const result = await this.client.mfaChallenge.updateMany({
+        where: { id, consumedAt: null },
+        data: { consumedAt: new Date(nowIso) },
+      });
+      return result.count > 0;
+    } catch (error) {
+      throw new PersistenceError('Failed to consume an MFA challenge.', {}, { cause: error });
+    }
+  }
+
+  async findOidcConnection(organizationId: string): Promise<OidcConnectionRecord | null> {
+    const row = await this.query(() =>
+      this.client.organizationOidcConnection.findUnique({ where: { organizationId } }),
+    );
+    return row === null ? null : toOidcConnection(row);
+  }
+
+  async upsertOidcConnection(input: UpsertOidcConnectionInput): Promise<void> {
+    try {
+      await this.client.organizationOidcConnection.upsert({
+        where: { organizationId: input.organizationId },
+        create: {
+          id: input.id,
+          organizationId: input.organizationId,
+          issuer: input.issuer,
+          clientId: input.clientId,
+          clientSecretCiphertext: input.clientSecretCiphertext,
+          redirectUri: input.redirectUri,
+          enabled: input.enabled,
+        },
+        update: {
+          issuer: input.issuer,
+          clientId: input.clientId,
+          clientSecretCiphertext: input.clientSecretCiphertext,
+          redirectUri: input.redirectUri,
+          enabled: input.enabled,
+        },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to save the OIDC connection.', {}, { cause: error });
+    }
+  }
+
+  async createOidcState(input: {
+    readonly id: string;
+    readonly stateHash: string;
+    readonly nonceCiphertext: string;
+    readonly organizationId: string;
+    readonly expiresAt: string;
+  }): Promise<void> {
+    try {
+      await this.client.oidcAuthorizationState.create({
+        data: {
+          id: input.id,
+          stateHash: input.stateHash,
+          nonceCiphertext: input.nonceCiphertext,
+          organizationId: input.organizationId,
+          expiresAt: new Date(input.expiresAt),
+        },
+      });
+    } catch (error) {
+      throw new PersistenceError('Failed to create an OIDC state.', {}, { cause: error });
+    }
+  }
+
+  async consumeOidcState(
+    stateHash: string,
+    nowIso: string,
+  ): Promise<OidcAuthorizationStateRecord | null> {
+    try {
+      const row = await this.client.oidcAuthorizationState.findUnique({ where: { stateHash } });
+      if (row === null || row.consumedAt !== null || row.expiresAt.toISOString() <= nowIso) {
+        return null;
+      }
+      const updated = await this.client.oidcAuthorizationState.updateMany({
+        where: { id: row.id, consumedAt: null },
+        data: { consumedAt: new Date(nowIso) },
+      });
+      if (updated.count === 0) {
+        return null;
+      }
+      return {
+        id: row.id,
+        organizationId: row.organizationId,
+        nonceCiphertext: row.nonceCiphertext,
+      };
+    } catch (error) {
+      throw new PersistenceError('Failed to consume an OIDC state.', {}, { cause: error });
+    }
   }
 
   async findActiveMembership(
@@ -217,6 +466,7 @@ export class PrismaIdentityStore implements IdentityStore {
         slug: input.slug,
         countryCode: input.countryCode,
         status: input.status ?? 'active',
+        requireMfaForPrivilegedRoles: input.requireMfaForPrivilegedRoles ?? false,
       },
       update: { name: input.name, slug: input.slug, countryCode: input.countryCode },
     });
@@ -334,6 +584,7 @@ function toOrganization(row: {
   slug: string;
   countryCode: string;
   status: IdentityOrganization['status'];
+  requireMfaForPrivilegedRoles: boolean;
 }): IdentityOrganization {
   return {
     id: row.id,
@@ -341,6 +592,27 @@ function toOrganization(row: {
     slug: row.slug,
     countryCode: row.countryCode,
     status: row.status,
+    requireMfaForPrivilegedRoles: row.requireMfaForPrivilegedRoles,
+  };
+}
+
+function toOidcConnection(row: {
+  id: string;
+  organizationId: string;
+  issuer: string;
+  clientId: string;
+  clientSecretCiphertext: string | null;
+  redirectUri: string;
+  enabled: boolean;
+}): OidcConnectionRecord {
+  return {
+    id: row.id,
+    organizationId: row.organizationId,
+    issuer: row.issuer,
+    clientId: row.clientId,
+    clientSecretCiphertext: row.clientSecretCiphertext,
+    redirectUri: row.redirectUri,
+    enabled: row.enabled,
   };
 }
 

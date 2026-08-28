@@ -1,23 +1,27 @@
 import {
+  ForbiddenError,
   UnauthenticatedError,
   hashSecret,
   hashSessionToken,
   isDemoLoginCredential,
   legacySha256VerificationAllowed,
+  mfaGateForLogin,
   randomToken,
   uuidIdGenerator,
   verifyPassword,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { SESSION_PREFIX } from '../auth/identity-authenticator.js';
+import {
+  MFA_CHALLENGE_PREFIX,
+  MFA_CHALLENGE_TTL_MS,
+  issueHumanSession,
+} from '../auth/issue-session.js';
 import type { AppContainer } from '../container.js';
-import { recordLoginFailure } from '../http/auth-failure-audit.js';
+import { recordLoginFailure, recordMfaFailure } from '../http/auth-failure-audit.js';
 import { principalOf } from '../http/authentication.js';
 import { requireOrganization } from '../http/require-organization.js';
 import { parseOrThrow } from '../http/validation.js';
-
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
 
 const loginSchema = z
   .object({
@@ -79,35 +83,48 @@ export function registerAuthRoutes(app: FastifyInstance, container: AppContainer
       throw failed;
     }
 
-    const token = randomToken(SESSION_PREFIX);
-    const expiresAt = new Date(container.clock.nowMs() + SESSION_TTL_MS).toISOString();
-    const sessionId = uuidIdGenerator.generate('ses');
-    await container.persistence.identity.createSession({
-      id: sessionId,
-      userId: user.id,
-      organizationId: organization.id,
-      tokenHash: hashSessionToken(token, container.config.sessionTokenPepper),
-      expiresAt,
+    const mfa = await container.persistence.identity.findUserMfa(user.id);
+    const gate = mfaGateForLogin({
+      enrolled: mfa?.mfaEnabledAt !== null && mfa?.mfaEnabledAt !== undefined,
+      role: membership.role,
+      requireMfaForPrivilegedRoles: organization.requireMfaForPrivilegedRoles,
+    });
+    if (gate === 'enroll_required') {
+      await recordMfaFailure(container.auditLogger, request, user.id, 'enrollment_required');
+      throw new ForbiddenError(
+        'Multi-factor authentication must be enrolled before privileged sign-in for this organization.',
+        { mfaEnrollmentRequired: true },
+      );
+    }
+    if (gate === 'verify') {
+      const challengeToken = randomToken(MFA_CHALLENGE_PREFIX);
+      const expiresAt = new Date(container.clock.nowMs() + MFA_CHALLENGE_TTL_MS).toISOString();
+      await container.persistence.identity.createMfaChallenge({
+        id: uuidIdGenerator.generate('mfc'),
+        tokenHash: hashSessionToken(challengeToken, container.config.sessionTokenPepper),
+        userId: user.id,
+        organizationId: organization.id,
+        expiresAt,
+      });
+      return reply.status(202).send(
+        envelope(request, {
+          mfaRequired: true,
+          challengeToken,
+          expiresAt,
+        }),
+      );
+    }
+
+    const issued = await issueHumanSession({
+      identity: container.persistence.identity,
+      sessionTokenPepper: container.config.sessionTokenPepper,
+      nowMs: container.clock.nowMs(),
+      user,
+      organization,
+      role: membership.role,
     });
 
-    return reply.status(201).send(
-      envelope(request, {
-        token,
-        expiresAt,
-        user: {
-          id: user.id,
-          email: user.email,
-          displayName: user.displayName,
-        },
-        organization: {
-          id: organization.id,
-          name: organization.name,
-          slug: organization.slug,
-          countryCode: organization.countryCode,
-        },
-        role: membership.role,
-      }),
-    );
+    return reply.status(201).send(envelope(request, issued));
   });
 
   app.post('/auth/logout', async (request, reply) => {
@@ -150,6 +167,7 @@ export function registerAuthRoutes(app: FastifyInstance, container: AppContainer
     return envelope(request, {
       kind: principal.kind,
       role: principal.roles[0] ?? null,
+      scopes: principal.scopes,
       user:
         user === null
           ? { id: principal.subjectId, email: null, displayName: principal.displayName }

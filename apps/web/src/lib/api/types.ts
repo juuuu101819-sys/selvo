@@ -343,9 +343,20 @@ export interface LoginDto {
   readonly role: string;
 }
 
+export interface MfaChallengeDto {
+  readonly mfaRequired: true;
+  readonly challengeToken: string;
+  readonly expiresAt: string;
+}
+
+export function isMfaChallenge(data: object): data is MfaChallengeDto {
+  return 'mfaRequired' in data && (data as { mfaRequired?: unknown }).mfaRequired === true;
+}
+
 export interface AuthMeDto {
   readonly kind: string;
   readonly role: string | null;
+  readonly scopes?: readonly string[];
   readonly user: SessionUserDto;
   readonly organization: SessionOrganizationDto;
 }
@@ -464,6 +475,38 @@ export interface DashboardSettingsDto {
   readonly members: readonly PublicMemberDto[];
   readonly apiKeys: readonly PublicApiKeyDto[];
   readonly role: string | null;
+  readonly auth?: {
+    readonly requireMfaForPrivilegedRoles: boolean;
+    readonly oidc: {
+      readonly configured: boolean;
+      readonly enabled: boolean;
+      readonly issuer: string | null;
+      readonly clientId: string | null;
+      readonly redirectUri: string | null;
+      readonly hasClientSecret: boolean;
+    };
+  };
+}
+
+export interface MfaStatusDto {
+  readonly enrolled: boolean;
+  readonly remainingRecoveryCodes: number;
+}
+
+export interface MfaEnrollDto {
+  readonly secret: string;
+  readonly otpauthUrl: string;
+  readonly issuer: string;
+}
+
+export interface MfaConfirmDto {
+  readonly enrolled: boolean;
+  readonly recoveryCodes: readonly string[];
+}
+
+export interface OrgAuthSettingsDto {
+  readonly requireMfaForPrivilegedRoles: boolean;
+  readonly oidc: NonNullable<DashboardSettingsDto['auth']>['oidc'];
 }
 
 export interface MonetizationTotalsDto {

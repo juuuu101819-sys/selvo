@@ -8,7 +8,8 @@ import type { EconomicActorKind } from '../domain/actor.js';
  * credential remain anonymous so the public comparison page keeps working. A credential that
  * cannot be verified is rejected rather than quietly treated as anonymous.
  *
- * Deliberately out of scope: SSO, SAML, SCIM, MFA and federated identity. See docs/ROADMAP.md.
+ * Deliberately out of scope: SCIM. MFA (TOTP) and org-level OIDC are optional, off by default,
+ * and issue the same PA-H02 session scopes as password login. See docs/AUTH.md.
  */
 
 export const PRINCIPAL_KINDS = ['anonymous', 'user', 'service', 'agent'] as const;

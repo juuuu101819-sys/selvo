@@ -314,8 +314,10 @@ Organization-scoped. The parts that were hard to retrofit in Phase 1 are now wir
   callers with no credential as anonymous on public routes. An unverifiable credential is `401`.
 - Dashboard repositories filter by `organizationId` in the query. Cross-tenant ids return `404`.
 - `Session` rows store only a token hash. Passwords are tagged scrypt hashes.
+- Optional TOTP MFA and org-level OIDC (PA-L03, except SCIM) issue that same session. Off by
+  default. See [AUTH.md](./AUTH.md).
 
-Out of scope: SSO, SAML, SCIM, MFA, federated identity.
+SCIM remains out of scope.
 
 ## 11. Configuration
 

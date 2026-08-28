@@ -28,6 +28,14 @@ export type ApiScope = (typeof API_SCOPES)[number];
 export const ORGANIZATION_SESSION_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
 export type OrganizationSessionRole = (typeof ORGANIZATION_SESSION_ROLES)[number];
 
+/** PA-H01 privileged roles. MFA org enforcement applies only to these. */
+export const PRIVILEGED_ORGANIZATION_ROLES = ['owner', 'admin'] as const;
+export type PrivilegedOrganizationRole = (typeof PRIVILEGED_ORGANIZATION_ROLES)[number];
+
+export function isPrivilegedOrganizationRole(role: string): role is PrivilegedOrganizationRole {
+  return role === 'owner' || role === 'admin';
+}
+
 const VIEWER_SESSION_SCOPES: readonly ApiScope[] = ['quote:read', 'route:read'];
 const MEMBER_SESSION_SCOPES: readonly ApiScope[] = ['quote:read', 'route:read'];
 const ADMIN_SESSION_SCOPES: readonly ApiScope[] = [

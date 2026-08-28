@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { ValidationError, type Clock } from '@meridian/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { provisionDemoTenants } from './auth/provision-demo.js';
+import type { OidcClient } from './auth/oidc-client.js';
 import { shouldProvisionDemoTenants, type AppConfig } from './config/env.js';
 import { createContainer, type AppContainer } from './container.js';
 import { registerErrorHandling } from './http/errors.js';
@@ -23,6 +24,7 @@ export interface CreateAppOptions {
   readonly config: AppConfig;
   /** Injectable so tests can pin timestamps and assert on reproducible output. */
   readonly clock?: Clock;
+  readonly oidcClient?: OidcClient;
 }
 
 export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
@@ -47,6 +49,11 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
           'req.body.apiKey',
           'req.body.token',
           'req.body.wallet',
+          'req.body.code',
+          'req.body.challengeToken',
+          'req.body.clientSecret',
+          'req.body.totpCode',
+          'req.body.recoveryCodes',
           '*.password',
           '*.privateKey',
           '*.secret',
@@ -67,6 +74,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
     config,
     logger: new PinoLoggerAdapter(app.log),
     ...(options.clock === undefined ? {} : { clock: options.clock }),
+    ...(options.oidcClient === undefined ? {} : { oidcClient: options.oidcClient }),
   });
 
   await app.register(cors, {

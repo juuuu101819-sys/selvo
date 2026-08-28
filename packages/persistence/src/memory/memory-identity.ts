@@ -6,13 +6,20 @@ import type {
   IdentitySession,
   IdentityStore,
   IdentityUser,
+  MfaChallengeRecord,
+  MfaRecoveryCodeRecord,
+  OidcAuthorizationStateRecord,
+  OidcConnectionRecord,
   PublicApiKey,
   PublicMember,
   ResolvedPrincipalRecord,
   UpsertMembershipInput,
+  UpsertOidcConnectionInput,
   UpsertOrganizationInput,
   UpsertUserInput,
+  UserMfaRecord,
 } from '@meridian/core';
+import { uuidIdGenerator } from '@meridian/core';
 
 interface StoredApiKey extends Omit<IdentityApiKey, 'revokedAt'> {
   readonly createdAt: string;
@@ -30,6 +37,37 @@ interface StoredSession {
   lastSeenAt: string | null;
 }
 
+interface StoredUserMfa {
+  totpSecretCiphertext: string | null;
+  pendingTotpSecretCiphertext: string | null;
+  mfaEnabledAt: string | null;
+}
+
+interface StoredRecoveryCode {
+  readonly id: string;
+  readonly userId: string;
+  readonly codeHash: string;
+  usedAt: string | null;
+}
+
+interface StoredMfaChallenge {
+  readonly id: string;
+  readonly tokenHash: string;
+  readonly userId: string;
+  readonly organizationId: string;
+  readonly expiresAt: string;
+  consumedAt: string | null;
+}
+
+interface StoredOidcState {
+  readonly id: string;
+  readonly stateHash: string;
+  readonly nonceCiphertext: string;
+  readonly organizationId: string;
+  readonly expiresAt: string;
+  consumedAt: string | null;
+}
+
 /**
  * In-process identity store.
  *
@@ -45,6 +83,11 @@ export class InMemoryIdentityStore implements IdentityStore {
   private readonly sessionsById = new Map<string, string>();
   private readonly apiKeysByPrefix = new Map<string, StoredApiKey>();
   private readonly apiKeysById = new Map<string, string>();
+  private readonly mfaByUserId = new Map<string, StoredUserMfa>();
+  private readonly recoveryCodesByUserId = new Map<string, StoredRecoveryCode[]>();
+  private readonly mfaChallengesByHash = new Map<string, StoredMfaChallenge>();
+  private readonly oidcByOrganizationId = new Map<string, OidcConnectionRecord>();
+  private readonly oidcStatesByHash = new Map<string, StoredOidcState>();
 
   findUserByEmail(email: string): Promise<IdentityUser | null> {
     const id = this.usersByEmail.get(email.toLowerCase());
@@ -61,6 +104,167 @@ export class InMemoryIdentityStore implements IdentityStore {
   findOrganization(id: string): Promise<IdentityOrganization | null> {
     const org = this.organizations.get(id);
     return Promise.resolve(org === undefined ? null : structuredClone(org));
+  }
+
+  findOrganizationBySlug(slug: string): Promise<IdentityOrganization | null> {
+    const normalized = slug.trim().toLowerCase();
+    for (const org of this.organizations.values()) {
+      if (org.slug.toLowerCase() === normalized) {
+        return Promise.resolve(structuredClone(org));
+      }
+    }
+    return Promise.resolve(null);
+  }
+
+  updateOrganizationAuthSettings(
+    organizationId: string,
+    input: { readonly requireMfaForPrivilegedRoles: boolean },
+  ): Promise<boolean> {
+    const existing = this.organizations.get(organizationId);
+    if (existing === undefined) {
+      return Promise.resolve(false);
+    }
+    this.organizations.set(organizationId, {
+      ...existing,
+      requireMfaForPrivilegedRoles: input.requireMfaForPrivilegedRoles,
+    });
+    return Promise.resolve(true);
+  }
+
+  findUserMfa(userId: string): Promise<UserMfaRecord | null> {
+    if (!this.usersById.has(userId)) {
+      return Promise.resolve(null);
+    }
+    const stored = this.mfaByUserId.get(userId);
+    return Promise.resolve({
+      userId,
+      totpSecretCiphertext: stored?.totpSecretCiphertext ?? null,
+      pendingTotpSecretCiphertext: stored?.pendingTotpSecretCiphertext ?? null,
+      mfaEnabledAt: stored?.mfaEnabledAt ?? null,
+    });
+  }
+
+  saveUserMfa(input: {
+    readonly userId: string;
+    readonly totpSecretCiphertext: string | null;
+    readonly pendingTotpSecretCiphertext: string | null;
+    readonly mfaEnabledAt: string | null;
+  }): Promise<void> {
+    this.mfaByUserId.set(input.userId, {
+      totpSecretCiphertext: input.totpSecretCiphertext,
+      pendingTotpSecretCiphertext: input.pendingTotpSecretCiphertext,
+      mfaEnabledAt: input.mfaEnabledAt,
+    });
+    return Promise.resolve();
+  }
+
+  listUnusedRecoveryCodes(userId: string): Promise<readonly MfaRecoveryCodeRecord[]> {
+    const rows = this.recoveryCodesByUserId.get(userId) ?? [];
+    return Promise.resolve(
+      rows
+        .filter((row) => row.usedAt === null)
+        .map((row) => ({
+          id: row.id,
+          userId: row.userId,
+          codeHash: row.codeHash,
+          usedAt: row.usedAt,
+        })),
+    );
+  }
+
+  replaceRecoveryCodes(userId: string, hashes: readonly string[]): Promise<void> {
+    this.recoveryCodesByUserId.set(
+      userId,
+      hashes.map((codeHash) => ({
+        id: uuidIdGenerator.generate('mrc'),
+        userId,
+        codeHash,
+        usedAt: null,
+      })),
+    );
+    return Promise.resolve();
+  }
+
+  consumeRecoveryCode(id: string, userId: string, nowIso: string): Promise<boolean> {
+    const rows = this.recoveryCodesByUserId.get(userId);
+    if (rows === undefined) {
+      return Promise.resolve(false);
+    }
+    const row = rows.find((candidate) => candidate.id === id);
+    if (row === undefined || row.usedAt !== null) {
+      return Promise.resolve(false);
+    }
+    row.usedAt = nowIso;
+    return Promise.resolve(true);
+  }
+
+  createMfaChallenge(input: {
+    readonly id: string;
+    readonly tokenHash: string;
+    readonly userId: string;
+    readonly organizationId: string;
+    readonly expiresAt: string;
+  }): Promise<void> {
+    this.mfaChallengesByHash.set(input.tokenHash, { ...input, consumedAt: null });
+    return Promise.resolve();
+  }
+
+  findValidMfaChallengeByTokenHash(
+    tokenHash: string,
+    nowIso: string,
+  ): Promise<MfaChallengeRecord | null> {
+    const row = this.mfaChallengesByHash.get(tokenHash);
+    if (row === undefined || row.consumedAt !== null || row.expiresAt <= nowIso) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve({ ...row });
+  }
+
+  consumeMfaChallenge(id: string, nowIso: string): Promise<boolean> {
+    for (const row of this.mfaChallengesByHash.values()) {
+      if (row.id === id && row.consumedAt === null) {
+        row.consumedAt = nowIso;
+        return Promise.resolve(true);
+      }
+    }
+    return Promise.resolve(false);
+  }
+
+  findOidcConnection(organizationId: string): Promise<OidcConnectionRecord | null> {
+    const row = this.oidcByOrganizationId.get(organizationId);
+    return Promise.resolve(row === undefined ? null : structuredClone(row));
+  }
+
+  upsertOidcConnection(input: UpsertOidcConnectionInput): Promise<void> {
+    this.oidcByOrganizationId.set(input.organizationId, { ...input });
+    return Promise.resolve();
+  }
+
+  createOidcState(input: {
+    readonly id: string;
+    readonly stateHash: string;
+    readonly nonceCiphertext: string;
+    readonly organizationId: string;
+    readonly expiresAt: string;
+  }): Promise<void> {
+    this.oidcStatesByHash.set(input.stateHash, { ...input, consumedAt: null });
+    return Promise.resolve();
+  }
+
+  consumeOidcState(
+    stateHash: string,
+    nowIso: string,
+  ): Promise<OidcAuthorizationStateRecord | null> {
+    const row = this.oidcStatesByHash.get(stateHash);
+    if (row === undefined || row.consumedAt !== null || row.expiresAt <= nowIso) {
+      return Promise.resolve(null);
+    }
+    row.consumedAt = nowIso;
+    return Promise.resolve({
+      id: row.id,
+      organizationId: row.organizationId,
+      nonceCiphertext: row.nonceCiphertext,
+    });
   }
 
   findActiveMembership(userId: string, organizationId: string): Promise<IdentityMembership | null> {
@@ -220,12 +424,15 @@ export class InMemoryIdentityStore implements IdentityStore {
   }
 
   upsertOrganization(input: UpsertOrganizationInput): Promise<void> {
+    const existing = this.organizations.get(input.id);
     this.organizations.set(input.id, {
       id: input.id,
       name: input.name,
       slug: input.slug,
       countryCode: input.countryCode,
       status: input.status ?? 'active',
+      requireMfaForPrivilegedRoles:
+        input.requireMfaForPrivilegedRoles ?? existing?.requireMfaForPrivilegedRoles ?? false,
     });
     return Promise.resolve();
   }

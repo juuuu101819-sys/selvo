@@ -26,6 +26,9 @@ An agent is **not**:
 Callers that present no credential remain anonymous on public discovery routes. A credential that
 cannot be verified is `401 UNAUTHENTICATED`, never silently treated as anonymous.
 
+Human MFA and OIDC change only how an `mds_` session is obtained. They do not apply to `mag_` or
+`mk_` credentials and they do not change `DEFAULT_AGENT_SCOPES`. See [AUTH.md](./AUTH.md).
+
 ## Issuance (`POST /api/v1/agents`)
 
 **Who:** an owner or admin **human session** (`requireKeyManager`). Organization `mk_` keys and

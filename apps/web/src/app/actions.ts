@@ -2,8 +2,9 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, updateAgentPolicy } from '@/lib/api/client';
-import type { ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, updateAgentPolicy, verifyMfa, startOidcLogin, completeOidcLogin, enrollMfa, confirmMfa, regenerateMfaRecovery, updateOrgAuthSettings } from '@/lib/api/client';
+import type { ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, LoginDto, MfaChallengeDto, MfaConfirmDto, MfaEnrollDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, OrgAuthSettingsDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { isMfaChallenge } from '@/lib/api/types';
 import {
   clearSessionCookie,
   readSessionToken,
@@ -124,8 +125,43 @@ export async function signIn(
   email: string,
   password: string,
   nextPath: string,
-): Promise<ApiResult<{ signedIn: true }>> {
+): Promise<ApiResult<{ signedIn: true } | MfaChallengeDto>> {
   const result = await login(email, password);
+  if (!result.ok) {
+    return result;
+  }
+  if (isMfaChallenge(result.data)) {
+    return { ok: true, data: result.data, disclaimer: result.disclaimer };
+  }
+  await writeSessionCookie(result.data.token, result.data.expiresAt);
+  redirect(safeDashboardPath(nextPath));
+}
+
+export async function completeMfaSignIn(
+  challengeToken: string,
+  code: string,
+  nextPath: string,
+): Promise<ApiResult<{ signedIn: true }>> {
+  const result = await verifyMfa(challengeToken, code);
+  if (!result.ok) {
+    return result;
+  }
+  await writeSessionCookie(result.data.token, result.data.expiresAt);
+  redirect(safeDashboardPath(nextPath));
+}
+
+export async function beginSsoSignIn(
+  organizationSlug: string,
+): Promise<ApiResult<{ authorizationUrl: string }>> {
+  return startOidcLogin(organizationSlug);
+}
+
+export async function completeSsoSignIn(
+  code: string,
+  state: string,
+  nextPath: string,
+): Promise<ApiResult<LoginDto>> {
+  const result = await completeOidcLogin(code, state);
   if (!result.ok) {
     return result;
   }
@@ -159,6 +195,69 @@ export async function createOrganizationKey(input: {
     };
   }
   return createOrganizationApiKey({ label: input.label, scopes: input.scopes }, token);
+}
+
+function unauthenticated<T>(): ApiResult<T> {
+  return {
+    ok: false,
+    failure: {
+      code: 'UNAUTHENTICATED',
+      message: 'Sign in to continue.',
+      details: {},
+      requestId: null,
+    },
+  };
+}
+
+export async function startMfaEnrollment(): Promise<ApiResult<MfaEnrollDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticated();
+  }
+  return enrollMfa(token);
+}
+
+export async function confirmMfaEnrollment(code: string): Promise<ApiResult<MfaConfirmDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticated();
+  }
+  const result = await confirmMfa(token, code);
+  if (result.ok) {
+    revalidatePath('/dashboard/settings');
+  }
+  return result;
+}
+
+export async function regenerateRecoveryCodes(
+  code: string,
+): Promise<ApiResult<{ recoveryCodes: readonly string[] }>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticated();
+  }
+  return regenerateMfaRecovery(token, code);
+}
+
+export async function saveOrgAuthSettings(input: {
+  readonly requireMfaForPrivilegedRoles?: boolean;
+  readonly oidc?: {
+    readonly issuer?: string;
+    readonly clientId?: string;
+    readonly clientSecret?: string;
+    readonly redirectUri?: string;
+    readonly enabled?: boolean;
+  };
+}): Promise<ApiResult<OrgAuthSettingsDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticated();
+  }
+  const result = await updateOrgAuthSettings(token, input);
+  if (result.ok) {
+    revalidatePath('/dashboard/settings');
+  }
+  return result;
 }
 
 export async function revokeOrganizationKey(

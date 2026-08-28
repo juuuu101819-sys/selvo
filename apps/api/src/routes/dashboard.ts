@@ -1,9 +1,13 @@
 import {
   ForbiddenError,
   NotFoundError,
+  ValidationError,
+  dataEncryptionKeyFromHex,
+  encryptAtRest,
   serializeMonetizationReport,
   serializePaymentIntent,
   serializePaymentPolicy,
+  uuidIdGenerator,
   type JsonObject,
   type PaymentPolicy,
 } from '@meridian/core';
@@ -16,11 +20,32 @@ import {
   loadAgentPaymentHistory,
   loadAgentPolicyControls,
 } from '../dashboard/agent-financials.js';
-import { capabilityPreHandler, requireCapability, requireOrganization } from '../http/require-organization.js';
+import { publicOidcConnection } from '../auth/oidc-public.js';
+import {
+  capabilityPreHandler,
+  requireCapability,
+  requireKeyManager,
+  requireOrganization,
+} from '../http/require-organization.js';
 import { parseOrThrow, patchAgentPolicySchema } from '../http/validation.js';
 
 const listQuery = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).strict();
 const idParams = z.object({ id: z.string().min(1).max(128) }).strict();
+const patchOrgAuthSchema = z
+  .object({
+    requireMfaForPrivilegedRoles: z.boolean().optional(),
+    oidc: z
+      .object({
+        issuer: z.string().trim().url().max(2048).optional(),
+        clientId: z.string().trim().min(1).max(256).optional(),
+        clientSecret: z.string().min(1).max(4096).optional(),
+        redirectUri: z.string().trim().url().max(2048).optional(),
+        enabled: z.boolean().optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
 
 interface Envelope<TData> {
   readonly data: TData;
@@ -109,16 +134,86 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
 
   app.get('/dashboard/settings', async (request) => {
     const principal = requireOrganization(request);
-    const [organization, members, apiKeys] = await Promise.all([
+    const [organization, members, apiKeys, oidc] = await Promise.all([
       container.persistence.identity.findOrganization(principal.organizationId),
       container.persistence.identity.listMembers(principal.organizationId),
       container.persistence.identity.listApiKeys(principal.organizationId),
+      container.persistence.identity.findOidcConnection(principal.organizationId),
     ]);
     return envelope(request, {
       organization,
       members,
       apiKeys,
       role: principal.roles[0] ?? null,
+      auth: {
+        requireMfaForPrivilegedRoles: organization?.requireMfaForPrivilegedRoles ?? false,
+        oidc: publicOidcConnection(oidc),
+      },
+    });
+  });
+
+  app.patch('/dashboard/settings/auth', async (request) => {
+    const principal = requireKeyManager(request);
+    const body = parseOrThrow(patchOrgAuthSchema, request.body, 'body');
+    const identity = container.persistence.identity;
+    const organization = await identity.findOrganization(principal.organizationId);
+    if (organization === null) {
+      throw new NotFoundError('Organization', principal.organizationId);
+    }
+
+    if (body.requireMfaForPrivilegedRoles !== undefined) {
+      await identity.updateOrganizationAuthSettings(principal.organizationId, {
+        requireMfaForPrivilegedRoles: body.requireMfaForPrivilegedRoles,
+      });
+    }
+
+    if (body.oidc !== undefined) {
+      const existing = await identity.findOidcConnection(principal.organizationId);
+      const issuer = body.oidc.issuer ?? existing?.issuer;
+      const clientId = body.oidc.clientId ?? existing?.clientId;
+      const redirectUri = body.oidc.redirectUri ?? existing?.redirectUri;
+      let clientSecretCiphertext = existing?.clientSecretCiphertext ?? null;
+      if (body.oidc.clientSecret !== undefined) {
+        if (body.oidc.clientSecret.length === 0) {
+          throw new ValidationError('OIDC client secret must not be empty.', {
+            field: 'oidc.clientSecret',
+          });
+        }
+        clientSecretCiphertext = encryptAtRest(
+          body.oidc.clientSecret,
+          dataEncryptionKeyFromHex(container.config.dataEncryptionKey),
+        );
+      }
+      const enabled = body.oidc.enabled ?? existing?.enabled ?? false;
+      if (issuer === undefined || clientId === undefined || redirectUri === undefined) {
+        throw new ValidationError(
+          'OIDC issuer, clientId, and redirectUri are required before the connection can be saved.',
+          { field: 'oidc' },
+        );
+      }
+      if (enabled && (clientSecretCiphertext === null || clientSecretCiphertext === '')) {
+        throw new ValidationError('OIDC cannot be enabled without a client secret.', {
+          field: 'oidc.enabled',
+        });
+      }
+      await identity.upsertOidcConnection({
+        id: existing?.id ?? uuidIdGenerator.generate('oidc'),
+        organizationId: principal.organizationId,
+        issuer,
+        clientId,
+        clientSecretCiphertext,
+        redirectUri,
+        enabled,
+      });
+    }
+
+    const [updatedOrg, updatedOidc] = await Promise.all([
+      identity.findOrganization(principal.organizationId),
+      identity.findOidcConnection(principal.organizationId),
+    ]);
+    return envelope(request, {
+      requireMfaForPrivilegedRoles: updatedOrg?.requireMfaForPrivilegedRoles ?? false,
+      oidc: publicOidcConnection(updatedOidc),
     });
   });
 

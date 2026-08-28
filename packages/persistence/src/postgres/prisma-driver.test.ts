@@ -126,6 +126,10 @@ describe('migrations', () => {
           'payment_intents',
           'monetization_events',
           'rate_limit_buckets',
+          'mfa_recovery_codes',
+          'mfa_challenges',
+          'organization_oidc_connections',
+          'oidc_authorization_states',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }

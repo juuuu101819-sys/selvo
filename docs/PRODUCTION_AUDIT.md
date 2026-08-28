@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, and PA-L04 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M07–PA-M10, PA-M14, PA-M16, PA-L01–PA-L03, PA-L05–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, PA-L03 (SSO+MFA; SCIM still out of scope), and PA-L04 were subsequently fixed in production code. Remaining Medium and Low issues (PA-M07–PA-M10, PA-M14, PA-M16, PA-L01–PA-L02, PA-L05–PA-L06) remain unimplemented. Live execution remains unimplemented (501).
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -499,11 +499,14 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-L03 — No SSO, MFA, SCIM
 
-- **File:** `docs/ARCHITECTURE.md` §10
+- **Status:** **FIXED** (2026-08-28) for TOTP MFA and org-level OIDC. **SCIM remains out of scope.**
+- **File:** `docs/AUTH.md`; `apps/api/src/routes/auth.ts`; `apps/api/src/routes/auth-mfa.ts`; `apps/api/src/routes/auth-oidc.ts`; `packages/core/src/crypto/encryption.ts`; `packages/core/src/crypto/totp.ts`
 - **Component:** identity
 - **Problem:** Email/password + API keys only. Documented out of scope.
 - **Why it matters:** Enterprise buyers.
-- **Recommended fix:** Later identity phase. Not a sandbox defect.
+- **Before:** Architecture §10 listed SSO/MFA as absent. Login always issued a session after password check.
+- **After:** Optional TOTP (AES-256-GCM secret, scrypt recovery codes, org flag for owner/admin, off by default). Generic OIDC (encrypted client secret, existing `OrganizationMember` mapping only, unmapped identity rejected). Both issue the same PA-H02 `mds_` session via `issueHumanSession`. Password login unchanged when MFA/SSO are off. SCIM is not implemented.
+- **Tests:** `apps/api/src/routes/auth-mfa-sso.test.ts`; `packages/core/src/crypto/encryption.test.ts`; `packages/core/src/crypto/totp.test.ts`; `packages/core/src/crypto/recovery-codes.test.ts`
 - **Priority:** P3
 
 #### PA-L04 — No quote cache, circuit breaker, or worker queue
@@ -572,15 +575,15 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 ## C. Medium / low issues
 
-**Still open and out of scope for this phase.** PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 is closed (cache + circuit breaker; no worker queue). Do not treat this phase as having closed the remainder.
+**Still open and out of scope for this phase.** PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L03 (SSO+MFA; SCIM still out of scope) and PA-L04 are closed. Do not treat this phase as having closed the remainder.
 
 **Medium closed:** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure), PA-M13 (dashboard session middleware), PA-M15 (failed-auth audit).
 
 **Medium still open:** PA-M07–PA-M10, PA-M14, PA-M16 (pagination, postgres CI/indexes, billing tables, multi-rail fingerprints, wallet wording, silent scopes).
 
-**Low closed:** PA-L04 (quote cache and circuit breaker; worker queue not added).
+**Low closed:** PA-L03 (TOTP MFA + OIDC; SCIM still out of scope), PA-L04 (quote cache and circuit breaker; worker queue not added).
 
-**Low still open:** PA-L01–PA-L03, PA-L05–PA-L06 (display `Number()`, Prisma string status, SSO/MFA, A2A/treasury/KYC-as-product, e2e memory).
+**Low still open:** PA-L01–PA-L02, PA-L05–PA-L06 (display `Number()`, Prisma string status, A2A/treasury/KYC-as-product, e2e memory).
 
 ---
 
@@ -631,4 +634,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, and PA-L04 were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium (PA-M07–PA-M10, PA-M14, PA-M16) and Low (PA-L01–PA-L03, PA-L05–PA-L06) issues remain open.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, PA-M15, PA-L03 (SSO+MFA; SCIM out of scope), and PA-L04 were fixed in later changes. All CRITICAL and HIGH issues are closed. Remaining Medium (PA-M07–PA-M10, PA-M14, PA-M16) and Low (PA-L01–PA-L02, PA-L05–PA-L06) issues remain open.*

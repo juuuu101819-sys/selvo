@@ -45,6 +45,9 @@ export const AUDIT_EVENT_TYPES = [
   'payment.policy.updated',
   'auth.login.failed',
   'auth.credential.failed',
+  'auth.mfa.failed',
+  'auth.mfa.enrolled',
+  'auth.sso.failed',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

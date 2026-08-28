@@ -80,6 +80,10 @@ describeIntegration('PostgreSQL schema', () => {
           'merchants',
           'payment_policies',
           'payment_intents',
+          'mfa_recovery_codes',
+          'mfa_challenges',
+          'organization_oidc_connections',
+          'oidc_authorization_states',
         ]),
       );
     });

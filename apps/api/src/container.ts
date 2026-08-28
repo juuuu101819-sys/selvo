@@ -41,6 +41,7 @@ import {
 } from '@meridian/core';
 import { createPersistenceDriver } from '@meridian/persistence';
 import { IdentityAuthenticator } from './auth/identity-authenticator.js';
+import { FakeOidcClient, FetchOidcClient, type OidcClient } from './auth/oidc-client.js';
 import { disclaimerFor, type AppConfig } from './config/env.js';
 
 export interface AppContainer {
@@ -56,6 +57,7 @@ export interface AppContainer {
   readonly routeGraph: RouteGraphService;
   readonly auditLogger: AuditLogger;
   readonly authenticator: Authenticator;
+  readonly oidcClient: OidcClient;
   readonly agentPayments: AgentPaymentService;
   readonly nlRouting: NlRoutingService;
   readonly disclaimer: string;
@@ -81,6 +83,7 @@ export interface ContainerOptions {
   readonly config: AppConfig;
   readonly logger: Logger;
   readonly clock?: Clock;
+  readonly oidcClient?: OidcClient;
 }
 
 /**
@@ -223,6 +226,10 @@ export function createContainer(options: ContainerOptions): AppContainer {
     },
   );
 
+  const oidcClient =
+    options.oidcClient ??
+    (config.nodeEnv === 'test' ? new FakeOidcClient() : new FetchOidcClient());
+
   const agentPayments = new AgentPaymentService({
     agentPayments: persistence.agentPayments,
     routing,
@@ -271,6 +278,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     routeGraph,
     auditLogger,
     authenticator,
+    oidcClient,
     agentPayments,
     nlRouting,
     disclaimer: disclaimerFor(config.mode),

@@ -159,7 +159,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
           type: 'http',
           scheme: 'bearer',
           bearerFormat: 'mds session token',
-          description: 'Human session from POST /auth/login. Never holds payment:* scopes.',
+          description: 'Human session from POST /auth/login or OIDC/MFA verify. Never holds payment:* scopes.',
         },
         ApiKey: {
           type: 'apiKey',
