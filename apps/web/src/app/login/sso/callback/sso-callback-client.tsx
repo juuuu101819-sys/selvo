@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { completeSsoSignIn } from '@/app/actions';
 import { Button } from '@/components/ui/button';
-import { safeDashboardPath } from '@/lib/session';
+import { safeDashboardPath } from '@/lib/session-cookie';
 
 export function SsoCallbackClient({
   code,
