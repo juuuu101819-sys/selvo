@@ -640,8 +640,8 @@ describeIntegration('PostgreSQL schema', () => {
     ) {
       const rules = await resolver().rulesFor({
         organizationId: 'org_demo_meridian',
-        sourceCurrency: source as never,
-        targetCurrency: target as never,
+        sourceCurrency: source,
+        targetCurrency: target,
         at: AT,
       });
       return selectPricingRule(rules, criteriaFor(source, target, rail, providerId));

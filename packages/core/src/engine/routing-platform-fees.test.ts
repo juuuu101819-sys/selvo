@@ -202,7 +202,7 @@ describe('PA-H10 — platform fee across non-fiat corridors', () => {
     expect(stable.routes[0]?.platformCharge.markupBps.toFixed()).toBe('10');
   });
 
-  it('B. prices per-leg DeFi costs while applying platform fee once', async () => {
+  it('B. prices per-leg DeFi costs while applying platform fee once', () => {
     const engine = new MultiRailCostEngine();
     const route = engine.price(
       buildNormalizedQuote({
