@@ -472,6 +472,7 @@ describe('GET /v1/comparisons/:comparisonId', () => {
 
 describe('GET /v1/comparisons', () => {
   it('lists recent comparisons newest first', async () => {
+    harness.clock.advance(60_000);
     const created = await createComparison();
     const response = await harness.app.inject({ method: 'GET', url: '/v1/comparisons?limit=5' });
 
