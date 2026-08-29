@@ -93,7 +93,16 @@ function publicOverride(record: {
   readonly reason: string;
   readonly engagedAt: string;
   readonly engagedByActor: string;
-}) {
+}): {
+  readonly targetKey: string;
+  readonly kind: string;
+  readonly providerId: string | null;
+  readonly sourceAsset: string | null;
+  readonly targetAsset: string | null;
+  readonly reason: string;
+  readonly engagedAt: string;
+  readonly engagedByActor: string;
+} {
   return {
     targetKey: record.targetKey,
     kind: record.kind,
@@ -116,7 +125,7 @@ export function registerOpsRoutingRoutes(app: FastifyInstance, container: AppCon
     },
   });
 
-  app.get('/ops/routing/overrides', async (request) => {
+  app.get('/ops/routing/overrides', (request) => {
     requireOnboardingOperator(presentedOperatorKey(request), operatorSecret());
     return envelope(request, {
       autoReset: false,

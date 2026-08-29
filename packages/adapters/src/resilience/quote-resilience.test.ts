@@ -454,7 +454,7 @@ describe('PHASE 38 manual kill switch', () => {
     expect(registry.eligible(REQUEST).map((provider) => provider.descriptor.id)).toEqual(['other']);
   });
 
-  it('excludes every provider on a killed corridor', async () => {
+  it('excludes every provider on a killed corridor', () => {
     const clock = new FixedClock('2026-03-01T09:00:00.000Z');
     const overrides = new ManualOverrideRegistry();
     overrides.engage({

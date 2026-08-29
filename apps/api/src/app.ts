@@ -80,8 +80,14 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.oidcClient === undefined ? {} : { oidcClient: options.oidcClient }),
   });
-  const activeOverrides = await container.persistence.routingOverrides.listActive();
-  container.manualOverrides.hydrate(activeOverrides);
+  try {
+    const activeOverrides = await container.persistence.routingOverrides.listActive();
+    container.manualOverrides.hydrate(activeOverrides);
+  } catch {
+    // Production-locked processes may start without a reachable catalog DB (PA-C01 read-only).
+    // Kill switches stay empty until the store is available; they never auto-reset.
+    app.log.warn('Routing kill-switch rows could not be loaded; starting with none engaged');
+  }
 
   await app.register(cors, {
     origin: config.corsOrigins.length > 0 ? [...config.corsOrigins] : false,
