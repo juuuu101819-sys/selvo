@@ -47,7 +47,7 @@ These are the only allowed gaps. They are scale/ops differences, not safety rela
 | Bind address | `127.0.0.1:47331` on the host (localhost only in compose) | Platform load balancer |
 | Postgres | Dedicated `meridian_staging` volume; published on `127.0.0.1:54332` | Platform-managed database; not published to developer laptops |
 | Data | Empty by default. Optional **labelled synthetic** operator (`--profile synthetic`) | Real organizations only after a separate authorization |
-| Billing | Invoice generation and record-keeping only. No live payment collection, no tax calculation, issuer legal entity unconfirmed (PHASE 32). Partner payouts still not accounts payable. | Same: issued invoices are not cash received |
+| Billing | Invoice generation and record-keeping only. No live payment collection, no tax calculation, issuer legal entity unconfirmed (PHASE 32/35). No recurring subscription catalog. Partner payouts still not accounts payable (PHASE 36 not run). | Same: issued invoices are not cash received |
 | B2B onboarding | Sales-assisted / invite-only. KYB is manual review until a vendor is confirmed. No silent default take-rate. | Same. Real orgs stay `unverified` until an operator records KYB and attaches `CustomerPricing`. |
 | Licensed quotes | None. PHASE 30 is **blocked** until a named licensed partner of record is confirmed. Comparison/quote return **422** (`UNSUPPORTED_CORRIDOR` / `NO_ROUTES_AVAILABLE`). Production-locked `/quote` also requires completed onboarding (`403 ONBOARDING_INCOMPLETE` otherwise). | Same empty licensed registry until that confirmation exists |
 | Web app | Not in the API image. Point `API_BASE_URL` at staging if you run Next separately | Same split: API image vs web |
@@ -248,3 +248,21 @@ file. Do not set a processor API key in production config to “try” collectio
 
 `POST /api/v1/executions` remains **501**; platform-fee collection is unrelated to customer-transaction
 execution and was not enabled either.
+
+## 10. PHASE 36 — do not operate subscriptions or partner payouts from this deploy
+
+PHASE 36 (recurring subscription billing and partner payouts / PA-M09 remainder) was **not
+implemented**. A deploy of this revision must **not** be operated as if monthly plans, proration,
+partner accounts payable, or commission disbursement exist. Partner commission on revenue reports
+is still an attributed field on quoted/invoiced snapshots, not cash owed. There is no in-platform
+partner balance.
+
+PHASE 35 collection is still deferred, so even a “calculated but not disbursed” payable ledger was
+**not** added: nothing is collected, no partners of record are on file, and inventing
+`PENDING_DISBURSEMENT` rows would fabricate payable balances.
+
+Lifting that gate requires the confirmations in [`COMPLIANCE.md`](./COMPLIANCE.md) (subscription
+tiers or explicit out-of-scope, contracted payout model, and collected revenue or an explicit
+calculate-only policy). None are on file.
+
+`POST /api/v1/executions` remains **501**.

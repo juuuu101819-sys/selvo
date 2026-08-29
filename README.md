@@ -33,6 +33,8 @@ in code, not just documented — see [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).
 not run: the four business/legal gates in `docs/COMPLIANCE.md` are unconfirmed.
 PHASE 35 (platform-fee collection) was not run: legal entity, tax, and processor remain
 unconfirmed; invoices stay uncollected.
+PHASE 36 (subscriptions and partner payouts) was not run: tiers, contracted partners, and a
+payout rail remain unconfirmed; PHASE 35 collection is still deferred.
 
 ## Running it locally
 

@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M09 partner payouts / payment collection, PA-L05) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution. PHASE 33 (AI-agent payment pilot) was **not run**: the four business/legal gates were unconfirmed outside Cursor, so `POST /api/v1/executions` was left at 501. PHASE 34 added cursor pagination (PA-M07), multi-rail fingerprint/replay (PA-M10), and a clean-Postgres e2e CI job (PA-L06). PHASE 35 (platform-fee payment collection) was **not run**: legal entity, tax treatment, and a named payment processor (or an explicit bank-transfer-only decision) were unconfirmed outside Cursor, so `issuerLegalEntity` stays `unconfirmed`, `taxMinorUnits` stays `0`, and `DeferredPlatformFeeCollector` still does not collect. `ROUTING_ENGINE_VERSION` remains 1.0.0.
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M09 partner payouts / payment collection, PA-L05) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution. PHASE 33 (AI-agent payment pilot) was **not run**: the four business/legal gates were unconfirmed outside Cursor, so `POST /api/v1/executions` was left at 501. PHASE 34 added cursor pagination (PA-M07), multi-rail fingerprint/replay (PA-M10), and a clean-Postgres e2e CI job (PA-L06). PHASE 35 (platform-fee payment collection) was **not run**: legal entity, tax treatment, and a named payment processor (or an explicit bank-transfer-only decision) were unconfirmed outside Cursor, so `issuerLegalEntity` stays `unconfirmed`, `taxMinorUnits` stays `0`, and `DeferredPlatformFeeCollector` still does not collect. PHASE 36 (subscription billing and partner payouts / PA-M09 remainder) was **not run**: subscription tiers, contracted referral partners, and a payout rail were unconfirmed, and PHASE 35 collection is still deferred, so no recurring-plan catalog, payout ledger, or disbursement path was added. `ROUTING_ENGINE_VERSION` remains 1.0.0.
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -34,7 +34,7 @@ It is **not production-ready** as a live financial service:
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
   (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
   naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
-  PA-M01–PA-M08, PA-M10–PA-M16, PA-L01, PA-L02, PA-L04, and PA-L06 are closed. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 34 added cursor pagination and multi-rail fingerprint/replay. Remaining Medium/Low items are feature-scale and deferred (PA-M09 collection/tax/partner AP, PA-L05).
+  PA-M01–PA-M08, PA-M10–PA-M16, PA-L01, PA-L02, PA-L04, and PA-L06 are closed. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 34 added cursor pagination and multi-rail fingerprint/replay. PHASE 35 and PHASE 36 were refused pending business/legal confirmation. Remaining Medium/Low items are feature-scale and deferred (PA-M09 collection/tax/subscriptions/partner AP, PA-L05).
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -401,15 +401,16 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M09 — No invoices, subscriptions, or partner-payout tables
 
-- **Status:** **PARTIAL** (2026-08-28) — invoices implemented; collection and partner AP deferred
+- **Status:** **PARTIAL** (2026-08-28 invoices; 2026-08-29 PHASE 36 not run) — invoices implemented; recurring subscriptions, collection, and partner AP deferred
 - **File:** `prisma/schema.prisma` (`Invoice`, `InvoiceLine`, `MonetizationEvent.revenueRecognition`); `packages/core/src/engine/billing-engine.ts`; `apps/api/src/routes/billing.ts`
 - **Component:** billing
 - **Problem:** Referral/commission is an attributed field, not accounts payable. `enterprise_api_subscription` is a seeded demo event. There was no invoice table.
 - **Why it matters:** Business model (API fees, enterprise fees, partner commissions) was not operable as billed revenue.
 - **After (PHASE 32):** Monthly invoices are generated exclusively from existing monetization snapshots (copied `platformRevenueMinorUnits`, line items name snapshot IDs). Billable events are `execution_intent` and `enterprise_subscription` with positive platform revenue. `route_quote` is never billed. Unique `(organization, period, currency)` and unique line `monetization_event_id` prevent double-billing. `revenueRecognition` becomes `invoiced`; `realizedRevenue` stays false until `collected`, which is never written. Tax is always 0. Issuer legal entity is `unconfirmed`. `DeferredPlatformFeeCollector` does not collect. Partner commission remains an attributed field, not accounts payable.
+- **After (PHASE 36):** Not run. Subscription tiers, contracted referral partners / payout rail, and PHASE 35 collection were unconfirmed outside Cursor. No recurring billing path, payout ledger, or disbursement was added. PA-M09 stays **PARTIAL**, matching the scope-limited precedent: invoices exist; the rest of the finding is still open.
 - **Tests:** `packages/core/src/engine/billing-engine.test.ts`; `apps/api/src/routes/billing.test.ts`
 - **Priority:** P2
-- **Still deferred:** live payment collection, tax calculation, issuer legal entity, partner payouts as AP.
+- **Still deferred:** live payment collection, tax calculation, issuer legal entity, recurring subscription billing (no confirmed tiers), partner payouts as AP (no contracted partners or payout rail). PHASE 36 did **not** add a plan catalog, proration engine, `PENDING_DISBURSEMENT` ledger, or dashboard subscription/payout surfaces — those require confirmations that are not on file.
 
 #### PA-M10 — Multi-rail results have no comparison-style fingerprint/replay
 
@@ -608,7 +609,7 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 **Medium closed (prior):** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure), PA-M13 (dashboard session middleware), PA-M15 (failed-auth audit).
 
-**Medium still open (deferred, feature-scale):** PA-M09 remainder (payment collection, tax, partner AP).
+**Medium still open (deferred, feature-scale):** PA-M09 remainder (payment collection, tax, recurring subscriptions, partner AP).
 
 **Low closed:** PA-L01, PA-L02, PA-L03 (TOTP MFA + OIDC; SCIM still out of scope), PA-L04 (quote cache and circuit breaker; worker queue not added), PA-L06 (postgres e2e job).
 
@@ -706,6 +707,22 @@ Re-run only after the three confirmations are on file in `docs/COMPLIANCE.md`. I
 
 ---
 
+## PHASE 36 — Subscriptions and partner payouts (not run)
+
+The prompt required three confirmations **outside Cursor** before adding recurring billing or a partner-payout engine (PA-M09 remainder):
+
+1. Subscription / pricing tiers, if any — a confirmed flat monthly platform fee (on top of or instead of per-transaction take-rate) for a named segment, **or** an explicit decision that subscriptions are out of scope.
+2. Partner payout model — which referral partners are contracted, the commission structure used for **accounts payable** (distinct from the existing attributed 25% field on quoted monetization), and how payouts are sent (processor payout, wire, or manual).
+3. PHASE 35 payment collection status — payouts are only disbursable against **collected** platform revenue. PHASE 35 was **not run**; invoices stay `uncollected` and `realizedRevenue` stays false.
+
+**None were confirmed.** This session did **not** add a subscription plan catalog, proration/cancellation/plan-change engine, a second invoice line type for recurring fees, a partner payout ledger (`PENDING_DISBURSEMENT` or otherwise), a disbursement adapter, or dashboard subscription/payout surfaces. PA-M09 remains **PARTIAL** (PHASE 32 invoices only) — not FIXED. Partner commission remains an attributed monetization field, not accounts payable. No in-platform partner balance or custodial wallet was introduced.
+
+Do **not** read this audit as “subscriptions are billed” or “partners are paid.” Recurring billing is **not** live. Payouts are **not** calculated-as-payable, because nothing is collected and no partners of record exist. Inventing tiers, partner rows, or a payable ledger to “try” PA-M09 would distort the volume-driven take-rate model (invariant ④) and risk a custody-shaped AP balance (invariant ③). `POST /api/v1/executions` remains 501.
+
+Re-run only after the confirmations are on file in `docs/COMPLIANCE.md`.
+
+---
+
 ## Controls to keep
 
 Do not “clean up” these as if they were incomplete features:
@@ -722,4 +739,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. PHASE 34 added cursor pagination, multi-rail fingerprint/replay, and a clean-Postgres e2e job. PHASE 35 was refused pending legal entity, tax, and processor (or bank-transfer-only) confirmation. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M09 collection/tax/partner AP, PA-L05, plus SCIM and worker queue.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. PHASE 34 added cursor pagination, multi-rail fingerprint/replay, and a clean-Postgres e2e job. PHASE 35 was refused pending legal entity, tax, and processor (or bank-transfer-only) confirmation. PHASE 36 was refused pending subscription-tier, contracted-partner/payout-rail, and PHASE 35 collection confirmation. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M09 collection/tax/subscriptions/partner AP, PA-L05, plus SCIM and worker queue.*

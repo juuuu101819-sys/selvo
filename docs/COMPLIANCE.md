@@ -144,6 +144,31 @@ webhook, no operator “mark collected” endpoint, no `realizedRevenue: true` f
 Invariant ② (Route View ≠ … ≠ Verified Settlement ≠ Realized Revenue) still forbids marking
 platform-fee revenue realized because a processor call “didn’t error.”
 
+## PHASE 36 — do not add subscriptions or partner payouts until the three gates close
+
+PHASE 36 would add recurring subscription billing and/or a partner-payout engine on top of PHASE 32
+invoices (PA-M09 remainder). The prompt is a **business decision gate**: implement only the
+confirmed parts; if models are unconfirmed, defer them rather than inventing tiers or partners.
+
+PHASE 35 collection was **deferred** (see above). As of 2026-08-29 the remaining two product
+confirmations are **not satisfied**. Therefore PHASE 36 was **not implemented**. Partner commission
+stays an attributed field on monetization snapshots. There is no recurring plan catalog and no
+payout ledger.
+
+| Confirmation | Status (2026-08-29) | Why it is required |
+| ------------ | ------------------- | ------------------ |
+| Subscription / pricing tiers **or** an explicit “no subscription model” decision | **Missing.** `enterprise_subscription` is a seeded snapshot type that PHASE 32 can invoice; it is not a confirmed monthly plan catalog, proration policy, or replacement for per-route take-rate. | Inventing tiers would be a second pricing path on top of PA-H10 volume-driven take-rate (invariant ④). |
+| Partner payout model: contracted partners, AP commission structure, and send mechanism (processor / wire / manual) | **Missing.** `priceMonetization` attributes 25% of platform revenue as `partnerCommissionMinorUnits`. No named referral partners of record, no AP contract, no payout rail. | Attribution is not accounts payable. Building `PENDING_DISBURSEMENT` rows without partners of record would invent payable balances. |
+| PHASE 35 collection live **or** an explicit “calculate but never disburse / never mark payable” decision against **collected** revenue | **Missing as a payout policy.** PHASE 35 was not run: invoices stay `uncollected`. Nothing is collected, so nothing is disbursable. | `Commission Calculated ≠ Commission Payable ≠ Commission Disbursed`. Payable requires collected platform revenue. Fabricating payable or disbursed rows would violate invariant ②. |
+
+**If the models are not confirmed, do not run PHASE 36.** Continue operating with PHASE 32 invoice
+generation and PHASE 17 commission *attribution*. That is the state after this session: no
+subscription engine, no payout ledger, no partner custodial balance, no dashboard subscription or
+payout history. PA-M09 remains **PARTIAL** (invoices only).
+
+Do not invent a plan SKU, a referral partner row, or an in-platform AP wallet to “try” disbursement.
+A payout ledger that held spendable partner funds would be a custody violation (invariant ③).
+
 ## Before any live execution / AI-agent payment pilot (Phase 5 / PHASE 33)
 
 PHASE 33 (roadmap item 21) would lift `POST /api/v1/executions` off its 501 gate for a **narrow,

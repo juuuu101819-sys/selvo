@@ -567,4 +567,35 @@ revenue is not fabricated from a non-error HTTP response.
 Do not invent a processor, issuer name, or tax table to “try” collection. Re-run this phase only
 after the three confirmations are on file in `docs/COMPLIANCE.md`.
 
+## Phase 36 — Subscriptions and partner payouts _(blocked — tiers, partners, and collection unconfirmed)_
+
+Would extend PHASE 32 invoicing with **recurring subscription billing** and/or a **partner-payout
+engine** (PA-M09 remainder). Per-transaction take-rate (PA-H10) stays the canonical fee model;
+subscriptions, if ever confirmed, would be additive, not a second monetization engine. Payouts would
+reuse existing referral *attribution* (`partnerCommissionMinorUnits`) rather than recomputing
+commission. Disbursement is only against **collected** platform revenue
+(`Commission Calculated ≠ Commission Payable ≠ Commission Disbursed`).
+
+The prompt forbids inventing unconfirmed product: implement only confirmed parts.
+
+1. **Subscription tiers** — a named monthly (or other) platform fee for a named segment, **or** an
+   explicit “subscriptions out of scope” decision. None is on file. `enterprise_subscription` remains
+   a seeded snapshot type that can appear on a PHASE 32 invoice, not a plan catalog with proration.
+2. **Partner payout model** — contracted partners, AP commission structure, and send mechanism
+   (processor payout, wire, or manual). None is on file. The 25% figure in `priceMonetization` is
+   quoted attribution, not an accounts-payable contract.
+3. **PHASE 35 collection** — **deferred**. Invoices stay `uncollected`. This phase’s prompt allows a
+   calculate-only `PENDING_DISBURSEMENT` ledger when collection is not live, **but only if the payout
+   model is in scope**. It is not. Creating that ledger without partners of record or collected
+   revenue would invent payable balances. No custodial partner wallet was added (invariant ③).
+
+**As of 2026-08-29 none of the three are confirmed.** This session did **not** implement recurring
+billing, proration/cancellation/plan-change rules, a payout ledger, disbursement, or dashboard
+subscription/payout surfaces. PA-M09 stays **PARTIAL** (invoices only). `POST /api/v1/executions`
+remains the audited **501**. Invariant ④ is unchanged: take-rate was not layered under invented
+plans or payouts.
+
+Do not invent tiers or partners to “try” PA-M09. Re-run only after the confirmations are on file in
+`docs/COMPLIANCE.md`.
+
 

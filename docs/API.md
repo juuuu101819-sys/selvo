@@ -705,6 +705,11 @@ explicit bank-transfer-only decision) were not confirmed outside Cursor, so
 `DeferredPlatformFeeCollector` was left in place. `issuerLegalEntity` remains `"unconfirmed"`.
 Tax remains `"0"` as a documented gap, not a calculated rate.
 
+PHASE 36 did **not** add recurring subscription line items, a plan catalog, or partner-payout
+history. `enterprise_subscription` snapshots, when present, are still billed as PHASE 32 invoice
+lines copied from monetization — not as a confirmed monthly SKU. Partner commission remains a
+field on those snapshots, not accounts payable.
+
 ## `GET /api/v1/dashboard/invoices/:id`
 
 One invoice for this organization, including line items that each name a `monetizationEventId`.
