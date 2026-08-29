@@ -564,7 +564,7 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 - **Problem:** Does not exercise Postgres CHECKs over the wire.
 - **Why it matters:** Complementary to unit postgres tests, not a replacement.
 - **Before:** Playwright e2e always used `DATABASE_DRIVER=memory`. CI `verify` ran unit/integration against Postgres via `TEST_DATABASE_URL`.
-- **After:** A separate `e2e-postgres` job boots an empty Postgres 16, runs `prisma migrate deploy` from scratch (no reused volume), then the full Playwright suite with `E2E_DATABASE_DRIVER=postgres` and `SEED_DEMO_TENANTS=true`. The existing memory e2e job is unchanged. Migrations-from-scratch is seconds relative to Playwright, so the job runs on every push/PR rather than main-only.
+- **After:** A separate `e2e-postgres` job boots an empty Postgres 16, runs `prisma migrate deploy` from scratch (no reused volume), then the full Playwright suite with `E2E_DATABASE_DRIVER=postgres` and `SEED_DEMO_TENANTS=true`. Demo dashboard quotes need currency/provider FK rows; `ensureSandboxCatalog` upserts those so the same seed path works on Postgres as on memory, without `prisma db seed` (which would also write CustomerPricing and hide the onboarding-incomplete e2e case). The existing memory e2e job is unchanged. Migrations-from-scratch is ~1s relative to Playwright, so the job runs on every push/PR rather than main-only.
 - **Tests:** `apps/api/src/ops/ci-hardening.test.ts` asserts the job exists
 - **Priority:** P3
 

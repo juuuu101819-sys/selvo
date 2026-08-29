@@ -178,6 +178,10 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
     return Promise.resolve();
   }
 
+  ensureSandboxCatalog(): Promise<void> {
+    return Promise.resolve();
+  }
+
   close(): Promise<void> {
     return Promise.resolve();
   }

@@ -29,6 +29,7 @@ import { PrismaOnboardingStore } from './prisma-onboarding.js';
 import { PrismaBillingStore } from './prisma-billing.js';
 import { PrismaRoutingEvaluationRepository } from './prisma-routing-evaluations.js';
 import { PrismaRateLimitStore } from '../rate-limit/prisma-store.js';
+import { ensureSandboxDashboardCatalog } from './ensure-sandbox-catalog.js';
 import { descKeysetWhere } from './keyset.js';
 import { Prisma, PrismaClient } from '@prisma/client';
 
@@ -97,6 +98,10 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.onboarding = new PrismaOnboardingStore(this.client);
     this.billing = new PrismaBillingStore(this.client);
     this.routingEvaluations = new PrismaRoutingEvaluationRepository(this.client);
+  }
+
+  ensureSandboxCatalog(): Promise<void> {
+    return ensureSandboxDashboardCatalog(this.client);
   }
 
   /**

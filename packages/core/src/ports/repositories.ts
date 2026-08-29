@@ -69,6 +69,11 @@ export interface PersistenceDriver {
   readonly onboarding: OnboardingStore;
   readonly billing: BillingStore;
   readonly routingEvaluations: RoutingEvaluationRepository;
+  /**
+   * Upserts ISO currencies and sandbox provider rows the demo dashboard seed needs as FK targets.
+   * Memory is a no-op. Called only when `SEED_DEMO_TENANTS` provisions quotes.
+   */
+  ensureSandboxCatalog(): Promise<void>;
   /** Verifies the store is reachable and the schema is present. */
   healthCheck(): Promise<void>;
   close(): Promise<void>;

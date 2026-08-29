@@ -110,6 +110,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
   // Demo tenants are sandbox fixtures. Production-locked processes never seed them. Tests seed
   // only when SEED_DEMO_TENANTS=true (Playwright). Local development keeps the historical auto-seed.
   if (shouldProvisionDemoTenants(config)) {
+    await container.persistence.ensureSandboxCatalog();
     await provisionDemoTenants(
       {
         identity: container.persistence.identity,
@@ -118,7 +119,7 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
         auditLog: container.persistence.auditLog,
       },
       {
-        seedDashboard: container.persistence.kind === 'memory',
+        seedDashboard: true,
         nowIso: container.clock.nowIso(),
         productionLocked: config.productionLocked,
       },
