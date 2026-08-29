@@ -428,13 +428,13 @@ describeIntegration('PostgreSQL schema', () => {
   });
 
   describe('comparison repository against a real database', () => {
-    it('orders a list by created_at then sequence, so ties are deterministic', async () => {
+    it('orders a list by created_at then id, so equal timestamps are a stable keyset', async () => {
       const shared = '2026-04-01T00:00:00.000Z';
-      const first = `cmp_it_${randomUUID().replaceAll('-', '')}`;
-      const second = `cmp_it_${randomUUID().replaceAll('-', '')}`;
-      createdComparisonIds.push(first, second);
+      const earlierId = 'cmp_it_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      const laterId = 'cmp_it_zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz';
+      createdComparisonIds.push(earlierId, laterId);
 
-      for (const comparisonId of [first, second]) {
+      for (const comparisonId of [earlierId, laterId]) {
         await driver.comparisons.save({
           comparisonId,
           createdAt: shared,
@@ -451,13 +451,13 @@ describeIntegration('PostgreSQL schema', () => {
       }
 
       const listed = await driver.comparisons.list({ limit: 200 });
-      const positions = [first, second].map((id) =>
+      const positions = [earlierId, laterId].map((id) =>
         listed.findIndex((item) => item.comparisonId === id),
       );
 
       expect(positions[0]).toBeGreaterThanOrEqual(0);
       expect(positions[1]).toBeGreaterThanOrEqual(0);
-      // Inserted second, so it must appear first despite the identical timestamp.
+      // Newest-first keyset: identical createdAt uses id DESC, so laterId precedes earlierId.
       expect(positions[1]).toBeLessThan(positions[0] ?? Number.MAX_SAFE_INTEGER);
     });
 
