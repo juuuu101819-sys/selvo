@@ -134,6 +134,8 @@ describe('migrations', () => {
           'invoices',
           'invoice_lines',
           'routing_evaluations',
+          'routing_manual_overrides',
+          'provider_credentials',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -253,6 +255,15 @@ describe('migrations', () => {
     expect(sql).toContain('"invoice_lines_monetization_event_id_key"');
     expect(sql).toContain('"monetization_events_realized_revenue_collected_chk"');
     expect(sql).toContain('"invoices_organization_id_period_start_currency_key"');
+  });
+
+  it('stores provider credentials as AES-256-GCM ciphertext, never on the providers catalog', () => {
+    expect(sql).toContain('CREATE TABLE "provider_credentials"');
+    expect(sql).toContain('"provider_credentials_ciphertext_v1"');
+    expect(sql).toContain("CHECK (\"ciphertext\" LIKE 'v1$%')");
+    expect(sql).toContain('CREATE TABLE "routing_manual_overrides"');
+    expect(sql).toContain('"routing_manual_overrides_active_target_key"');
+    expect(sql).toContain('"execution_authorized" BOOLEAN NOT NULL DEFAULT false');
   });
 
   /**

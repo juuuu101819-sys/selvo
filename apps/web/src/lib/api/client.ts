@@ -19,6 +19,7 @@ import type {
   MfaEnrollDto,
   MfaStatusDto,
   OrgAuthSettingsDto,
+  ExecutionAuthorizationDto,
   MetaDto,
   MonetizationReportDto,
   DashboardInvoicesPayload,
@@ -280,6 +281,31 @@ export function updateOrgAuthSettings(
   return request<OrgAuthSettingsDto>({
     method: 'PATCH',
     path: '/api/v1/dashboard/settings/auth',
+    body,
+    authorization,
+  });
+}
+
+export function updateOrgExecutionAuthorization(
+  authorization: string,
+  body: { readonly authorized: boolean; readonly agreementReference?: string },
+): Promise<ApiResult<ExecutionAuthorizationDto>> {
+  return request<ExecutionAuthorizationDto>({
+    method: 'POST',
+    path: '/api/v1/dashboard/execution-authorization',
+    body,
+    authorization,
+  });
+}
+
+export function updateAgentExecutionAuthorization(
+  authorization: string,
+  agentId: string,
+  body: { readonly authorized: boolean; readonly agreementReference?: string },
+): Promise<ApiResult<ExecutionAuthorizationDto>> {
+  return request<ExecutionAuthorizationDto>({
+    method: 'POST',
+    path: `/api/v1/dashboard/agents/${encodeURIComponent(agentId)}/execution-authorization`,
     body,
     authorization,
   });

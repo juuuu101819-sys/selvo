@@ -47,6 +47,22 @@ const patchOrgAuthSchema = z
   })
   .strict();
 
+const executionAuthorizationSchema = z
+  .object({
+    authorized: z.boolean(),
+    agreementReference: z.string().trim().min(1).max(200).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.authorized && (value.agreementReference === undefined || value.agreementReference.length === 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'agreementReference is required when authorizing future execution.',
+        path: ['agreementReference'],
+      });
+    }
+  });
+
 interface Envelope<TData> {
   readonly data: TData;
   readonly meta: { readonly mode: string; readonly disclaimer: string; readonly requestId: string };
@@ -160,10 +176,18 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
 
   app.get('/dashboard/providers', async (request) => {
     const principal = requireOrganization(request);
-    const providers = await container.persistence.dashboard.quotesByProvider(
+    const usage = await container.persistence.dashboard.quotesByProvider(
       principal.organizationId,
     );
-    return envelope(request, { providers });
+    const licensingById = new Map(
+      container.providers.map((provider) => [provider.id, provider.licensing]),
+    );
+    return envelope(request, {
+      providers: usage.map((row) => ({
+        ...row,
+        licensing: licensingById.get(row.providerId) ?? 'unlicensed_sandbox',
+      })),
+    });
   });
 
   app.get('/dashboard/revenue', async (request) => {
@@ -257,6 +281,97 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
     });
   });
 
+  app.post('/dashboard/execution-authorization', async (request) => {
+    const principal = requireKeyManager(request);
+    const body = parseOrThrow(executionAuthorizationSchema, request.body, 'body');
+    const nowIso = container.clock.nowIso();
+    const updated = await container.persistence.identity.updateOrganizationExecutionAuthorization(
+      principal.organizationId,
+      {
+        executionAuthorized: body.authorized,
+        executionAuthorizedAt: nowIso,
+        executionAuthorizedByActor: principal.actor,
+        executionAgreementReference: body.agreementReference ?? null,
+      },
+    );
+    if (!updated) {
+      throw new NotFoundError('Organization', principal.organizationId);
+    }
+    const organization = await container.persistence.identity.findOrganization(
+      principal.organizationId,
+    );
+    await container.auditLogger.record({
+      type: 'organization.execution_authorization.updated',
+      actor: principal.actor,
+      organizationId: principal.organizationId,
+      requestId: request.id,
+      comparisonId: null,
+      providerId: null,
+      payload: {
+        organizationId: principal.organizationId,
+        executionAuthorized: body.authorized,
+        agreementReference: body.agreementReference ?? null,
+        functionalEffect: 'none',
+        executionsRemain501: true,
+      },
+    });
+    return envelope(request, {
+      executionAuthorized: organization?.executionAuthorized ?? false,
+      executionAuthorizedAt: organization?.executionAuthorizedAt ?? null,
+      executionAuthorizedByActor: organization?.executionAuthorizedByActor ?? null,
+      executionAgreementReference: organization?.executionAgreementReference ?? null,
+      functionalEffect: 'none',
+      executionsRemain501: true,
+    });
+  });
+
+  app.post('/dashboard/agents/:id/execution-authorization', async (request) => {
+    const principal = requireKeyManager(request);
+    const { id } = parseOrThrow(idParams, request.params, 'params');
+    const body = parseOrThrow(executionAuthorizationSchema, request.body, 'body');
+    const nowIso = container.clock.nowIso();
+    const updated = await container.persistence.agentPayments.updateAgentExecutionAuthorization(
+      id,
+      principal.organizationId,
+      {
+        executionAuthorized: body.authorized,
+        executionAuthorizedAt: nowIso,
+        executionAuthorizedByActor: principal.actor,
+        executionAgreementReference: body.agreementReference ?? null,
+        nowIso,
+      },
+    );
+    if (!updated) {
+      throw new NotFoundError('Agent', id);
+    }
+    const agent = await container.persistence.agentPayments.findAgent(id, principal.organizationId);
+    await container.auditLogger.record({
+      type: 'agent.execution_authorization.updated',
+      actor: principal.actor,
+      organizationId: principal.organizationId,
+      requestId: request.id,
+      comparisonId: null,
+      providerId: null,
+      payload: {
+        organizationId: principal.organizationId,
+        agentId: id,
+        executionAuthorized: body.authorized,
+        agreementReference: body.agreementReference ?? null,
+        functionalEffect: 'none',
+        executionsRemain501: true,
+      },
+    });
+    return envelope(request, {
+      agentId: id,
+      executionAuthorized: agent?.executionAuthorized ?? false,
+      executionAuthorizedAt: agent?.executionAuthorizedAt ?? null,
+      executionAuthorizedByActor: agent?.executionAuthorizedByActor ?? null,
+      executionAgreementReference: agent?.executionAgreementReference ?? null,
+      functionalEffect: 'none',
+      executionsRemain501: true,
+    });
+  });
+
   app.get('/dashboard/agents', async (request) => {
     const principal = requireOrganization(request);
     const agents = await listAgentDashboardSummaries({
@@ -317,7 +432,11 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
       nowIso: container.clock.nowIso(),
       agentPayments: container.persistence.agentPayments,
       auditLog: container.persistence.auditLog,
-      providers: container.providers.map((provider) => ({ id: provider.id, name: provider.name })),
+      providers: container.providers.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        licensing: provider.licensing,
+      })),
     });
     if (controls === null) {
       throw new NotFoundError('Agent', id);
@@ -400,7 +519,11 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
       nowIso: container.clock.nowIso(),
       agentPayments: container.persistence.agentPayments,
       auditLog: container.persistence.auditLog,
-      providers: container.providers.map((provider) => ({ id: provider.id, name: provider.name })),
+      providers: container.providers.map((provider) => ({
+        id: provider.id,
+        name: provider.name,
+        licensing: provider.licensing,
+      })),
     });
     if (controls === null) {
       throw new NotFoundError('Agent', id);

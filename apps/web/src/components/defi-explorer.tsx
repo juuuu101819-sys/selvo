@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import type { ApiFailure, DefiCatalogDto, DefiRouteDto, DefiRoutingDto } from '@/lib/api/types';
 import { formatAssetAmount, formatBps, formatRate, formatSettlement } from '@/lib/format';
 
@@ -231,6 +232,7 @@ function DefiResult({
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg">{recommended.provider.name}</CardTitle>
               <Badge>Recommended execution route</Badge>
+              <ProviderLicensingBadge licensing={recommended.provider.licensing} />
               <Badge variant="secondary">{recommended.routeKind}</Badge>
             </div>
             <CardDescription>{recommended.explanation}</CardDescription>
@@ -248,6 +250,7 @@ function DefiResult({
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-base">{route.provider.name}</CardTitle>
                 {route.recommended && <Badge>Recommended</Badge>}
+                <ProviderLicensingBadge licensing={route.provider.licensing} />
                 <Badge variant="outline">{route.routeKind}</Badge>
                 {route.venueKind !== null && (
                   <Badge variant="secondary">{route.venueKind}</Badge>

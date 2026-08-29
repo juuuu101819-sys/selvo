@@ -19,6 +19,10 @@ export type { PlatformPricing, PlatformPricingRule, PricingCriteria } from './pl
 export {
   PLATFORM_MODES,
   PROVIDER_LICENSING,
+  PROVIDER_LICENSING_HINTS,
+  PROVIDER_LICENSING_LABELS,
+  isProviderLicensing,
+  providerLicensingLabel,
   type PlatformMode,
   type ProviderDescriptor,
   type ProviderId,

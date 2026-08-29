@@ -53,6 +53,10 @@ export interface AgentDashboardSummary {
   readonly dailyLimitMinorUnits: string | null;
   readonly fundsMoved: false;
   readonly custody: false;
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface AgentDashboardDetail {

@@ -88,7 +88,11 @@ export async function loadAgentPolicyControls(input: {
   readonly nowIso: string;
   readonly agentPayments: AgentPaymentsRepository;
   readonly auditLog: AuditLogRepository;
-  readonly providers: readonly { readonly id: string; readonly name: string }[];
+  readonly providers: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly licensing?: string;
+  }[];
 }): Promise<AgentPolicyControlsDto | null> {
   const loaded = await loadAgentBundle(input);
   if (loaded === null) {
@@ -244,12 +248,12 @@ function violationsForAgent(
 }
 
 function uniqueProviders(
-  providers: readonly { readonly id: string; readonly name: string }[],
+  providers: readonly { readonly id: string; readonly name: string; readonly licensing?: string }[],
   allowed: ReadonlySet<string>,
-): readonly { readonly id: string; readonly name: string }[] {
-  const byId = new Map<string, { readonly id: string; readonly name: string }>();
+): readonly { readonly id: string; readonly name: string; readonly licensing?: string }[] {
+  const byId = new Map<string, { readonly id: string; readonly name: string; readonly licensing?: string }>();
   for (const provider of providers) {
-    byId.set(provider.id, { id: provider.id, name: provider.name });
+    byId.set(provider.id, provider);
   }
   for (const id of allowed) {
     if (!byId.has(id)) {

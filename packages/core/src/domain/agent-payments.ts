@@ -93,6 +93,14 @@ export interface Agent {
   readonly status: AgentStatus;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /**
+   * Owner/admin flag that this agent may eventually be used for real delegated execution.
+   * Distinct from mag_ quote/payment scopes. Default false. Inert while executions remain 501.
+   */
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface AgentCredential {
@@ -118,6 +126,10 @@ export interface PublicAgent {
   readonly scopes: readonly ApiScope[];
   readonly credentialExpiresAt: string | null;
   readonly credentialRevokedAt: string | null;
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface IssuedAgent {

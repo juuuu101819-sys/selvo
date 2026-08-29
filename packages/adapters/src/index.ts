@@ -63,6 +63,7 @@ export {
   wrapFinancialProvidersWithQuoteResilience,
   type QuoteResilienceOptions,
 } from './resilience/with-quote-resilience.js';
+export { ManualOverrideRegistry } from './resilience/manual-override.js';
 export {
   attemptContext,
   executeProviderCall,

@@ -945,6 +945,10 @@ export function serializePublicAgent(agent: PublicAgent): PublicAgentDto {
     scopes: [...agent.scopes],
     credentialExpiresAt: agent.credentialExpiresAt,
     credentialRevokedAt: agent.credentialRevokedAt,
+    executionAuthorized: agent.executionAuthorized,
+    executionAuthorizedAt: agent.executionAuthorizedAt,
+    executionAuthorizedByActor: agent.executionAuthorizedByActor,
+    executionAgreementReference: agent.executionAgreementReference,
   };
 }
 
@@ -1166,6 +1170,10 @@ export function serializeAgentDashboardSummary(
     dailyLimitMinorUnits: summary.dailyLimitMinorUnits,
     fundsMoved: false,
     custody: false,
+    executionAuthorized: summary.executionAuthorized,
+    executionAuthorizedAt: summary.executionAuthorizedAt,
+    executionAuthorizedByActor: summary.executionAuthorizedByActor,
+    executionAgreementReference: summary.executionAgreementReference,
   };
 }
 

@@ -12,6 +12,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ErrorState } from '@/components/states';
+import { ExecutionConsentForm } from '@/components/dashboard/execution-consent-form';
 import { fetchDashboardAgent } from '@/lib/api/client';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
 import { formatQuotedAmount, formatTimestamp } from '@/lib/format';
@@ -51,6 +52,13 @@ export default async function DashboardAgentDetailPage({
         <Badge variant="outline">{summary.status}</Badge>
         <Badge variant="outline">{summary.agentId}</Badge>
       </div>
+      <ExecutionConsentForm
+        kind="agent"
+        agentId={id}
+        authorized={summary.executionAuthorized}
+        agreementReference={summary.executionAgreementReference}
+        canManage={session.me.role === 'owner' || session.me.role === 'admin'}
+      />
       <AgentMetricsGrid summary={summary} />
 
       {spending === null ? (

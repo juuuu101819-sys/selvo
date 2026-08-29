@@ -2,6 +2,7 @@ import { TrendingDown } from 'lucide-react';
 import type { ComparisonDto } from '@/lib/api/types';
 import { displayBarPercentFromDecimal, maxDecimal } from '@/lib/chart-display';
 import { formatMoney, formatPercent } from '@/lib/format';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 
 /**
  * Every route's all-in cost on one axis.
@@ -35,8 +36,9 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
           return (
             <li key={route.routeId}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="min-w-0 truncate">
+                <span className="min-w-0 truncate inline-flex items-center gap-2">
                   {route.provider.name}
+                  <ProviderLicensingBadge licensing={route.provider.licensing} />
                   {route.recommended && (
                     <span className="ml-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       {' '}

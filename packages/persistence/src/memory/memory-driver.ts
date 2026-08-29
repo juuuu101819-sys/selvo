@@ -21,8 +21,10 @@ import { InMemoryDashboardRepository } from './memory-dashboard.js';
 import { InMemoryExecutionIntentRepository } from './memory-execution-intents.js';
 import { InMemoryIdentityStore } from './memory-identity.js';
 import { InMemoryOnboardingStore } from './memory-onboarding.js';
+import { InMemoryProviderCredentialStore } from './memory-provider-credentials.js';
 import { InMemoryRateLimitStore } from '../rate-limit/memory-store.js';
 import { InMemoryRoutingEvaluationRepository } from './memory-routing-evaluations.js';
+import { InMemoryRoutingOverrideStore } from './memory-routing-overrides.js';
 
 const DEFAULT_LIST_LIMIT = 50;
 
@@ -166,6 +168,8 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly onboarding = new InMemoryOnboardingStore(this.identity);
   readonly billing: BillingStore;
   readonly routingEvaluations: RoutingEvaluationRepository;
+  readonly routingOverrides = new InMemoryRoutingOverrideStore();
+  readonly providerCredentials = new InMemoryProviderCredentialStore();
 
   constructor() {
     const monetization = new Map<string, MonetizationEvent>();

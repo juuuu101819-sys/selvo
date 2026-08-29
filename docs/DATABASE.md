@@ -90,6 +90,9 @@ Organization ──┬── OrganizationMember ── User ── MfaRecoveryCo
                ├── MonetizationEvent ── Invoice / InvoiceLine
                ├── RoutingEvaluation
                └── AuditLog
+
+ProviderCredential          (AES-256-GCM vault; keyed by provider id, no FK to Provider)
+RoutingManualOverride       (operator kill switch; not tenant-scoped)
 ```
 
 ### Reference data
@@ -116,6 +119,9 @@ as corridor currencies: `CURRENCY_REGISTRY`, which governs what the API will pri
 `unverified` (`pending` / `verified` / `rejected` after review). `kybReason`, `kybReviewedAt`, and
 `kybReviewedByActor` record the manual-review decision. New orgs are not eligible for licensed
 quotes until `verified` **and** an in-force `CustomerPricing` row exists.
+`executionAuthorized` defaults to false (PHASE 38). It is explicit owner/admin consent for a
+future delegated-execution pilot, distinct from KYB. The flag is stored and audited; quoting,
+eligibility, and `POST /api/v1/executions` do not read it while that endpoint remains 501.
 
 **`User`** — a person. `passwordHash` is a tagged scrypt hash (the schema comment names Argon2id as
 the intended production KDF; scrypt needs no native addon, so local development stays installable).
@@ -167,7 +173,14 @@ so sandbox pricing can never reach a production caller.
 
 `adapterId` links a provider row to the `RouteProvider` adapter in `packages/adapters` that actually
 prices it. That link is what stops the registry and the integrations drifting into two independent
-lists of providers: the seed fails loudly if an adapter has no row.
+lists of providers: the seed fails loudly if an adapter has no row. The catalog stores **no
+credentials**. Adapter secrets live in **`ProviderCredential`** (`provider_credentials`): AES-256-GCM
+ciphertext keyed by provider id, write-only over HTTP. There is no foreign key to `providers` so a
+synthetic/placeholder id can be stored before a licensed partner row exists.
+
+**`RoutingManualOverride`** — operator kill switch for a provider adapter or a corridor. Active rows
+exclude the target from `MultiRailRouter` via the same `supportsNormalized === false` choke point as
+the quote circuit breaker, with no automatic reset. Released rows remain for audit.
 
 **`ProviderCapability`** — what a provider can do on one corridor: notional bounds, indicative
 spread, slippage, settlement percentiles, cut-off, intermediary asset. Separate from `Provider`
@@ -298,7 +311,8 @@ npm test
 `prisma/migrations/20260826120000_init` is a single squashed initial migration. The schema had not
 been deployed anywhere when the domain model landed, so squashing was preferable to shipping a rename
 migration for tables no database had. From here on, migrations are additive and generated with
-`npm run db:migrate`.
+`npm run db:migrate`. `prisma/migrations/20260829120000_phase38_readiness` adds inert
+`execution_authorized` columns, the `provider_credentials` vault, and `routing_manual_overrides`.
 
 When a migration is generated, any CHECK constraint, partial index or trigger it needs must be
 appended by hand, and the assertions in `prisma-driver.test.ts` extended to cover it.

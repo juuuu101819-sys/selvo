@@ -1,6 +1,7 @@
 import {
   IdempotencyConflictError,
   takeKeysetPage,
+  DEFAULT_EXECUTION_AUTHORIZATION,
   type Agent,
   type AgentCredential,
   type AgentPaymentsRepository,
@@ -45,6 +46,7 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
       status: 'active',
       createdAt: input.createdAt,
       updatedAt: input.createdAt,
+      ...DEFAULT_EXECUTION_AUTHORIZATION,
     };
     this.agents.set(agent.id, agent);
     return Promise.resolve(structuredClone(agent));
@@ -77,6 +79,32 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
       return Promise.resolve(false);
     }
     this.agents.set(id, { ...agent, status, updatedAt: nowIso });
+    return Promise.resolve(true);
+  }
+
+  updateAgentExecutionAuthorization(
+    id: string,
+    organizationId: string,
+    input: {
+      readonly executionAuthorized: boolean;
+      readonly executionAuthorizedAt: string | null;
+      readonly executionAuthorizedByActor: string | null;
+      readonly executionAgreementReference: string | null;
+      readonly nowIso: string;
+    },
+  ): Promise<boolean> {
+    const agent = this.agents.get(id);
+    if (agent === undefined || agent.organizationId !== organizationId) {
+      return Promise.resolve(false);
+    }
+    this.agents.set(id, {
+      ...agent,
+      executionAuthorized: input.executionAuthorized,
+      executionAuthorizedAt: input.executionAuthorizedAt,
+      executionAuthorizedByActor: input.executionAuthorizedByActor,
+      executionAgreementReference: input.executionAgreementReference,
+      updatedAt: input.nowIso,
+    });
     return Promise.resolve(true);
   }
 
@@ -393,6 +421,10 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
       scopes: credential === undefined ? [] : [...credential.scopes],
       credentialExpiresAt: credential?.expiresAt ?? null,
       credentialRevokedAt: credential?.revokedAt ?? null,
+      executionAuthorized: agent.executionAuthorized,
+      executionAuthorizedAt: agent.executionAuthorizedAt,
+      executionAuthorizedByActor: agent.executionAuthorizedByActor,
+      executionAgreementReference: agent.executionAgreementReference,
     };
   }
 }

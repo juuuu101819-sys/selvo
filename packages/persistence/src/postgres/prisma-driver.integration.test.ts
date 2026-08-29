@@ -88,6 +88,8 @@ describeIntegration('PostgreSQL schema', () => {
           'invoices',
           'invoice_lines',
           'routing_evaluations',
+          'routing_manual_overrides',
+          'provider_credentials',
         ]),
       );
     });

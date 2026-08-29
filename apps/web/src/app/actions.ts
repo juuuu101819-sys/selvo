@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { acceptInvite, createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, submitOnboardingKyb, updateAgentPolicy, verifyMfa, startOidcLogin, completeOidcLogin, enrollMfa, confirmMfa, regenerateMfaRecovery, updateOrgAuthSettings } from '@/lib/api/client';
-import type { AcceptInviteDto, ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, KybSubmitDto, LoginDto, MfaChallengeDto, MfaConfirmDto, MfaEnrollDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, OrgAuthSettingsDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
+import { acceptInvite, createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, submitOnboardingKyb, updateAgentPolicy, verifyMfa, startOidcLogin, completeOidcLogin, enrollMfa, confirmMfa, regenerateMfaRecovery, updateOrgAuthSettings, updateOrgExecutionAuthorization, updateAgentExecutionAuthorization } from '@/lib/api/client';
+import type { AcceptInviteDto, ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, ExecutionAuthorizationDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, KybSubmitDto, LoginDto, MfaChallengeDto, MfaConfirmDto, MfaEnrollDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, OrgAuthSettingsDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
 import { isMfaChallenge } from '@/lib/api/types';
 import {
   clearSessionCookie,
@@ -256,6 +256,41 @@ export async function saveOrgAuthSettings(input: {
   const result = await updateOrgAuthSettings(token, input);
   if (result.ok) {
     revalidatePath('/dashboard/settings');
+  }
+  return result;
+}
+
+export async function saveOrgExecutionAuthorization(input: {
+  readonly authorized: boolean;
+  readonly agreementReference?: string;
+}): Promise<ApiResult<ExecutionAuthorizationDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticated();
+  }
+  const result = await updateOrgExecutionAuthorization(token, input);
+  if (result.ok) {
+    revalidatePath('/dashboard/settings');
+  }
+  return result;
+}
+
+export async function saveAgentExecutionAuthorization(input: {
+  readonly agentId: string;
+  readonly authorized: boolean;
+  readonly agreementReference?: string;
+}): Promise<ApiResult<ExecutionAuthorizationDto>> {
+  const token = await readSessionToken();
+  if (token === null) {
+    return unauthenticated();
+  }
+  const result = await updateAgentExecutionAuthorization(token, input.agentId, {
+    authorized: input.authorized,
+    ...(input.agreementReference === undefined ? {} : { agreementReference: input.agreementReference }),
+  });
+  if (result.ok) {
+    revalidatePath(`/dashboard/agents/${input.agentId}`);
+    revalidatePath('/dashboard/agents');
   }
   return result;
 }

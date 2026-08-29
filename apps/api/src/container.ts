@@ -2,6 +2,7 @@ import {
   createFinancialCatalog,
   createSandboxAdapters,
   CircuitBreakerRegistry,
+  ManualOverrideRegistry,
   QuoteCache,
   wrapFinancialProvidersWithQuoteResilience,
   type SandboxAdapterSet,
@@ -31,6 +32,7 @@ import {
   parseRoutingWeights,
   systemClock,
   uuidIdGenerator,
+  ProviderCredentialVault,
   type AuditLogger,
   type Authenticator,
   type Clock,
@@ -78,6 +80,8 @@ export interface AppContainer {
   /** Where negotiated commercial terms come from, or `"none"` when none are configured. */
   readonly pricingResolverKind: string;
   readonly circuitBreakers: CircuitBreakerRegistry;
+  readonly manualOverrides: ManualOverrideRegistry;
+  readonly providerCredentialVault: ProviderCredentialVault;
   close(): Promise<void>;
 }
 
@@ -126,11 +130,17 @@ export function createContainer(options: ContainerOptions): AppContainer {
   });
   const circuitBreakers = new CircuitBreakerRegistry({ clock, logger });
   const quoteCache = new QuoteCache({ clock });
+  const manualOverrides = new ManualOverrideRegistry();
+  const providerCredentialVault = new ProviderCredentialVault(
+    persistence.providerCredentials,
+    config.dataEncryptionKey,
+  );
   const financialProviders = FinancialProviderRegistry.create(
     config.mode,
     wrapFinancialProvidersWithQuoteResilience(catalog, {
       cache: quoteCache,
       breakers: circuitBreakers,
+      manualOverrides,
     }),
   );
 
@@ -310,6 +320,8 @@ export function createContainer(options: ContainerOptions): AppContainer {
     defiRoutingEngineVersion: DEFI_ROUTING_ENGINE_VERSION,
     pricingResolverKind: pricingResolver === noPlatformPricingResolver ? 'none' : persistence.kind,
     circuitBreakers,
+    manualOverrides,
+    providerCredentialVault,
     close: () => persistence.close(),
   };
 }

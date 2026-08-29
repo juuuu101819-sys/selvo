@@ -7,11 +7,14 @@ import {
   type ProviderHealth,
 } from '@meridian/core';
 import type { CircuitBreakerRegistry } from './circuit-breaker.js';
+import type { ManualOverrideRegistry } from './manual-override.js';
 import type { QuoteCache } from './quote-cache.js';
 
 export interface QuoteResilienceOptions {
   readonly cache: QuoteCache;
   readonly breakers: CircuitBreakerRegistry;
+  /** Operator kill switch. Same choke point as the breaker (`supportsNormalized === false`). */
+  readonly manualOverrides?: ManualOverrideRegistry;
 }
 
 /**
@@ -32,6 +35,9 @@ export function wrapFinancialProvider(
     request: NormalizedQuoteRequest,
     context: ProviderContext,
   ): Promise<NormalizedQuote> => {
+    if (options.manualOverrides?.isProviderExcluded(inner.descriptor.id, request) === true) {
+      throw new ProviderError(inner.descriptor.id, 'manual_override');
+    }
     const breaker = options.breakers.forProvider(inner.descriptor.id);
     const cacheKey = `${inner.descriptor.id}|${request.sourceAsset}|${request.targetAsset}|${request.amountMinorUnits}`;
     const cached = options.cache.get(inner, request);
@@ -95,6 +101,9 @@ export function wrapFinancialProvider(
     get(target, prop, receiver) {
       if (prop === 'supportsNormalized') {
         return (request: NormalizedQuoteRequest): boolean => {
+          if (options.manualOverrides?.isProviderExcluded(target.descriptor.id, request) === true) {
+            return false;
+          }
           if (!options.breakers.forProvider(target.descriptor.id).allowsCandidates()) {
             return false;
           }

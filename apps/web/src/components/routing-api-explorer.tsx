@@ -5,6 +5,7 @@ import { quoteFinancialRoute, searchFinancialRoutes } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import type {
   AssetCatalogEntryDto,
   CurrencyCatalogEntryDto,
@@ -161,9 +162,10 @@ export function RoutingApiExplorer({
           <ul className="space-y-2">
             {quote.routes.map((route) => (
               <li key={route.routeId} className="border-border rounded-lg border p-3 text-sm">
-                <p className="font-medium">
+                <p className="font-medium flex flex-wrap items-center gap-2">
                   {route.rank}. {route.provider.name}
                   {route.recommended ? ' · recommended' : ''}
+                  <ProviderLicensingBadge licensing={route.provider.licensing} />
                 </p>
                 <p className="text-muted-foreground font-mono text-xs">
                   receive {formatAssetAmount(route.estimatedReceiveAmount)} · cost {route.totalCostBps}{' '}

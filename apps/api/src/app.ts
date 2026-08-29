@@ -80,6 +80,8 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
     ...(options.clock === undefined ? {} : { clock: options.clock }),
     ...(options.oidcClient === undefined ? {} : { oidcClient: options.oidcClient }),
   });
+  const activeOverrides = await container.persistence.routingOverrides.listActive();
+  container.manualOverrides.hydrate(activeOverrides);
 
   await app.register(cors, {
     origin: config.corsOrigins.length > 0 ? [...config.corsOrigins] : false,

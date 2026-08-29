@@ -54,6 +54,7 @@ export type {
   UpsertUserInput,
   UserMfaRecord,
 } from './identity.js';
+export { DEFAULT_EXECUTION_AUTHORIZATION } from './identity.js';
 export {
   FailingKybVendor,
   ManualReviewKybVendor,
@@ -216,6 +217,20 @@ export {
   deriveDataEncryptionKeyHex,
   encryptAtRest,
 } from '../crypto/encryption.js';
+export { ProviderCredentialVault } from '../crypto/provider-credential-vault.js';
+export {
+  SYNTHETIC_PLACEHOLDER_PROVIDER_ID,
+  type ProviderCredentialStore,
+  type StoredProviderCredential,
+} from './provider-credentials.js';
+export {
+  ROUTING_OVERRIDE_KINDS,
+  routingOverrideTargetKey,
+  type RoutingOverrideKind,
+  type RoutingOverrideRecord,
+  type RoutingOverrideStore,
+  type RoutingOverrideTarget,
+} from './routing-overrides.js';
 export {
   decodeBase32,
   encodeBase32,

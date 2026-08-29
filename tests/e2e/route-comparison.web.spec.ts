@@ -24,6 +24,7 @@ test('compares routes for the worked example, best route first', async ({ page }
   const best = page.getByRole('article', { name: /Best route/i });
   await expect(best).toBeVisible();
   await expect(best).toContainText('Solstice Settlement');
+  await expect(best).toContainText('Sandbox');
   await expect(best).toContainText('0.34%');
 
   const alternatives = page.getByRole('region', { name: /Alternative routes/i });

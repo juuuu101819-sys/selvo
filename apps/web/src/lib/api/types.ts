@@ -334,6 +334,10 @@ export interface SessionOrganizationDto {
   readonly name: string;
   readonly slug: string;
   readonly countryCode: string;
+  readonly executionAuthorized?: boolean;
+  readonly executionAuthorizedAt?: string | null;
+  readonly executionAuthorizedByActor?: string | null;
+  readonly executionAgreementReference?: string | null;
 }
 
 export interface LoginDto {
@@ -401,6 +405,7 @@ export interface DashboardProviderUsageDto {
   readonly providerId: string;
   readonly providerName: string;
   readonly rail: string;
+  readonly licensing?: string;
   readonly quoteCount: number;
   readonly recommendedCount: number;
   readonly averageCostBps: string | null;
@@ -545,6 +550,16 @@ export interface MfaConfirmDto {
 export interface OrgAuthSettingsDto {
   readonly requireMfaForPrivilegedRoles: boolean;
   readonly oidc: NonNullable<DashboardSettingsDto['auth']>['oidc'];
+}
+
+export interface ExecutionAuthorizationDto {
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
+  readonly functionalEffect: 'none';
+  readonly executionsRemain501: true;
+  readonly agentId?: string;
 }
 
 export interface MonetizationTotalsDto {
@@ -890,6 +905,7 @@ export interface StablecoinRouteDto {
     readonly railLabel: string;
     readonly category: string;
     readonly railFamily: string;
+    readonly licensing: string;
   };
   readonly explanation: string;
   readonly custody: false;
@@ -983,6 +999,7 @@ export interface DefiRouteDto {
     readonly railLabel: string;
     readonly category: string;
     readonly railFamily: string;
+    readonly licensing: string;
   };
   readonly explanation: string;
   readonly custody: false;
@@ -1162,6 +1179,10 @@ export interface PublicAgentDto {
   readonly scopes: readonly string[];
   readonly credentialExpiresAt: string | null;
   readonly credentialRevokedAt: string | null;
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface AgentWalletReferenceDto {
@@ -1281,6 +1302,10 @@ export interface AgentDashboardSummaryDto {
   readonly dailyLimitMinorUnits: string | null;
   readonly fundsMoved: false;
   readonly custody: false;
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface AgentDashboardDetailDto {
@@ -1299,7 +1324,11 @@ export interface AgentPolicyControlsDto {
   readonly spending: AgentSpendingSnapshotDto | null;
   readonly violations: readonly AgentPolicyViolationDto[];
   readonly availableAssets: readonly string[];
-  readonly availableProviders: readonly { readonly id: string; readonly name: string }[];
+  readonly availableProviders: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly licensing?: string;
+  }[];
   readonly availableRecipients: readonly { readonly code: string; readonly name: string }[];
   readonly routePreferences: readonly string[];
   readonly fundsMoved: false;

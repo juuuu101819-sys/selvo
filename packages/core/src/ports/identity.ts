@@ -13,6 +13,14 @@ export type OrganizationRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type MembershipStatus = 'invited' | 'active' | 'suspended' | 'removed';
 export type RecordStatus = 'active' | 'suspended' | 'retired';
 
+/** PHASE 38 readiness. Default for Organization and Agent. Inert while POST /executions is 501. */
+export const DEFAULT_EXECUTION_AUTHORIZATION = {
+  executionAuthorized: false,
+  executionAuthorizedAt: null,
+  executionAuthorizedByActor: null,
+  executionAgreementReference: null,
+} as const;
+
 export interface IdentityUser {
   readonly id: string;
   readonly email: string;
@@ -33,6 +41,14 @@ export interface IdentityOrganization {
   readonly kybReason: string | null;
   readonly kybReviewedAt: string | null;
   readonly kybReviewedByActor: string | null;
+  /**
+   * Explicit owner/admin consent for future delegated execution (PHASE 33 readiness).
+   * Default false. Inert while POST /executions is 501 — KYB and this flag are different questions.
+   */
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface UserMfaRecord {
@@ -194,6 +210,15 @@ export interface IdentityStore {
   updateOrganizationAuthSettings(
     organizationId: string,
     input: { readonly requireMfaForPrivilegedRoles: boolean },
+  ): Promise<boolean>;
+  updateOrganizationExecutionAuthorization(
+    organizationId: string,
+    input: {
+      readonly executionAuthorized: boolean;
+      readonly executionAuthorizedAt: string | null;
+      readonly executionAuthorizedByActor: string | null;
+      readonly executionAgreementReference: string | null;
+    },
   ): Promise<boolean>;
   updateOrganizationKyb(
     organizationId: string,

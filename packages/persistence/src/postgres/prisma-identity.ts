@@ -65,6 +65,36 @@ export class PrismaIdentityStore implements IdentityStore {
     }
   }
 
+  async updateOrganizationExecutionAuthorization(
+    organizationId: string,
+    input: {
+      readonly executionAuthorized: boolean;
+      readonly executionAuthorizedAt: string | null;
+      readonly executionAuthorizedByActor: string | null;
+      readonly executionAgreementReference: string | null;
+    },
+  ): Promise<boolean> {
+    try {
+      const result = await this.client.organization.updateMany({
+        where: { id: organizationId },
+        data: {
+          executionAuthorized: input.executionAuthorized,
+          executionAuthorizedAt:
+            input.executionAuthorizedAt === null ? null : new Date(input.executionAuthorizedAt),
+          executionAuthorizedByActor: input.executionAuthorizedByActor,
+          executionAgreementReference: input.executionAgreementReference,
+        },
+      });
+      return result.count > 0;
+    } catch (error) {
+      throw new PersistenceError(
+        'Failed to update organization execution authorization.',
+        {},
+        { cause: error },
+      );
+    }
+  }
+
   async updateOrganizationKyb(
     organizationId: string,
     input: {
@@ -621,6 +651,10 @@ function toOrganization(row: {
   kybReason: string | null;
   kybReviewedAt: Date | null;
   kybReviewedByActor: string | null;
+  executionAuthorized: boolean;
+  executionAuthorizedAt: Date | null;
+  executionAuthorizedByActor: string | null;
+  executionAgreementReference: string | null;
 }): IdentityOrganization {
   return {
     id: row.id,
@@ -633,6 +667,10 @@ function toOrganization(row: {
     kybReason: row.kybReason,
     kybReviewedAt: row.kybReviewedAt?.toISOString() ?? null,
     kybReviewedByActor: row.kybReviewedByActor,
+    executionAuthorized: row.executionAuthorized,
+    executionAuthorizedAt: row.executionAuthorizedAt?.toISOString() ?? null,
+    executionAuthorizedByActor: row.executionAuthorizedByActor,
+    executionAgreementReference: row.executionAgreementReference,
   };
 }
 

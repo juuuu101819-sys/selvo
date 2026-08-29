@@ -21,6 +21,27 @@ export const PROVIDER_LICENSING = [
 
 export type ProviderLicensing = (typeof PROVIDER_LICENSING)[number];
 
+/** Short UI/API labels. Do not relabel sandbox adapters as licensed (PA-C01 / PHASE 30). */
+export const PROVIDER_LICENSING_LABELS: Record<ProviderLicensing, string> = {
+  unlicensed_sandbox: 'Sandbox',
+  licensed_partner: 'Licensed partner',
+  internal_model: 'Internal model',
+};
+
+export const PROVIDER_LICENSING_HINTS: Record<ProviderLicensing, string> = {
+  unlicensed_sandbox: 'Unlicensed sandbox pricing. Indicative only; not a licensed institution.',
+  licensed_partner: 'Licensed partner quote under a commercial agreement.',
+  internal_model: 'Internal pricing model (benchmark or modelled curve), not a live licensed quote.',
+};
+
+export function isProviderLicensing(value: unknown): value is ProviderLicensing {
+  return typeof value === 'string' && (PROVIDER_LICENSING as readonly string[]).includes(value);
+}
+
+export function providerLicensingLabel(licensing: string): string {
+  return isProviderLicensing(licensing) ? PROVIDER_LICENSING_LABELS[licensing] : 'Unknown source';
+}
+
 export interface ProviderDescriptor {
   readonly id: ProviderId;
   readonly name: string;

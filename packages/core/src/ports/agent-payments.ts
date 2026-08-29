@@ -97,6 +97,17 @@ export interface AgentPaymentsRepository {
     status: AgentStatus,
     nowIso: string,
   ): Promise<boolean>;
+  updateAgentExecutionAuthorization(
+    id: string,
+    organizationId: string,
+    input: {
+      readonly executionAuthorized: boolean;
+      readonly executionAuthorizedAt: string | null;
+      readonly executionAuthorizedByActor: string | null;
+      readonly executionAgreementReference: string | null;
+      readonly nowIso: string;
+    },
+  ): Promise<boolean>;
 
   createCredential(input: CreateAgentCredentialInput): Promise<void>;
   findCredentialByPrefix(keyPrefix: string): Promise<AgentCredential | null>;

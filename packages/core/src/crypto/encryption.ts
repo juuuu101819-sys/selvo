@@ -6,7 +6,8 @@ const ALGO = 'aes-256-gcm';
 const IV_LENGTH = 12;
 
 /**
- * Domain-separated AES-256 key for secrets at rest (TOTP seeds, OIDC client secrets, OIDC nonces).
+ * Domain-separated AES-256 key for secrets at rest (TOTP seeds, OIDC client secrets, OIDC nonces,
+ * PHASE 38 provider credential vault).
  *
  * AUTH_SECRET itself is never retained. Production-locked processes already require AUTH_SECRET.
  * Development/test without AUTH_SECRET uses documented non-secret material so ciphertext is still

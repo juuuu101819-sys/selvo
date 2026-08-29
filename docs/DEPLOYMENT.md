@@ -69,7 +69,7 @@ Nothing secret is committed. `.env`, `.env.staging`, and `.env.*` are gitignored
 | `ONBOARDING_OPERATOR_SECRET` | Same secret store | Optional. Sales-ops header `X-Onboarding-Operator-Key`. Compared as SHA-256; never copied onto `AppConfig`. Missing or wrong → the same 401. ≥32 characters if set; demo/default secrets rejected. Pino redacts `req.headers["x-onboarding-operator-key"]` and `*.invite.token`. |
 | `STAGING_DB_PASSWORD` → `DATABASE_URL` | Same | URL-injected. Pino redacts `*.DATABASE_URL`. |
 | `STAGING_OPERATOR_PASSWORD` | Only with `--profile synthetic` | Not the demo password. Optional. |
-| Future `PROVIDER_*` keys | Same secret store | Not used. No licensed adapter exists; do not invent placeholder partner credentials. Never commit. |
+| Future `PROVIDER_*` keys | Same secret store | **Prefer the existing `ProviderCredential` vault** (PHASE 38): operator `POST /api/v1/ops/providers/:providerId/credentials` stores AES-256-GCM ciphertext keyed by provider id. PHASE 30 should use that mechanism rather than adding a second store. Env `PROVIDER_<ID>_*` remains a possible resolver; never commit plaintext. No licensed adapter exists yet. |
 
 CI generates fresh hex secrets per staging-smoke job; they are not stored in the repo.
 
@@ -123,6 +123,7 @@ All migrations under `prisma/migrations/` are **forward-only**. Apply with `pris
 | `20260828140000_rate_limit_buckets` | Additive. |
 | `20260828150000_mfa_oidc` | Additive ciphertext columns. |
 | `20260828160000_phase28_status_enum_daily_spend_idx` | Enum + indexes. Additive. Downgrading the app that still writes `status` as unconstrained text is safe; the enum only allows `recorded`. |
+| `20260829120000_phase38_readiness` | Additive: `execution_authorized` on orgs/agents (inert), `provider_credentials` ciphertext table, `routing_manual_overrides`. |
 
 Take a Postgres dump **before** applying a new migrate in staging:
 
@@ -266,3 +267,48 @@ tiers or explicit out-of-scope, contracted payout model, and collected revenue o
 calculate-only policy). None are on file.
 
 `POST /api/v1/executions` remains **501**.
+
+## 11. PHASE 38 readiness (kill switch, credential vault, authorization flags)
+
+These mechanisms are **buildable without a licensed provider**. They do not enable execution.
+
+### Manual kill switch
+
+Operator-only (`X-Onboarding-Operator-Key` / `ONBOARDING_OPERATOR_SECRET`), same auth as onboarding
+and billing ops:
+
+- `POST /api/v1/ops/routing/overrides` — disable a provider adapter or corridor immediately.
+  Required free-text `reason`. Audited (`routing.override.engaged`).
+- `POST /api/v1/ops/routing/overrides/release` — re-enable. Required reason. Audited.
+- `GET /api/v1/ops/routing/overrides` — active rows only.
+- `GET /api/v1/meta` → `manualOverrides` (alongside `quoteCircuits`). `autoReset` is always false.
+
+Exclusion uses the same choke point as the PHASE 26 / PA-L04 circuit breaker:
+`supportsNormalized === false`, so `MultiRailRouter` never ranks the target. Unlike the breaker,
+there is **no cooldown and no half-open probe**. Persistence survives process restart.
+
+### Provider credential vault
+
+**PHASE 30: use the existing `ProviderCredential` mechanism.** Do not add a plaintext column on
+`providers` and do not invent a second encryption scheme.
+
+- Table `provider_credentials`: AES-256-GCM envelope `v1$iv$ciphertext$tag` (same as TOTP/OIDC).
+- HTTP is **write-only**: `POST /api/v1/ops/providers/:providerId/credentials`. There is no GET of
+  plaintext. Adapter-calling code uses `ProviderCredentialVault.getPlaintext` internally.
+- Tests use the synthetic id `synthetic_placeholder_provider` (not a licensed partner name).
+
+### Execution-authorization flags
+
+`executionAuthorized` on `Organization` and `Agent` defaults **false**. Owner/admin sessions set
+them via:
+
+- `POST /api/v1/dashboard/execution-authorization`
+- `POST /api/v1/dashboard/agents/:id/execution-authorization`
+
+KYB verification is a different question. These flags currently have **zero functional effect**.
+`POST /api/v1/executions` remains **501**. PHASE 33 must not treat the flags as an execution enable.
+
+### Isolation tests
+
+`apps/api/src/routes/tenant-isolation.test.ts` enumerates org-scoped authenticated routes from the
+OpenAPI catalog and asserts Organization A cannot read or mutate Organization B data.

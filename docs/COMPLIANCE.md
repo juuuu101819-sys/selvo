@@ -9,7 +9,7 @@ backed by something in the code rather than by good intentions. Canonical produc
 
 | Boundary                                                       | Enforcement in code                                                                                                                                                                                                                    |
 | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **No custody of customer funds (fiat or crypto)**              | No wallet, account, balance, ledger or key-management code exists in the repository. There is no data model capable of representing a customer balance. `custodyFunds` and `holdCryptoAssets` are false in `PLATFORM_CAPABILITIES`.    |
+| **No custody of customer funds (fiat or crypto)**              | No wallet, account, balance, ledger or key-management code exists in the repository. There is no data model capable of representing a customer balance. `custodyFunds` and `holdCryptoAssets` are false in `PLATFORM_CAPABILITIES`. `packages/core/src/domain/custody-guardrail.test.ts` fails if a balance-like table or field is introduced. |
 | **No private keys, no wallet control**                         | No signing, no keystore, no RPC/on-chain client dependency. `holdPrivateKeys` and `controlCustomerWallets` are false. The `DexLiquidityProvider` port forbids keys and submission even if an adapter is added later.                   |
 | **No execution as principal**                                  | There is no outbound payment-initiation call anywhere in the codebase. `executeTransactions` and `operateAsPrincipal` are false. `POST /v1/executions` returns `501 EXECUTION_NOT_IMPLEMENTED`. `transaction:create` writes an execution intent (`status: recorded`); it does not pay. |
 | **API keys never store plaintext**                             | `ApiKey.secretHash` is a per-key salted scrypt digest (`hashCredential`). The secret is shown once. Request logs redact `X-Api-Key`, `Authorization`, passwords, tokens, wallets and private keys. |
@@ -40,7 +40,10 @@ rejected, execution intent recorded, execution intent rejected (expired quote), 
 lifecycle, `payment.policy.evaluated` (every allow and deny), `payment.policy.denied`, NL interpret
 and NL route completed, `monetization.recorded`, `onboarding.organization.created`,
 `onboarding.invite.issued`, `onboarding.invite.accepted`, `onboarding.kyb.submitted`,
-`onboarding.kyb.reviewed`, `onboarding.pricing.configured`. The audit repository exposes no update or delete operation.
+`onboarding.kyb.reviewed`, `onboarding.pricing.configured`, `billing.invoice.issued`,
+`billing.revenue.recognized`, `routing.override.engaged`, `routing.override.released`,
+`provider.credential.stored`, `organization.execution_authorization.updated`,
+`agent.execution_authorization.updated`. The audit repository exposes no update or delete operation.
 
 ## Data handling
 
@@ -193,4 +196,20 @@ realized-revenue-from-settlement path was added.
 Invariant ③ (customer assets never touch the platform) and invariant ② (Route View ≠ Selection ≠
 Execution Intent ≠ External Provider Execution ≠ Verified Settlement ≠ Realized Revenue) remain
 untested against real money — by design, until the four gates close.
+
+## PHASE 38 — operator kill switch, credential vault, execution consent flags
+
+PHASE 38 is **readiness plumbing**. It does **not** close PA-M09, lift PHASE 30, or enable PHASE 33.
+`POST /api/v1/executions` remains **501**.
+
+| Mechanism | Status |
+| --- | --- |
+| Manual kill switch (`POST /ops/routing/overrides`) | Live. Same `supportsNormalized` choke point as the quote circuit breaker. No automatic reset. Audited. Visible on `GET /api/v1/meta` as `manualOverrides`. |
+| Provider credential vault | Live. AES-256-GCM, write-only HTTP, synthetic-ID tests. PHASE 30 must use this rather than adding columns on `providers`. |
+| `Organization.executionAuthorized` / `Agent.executionAuthorized` | Stored, owner/admin-only, audited. **Inert** — execution, eligibility, and quoting do not read these fields. Identity (KYB) is not consent-to-execute. |
+| Sandbox UI badge | Comparison, dashboard, explorers, and policy forms show **Sandbox** for `unlicensed_sandbox`. Re-verify both states on one screen when a licensed partner exists. |
+| Invariant ③ | `packages/core/src/domain/custody-guardrail.test.ts` fails if a balance-like table or field is introduced. |
+| Cross-tenant isolation | `apps/api/src/routes/tenant-isolation.test.ts` walks the OpenAPI catalog. |
+
+These flags currently have **zero functional effect**. They exist so PHASE 33 can consult them later; they do not change quoting, ranking, billing, KYB, or the 501 gate.
 

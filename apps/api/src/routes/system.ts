@@ -161,6 +161,19 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
         cooldownMs: container.circuitBreakers.cooldownMs,
         breakers: container.circuitBreakers.snapshot(),
       },
+      manualOverrides: {
+        autoReset: false,
+        active: container.manualOverrides.snapshot().map((row) => ({
+          targetKey: row.targetKey,
+          kind: row.kind,
+          providerId: row.providerId,
+          sourceAsset: row.sourceAsset,
+          targetAsset: row.targetAsset,
+          reason: row.reason,
+          engagedAt: row.engagedAt,
+          engagedByActor: row.engagedByActor,
+        })),
+      },
       providers: container.providers.map((provider) => ({
         id: provider.id,
         name: provider.name,

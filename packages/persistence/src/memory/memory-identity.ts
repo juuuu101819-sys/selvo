@@ -20,7 +20,7 @@ import type {
   UpsertUserInput,
   UserMfaRecord,
 } from '@meridian/core';
-import { DEFAULT_KYB, uuidIdGenerator } from '@meridian/core';
+import { DEFAULT_EXECUTION_AUTHORIZATION, DEFAULT_KYB, uuidIdGenerator } from '@meridian/core';
 
 interface StoredApiKey extends Omit<IdentityApiKey, 'revokedAt'> {
   readonly createdAt: string;
@@ -129,6 +129,23 @@ export class InMemoryIdentityStore implements IdentityStore {
       ...existing,
       requireMfaForPrivilegedRoles: input.requireMfaForPrivilegedRoles,
     });
+    return Promise.resolve(true);
+  }
+
+  updateOrganizationExecutionAuthorization(
+    organizationId: string,
+    input: {
+      readonly executionAuthorized: boolean;
+      readonly executionAuthorizedAt: string | null;
+      readonly executionAuthorizedByActor: string | null;
+      readonly executionAgreementReference: string | null;
+    },
+  ): Promise<boolean> {
+    const existing = this.organizations.get(organizationId);
+    if (existing === undefined) {
+      return Promise.resolve(false);
+    }
+    this.organizations.set(organizationId, { ...existing, ...input });
     return Promise.resolve(true);
   }
 
@@ -455,6 +472,12 @@ export class InMemoryIdentityStore implements IdentityStore {
       kybReason: existing?.kybReason ?? DEFAULT_KYB.kybReason,
       kybReviewedAt: existing?.kybReviewedAt ?? DEFAULT_KYB.kybReviewedAt,
       kybReviewedByActor: existing?.kybReviewedByActor ?? DEFAULT_KYB.kybReviewedByActor,
+      executionAuthorized: existing?.executionAuthorized ?? DEFAULT_EXECUTION_AUTHORIZATION.executionAuthorized,
+      executionAuthorizedAt: existing?.executionAuthorizedAt ?? DEFAULT_EXECUTION_AUTHORIZATION.executionAuthorizedAt,
+      executionAuthorizedByActor:
+        existing?.executionAuthorizedByActor ?? DEFAULT_EXECUTION_AUTHORIZATION.executionAuthorizedByActor,
+      executionAgreementReference:
+        existing?.executionAgreementReference ?? DEFAULT_EXECUTION_AUTHORIZATION.executionAgreementReference,
     });
     return Promise.resolve();
   }

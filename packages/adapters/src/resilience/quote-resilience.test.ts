@@ -24,6 +24,7 @@ import {
 } from '@meridian/core';
 import { describe, expect, it } from 'vitest';
 import { CircuitBreakerRegistry } from './circuit-breaker.js';
+import { ManualOverrideRegistry } from './manual-override.js';
 import { QuoteCache } from './quote-cache.js';
 import { wrapFinancialProvidersWithQuoteResilience } from './with-quote-resilience.js';
 
@@ -396,5 +397,89 @@ describe('PA-L04 circuit breaker', () => {
         requestId: 'req_1',
       }),
     ).rejects.toBeInstanceOf(UnsupportedCorridorError);
+  });
+});
+
+describe('PHASE 38 manual kill switch', () => {
+  it('excludes a healthy provider from ranking immediately and does not auto-reset', async () => {
+    const clock = new FixedClock('2026-03-01T09:00:00.000Z');
+    const breakers = new CircuitBreakerRegistry({
+      clock,
+      logger: noopLogger,
+      failureThreshold: 3,
+      cooldownMs: 30_000,
+    });
+    const overrides = new ManualOverrideRegistry();
+    const healthy = new CountingProvider(
+      { id: 'healthy', name: 'Healthy', rail: 'payment_institution' },
+      'USD',
+      'KRW',
+      'quote',
+      '1294',
+    );
+    const other = new CountingProvider({ id: 'other', name: 'Other', rail: 'bank_fx' }, 'USD', 'KRW', 'quote', '1290');
+    const [healthyWrapped, otherWrapped] = wrapFinancialProvidersWithQuoteResilience(
+      [healthy, other],
+      { cache: new QuoteCache({ clock }), breakers, manualOverrides: overrides },
+    );
+    if (healthyWrapped === undefined || otherWrapped === undefined) {
+      throw new Error('expected wrappers');
+    }
+
+    expect(healthyWrapped.supportsNormalized(REQUEST)).toBe(true);
+    overrides.engage({
+      id: 'rvo_1',
+      targetKey: 'provider:healthy',
+      kind: 'provider',
+      providerId: 'healthy',
+      sourceAsset: null,
+      targetAsset: null,
+      reason: 'incident response',
+      engagedAt: clock.nowIso(),
+      engagedByActor: 'onboarding_operator',
+      releasedAt: null,
+      releasedByActor: null,
+      releaseReason: null,
+    });
+    expect(healthyWrapped.supportsNormalized(REQUEST)).toBe(false);
+    expect(otherWrapped.supportsNormalized(REQUEST)).toBe(true);
+    expect(breakers.snapshot().find((row) => row.providerId === 'healthy')?.state).toBe('closed');
+
+    clock.advance(60_000);
+    expect(healthyWrapped.supportsNormalized(REQUEST)).toBe(false);
+    await expect(healthyWrapped.getQuote(REQUEST, contextFor(clock))).rejects.toThrow(/manual_override/);
+    expect(healthy.quoteCalls).toBe(0);
+
+    const registry = FinancialProviderRegistry.create('sandbox', [healthyWrapped, otherWrapped]);
+    expect(registry.eligible(REQUEST).map((provider) => provider.descriptor.id)).toEqual(['other']);
+  });
+
+  it('excludes every provider on a killed corridor', async () => {
+    const clock = new FixedClock('2026-03-01T09:00:00.000Z');
+    const overrides = new ManualOverrideRegistry();
+    overrides.engage({
+      id: 'rvo_corridor',
+      targetKey: 'corridor:USD|KRW',
+      kind: 'corridor',
+      providerId: null,
+      sourceAsset: 'USD',
+      targetAsset: 'KRW',
+      reason: 'corridor incident',
+      engagedAt: clock.nowIso(),
+      engagedByActor: 'onboarding_operator',
+      releasedAt: null,
+      releasedByActor: null,
+      releaseReason: null,
+    });
+    const inner = new CountingProvider({ id: 'bank', rail: 'bank_fx' }, 'USD', 'KRW', 'quote');
+    const [wrapped] = wrapFinancialProvidersWithQuoteResilience([inner], {
+      cache: new QuoteCache({ clock }),
+      breakers: new CircuitBreakerRegistry({ clock, logger: noopLogger }),
+      manualOverrides: overrides,
+    });
+    if (wrapped === undefined) {
+      throw new Error('expected wrapper');
+    }
+    expect(wrapped.supportsNormalized(REQUEST)).toBe(false);
   });
 });

@@ -8,6 +8,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ErrorState } from '@/components/states';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import { fetchDashboardProviders } from '@/lib/api/client';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
 import { formatBps, formatSettlement } from '@/lib/format';
@@ -42,6 +43,7 @@ export default async function DashboardProvidersPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Provider</TableHead>
+              <TableHead>Source</TableHead>
               <TableHead>Rail</TableHead>
               <TableHead>Quotes</TableHead>
               <TableHead>Recommended</TableHead>
@@ -53,6 +55,9 @@ export default async function DashboardProvidersPage() {
             {providers.map((provider) => (
               <TableRow key={provider.providerId}>
                 <TableCell>{provider.providerName}</TableCell>
+                <TableCell>
+                  <ProviderLicensingBadge licensing={provider.licensing} />
+                </TableCell>
                 <TableCell className="font-mono text-xs">{provider.rail}</TableCell>
                 <TableCell className="tabular-nums">{provider.quoteCount}</TableCell>
                 <TableCell className="tabular-nums">{provider.recommendedCount}</TableCell>

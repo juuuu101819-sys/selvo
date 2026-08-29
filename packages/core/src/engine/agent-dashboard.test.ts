@@ -14,6 +14,10 @@ const agent: PublicAgent = {
   scopes: [],
   credentialExpiresAt: null,
   credentialRevokedAt: null,
+  executionAuthorized: false,
+  executionAuthorizedAt: null,
+  executionAuthorizedByActor: null,
+  executionAgreementReference: null,
 };
 
 const policy: PaymentPolicy = {

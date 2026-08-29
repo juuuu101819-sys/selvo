@@ -13,9 +13,9 @@
 //   * Closed sets are PostgreSQL enums rather than free text, so the database rejects a value the
 //     domain does not recognise. This is what lets the non-custody boundary be enforced by the
 //     schema: TransactionRequestStatus has no settled, executed or funded state to write.
-//   * No credential is ever stored for a provider. Provider secrets are resolved from the
-//     environment through the SecretResolver port; the metadata column holds only non-secret
-//     operational detail such as a base URL or a support contact.
+//   * The `providers` catalog table stores no credentials of any kind. Adapter secrets live in
+//     `provider_credentials` as AES-256-GCM ciphertext (PHASE 38 vault), never as plaintext
+//     columns on `providers`. The metadata column holds only non-secret operational detail.
 //
 // See docs/DATABASE.md for the full narrative and the field-name mapping.
 
@@ -221,6 +221,12 @@ model Organization {
   kybReason           String?   @map("kyb_reason")
   kybReviewedAt       DateTime? @map("kyb_reviewed_at") @db.Timestamptz(3)
   kybReviewedByActor  String?   @map("kyb_reviewed_by_actor")
+  /// Explicit owner/admin consent for future delegated execution. Default false. Inert while
+  /// POST /executions is 501 — KYB verification is a different question from this flag.
+  executionAuthorized           Boolean   @default(false) @map("execution_authorized")
+  executionAuthorizedAt         DateTime? @map("execution_authorized_at") @db.Timestamptz(3)
+  executionAuthorizedByActor    String?   @map("execution_authorized_by_actor")
+  executionAgreementReference   String?   @map("execution_agreement_reference")
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -460,6 +466,12 @@ model Agent {
   organizationId String       @map("organization_id")
   name           String
   status         RecordStatus @default(active)
+  /// Owner/admin flag that this agent may eventually be used for real delegated execution.
+  /// Distinct from mag_ quote/payment scopes. Default false. Inert while executions remain 501.
+  executionAuthorized           Boolean   @default(false) @map("execution_authorized")
+  executionAuthorizedAt         DateTime? @map("execution_authorized_at") @db.Timestamptz(3)
+  executionAuthorizedByActor    String?   @map("execution_authorized_by_actor")
+  executionAgreementReference   String?   @map("execution_agreement_reference")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -717,7 +729,7 @@ model Provider {
   /// How long this provider's quotes stay indicative.
   quoteTtlSeconds  Int               @map("quote_ttl_seconds")
   /// Non-secret operational metadata only: base URL, docs link, support contact, SLA notes.
-  /// Credentials are resolved from the environment through the SecretResolver port.
+  /// Adapter secrets are AES-256-GCM rows in `provider_credentials`, never columns here.
   metadata         Json              @default("{}")
   createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -730,6 +742,44 @@ model Provider {
   @@index([rail, status])
   @@index([status])
   @@map("providers")
+}
+
+/// Encrypted adapter secrets (PHASE 38). Not a licensed-provider table — keyed by opaque provider
+/// id so PHASE 30 can store real credentials here. No FK to `providers`: a synthetic test id is
+/// valid, and the catalog must remain credential-free.
+model ProviderCredential {
+  id         String   @id
+  providerId String   @map("provider_id")
+  keyName    String   @map("key_name")
+  /// AES-256-GCM envelope `v1$iv$ciphertext$tag`. Never plaintext. Enforced by CHECK.
+  ciphertext String
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([providerId, keyName])
+  @@index([providerId])
+  @@map("provider_credentials")
+}
+
+/// Operator kill-switch rows. Distinct from the automatic quote circuit breaker: no cooldown and
+/// no half-open probe. Exclusion still happens through `supportsNormalized === false` (PA-L04).
+model RoutingManualOverride {
+  id               String    @id
+  targetKey        String    @map("target_key")
+  kind             String
+  providerId       String?   @map("provider_id")
+  sourceAsset      String?   @map("source_asset") @db.VarChar(16)
+  targetAsset      String?   @map("target_asset") @db.VarChar(16)
+  reason           String
+  engagedAt        DateTime  @map("engaged_at") @db.Timestamptz(3)
+  engagedByActor   String    @map("engaged_by_actor")
+  releasedAt       DateTime? @map("released_at") @db.Timestamptz(3)
+  releasedByActor  String?   @map("released_by_actor")
+  releaseReason    String?   @map("release_reason")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([targetKey])
+  @@map("routing_manual_overrides")
 }
 
 /// What a provider can actually do on one corridor: limits, timing and indicative spread.

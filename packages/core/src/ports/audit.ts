@@ -57,6 +57,11 @@ export const AUDIT_EVENT_TYPES = [
   'onboarding.pricing.configured',
   'billing.invoice.issued',
   'billing.revenue.recognized',
+  'routing.override.engaged',
+  'routing.override.released',
+  'provider.credential.stored',
+  'organization.execution_authorization.updated',
+  'agent.execution_authorization.updated',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

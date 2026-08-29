@@ -4,6 +4,7 @@ import { ChevronDown, Clock, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import { QuoteExpiryBadge } from '@/components/quote-expiry';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -46,6 +47,7 @@ export function BestRoute({ route }: { route: RouteDto }) {
               <Badge variant="outline" className="text-xs">
                 {route.provider.railLabel}
               </Badge>
+              <ProviderLicensingBadge licensing={route.provider.licensing} />
               <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">
                 <Sparkles className="size-3" aria-hidden />
                 Recommended

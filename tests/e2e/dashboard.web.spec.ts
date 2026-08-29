@@ -72,6 +72,7 @@ test('shows provider usage computed from stored quotes', async ({ page }) => {
 
   await expect(page.getByRole('heading', { name: /Providers/i })).toBeVisible();
   await expect(page.getByText('Northgate Bank')).toBeVisible();
+  await expect(page.getByText('Sandbox').first()).toBeVisible();
 });
 
 test("settings list only this organization's members and never API secrets", async ({ page }) => {

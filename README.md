@@ -35,6 +35,8 @@ PHASE 35 (platform-fee collection) was not run: legal entity, tax, and processor
 unconfirmed; invoices stay uncollected.
 PHASE 36 (subscriptions and partner payouts) was not run: tiers, contracted partners, and a
 payout rail remain unconfirmed; PHASE 35 collection is still deferred.
+PHASE 38 added operator kill switch, provider credential vault, and inert execution-consent
+flags; `POST /v1/executions` stays 501.
 
 ## Running it locally
 

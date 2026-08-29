@@ -4,6 +4,7 @@ import { ChevronDown, Clock, Coins, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import { QuoteExpiryBadge } from '@/components/quote-expiry';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -32,6 +33,7 @@ export function RouteCard({ route }: { route: RouteDto }) {
               <Badge variant="outline" className="text-xs">
                 {route.provider.railLabel}
               </Badge>
+              <ProviderLicensingBadge licensing={route.provider.licensing} />
               <QuoteExpiryBadge expiresAt={route.quote.expiresAt} />
             </div>
             {route.quote.intermediaryAsset !== null && (

@@ -823,6 +823,10 @@ export interface PublicAgentDto {
   readonly scopes: readonly string[];
   readonly credentialExpiresAt: string | null;
   readonly credentialRevokedAt: string | null;
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface IssuedAgentDto extends PublicAgentDto {
@@ -1018,6 +1022,10 @@ export interface AgentDashboardSummaryDto {
   readonly dailyLimitMinorUnits: string | null;
   readonly fundsMoved: false;
   readonly custody: false;
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: string | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 export interface AgentDashboardDetailDto {
@@ -1036,7 +1044,11 @@ export interface AgentPolicyControlsDto {
   readonly spending: AgentSpendingSnapshotDto | null;
   readonly violations: readonly AgentPolicyViolationDto[];
   readonly availableAssets: readonly string[];
-  readonly availableProviders: readonly { readonly id: string; readonly name: string }[];
+  readonly availableProviders: readonly {
+    readonly id: string;
+    readonly name: string;
+    readonly licensing?: string;
+  }[];
   readonly availableRecipients: readonly {
     readonly code: string;
     readonly name: string;

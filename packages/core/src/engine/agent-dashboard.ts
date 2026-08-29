@@ -59,6 +59,10 @@ export function summarizeAgentDashboard(input: {
     dailyLimitMinorUnits: dailyLimit,
     fundsMoved: false,
     custody: false,
+    executionAuthorized: input.agent.executionAuthorized,
+    executionAuthorizedAt: input.agent.executionAuthorizedAt,
+    executionAuthorizedByActor: input.agent.executionAuthorizedByActor,
+    executionAgreementReference: input.agent.executionAgreementReference,
   };
 }
 

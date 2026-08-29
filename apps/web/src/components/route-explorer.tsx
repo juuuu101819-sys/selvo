@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import type { ApiFailure, MultiRailRoutingDto } from '@/lib/api/types';
 import { formatAssetAmount, formatBps, formatSettlement } from '@/lib/format';
 
@@ -145,6 +146,7 @@ function RoutingResult({
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg">{recommended.provider.name}</CardTitle>
               <Badge>Recommended</Badge>
+              <ProviderLicensingBadge licensing={recommended.provider.licensing} />
               <Badge variant="secondary">{recommended.provider.railFamily}</Badge>
               <span className="font-mono text-sm">score {recommended.routeScore}</span>
             </div>
@@ -191,6 +193,7 @@ function RoutingResult({
                     {route.rank}. {route.provider.name}
                   </CardTitle>
                   <div className="flex items-center gap-2">
+                    <ProviderLicensingBadge licensing={route.provider.licensing} />
                     <Badge variant="secondary">{route.provider.category}</Badge>
                     <span className="font-mono text-xs">score {route.routeScore}</span>
                   </div>

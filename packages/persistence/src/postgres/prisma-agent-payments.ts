@@ -82,6 +82,33 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
     return result.count > 0;
   }
 
+  async updateAgentExecutionAuthorization(
+    id: string,
+    organizationId: string,
+    input: {
+      readonly executionAuthorized: boolean;
+      readonly executionAuthorizedAt: string | null;
+      readonly executionAuthorizedByActor: string | null;
+      readonly executionAgreementReference: string | null;
+      readonly nowIso: string;
+    },
+  ): Promise<boolean> {
+    const result = await this.write(() =>
+      this.client.agent.updateMany({
+        where: { id, organizationId },
+        data: {
+          executionAuthorized: input.executionAuthorized,
+          executionAuthorizedAt:
+            input.executionAuthorizedAt === null ? null : new Date(input.executionAuthorizedAt),
+          executionAuthorizedByActor: input.executionAuthorizedByActor,
+          executionAgreementReference: input.executionAgreementReference,
+          updatedAt: new Date(input.nowIso),
+        },
+      }),
+    );
+    return result.count > 0;
+  }
+
   async createCredential(input: CreateAgentCredentialInput): Promise<void> {
     await this.write(() =>
       this.client.agentCredential.create({
@@ -433,6 +460,10 @@ interface AgentRow {
   readonly status: string;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+  readonly executionAuthorized: boolean;
+  readonly executionAuthorizedAt: Date | null;
+  readonly executionAuthorizedByActor: string | null;
+  readonly executionAgreementReference: string | null;
 }
 
 interface CredentialRow {
@@ -524,6 +555,10 @@ function toAgent(row: AgentRow): Agent {
     status: row.status as AgentStatus,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    executionAuthorized: row.executionAuthorized,
+    executionAuthorizedAt: row.executionAuthorizedAt?.toISOString() ?? null,
+    executionAuthorizedByActor: row.executionAuthorizedByActor,
+    executionAgreementReference: row.executionAgreementReference,
   };
 }
 

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import type { AgentPolicyControlsDto } from '@/lib/api/types';
 import { majorToMinorUnits, minorToMajorUnits } from '@/lib/format';
+import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 
 const PREFERENCE_LABELS: Record<string, string> = {
   lowest_cost: 'Lowest cost',
@@ -204,9 +205,11 @@ export function AgentPolicyForm({
               size="sm"
               variant={providers.includes(provider.id) ? 'default' : 'outline'}
               aria-pressed={providers.includes(provider.id)}
+              className="inline-flex items-center gap-2"
               onClick={() => toggle(providers, provider.id, setProviders)}
             >
               {provider.name}
+              <ProviderLicensingBadge licensing={provider.licensing} />
             </Button>
           ))}
         </CardContent>

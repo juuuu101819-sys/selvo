@@ -159,6 +159,15 @@ describe('GET /v1/meta', () => {
     expect(circuits.breakers.every((breaker) => breaker.consecutiveFailures === 0)).toBe(true);
   });
 
+  it('publishes an empty manualOverrides list next to quoteCircuits', async () => {
+    const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
+    const overrides = response.json<{
+      data: { manualOverrides: { autoReset: boolean; active: unknown[] } };
+    }>().data.manualOverrides;
+    expect(overrides.autoReset).toBe(false);
+    expect(overrides.active).toEqual([]);
+  });
+
   it('publishes the DeFi liquidity routing engine version', async () => {
     const response = await harness.app.inject({ method: 'GET', url: '/v1/meta' });
     const data = response.json<{

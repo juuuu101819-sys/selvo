@@ -13,6 +13,7 @@ import { ErrorState } from '@/components/states';
 import { fetchDashboardSettings, fetchMfaStatus } from '@/lib/api/client';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
 import { SecuritySettings } from './security-settings';
+import { ExecutionConsentForm } from '@/components/dashboard/execution-consent-form';
 
 export default async function DashboardSettingsPage() {
   const session = await loadDashboardSession();
@@ -115,6 +116,13 @@ export default async function DashboardSettingsPage() {
           canManageOrg={canManageOrg}
         />
       ) : null}
+
+      <ExecutionConsentForm
+        kind="organization"
+        authorized={organization?.executionAuthorized ?? false}
+        agreementReference={organization?.executionAgreementReference ?? null}
+        canManage={canManageOrg}
+      />
     </div>
   );
 }
