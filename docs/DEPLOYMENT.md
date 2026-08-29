@@ -232,3 +232,19 @@ audit event.
 
 Related: [`PRODUCTION_GATES.md`](./PRODUCTION_GATES.md), [`COMPLIANCE.md`](./COMPLIANCE.md),
 [`DATABASE.md`](./DATABASE.md), [`API.md`](./API.md).
+
+## 9. PHASE 35 — do not collect platform-fee invoices from this deploy
+
+PHASE 35 (payment collection for PHASE 32 invoices) was **not implemented**. A deploy of this
+revision must **not** be operated as if Stripe, a Korean PG, a bank-transfer confirmation desk, or
+any other collector is live. `collectionStatus` stays `uncollected`. `issuerLegalEntity` stays
+`unconfirmed`. `taxMinorUnits` stays `0` because tax rules were not confirmed. `realizedRevenue`
+stays false. No card or bank credentials are stored because no collection path exists to receive
+them.
+
+Lifting that gate requires the three confirmations in [`COMPLIANCE.md`](./COMPLIANCE.md) (legal
+entity, tax or explicit tax-out-of-scope, named processor or bank-transfer-only). None are on
+file. Do not set a processor API key in production config to “try” collection.
+
+`POST /api/v1/executions` remains **501**; platform-fee collection is unrelated to customer-transaction
+execution and was not enabled either.

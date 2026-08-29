@@ -700,6 +700,11 @@ Organization-scoped issued platform-fee invoices. Amounts are integer minor unit
 monetization snapshots — billing never recomputes take-rate. `collectionStatus` is `uncollected`.
 `realizedRevenue` and `collected` are always false. Payment collection is deferred.
 
+PHASE 35 did **not** change this. Legal entity, tax treatment, and a named processor (or an
+explicit bank-transfer-only decision) were not confirmed outside Cursor, so
+`DeferredPlatformFeeCollector` was left in place. `issuerLegalEntity` remains `"unconfirmed"`.
+Tax remains `"0"` as a documented gap, not a calculated rate.
+
 ## `GET /api/v1/dashboard/invoices/:id`
 
 One invoice for this organization, including line items that each name a `monetizationEventId`.

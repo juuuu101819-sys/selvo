@@ -121,6 +121,29 @@ codebase:
 `realizedRevenue` stays false on invoiced snapshots until a confirmed collection adapter writes
 `collected`. `POST /api/v1/executions` remains 501.
 
+## PHASE 35 — do not collect platform-fee invoices until the three gates close
+
+PHASE 35 would implement collection for PHASE 32 invoices (processor adapter **or** audited
+manual bank-transfer confirmation). The prompt is a **business + legal decision gate**: do not run
+in Cursor until **all three** confirmations exist **outside** this session.
+
+As of 2026-08-29 this gate is **not satisfied**. Therefore PHASE 35 was **not implemented**.
+Invoices stay `uncollected`. `issuerLegalEntity` stays `unconfirmed`. Tax stays `0` as a documented
+gap, not as an implemented tax engine.
+
+| Confirmation | Status (2026-08-29) | Why it is required |
+| ------------ | ------------------- | ------------------ |
+| Legal entity that issues invoices / collects payment | **Missing** — still stored as `unconfirmed`. Inventing an entity name in code would misrepresent who is billing. | Invoices name an issuer. An unconfirmed issuer must not start taking payment. |
+| Tax/VAT/sales-tax rules **or** an explicit “tax out of scope, remain 0” decision recorded here | **Missing** as a *confirmed* out-of-scope decision. The current `0` is PHASE 32’s deferral, not a signed tax position. | Guessing a rate is a tax implementation. Leaving `0` without the explicit PHASE 35 confirmation is the fail-closed default. |
+| Named contracted processor **or** explicit bank-transfer-only / manual-confirmation decision | **Missing.** No Stripe, Toss, KCP, or other processor of record. No written “wires only” decision. | The adapter shape depends on this. Building a fake processor or a generic “charge” endpoint would be a second billing path invented in Cursor. |
+
+**If any of the three is not confirmed, do not run PHASE 35.** Continue operating with
+`DeferredPlatformFeeCollector`. That is the state after this session: no collection adapter, no
+webhook, no operator “mark collected” endpoint, no `realizedRevenue: true` from payment.
+
+Invariant ② (Route View ≠ … ≠ Verified Settlement ≠ Realized Revenue) still forbids marking
+platform-fee revenue realized because a processor call “didn’t error.”
+
 ## Before any live execution / AI-agent payment pilot (Phase 5 / PHASE 33)
 
 PHASE 33 (roadmap item 21) would lift `POST /api/v1/executions` off its 501 gate for a **narrow,

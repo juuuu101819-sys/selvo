@@ -539,4 +539,32 @@ runs the full Playwright suite (`E2E_DATABASE_DRIVER=postgres`). The existing in
 unchanged. Migrations-from-scratch is seconds relative to Playwright, so the job runs on every
 push/PR rather than main-only.
 
+## Phase 35 — Platform-fee payment collection _(blocked — legal entity, tax, and processor unconfirmed)_
+
+Would replace `DeferredPlatformFeeCollector` with a real collection path for **PHASE 32 platform-fee
+invoices** — not customer-transaction execution. The prompt forbids running this in Cursor until
+**all three** of the following are confirmed **outside** this session:
+
+1. **Legal entity confirmed** — the same entity referenced as PHASE 32 `issuerLegalEntity`. It must
+   no longer be `unconfirmed`.
+2. **Tax/VAT/sales-tax handling confirmed** for billed jurisdictions, **or** an explicit decision
+   that tax stays out of scope (`taxMinorUnits` remains `"0"`, documented as a known gap).
+3. **Payment processor chosen** — a named, contracted processor (Stripe, Toss Payments, KCP, …)
+   **or** an explicit decision that this phase is wire/bank-transfer-only with **no** processor
+   integration. That choice determines the adapter. Do not proceed without it.
+
+**As of 2026-08-29 none of the three are confirmed.** `docs/COMPLIANCE.md` still records legal
+entity, tax rules, and collection mechanism as **Missing**. This session did **not** implement a
+processor adapter, hosted payment page, webhook, manual wire-confirmation operator flow, card or
+bank token storage, or a write of `collectionStatus: collected` / `realizedRevenue: true`.
+
+`issuerLegalEntity` remains **`unconfirmed`**. Tax remains **`0`** because tax was not confirmed —
+that is a known gap, not a computed zero-rate. `DeferredPlatformFeeCollector` still does not collect.
+No raw payment credentials are stored (there is still no collection path that would receive them).
+`POST /api/v1/executions` remains the audited **501**. Invariant ② is unchanged: realized platform-fee
+revenue is not fabricated from a non-error HTTP response.
+
+Do not invent a processor, issuer name, or tax table to “try” collection. Re-run this phase only
+after the three confirmations are on file in `docs/COMPLIANCE.md`.
+
 

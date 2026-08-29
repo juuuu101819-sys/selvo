@@ -31,6 +31,8 @@ stablecoins, or provide regulated financial services without a licensed partner.
 in code, not just documented — see [docs/COMPLIANCE.md](./docs/COMPLIANCE.md).
 `POST /v1/executions` returns a deliberate, audited `501`. PHASE 33 (real-execution pilot) was
 not run: the four business/legal gates in `docs/COMPLIANCE.md` are unconfirmed.
+PHASE 35 (platform-fee collection) was not run: legal entity, tax, and processor remain
+unconfirmed; invoices stay uncollected.
 
 ## Running it locally
 

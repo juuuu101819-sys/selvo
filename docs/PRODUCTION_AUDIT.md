@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M09 partner payouts / payment collection, PA-L05) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution. PHASE 33 (AI-agent payment pilot) was **not run**: the four business/legal gates were unconfirmed outside Cursor, so `POST /api/v1/executions` was left at 501. PHASE 34 added cursor pagination (PA-M07), multi-rail fingerprint/replay (PA-M10), and a clean-Postgres e2e CI job (PA-L06). `ROUTING_ENGINE_VERSION` remains 1.0.0.
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M09 partner payouts / payment collection, PA-L05) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution. PHASE 33 (AI-agent payment pilot) was **not run**: the four business/legal gates were unconfirmed outside Cursor, so `POST /api/v1/executions` was left at 501. PHASE 34 added cursor pagination (PA-M07), multi-rail fingerprint/replay (PA-M10), and a clean-Postgres e2e CI job (PA-L06). PHASE 35 (platform-fee payment collection) was **not run**: legal entity, tax treatment, and a named payment processor (or an explicit bank-transfer-only decision) were unconfirmed outside Cursor, so `issuerLegalEntity` stays `unconfirmed`, `taxMinorUnits` stays `0`, and `DeferredPlatformFeeCollector` still does not collect. `ROUTING_ENGINE_VERSION` remains 1.0.0.
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -692,6 +692,20 @@ No ranking-relevant behaviour changed. `ROUTING_ENGINE_VERSION` remains **1.0.0*
 
 ---
 
+## PHASE 35 — Platform-fee payment collection (not run)
+
+The prompt required three confirmations **outside Cursor** before replacing `DeferredPlatformFeeCollector`:
+
+1. Legal entity that issues invoices — the same entity stored as `issuerLegalEntity` — must no longer be `unconfirmed`.
+2. Tax/VAT/sales-tax handling confirmed for billed jurisdictions, **or** an explicit decision that tax stays out of scope (`taxMinorUnits` remains `0`, documented as a known gap).
+3. A **named, contracted** payment processor (Stripe, Toss, KCP, …) **or** an explicit decision that collection is bank-transfer/manual-confirmation only, with no processor integration.
+
+**None were confirmed.** This session did **not** add a processor adapter, a hosted payment page, a webhook, a manual-confirm operator endpoint, card/bank token storage, or a `collected` / `realizedRevenue: true` write path. Do **not** read this audit as “platform fees are now collected.” Collection is **not** live. `issuerLegalEntity` remains `unconfirmed`. Tax remains `0` because tax rules were not confirmed — that is a known gap, not an implemented zero-rate. `DeferredPlatformFeeCollector` still refuses to mark an invoice paid. Invariant ② still holds: `realizedRevenue` is not set from “the API call did not error.” `POST /api/v1/executions` remains 501; this phase is unrelated to customer-transaction execution.
+
+Re-run only after the three confirmations are on file in `docs/COMPLIANCE.md`. Inventing a processor, a legal entity name, or a tax table to “try” collection is forbidden.
+
+---
+
 ## Controls to keep
 
 Do not “clean up” these as if they were incomplete features:
@@ -708,4 +722,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. PHASE 34 added cursor pagination, multi-rail fingerprint/replay, and a clean-Postgres e2e job. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M09 collection/tax/partner AP, PA-L05, plus SCIM and worker queue.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. PHASE 34 added cursor pagination, multi-rail fingerprint/replay, and a clean-Postgres e2e job. PHASE 35 was refused pending legal entity, tax, and processor (or bank-transfer-only) confirmation. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M09 collection/tax/partner AP, PA-L05, plus SCIM and worker queue.*
