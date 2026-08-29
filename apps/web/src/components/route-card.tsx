@@ -38,8 +38,8 @@ export function RouteCard({ route }: { route: RouteDto }) {
             </div>
             {route.quote.intermediaryAsset !== null && (
               <p className="text-muted-foreground text-xs">
-                Settles the middle leg in {route.quote.intermediaryAsset} through licensed on-ramp
-                and off-ramp partners.
+                Quoted middle leg in {route.quote.intermediaryAsset}. Meridian never holds the
+                asset and does not settle this corridor.
               </p>
             )}
           </div>

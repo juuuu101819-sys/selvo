@@ -213,3 +213,18 @@ PHASE 38 is **readiness plumbing**. It does **not** close PA-M09, lift PHASE 30,
 
 These flags currently have **zero functional effect**. They exist so PHASE 33 can consult them later; they do not change quoting, ranking, billing, KYB, or the 501 gate.
 
+## PHASE 39 — pre-launch verification (referral-model MVP)
+
+Verification only. No new capabilities. `POST /api/v1/executions` remains **501**. PHASE 30/33/35/36
+remain blocked pending confirmation outside Cursor.
+
+| Check | Result |
+| --- | --- |
+| PA-C01–C03, PA-H01–H13, PA-M01–M08/M10–M16, PA-L01–L04/L06 | Re-verified FIXED (tests + live sandbox/staging). |
+| PA-M09 remainder, PA-L05 | Still deferred / PARTIAL — not launch blockers for quoting + referral attribution. |
+| Kill switch, isolation, custody guardrail | Still pass. |
+| Positioning copy | Landing/README no longer imply a connected licensed partner. |
+| Counsel draft `COMPLIANCE_BOUNDARY_DRAFT.md` | Still absent; this file (`COMPLIANCE.md`) remains the in-repo boundary. |
+
+Full tables and live evidence: [`PRE_LAUNCH_READINESS.md`](./PRE_LAUNCH_READINESS.md).
+

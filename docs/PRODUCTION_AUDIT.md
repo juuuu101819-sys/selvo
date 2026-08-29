@@ -739,4 +739,15 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. PHASE 34 added cursor pagination, multi-rail fingerprint/replay, and a clean-Postgres e2e job. PHASE 35 was refused pending legal entity, tax, and processor (or bank-transfer-only) confirmation. PHASE 36 was refused pending subscription-tier, contracted-partner/payout-rail, and PHASE 35 collection confirmation. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M09 collection/tax/subscriptions/partner AP, PA-L05, plus SCIM and worker queue.*
+## PHASE 39 — Pre-launch verification (2026-08-29)
+
+Referral-model MVP path only (quote/compare/recommend + attributed take-rate; no live execution).
+Full report: [`docs/PRE_LAUNCH_READINESS.md`](./PRE_LAUNCH_READINESS.md).
+
+Re-ran PA-C/H/M/L regression tests, isolation, custody guardrail, kill switch, `npm audit --audit-level=moderate` (0), live sandbox + production-locked staging (`POST /executions` **501** both). One positioning-copy honesty issue was fixed (landing/README/route cards no longer imply a connected licensed partner). No PA control regressed. Status names were not renamed.
+
+Verdict for **this** launch path: **READY TO LAUNCH (referral-model MVP)**. Still **not** a live financial-service / execution deployment. PHASE 30/33/35/36 remain correctly blocked.
+
+---
+
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. PHASE 34 added cursor pagination, multi-rail fingerprint/replay, and a clean-Postgres e2e job. PHASE 35 was refused pending legal entity, tax, and processor (or bank-transfer-only) confirmation. PHASE 36 was refused pending subscription-tier, contracted-partner/payout-rail, and PHASE 35 collection confirmation. PHASE 37 is design-only (`docs/TREASURY_DESIGN.md`). PHASE 38 added kill switch, credential vault, isolation/custody tests. PHASE 39 verified the referral-model MVP path. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M09 collection/tax/subscriptions/partner AP, PA-L05, plus SCIM and worker queue.*

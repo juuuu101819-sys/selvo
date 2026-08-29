@@ -2,10 +2,12 @@
 
 **A global non-custodial financial routing hub.**
 
-Meridian connects traditional finance, stablecoin settlement and DeFi liquidity. Give it a
-corridor and an amount and it prices every available route — bank FX, licensed payment institutions,
-regulated stablecoin partners, wholesale liquidity providers — and reports the all-in cost, exchange
+Meridian compares traditional finance, stablecoin and wholesale-liquidity **quotes**. Give it a
+corridor and an amount and it prices every available sandbox route — bank FX, payment-institution
+style FX, stablecoin settlement quotes, wholesale liquidity — and reports the all-in cost, exchange
 rate, fee breakdown, settlement time, expected slippage and a composite route score for each.
+Quotes are indicative. Meridian is not a bank, exchange, licensed broker, payment institution, or
+settlement provider. Licensed-partner adapters are not registered until PHASE 30 is confirmed.
 
 The B2B comparison UI already shipped is the first slice of that hub. Canonical definition:
 [docs/MASTER_PRODUCT_DEFINITION.md](./docs/MASTER_PRODUCT_DEFINITION.md).
@@ -189,6 +191,7 @@ docs/
   ROADMAP.md      Phase plan. Phases 1–4b, dashboard (2b), catalog (8), routing (9), graph (10),
                   stablecoin routing (11), DeFi liquidity routing (12).
   COMPLIANCE.md   The boundaries, and how the code enforces them.
+  PRE_LAUNCH_READINESS.md  PHASE 39 referral-model MVP launch report.
   API.md          Endpoint reference.
 ```
 

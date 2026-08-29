@@ -598,4 +598,28 @@ plans or payouts.
 Do not invent tiers or partners to “try” PA-M09. Re-run only after the confirmations are on file in
 `docs/COMPLIANCE.md`.
 
+---
+
+## PHASE 37 — Agent Treasury design (not implemented)
+
+Design-only: [`docs/TREASURY_DESIGN.md`](./TREASURY_DESIGN.md). No ledger, wallet, or spendable
+in-platform balance. Invariant ③ unchanged.
+
+---
+
+## PHASE 38 — Operator kill switch, credential vault, isolation tests ✅ implemented
+
+Manual routing kill switch, AES-256-GCM provider credential vault, inert `executionAuthorized`
+flags, sandbox UI badge, custody guardrail test, OpenAPI tenant-isolation suite. `/executions`
+remains **501**. See `docs/COMPLIANCE.md` PHASE 38 and `docs/DEPLOYMENT.md` §11.
+
+---
+
+## PHASE 39 — Pre-launch verification (referral-model MVP) ✅ recorded
+
+No product features. Regression sweep of PA-C/H/M/L controls, live 501, staging smoke, copy honesty.
+Report: [`docs/PRE_LAUNCH_READINESS.md`](./PRE_LAUNCH_READINESS.md). Recommendation: **READY TO
+LAUNCH (referral-model MVP)** — quoting/ranking/attribution without live execution. PHASE 30/33/35/36
+remain business-gated and are not treated as failures of this path.
+
 

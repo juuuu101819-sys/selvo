@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'Meridian — Global financial routing',
   description:
-    'Non-custodial routing hub: compare traditional finance, stablecoin and (planned) DeFi ' +
-    'liquidity routes. Meridian never holds funds or keys and does not execute transfers.',
+    'Non-custodial routing hub: compare traditional finance, stablecoin and wholesale liquidity ' +
+    'routes. Meridian never holds funds or keys and does not execute, settle, or custody funds.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -26,9 +26,10 @@ export default async function HomePage() {
             Find the best financial route for a business transaction
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Meridian compares traditional finance, licensed stablecoin settlement and wholesale
-            liquidity, then reports the all-in cost, fees, settlement time, slippage and a route
-            score for each. Settlement is delegated to licensed partners — not executed here.
+            Meridian compares traditional finance, stablecoin and wholesale liquidity routes, then
+            reports the all-in cost, fees, settlement time, slippage and a route score for each.
+            Quotes are indicative and sandbox-labelled until a licensed partner is connected.
+            Meridian does not execute or delegate settlement.
           </p>
         </div>
 
