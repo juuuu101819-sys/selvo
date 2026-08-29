@@ -14,6 +14,7 @@ import {
   type CreatePaymentPolicyInput,
   type CreateWalletReferenceInput,
   type DailySpendingQuery,
+  type ListCursor,
   type Merchant,
   type PaymentIntent,
   type PaymentIntentStatus,
@@ -24,6 +25,7 @@ import {
   type SimulatedExecutionReceipt,
 } from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { descKeysetWhere } from './keyset.js';
 
 const DEFAULT_LIST_LIMIT = 50;
 const UNIQUE_VIOLATION = 'P2002';
@@ -310,15 +312,16 @@ export class PrismaAgentPaymentsRepository implements AgentPaymentsRepository {
 
   async listIntents(
     organizationId: string,
-    options: { readonly agentId?: string; readonly limit?: number } = {},
+    options: { readonly agentId?: string; readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly PaymentIntent[]> {
     const rows = await this.read(() =>
       this.client.paymentIntent.findMany({
         where: {
           organizationId,
           ...(options.agentId === undefined ? {} : { agentId: options.agentId }),
+          ...descKeysetWhere(options.after, 'createdAt', 'id'),
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: options.limit ?? DEFAULT_LIST_LIMIT,
       }),
     );

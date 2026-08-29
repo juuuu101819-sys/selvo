@@ -88,6 +88,7 @@ Organization ──┬── OrganizationMember ── User ── MfaRecoveryCo
                ├── Agent ── AgentCredential / AgentWalletReference / PaymentPolicy / PaymentIntent
                ├── Merchant
                ├── MonetizationEvent ── Invoice / InvoiceLine
+               ├── RoutingEvaluation
                └── AuditLog
 ```
 
@@ -219,6 +220,10 @@ is `unrealized | invoiced | collected`. `realized_revenue` may be true only when
 
 **`Comparison`** — the immutable, replayable record: the snapshot the engine needs to recompute a
 comparison, plus its SHA-256 fingerprint.
+
+**`RoutingEvaluation`** — the same MultiRail ranking snapshot for `POST /routes` and `POST /quote`
+(PA-M10). `surface` is `routes` or `quote`. HTTP returns only the SHA-256 fingerprint; replay
+recomputes through `MultiRailRouter`. The snapshot JSON is not a public DTO.
 
 The normalised `Quote` rows are the _queryable projection_ of a comparison; `Comparison` is what makes
 it _reproducible_. Keeping both is deliberate — a future schema change to `Quote` must never be able

@@ -245,6 +245,7 @@ model Organization {
   monetizationEvents  MonetizationEvent[]
   invites             OrganizationInvite[]
   invoices            Invoice[]
+  routingEvaluations  RoutingEvaluation[]
 
   @@map("organizations")
 }
@@ -961,6 +962,7 @@ model Quote {
   @@unique([transactionRequestId, providerId, quotedAt])
   @@index([transactionRequestId, rank])
   @@index([organizationId, createdAt(sort: Desc)])
+  @@index([organizationId, quotedAt(sort: Desc), id])
   @@index([providerId, quotedAt(sort: Desc)])
   @@index([status, expiresAt])
   @@map("quotes")
@@ -1073,6 +1075,26 @@ model Comparison {
   @@index([sourceCurrency, targetCurrency, createdAt(sort: Desc)])
   @@index([organizationId, createdAt(sort: Desc)])
   @@map("comparisons")
+}
+
+/// Multi-rail ranking snapshot for `/routes` and `/quote` replay (PA-M10).
+/// The snapshot is not a public DTO; HTTP returns only the fingerprint and ranked result.
+model RoutingEvaluation {
+  routingId      String   @id @map("routing_id")
+  fingerprint    String
+  engineVersion  String   @map("engine_version")
+  /// `routes` (public discovery) or `quote` (authenticated billed quote).
+  surface        String
+  organizationId String?  @map("organization_id")
+  createdAt      DateTime @map("created_at") @db.Timestamptz(3)
+  rankedRouteIds Json     @map("ranked_route_ids")
+  snapshot       Json
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([fingerprint])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("routing_evaluations")
 }
 
 /// Append-only log of financially meaningful events. Immutability is enforced by a trigger as well

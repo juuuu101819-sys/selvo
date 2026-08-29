@@ -1,4 +1,8 @@
 import {
+  DASHBOARD_LIST_LIMIT_DEFAULT,
+  LIST_LIMIT_DEFAULT,
+  LIST_LIMIT_MAX,
+  LIST_LIMIT_MIN,
   Money,
   RAIL_FAMILIES,
   RAIL_TYPES,
@@ -110,13 +114,27 @@ export const comparisonIdParamsSchema = z
   .object({ comparisonId: z.string().min(1).max(128) })
   .strict();
 
+export const routingIdParamsSchema = z
+  .object({ routingId: z.string().min(1).max(128) })
+  .strict();
+
 export const providerIdParamsSchema = z
   .object({ providerId: z.string().trim().min(1).max(128) })
   .strict();
 
-export const listQuerySchema = z
-  .object({ limit: z.coerce.number().int().min(1).max(100).default(20) })
-  .strict();
+export function createListQuerySchema(
+  defaultLimit: number,
+): z.ZodType<{ limit: number; cursor?: string | undefined }> {
+  return z
+    .object({
+      limit: z.coerce.number().int().min(LIST_LIMIT_MIN).max(LIST_LIMIT_MAX).default(defaultLimit),
+      cursor: z.string().trim().min(1).max(512).optional(),
+    })
+    .strict();
+}
+
+export const listQuerySchema = createListQuerySchema(LIST_LIMIT_DEFAULT);
+export const dashboardListQuerySchema = createListQuerySchema(DASHBOARD_LIST_LIMIT_DEFAULT);
 
 export const idempotencyKeySchema = z.string().trim().min(8).max(128).optional();
 

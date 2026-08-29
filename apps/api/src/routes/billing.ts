@@ -11,7 +11,8 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppContainer } from '../container.js';
-import { parseOrThrow } from '../http/validation.js';
+import { parseOrThrow, dashboardListQuerySchema } from '../http/validation.js';
+import { resolveListCursor, slicePage } from '../http/list-page.js';
 import { requireOrganization } from '../http/require-organization.js';
 import { ONBOARDING_OPERATOR_HEADER, requireOnboardingOperator } from '../onboarding/operator.js';
 
@@ -28,7 +29,6 @@ const runBody = z
   })
   .strict();
 
-const listQuery = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).strict();
 const idParams = z.object({ id: z.string().min(1).max(128) }).strict();
 
 interface Envelope<TData> {
@@ -92,15 +92,37 @@ export function registerBillingRoutes(app: FastifyInstance, container: AppContai
 
   app.get('/dashboard/invoices', async (request) => {
     const principal = requireOrganization(request);
-    const { limit } = parseOrThrow(listQuery, request.query, 'query');
+    const query = parseOrThrow(dashboardListQuerySchema, request.query, 'query');
+    const after = await resolveListCursor(
+      query.cursor,
+      (id) =>
+        container.persistence.billing.getInvoiceForOrganization(principal.organizationId, id),
+      (invoice) => ({ sortAt: invoice.issuedAt, id: invoice.id }),
+    );
     const invoices = await container.persistence.billing.listInvoicesForOrganization(
       principal.organizationId,
-      { limit },
+      {
+        limit: query.limit + 1,
+        ...(after === undefined ? {} : { after }),
+      },
     );
-    return envelope(request, {
-      invoices: invoices.map(serializeInvoice),
-      collectionStatus: 'deferred' as const,
-    });
+    const page = slicePage(invoices, query.limit, (invoice) => ({
+      sortAt: invoice.issuedAt,
+      id: invoice.id,
+    }));
+    return {
+      data: {
+        invoices: page.items.map(serializeInvoice),
+        collectionStatus: 'deferred' as const,
+      },
+      meta: {
+        mode: container.config.mode,
+        disclaimer: container.disclaimer,
+        requestId: request.id,
+        limit: query.limit,
+        nextCursor: page.nextCursor,
+      },
+    };
   });
 
   app.get('/dashboard/invoices/:id', async (request) => {

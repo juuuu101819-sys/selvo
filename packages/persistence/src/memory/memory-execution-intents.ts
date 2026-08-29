@@ -1,4 +1,4 @@
-import type { ExecutionIntent, ExecutionIntentRepository } from '@meridian/core';
+import { takeKeysetPage, type ExecutionIntent, type ExecutionIntentRepository, type ListCursor } from '@meridian/core';
 
 const DEFAULT_LIST_LIMIT = 50;
 
@@ -32,14 +32,14 @@ export class InMemoryExecutionIntentRepository implements ExecutionIntentReposit
 
   listByOrganization(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly ExecutionIntent[]> {
     const limit = options.limit ?? DEFAULT_LIST_LIMIT;
-    const ordered = [...this.byId.values()]
-      .filter((intent) => intent.organizationId === organizationId)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, limit)
-      .map((intent) => structuredClone(intent));
-    return Promise.resolve(ordered);
+    const page = takeKeysetPage(
+      [...this.byId.values()].filter((intent) => intent.organizationId === organizationId),
+      { limit, ...(options.after === undefined ? {} : { after: options.after }) },
+      (intent) => ({ sortAt: intent.createdAt, id: intent.id }),
+    );
+    return Promise.resolve(page.map((intent) => structuredClone(intent)));
   }
 }

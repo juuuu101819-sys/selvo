@@ -1,11 +1,13 @@
 import type { AuditEvent, AuditEventType } from './audit.js';
 import type { DashboardRepository } from './dashboard.js';
+import type { ListCursor } from '../pagination/cursor.js';
 import type { ExecutionIntentRepository } from './execution-intent.js';
 import type { AgentPaymentsRepository } from './agent-payments.js';
 import type { IdentityStore } from './identity.js';
 import type { OnboardingStore } from './onboarding.js';
 import type { RateLimitStore } from './rate-limit.js';
 import type { BillingStore } from './billing.js';
+import type { RoutingEvaluationRepository } from './routing-evaluation.js';
 
 /**
  * A persisted comparison. The stored form is the serialised DTO plus the snapshot needed for
@@ -32,14 +34,14 @@ export interface ComparisonRepository {
   findById(comparisonId: string): Promise<StoredComparison | null>;
   findByIdempotencyKey(idempotencyKey: string): Promise<StoredComparison | null>;
   /** Most recent first. Used by the history view. */
-  list(options?: { readonly limit?: number }): Promise<readonly StoredComparison[]>;
+  list(options?: { readonly limit?: number; readonly after?: ListCursor }): Promise<readonly StoredComparison[]>;
   /**
    * Comparisons belonging to one tenant. Pass `null` for unauthenticated public comparisons.
    * Implementations filter in the query; they must not load every row and drop the rest.
    */
   listByOrganization(
     organizationId: string | null,
-    options?: { readonly limit?: number },
+    options?: { readonly limit?: number; readonly after?: ListCursor },
   ): Promise<readonly StoredComparison[]>;
 }
 
@@ -66,6 +68,7 @@ export interface PersistenceDriver {
   readonly rateLimits: RateLimitStore;
   readonly onboarding: OnboardingStore;
   readonly billing: BillingStore;
+  readonly routingEvaluations: RoutingEvaluationRepository;
   /** Verifies the store is reachable and the schema is present. */
   healthCheck(): Promise<void>;
   close(): Promise<void>;

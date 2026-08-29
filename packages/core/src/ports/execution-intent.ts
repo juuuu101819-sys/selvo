@@ -1,3 +1,5 @@
+import type { ListCursor } from '../pagination/cursor.js';
+
 /**
  * An execution intent is a recorded choice of route, not a payment.
  *
@@ -31,6 +33,6 @@ export interface ExecutionIntentRepository {
   findById(id: string, organizationId: string): Promise<ExecutionIntent | null>;
   listByOrganization(
     organizationId: string,
-    options?: { readonly limit?: number },
+    options?: { readonly limit?: number; readonly after?: ListCursor },
   ): Promise<readonly ExecutionIntent[]>;
 }

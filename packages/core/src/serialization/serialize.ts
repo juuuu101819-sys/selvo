@@ -303,7 +303,10 @@ function fixed(value: Decimal, decimalPlaces: number): string {
   return value.toDecimalPlaces(decimalPlaces).toFixed();
 }
 
-export function serializeMultiRailRouting(result: MultiRailRouting): MultiRailRoutingDto {
+export function serializeMultiRailRouting(
+  result: MultiRailRouting,
+  extras: { readonly fingerprint: string },
+): MultiRailRoutingDto {
   const routes = result.routes.map(serializeMultiRailRoute);
   const recommended = result.recommendedRoute === null ? null : serializeMultiRailRoute(result.recommendedRoute);
   return {
@@ -313,6 +316,7 @@ export function serializeMultiRailRouting(result: MultiRailRouting): MultiRailRo
     mode: result.mode,
     routingEngineVersion: result.routingEngineVersion,
     aiUsed: false,
+    fingerprint: extras.fingerprint,
     request: {
       sourceAsset: result.request.sourceAsset,
       destinationAsset: result.request.destinationAsset,
@@ -819,6 +823,7 @@ export function serializeDefiRoute(route: DefiRoute): DefiRouteDto {
 export function serializeFinancialQuote(
   routing: MultiRailRouting,
   requestId: string,
+  extras: { readonly fingerprint: string },
 ): FinancialQuoteDto {
   const routes = routing.routes.map(serializeMultiRailRoute);
   const recommended =
@@ -828,6 +833,8 @@ export function serializeFinancialQuote(
     routes,
     recommendedRoute: recommended,
     quoteExpiresAt: earliestQuoteExpiry(routing.routes),
+    fingerprint: extras.fingerprint,
+    routingId: routing.routingId,
   };
 }
 

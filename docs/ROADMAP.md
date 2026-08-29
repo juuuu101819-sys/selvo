@@ -517,4 +517,26 @@ real money — by design.
 Do not invent a sample allowlist, corridor, or partner to “try” the endpoint. Re-run this phase
 only after the four confirmations are on file in `docs/COMPLIANCE.md`.
 
+## Phase 34 — Cursor pagination, multi-rail fingerprint/replay, clean-Postgres e2e ✅ implemented
+
+Does **not** lift execution, invent a licensed provider, or change ranking. `ROUTING_ENGINE_VERSION`
+stays **1.0.0**. `POST /api/v1/executions` stays **501**.
+
+**PA-M07.** List GETs under `/api/v1` that previously took only `limit` now share one keyset
+contract: query `limit` (default 20, dashboard lists 50, max 100 — excess is 400) and opaque
+`cursor`; response `meta.nextCursor`. Seek is `(sortAt DESC, id DESC)`. Offset is rejected.
+Applied to comparisons, execution intents, payment intents, dashboard quotes/transactions, and
+invoices.
+
+**PA-M10.** `POST /routes` and `POST /quote` persist a versioned MultiRail snapshot in
+`routing_evaluations`. The wire DTO carries a SHA-256 `fingerprint` only. Replay:
+`POST /api/v1/routes/:routingId/replay` (public discovery DTO) and
+`POST /api/v1/quote/:routingId/replay` (`quote:read`, no monetization field). Cross-surface replay
+is 404. Ranking still runs only through `MultiRailRouter`.
+
+**PA-L06.** CI job `e2e-postgres` boots an empty Postgres 16, applies migrations from scratch, and
+runs the full Playwright suite (`E2E_DATABASE_DRIVER=postgres`). The existing in-memory e2e job is
+unchanged. Migrations-from-scratch is seconds relative to Playwright, so the job runs on every
+push/PR rather than main-only.
+
 

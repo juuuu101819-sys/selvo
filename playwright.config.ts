@@ -4,6 +4,8 @@ const isCi = process.env['CI'] === 'true' || process.env['CI'] === '1';
 
 const API_PORT = Number(process.env['E2E_API_PORT'] ?? 47_411);
 const WEB_PORT = Number(process.env['E2E_WEB_PORT'] ?? 43_217);
+const E2E_DATABASE_DRIVER = process.env['E2E_DATABASE_DRIVER'] ?? 'memory';
+const E2E_DATABASE_URL = process.env['E2E_DATABASE_URL'] ?? process.env['DATABASE_URL'] ?? '';
 
 export const API_BASE_URL = `http://127.0.0.1:${API_PORT}`;
 export const WEB_BASE_URL = `http://127.0.0.1:${WEB_PORT}`;
@@ -13,9 +15,8 @@ export const WEB_BASE_URL = `http://127.0.0.1:${WEB_PORT}`;
  *
  * The suite starts its own API and web server on ports distinct from the development defaults, so a
  * run never collides with — or quietly tests against — a dev server someone already had open.
- * Persistence is the in-memory driver, which keeps the suite hermetic and means end-to-end needs no
- * database; the PostgreSQL path is covered by unit tests and, from Phase 2, by CI integration tests
- * against a real instance.
+ * Persistence defaults to the in-memory driver. PA-L06's CI job sets `E2E_DATABASE_DRIVER=postgres`
+ * against a freshly migrated database so CHECK constraints and migrations are exercised over HTTP.
  */
 export default defineConfig({
   testDir: './tests/e2e',
@@ -60,7 +61,8 @@ export default defineConfig({
       env: {
         NODE_ENV: 'test',
         PLATFORM_MODE: 'sandbox',
-        DATABASE_DRIVER: 'memory',
+        DATABASE_DRIVER: E2E_DATABASE_DRIVER,
+        ...(E2E_DATABASE_DRIVER === 'postgres' ? { DATABASE_URL: E2E_DATABASE_URL } : {}),
         API_PORT: String(API_PORT),
         API_HOST: '127.0.0.1',
         LOG_LEVEL: 'warn',

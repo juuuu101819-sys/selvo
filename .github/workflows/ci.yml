@@ -73,6 +73,47 @@ jobs:
       - name: Production build and Playwright
         run: npm run test:e2e
 
+  e2e-postgres:
+    name: e2e against clean postgres (PA-L06)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: meridian
+          POSTGRES_PASSWORD: meridian
+          POSTGRES_DB: meridian_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U meridian -d meridian_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      NODE_ENV: test
+      PLATFORM_MODE: sandbox
+      CI: true
+      DATABASE_DRIVER: postgres
+      DATABASE_URL: postgresql://meridian:meridian@127.0.0.1:5432/meridian_e2e
+      E2E_DATABASE_DRIVER: postgres
+      E2E_DATABASE_URL: postgresql://meridian:meridian@127.0.0.1:5432/meridian_e2e
+      SEED_DEMO_TENANTS: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install (lockfile)
+        run: npm ci
+      - name: Apply Prisma migrations from scratch
+        run: npx prisma migrate deploy
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Production build and Playwright against empty Postgres
+        run: npm run test:e2e
+
   container:
     name: production container
     runs-on: ubuntu-latest

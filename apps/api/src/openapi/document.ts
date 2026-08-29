@@ -67,6 +67,15 @@ function requestBody(route: CatalogRoute): unknown {
   };
 }
 
+const PAGINATED_GET_PATHS = new Set([
+  '/comparisons',
+  '/execution-intents',
+  '/payment-intents',
+  '/dashboard/quotes',
+  '/dashboard/transactions',
+  '/dashboard/invoices',
+]);
+
 function responses(route: CatalogRoute): Record<string, unknown> {
   if (route.path === '/executions' && route.method === 'POST') {
     return {
@@ -79,7 +88,13 @@ function responses(route: CatalogRoute): Record<string, unknown> {
   const success =
     route.method === 'POST'
       ? { '201': { description: 'Created or accepted.' }, '200': { description: 'OK.' } }
-      : { '200': { description: 'OK.' } };
+      : {
+          '200': {
+            description: PAGINATED_GET_PATHS.has(route.path)
+              ? 'OK. Envelope `meta` includes `limit` and opaque `nextCursor` (null when no further page).'
+              : 'OK.',
+          },
+        };
   return {
     ...success,
     '400': {
@@ -104,8 +119,33 @@ function security(route: CatalogRoute): readonly Record<string, readonly string[
   return [{ SessionBearer: [] }, { ApiKey: [] }];
 }
 
+function paginationQueryParameters(): readonly unknown[] {
+  return [
+    {
+      name: 'limit',
+      in: 'query',
+      required: false,
+      description: 'Page size. Default 20 (dashboard lists 50). Minimum 1, maximum 100. Excess is 400.',
+      schema: { type: 'integer', minimum: 1, maximum: 100 },
+    },
+    {
+      name: 'cursor',
+      in: 'query',
+      required: false,
+      description:
+        'Opaque keyset cursor from the previous page `meta.nextCursor`. Invalid or foreign cursors are 400.',
+      schema: { type: 'string', maxLength: 512 },
+    },
+  ];
+}
+
 function operation(route: CatalogRoute): OpenApiOperation {
-  const parameters = pathParameters(route.path);
+  const parameters = [
+    ...pathParameters(route.path),
+    ...(route.method === 'GET' && PAGINATED_GET_PATHS.has(route.path)
+      ? paginationQueryParameters()
+      : []),
+  ];
   const body = requestBody(route);
   return {
     operationId: operationId(route),
@@ -144,6 +184,7 @@ export function buildOpenApiDocument(): OpenApiDocument {
         API_SURFACE_CONTRACT.publicDiscovery,
         API_SURFACE_CONTRACT.authenticatedBilled,
         API_SURFACE_CONTRACT.paH08,
+        'List endpoints use an opaque keyset cursor (`cursor` query + `limit` 1–100; `meta.nextCursor`). Offset paging is rejected. Invalid or foreign cursors are 400.',
         'Agent credentials are documented in docs/AGENTS.md.',
       ].join('\n\n'),
     },
@@ -194,12 +235,14 @@ export function buildOpenApiDocument(): OpenApiDocument {
         FinancialQuote: {
           type: 'object',
           description: 'Authenticated POST /quote DTO. No monetization field. Includes quoteExpiresAt.',
-          required: ['requestId', 'routes', 'recommendedRoute', 'quoteExpiresAt'],
+          required: ['requestId', 'routes', 'recommendedRoute', 'quoteExpiresAt', 'fingerprint', 'routingId'],
           properties: {
             requestId: { type: 'string' },
             routes: { type: 'array', items: { type: 'object' } },
             recommendedRoute: { type: ['object', 'null'] },
             quoteExpiresAt: { type: ['string', 'null'], format: 'date-time' },
+            fingerprint: { type: 'string', description: 'SHA-256 of the ranking snapshot. Snapshot JSON is not returned.' },
+            routingId: { type: 'string' },
           },
         },
         RouteMonetization: {

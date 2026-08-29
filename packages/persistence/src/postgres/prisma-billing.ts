@@ -10,11 +10,13 @@ import {
   type Invoice,
   type InvoiceLine,
   type IssueInvoiceInput,
+  type ListCursor,
   type MonetizationEvent,
   type MonetizationTransactionType,
   type RevenueSource,
 } from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { descKeysetWhere } from './keyset.js';
 
 const DEFAULT_LIMIT = 50;
 
@@ -86,13 +88,16 @@ export class PrismaBillingStore implements BillingStore {
 
   async listInvoicesForOrganization(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly Invoice[]> {
     const rows = await this.query(() =>
       this.client.invoice.findMany({
-        where: { organizationId },
+        where: {
+          organizationId,
+          ...descKeysetWhere(options.after, 'issuedAt', 'id'),
+        },
         include: { lines: { orderBy: { occurredAt: 'asc' } } },
-        orderBy: { issuedAt: 'desc' },
+        orderBy: [{ issuedAt: 'desc' }, { id: 'desc' }],
         take: options.limit ?? DEFAULT_LIMIT,
       }),
     );

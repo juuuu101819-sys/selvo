@@ -11,6 +11,7 @@ import type {
   PublicAgent,
   RoutePreference,
 } from '../domain/agent-payments.js';
+import type { ListCursor } from '../pagination/cursor.js';
 
 export interface CreateAgentInput {
   readonly id: string;
@@ -129,7 +130,7 @@ export interface AgentPaymentsRepository {
   ): Promise<PaymentIntent | null>;
   listIntents(
     organizationId: string,
-    options?: { readonly agentId?: string; readonly limit?: number },
+    options?: { readonly agentId?: string; readonly limit?: number; readonly after?: ListCursor },
   ): Promise<readonly PaymentIntent[]>;
   sumDailySpending(query: DailySpendingQuery): Promise<string>;
   /**

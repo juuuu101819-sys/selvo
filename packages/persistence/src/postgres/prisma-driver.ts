@@ -15,7 +15,9 @@ import {
   type RateLimitStore,
   type OnboardingStore,
   type BillingStore,
+  type RoutingEvaluationRepository,
   type StoredComparison,
+  type ListCursor,
 } from '@meridian/core';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaPlatformPricingResolver } from './prisma-pricing-resolver.js';
@@ -25,7 +27,9 @@ import { PrismaExecutionIntentRepository } from './prisma-execution-intents.js';
 import { PrismaIdentityStore } from './prisma-identity.js';
 import { PrismaOnboardingStore } from './prisma-onboarding.js';
 import { PrismaBillingStore } from './prisma-billing.js';
+import { PrismaRoutingEvaluationRepository } from './prisma-routing-evaluations.js';
 import { PrismaRateLimitStore } from '../rate-limit/prisma-store.js';
+import { descKeysetWhere } from './keyset.js';
 import { Prisma, PrismaClient } from '@prisma/client';
 
 const DEFAULT_LIST_LIMIT = 50;
@@ -63,6 +67,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly rateLimits: RateLimitStore;
   readonly onboarding: OnboardingStore;
   readonly billing: BillingStore;
+  readonly routingEvaluations: RoutingEvaluationRepository;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -91,6 +96,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.pricing = new PrismaPlatformPricingResolver(this.client);
     this.onboarding = new PrismaOnboardingStore(this.client);
     this.billing = new PrismaBillingStore(this.client);
+    this.routingEvaluations = new PrismaRoutingEvaluationRepository(this.client);
   }
 
   /**
@@ -109,7 +115,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
                 AND to_regclass('public.rate_limit_buckets') IS NOT NULL
                 AND to_regclass('public.organization_invites') IS NOT NULL
                 AND to_regclass('public.invoices') IS NOT NULL
-                AND to_regclass('public.invoice_lines') IS NOT NULL) AS present
+                AND to_regclass('public.invoice_lines') IS NOT NULL
+                AND to_regclass('public.routing_evaluations') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(
@@ -177,10 +184,11 @@ class PrismaComparisonRepository implements ComparisonRepository {
     return row === null ? null : toStoredComparison(row);
   }
 
-  async list(options: { limit?: number } = {}): Promise<readonly StoredComparison[]> {
+  async list(options: { limit?: number; after?: ListCursor } = {}): Promise<readonly StoredComparison[]> {
     const rows = await this.query(() =>
       this.client.comparison.findMany({
-        orderBy: [{ createdAt: 'desc' }, { sequence: 'desc' }],
+        where: descKeysetWhere(options.after, 'createdAt', 'comparisonId'),
+        orderBy: [{ createdAt: 'desc' }, { comparisonId: 'desc' }],
         take: options.limit ?? DEFAULT_LIST_LIMIT,
       }),
     );
@@ -189,12 +197,15 @@ class PrismaComparisonRepository implements ComparisonRepository {
 
   async listByOrganization(
     organizationId: string | null,
-    options: { limit?: number } = {},
+    options: { limit?: number; after?: ListCursor } = {},
   ): Promise<readonly StoredComparison[]> {
     const rows = await this.query(() =>
       this.client.comparison.findMany({
-        where: { organizationId },
-        orderBy: [{ createdAt: 'desc' }, { sequence: 'desc' }],
+        where: {
+          organizationId,
+          ...descKeysetWhere(options.after, 'createdAt', 'comparisonId'),
+        },
+        orderBy: [{ createdAt: 'desc' }, { comparisonId: 'desc' }],
         take: options.limit ?? DEFAULT_LIST_LIMIT,
       }),
     );

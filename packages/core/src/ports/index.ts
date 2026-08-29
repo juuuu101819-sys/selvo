@@ -127,6 +127,12 @@ export type {
   PersistenceDriver,
   StoredComparison,
 } from './repositories.js';
+export type {
+  RoutingEvaluationRepository,
+  RoutingEvaluationSurface,
+  StoredRoutingEvaluation,
+} from './routing-evaluation.js';
+export { ROUTING_EVALUATION_SURFACES } from './routing-evaluation.js';
 export type { BillingStore, IssueInvoiceInput } from './billing.js';
 export {
   DeferredPlatformFeeCollector,

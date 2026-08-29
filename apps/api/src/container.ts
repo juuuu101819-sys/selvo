@@ -22,6 +22,7 @@ import {
   ROUTING_ENGINE_VERSION,
   RepositoryAuditLogger,
   RouteGraphService,
+  RoutingEvaluationService,
   STABLECOIN_ROUTING_ENGINE_VERSION,
   StablecoinRouter,
   buildFinancialRouteGraph,
@@ -51,6 +52,7 @@ export interface AppContainer {
   readonly registry: ProviderRegistry;
   readonly financialProviders: FinancialProviderRegistry;
   readonly comparisons: ComparisonRoutingService;
+  readonly routingEvaluations: RoutingEvaluationService;
   readonly routing: MultiRailRouter;
   readonly stablecoinRouting: StablecoinRouter;
   readonly defiRouting: DefiRouter;
@@ -182,6 +184,14 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
   });
 
+  const routingEvaluations = new RoutingEvaluationService({
+    routing,
+    registry: financialProviders,
+    evaluations: persistence.routingEvaluations,
+    auditLogger,
+    clock,
+  });
+
   const stablecoinRouting = new StablecoinRouter({
     mode: config.mode,
     registry: financialProviders,
@@ -272,6 +282,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     registry,
     financialProviders,
     comparisons,
+    routingEvaluations,
     routing,
     stablecoinRouting,
     defiRouting,

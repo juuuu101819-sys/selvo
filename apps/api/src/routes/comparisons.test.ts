@@ -479,6 +479,7 @@ describe('GET /v1/comparisons', () => {
     const body = response.json<{ data: { comparisonId: string }[]; meta: { limit: number } }>();
     expect(body.data[0]?.comparisonId).toBe(created.payload.data.comparisonId);
     expect(body.meta.limit).toBe(5);
+    expect(body.meta).toHaveProperty('nextCursor');
   });
 
   it('rejects a limit outside the allowed range', async () => {

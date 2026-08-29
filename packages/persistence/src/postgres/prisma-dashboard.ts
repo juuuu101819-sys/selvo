@@ -11,6 +11,7 @@ import type {
   RecordTransactionInput,
   RevenueSource,
   VolumePoint,
+  ListCursor,
 } from '@meridian/core';
 import {
   PersistenceError,
@@ -21,6 +22,7 @@ import {
   isRevenueRecognitionStatus,
 } from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { descKeysetWhere } from './keyset.js';
 import {
   aggregateCostByDay,
   aggregateMetrics,
@@ -55,12 +57,20 @@ export class PrismaDashboardRepository implements DashboardRepository {
 
   async listQuotes(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly DashboardQuote[]> {
-    const quotes = await this.loadQuotes(organizationId);
-    return quotes
-      .sort((left, right) => right.quotedAt.localeCompare(left.quotedAt))
-      .slice(0, options.limit ?? DEFAULT_LIMIT);
+    const rows = await this.query(() =>
+      this.client.quote.findMany({
+        where: {
+          organizationId,
+          ...descKeysetWhere(options.after, 'quotedAt', 'id'),
+        },
+        include: { provider: true },
+        orderBy: [{ quotedAt: 'desc' }, { id: 'desc' }],
+        take: options.limit ?? DEFAULT_LIMIT,
+      }),
+    );
+    return rows.map(toQuote);
   }
 
   async getQuote(organizationId: string, quoteId: string): Promise<DashboardQuote | null> {
@@ -75,12 +85,20 @@ export class PrismaDashboardRepository implements DashboardRepository {
 
   async listTransactions(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly DashboardTransaction[]> {
-    const transactions = await this.loadTransactions(organizationId);
-    return transactions
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, options.limit ?? DEFAULT_LIMIT);
+    const rows = await this.query(() =>
+      this.client.transactionRequest.findMany({
+        where: {
+          organizationId,
+          ...descKeysetWhere(options.after, 'createdAt', 'id'),
+        },
+        include: { _count: { select: { quotes: true } } },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        take: options.limit ?? DEFAULT_LIMIT,
+      }),
+    );
+    return rows.map(toTransaction);
   }
 
   async getTransaction(organizationId: string, id: string): Promise<DashboardTransaction | null> {

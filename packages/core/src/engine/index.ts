@@ -67,10 +67,18 @@ export {
   isRoutingComparisonSnapshot,
   fingerprintableRoutingSnapshot,
   snapshotFromRouting,
+  capabilitiesFromRouting,
   ROUTING_COMPARISON_SNAPSHOT_KIND,
   ROUTING_COMPARISON_SNAPSHOT_VERSION,
   type RoutingComparisonSnapshot,
 } from './routing-snapshot.js';
+export { captureRoutingFingerprint } from './routing-fingerprint.js';
+export {
+  RoutingEvaluationService,
+  canAccessEvaluation,
+  type RoutingEvaluationServiceDependencies,
+  type RoutingReplayResult,
+} from './routing-evaluation-service.js';
 export {
   ComparisonRoutingService,
   type ComparisonRoutingServiceDependencies,

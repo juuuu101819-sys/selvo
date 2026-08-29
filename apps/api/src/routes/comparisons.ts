@@ -8,6 +8,7 @@ import {
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
+import { resolveListCursor, slicePage } from '../http/list-page.js';
 import { recordComparisonMonetization } from '../monetization/record.js';
 import {
   comparisonIdParamsSchema,
@@ -85,15 +86,31 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
   });
 
   app.get('/comparisons', async (request) => {
-    const { limit } = parseOrThrow(listQuerySchema, request.query, 'query');
+    const query = parseOrThrow(listQuerySchema, request.query, 'query');
     const principal = principalOf(request);
-    const stored = await container.persistence.comparisons.listByOrganization(
-      principal.verified ? principal.organizationId : null,
-      { limit },
+    const organizationId = principal.verified ? principal.organizationId : null;
+    const after = await resolveListCursor(
+      query.cursor,
+      async (id) => {
+        const stored = await container.persistence.comparisons.findById(id);
+        if (stored === null || (stored.organizationId ?? null) !== organizationId) {
+          return null;
+        }
+        return stored;
+      },
+      (item) => ({ sortAt: item.createdAt, id: item.comparisonId }),
     );
+    const stored = await container.persistence.comparisons.listByOrganization(organizationId, {
+      limit: query.limit + 1,
+      ...(after === undefined ? {} : { after }),
+    });
+    const page = slicePage(stored, query.limit, (item) => ({
+      sortAt: item.createdAt,
+      id: item.comparisonId,
+    }));
 
     return {
-      data: stored.map((item) => ({
+      data: page.items.map((item) => ({
         comparisonId: item.comparisonId,
         createdAt: item.createdAt,
         mode: item.mode,
@@ -107,8 +124,9 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
         mode: container.config.mode,
         disclaimer: container.disclaimer,
         requestId: request.id,
-        count: stored.length,
-        limit,
+        count: page.items.length,
+        limit: query.limit,
+        nextCursor: page.nextCursor,
       },
     };
   });

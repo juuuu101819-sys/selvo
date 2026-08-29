@@ -15,6 +15,7 @@ import {
   parseOrThrow,
   resolveRouteRequest,
 } from '../http/validation.js';
+import { resolveListCursor, slicePage } from '../http/list-page.js';
 
 interface Envelope<TData> {
   readonly data: TData;
@@ -168,12 +169,34 @@ export function registerExecutionIntentRoutes(
     { preHandler: [capabilityPreHandler('transaction:create')] },
     async (request) => {
       const principal = requireCapability(request, 'transaction:create');
-      const { limit } = parseOrThrow(listQuerySchema, request.query, 'query');
+      const query = parseOrThrow(listQuerySchema, request.query, 'query');
+      const after = await resolveListCursor(
+        query.cursor,
+        (id) =>
+          container.persistence.executionIntents.findById(id, principal.organizationId),
+        (intent) => ({ sortAt: intent.createdAt, id: intent.id }),
+      );
       const intents = await container.persistence.executionIntents.listByOrganization(
         principal.organizationId,
-        { limit },
+        {
+          limit: query.limit + 1,
+          ...(after === undefined ? {} : { after }),
+        },
       );
-      return envelope(request, { intents: intents.map(serializeExecutionIntent) });
+      const page = slicePage(intents, query.limit, (intent) => ({
+        sortAt: intent.createdAt,
+        id: intent.id,
+      }));
+      return {
+        data: { intents: page.items.map(serializeExecutionIntent) },
+        meta: {
+          mode: container.config.mode,
+          disclaimer: container.disclaimer,
+          requestId: request.id,
+          limit: query.limit,
+          nextCursor: page.nextCursor,
+        },
+      };
     },
   );
 }

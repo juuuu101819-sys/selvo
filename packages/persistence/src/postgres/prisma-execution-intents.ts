@@ -2,8 +2,10 @@ import {
   PersistenceError,
   type ExecutionIntent,
   type ExecutionIntentRepository,
+  type ListCursor,
 } from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
+import { descKeysetWhere } from './keyset.js';
 
 const DEFAULT_LIST_LIMIT = 50;
 
@@ -44,12 +46,15 @@ export class PrismaExecutionIntentRepository implements ExecutionIntentRepositor
 
   async listByOrganization(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly ExecutionIntent[]> {
     const rows = await this.query(() =>
       this.client.executionIntent.findMany({
-        where: { organizationId },
-        orderBy: { createdAt: 'desc' },
+        where: {
+          organizationId,
+          ...descKeysetWhere(options.after, 'createdAt', 'id'),
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         take: options.limit ?? DEFAULT_LIST_LIMIT,
       }),
     );

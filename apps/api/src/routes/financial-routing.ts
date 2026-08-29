@@ -7,6 +7,7 @@ import {
   type CurrencyCatalogEntryDto,
   type FinancialQuoteDto,
   type RouteSearchDto,
+  type RoutingReplayResult,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
@@ -17,6 +18,7 @@ import {
   parseOrThrow,
   resolveRouteRequest,
   resolveSearchRoutesRequest,
+  routingIdParamsSchema,
   searchRoutesSchema,
 } from '../http/validation.js';
 
@@ -82,10 +84,31 @@ export function registerFinancialRoutingRoutes(
       requestId: request.id,
     });
 
-    return reply
-      .status(201)
-      .send(envelope<FinancialQuoteDto>(request, serializeFinancialQuote(routing, request.id)));
+    const persisted = await container.routingEvaluations.persist(routing, null, 'quote');
+
+    return reply.status(201).send(
+      envelope<FinancialQuoteDto>(
+        request,
+        serializeFinancialQuote(routing, request.id, { fingerprint: persisted.fingerprint }),
+      ),
+    );
   });
+
+  app.post(
+    '/quote/:routingId/replay',
+    { preHandler: [capabilityPreHandler('quote:read')] },
+    async (request) => {
+      const { routingId } = parseOrThrow(routingIdParamsSchema, request.params, 'params');
+      const principal = requireScope(request, 'quote:read');
+      const result = await container.routingEvaluations.replay(
+        routingId,
+        'quote',
+        { actor: principal.actor, requestId: request.id },
+        { organizationId: principal.organizationId, allowPublic: false },
+      );
+      return envelope<RoutingReplayResult>(request, result);
+    },
+  );
 
   app.post(
     '/routes/search',

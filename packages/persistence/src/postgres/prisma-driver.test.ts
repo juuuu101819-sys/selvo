@@ -133,6 +133,7 @@ describe('migrations', () => {
           'organization_invites',
           'invoices',
           'invoice_lines',
+          'routing_evaluations',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }

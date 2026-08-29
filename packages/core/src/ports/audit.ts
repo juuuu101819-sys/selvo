@@ -12,6 +12,7 @@ export const AUDIT_EVENT_TYPES = [
   'routing.requested',
   'routing.completed',
   'routing.failed',
+  'routing.replayed',
   'routing.graph.requested',
   'routing.graph.completed',
   'routing.graph.failed',

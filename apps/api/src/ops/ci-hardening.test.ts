@@ -25,6 +25,9 @@ describe('CI hardening (PA-H11, PA-H12)', () => {
     expect(workflow).toContain('npm run typecheck');
     expect(workflow).toContain('npm test');
     expect(workflow).toContain('npm run test:e2e');
+    expect(workflow).toContain('e2e against clean postgres (PA-L06)');
+    expect(workflow).toContain('E2E_DATABASE_DRIVER: postgres');
+    expect(workflow).toMatch(/Apply Prisma migrations from scratch/);
     expect(workflow).toContain('npm run audit:deps');
     expect(workflow).toMatch(/docker build/);
     expect(workflow).toContain('docker-compose.staging.yml');

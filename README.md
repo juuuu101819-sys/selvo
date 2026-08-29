@@ -118,8 +118,9 @@ npm test
 ```
 
 CI runs the same gates on every push and pull request: [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
-(`npm ci`, lint, typecheck, unit+integration against Postgres, Playwright e2e including the
-production build, `npm run audit:deps`, and a fail-closed production container build).
+(`npm ci`, lint, typecheck, unit+integration against Postgres, Playwright e2e on the in-memory
+driver, a second Playwright job against a freshly migrated Postgres, `npm run audit:deps`, and a
+fail-closed production container build).
 
 [![CI](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?logo=githubactions&logoColor=white)](.github/workflows/ci.yml)
 

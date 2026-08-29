@@ -1,9 +1,9 @@
-import { serializeMultiRailRouting, type MultiRailRoutingDto } from '@meridian/core';
+import { serializeMultiRailRouting, type MultiRailRoutingDto, type RoutingReplayResult } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
 import { recordRouteQuoteMonetization } from '../monetization/record.js';
-import { createRouteSchema, parseOrThrow, resolveRouteRequest } from '../http/validation.js';
+import { createRouteSchema, parseOrThrow, resolveRouteRequest, routingIdParamsSchema } from '../http/validation.js';
 
 interface ResponseEnvelope<TData> {
   readonly data: TData;
@@ -46,6 +46,8 @@ export function registerRoutingRoutes(app: FastifyInstance, container: AppContai
       requestId: request.id,
     });
 
+    const persisted = await container.routingEvaluations.persist(routing, null, 'routes');
+
     await recordRouteQuoteMonetization({
       organizationId: principal.organizationId,
       routingId: routing.routingId,
@@ -59,6 +61,26 @@ export function registerRoutingRoutes(app: FastifyInstance, container: AppContai
 
     return reply
       .status(201)
-      .send(envelope<MultiRailRoutingDto>(request, serializeMultiRailRouting(routing)));
+      .send(
+        envelope<MultiRailRoutingDto>(
+          request,
+          serializeMultiRailRouting(routing, { fingerprint: persisted.fingerprint }),
+        ),
+      );
+  });
+
+  app.post('/routes/:routingId/replay', async (request) => {
+    const { routingId } = parseOrThrow(routingIdParamsSchema, request.params, 'params');
+    const principal = principalOf(request);
+    const result = await container.routingEvaluations.replay(
+      routingId,
+      'routes',
+      { actor: principal.actor, requestId: request.id },
+      {
+        organizationId: principal.verified ? principal.organizationId : null,
+        allowPublic: true,
+      },
+    );
+    return envelope<RoutingReplayResult>(request, result);
   });
 }

@@ -21,6 +21,14 @@ hub: it does not custody funds, hold keys, act as principal, or execute transfer
 }
 ```
 
+**Cursor pagination.** List GETs (`/comparisons`, `/execution-intents`, `/payment-intents`,
+`/dashboard/quotes`, `/dashboard/transactions`, `/dashboard/invoices`) take `limit` (1–100; default
+20, dashboard lists 50) and an opaque `cursor`. Excess `limit` is `400`, not a clamped unbounded
+page. `offset` is rejected. The response `meta` includes `limit` and `nextCursor` (`null` when there
+is no further page). The cursor is a keyset on `(sortAt DESC, id DESC)`: a row inserted after page 1
+is fetched does not appear as a duplicate or skip inside the already-walked range. A truncated,
+tampered, or foreign-org cursor is `400 VALIDATION_ERROR`, not silently ignored.
+
 **Errors.** Every failure has the same shape, with a stable machine-readable `code`:
 
 ```json
@@ -312,9 +320,18 @@ Returns `201` with:
   `routeExplanation` — echoed from the recommendation
 - `plannedRoutes` — Route D (fiat → stablecoin → DEX → fiat) is declared, not composed
 - `aiUsed: false`
+- `fingerprint` — SHA-256 of the ranking snapshot stored for replay. The snapshot JSON is not
+  returned.
 - `monetization` — quoted economics for the recommended route (`ROUTE_QUOTE`): provider cost,
   platform fee, partner commission, gross margin, take rate, TPV basis. `realizedRevenue` is
   always `false`. Discovery does not create realized revenue.
+
+## `POST /api/v1/routes/:routingId/replay`
+
+Re-runs `MultiRailRouter` over the stored ranking snapshot for a public `/routes` evaluation.
+Returns whether the ranked route ids and fingerprint reproduced. The snapshot JSON is not in the
+response. Cross-surface ids (a billed `/quote` evaluation) are `404`. Quoted monetization on the
+replayed routing DTO still has `realizedRevenue: false`.
 
 USD 100,000 → KRW still returns **four** routes on `POST /comparisons`. The routing engine may
 return those same wrapped rails plus catalog-only venues when the corridor is on-chain or a ramp.
@@ -511,7 +528,8 @@ the prices as they were, not as they are now — which is the point of persistin
 
 ## `GET /api/v1/comparisons?limit=20`
 
-Summaries of recent comparisons, newest first.
+Summaries of recent comparisons, newest first. Supports the shared cursor-pagination contract
+(`limit`, `cursor`, `meta.nextCursor`).
 
 ## `POST /api/v1/comparisons/:comparisonId/replay`
 
@@ -793,7 +811,9 @@ in the body is a claim that must match the principal — it is never the source 
   "requestId": "req_...",
   "routes": [ { "routeId": "...", "executable": false } ],
   "recommendedRoute": { "routeId": "..." },
-  "quoteExpiresAt": "2026-03-01T09:15:00.000Z"
+  "quoteExpiresAt": "2026-03-01T09:15:00.000Z",
+  "routingId": "rte_...",
+  "fingerprint": "74e707e2..."
 }
 ```
 
@@ -802,6 +822,11 @@ When the process is production-locked, incomplete onboarding (`kybStatus` not `v
 explicit `CustomerPricing` row) is `403 ONBOARDING_INCOMPLETE`. Sandbox `/quote` is not gated that
 way. `POST /api/v1/routes` remains the **public** (unscoped) multi-rail discovery endpoint. It is not
 the billed `/quote` surface; see [Public vs authenticated quote surfaces](#public-vs-authenticated-quote-surfaces).
+
+## `POST /api/v1/quote/:routingId/replay`
+
+Requires `quote:read`. Replays a billed quote ranking. The response quote DTO has **no**
+`monetization` field (PA-M05). Anonymous is `401`. A `/routes` evaluation id is `404`.
 
 ## `POST /api/v1/routes/search`
 
@@ -825,6 +850,8 @@ prefixes, never secrets or hashes.
 ## `POST /api/v1/execution-intents`
 
 ## `GET /api/v1/execution-intents`
+
+Cursor-paginated list for the caller's organization (`limit`, `cursor`, `meta.nextCursor`).
 
 Requires `transaction:create` (organization API keys minted with that scope — never human sessions).
 Records a route choice with `status: "recorded"`, `executable: false`, `submitted: false`. This is

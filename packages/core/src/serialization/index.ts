@@ -21,6 +21,7 @@ export type {
   PlannedRouteDto,
   ProviderFailureDto,
   ReplayResultDto,
+  RoutingReplayResultDto,
   QuoteFreshnessDto,
   RouteDto,
   RouteGraphDto,

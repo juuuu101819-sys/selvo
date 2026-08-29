@@ -4,7 +4,7 @@
 **Scope:** Existing repository only (Phases 0–19 as implemented)  
 **Date:** 28 August 2026  
 **Method:** Source review of `apps/`, `packages/`, `prisma/`, `tests/`, `docs/`, lockfile, and `npm audit --omit=dev`  
-**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08 (index + CI already ran postgres tests), PA-M11–PA-M16, PA-L01–PA-L04 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M07, PA-M09 partner payouts / payment collection, PA-M10, PA-L05, PA-L06) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution. PHASE 33 (AI-agent payment pilot) was **not run**: the four business/legal gates were unconfirmed outside Cursor, so `POST /api/v1/executions` was left at 501.
+**Constraint:** PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM still out of scope; worker queue still out of scope) were subsequently fixed in production code. Remaining Medium and Low issues that require dedicated feature work (PA-M09 partner payouts / payment collection, PA-L05) remain unimplemented. Live execution remains unimplemented (501). PHASE 32 added invoice generation from monetization snapshots without enabling collection or execution. PHASE 33 (AI-agent payment pilot) was **not run**: the four business/legal gates were unconfirmed outside Cursor, so `POST /api/v1/executions` was left at 501. PHASE 34 added cursor pagination (PA-M07), multi-rail fingerprint/replay (PA-M10), and a clean-Postgres e2e CI job (PA-L06). `ROUTING_ENGINE_VERSION` remains 1.0.0.
 
 Engine versions in this tree (must not be assumed bumped by a future phase):
 
@@ -34,7 +34,7 @@ It is **not production-ready** as a live financial service:
   issues PA-H05–PA-H08 are fixed. Quote freshness and non-fiat platform-fee correctness
   (PA-H09–PA-H10) are fixed. CI, the Prisma `deepmerge-ts` advisory, and settlement-like status
   naming (PA-H11–PA-H13) are fixed. **All CRITICAL and HIGH issues from this audit are closed.**
-  PA-M01–PA-M06, PA-M11, PA-M12, PA-M13, and PA-M15 are closed. PA-L04 (quote cache / circuit breaker) is closed. PA-M08, PA-M14, PA-M16, PA-L01, and PA-L02 are closed. PHASE 32 implemented invoice generation (PA-M09 invoices). Remaining Medium/Low items are feature-scale and deferred (payment collection, partner AP, cursor pagination, multi-rail fingerprint).
+  PA-M01–PA-M08, PA-M10–PA-M16, PA-L01, PA-L02, PA-L04, and PA-L06 are closed. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 34 added cursor pagination and multi-rail fingerprint/replay. Remaining Medium/Low items are feature-scale and deferred (PA-M09 collection/tax/partner AP, PA-L05).
 
 **Do not enable delegated execution, connect a chain, or collect customer funds until the production blockers in section D are closed.**
 
@@ -377,14 +377,15 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M07 — List pagination is limit-only
 
-- **Status:** **DEFERRED** (feature-scale — cursor pagination across dashboard lists)
-- **File:** `apps/api/src/http/validation.ts` (`listQuerySchema`, ~lines 117–118)
+- **Status:** **FIXED** (2026-08-29, PHASE 34)
+- **File:** `packages/core/src/pagination/cursor.ts`; `apps/api/src/http/validation.ts` (`listQuerySchema`); list methods on comparison, execution-intent, dashboard quote/transaction, payment-intent, and invoice stores
 - **Component:** dashboard and intent lists
 - **Problem:** `limit` 1–100, no cursor. Default dashboard page size 50.
 - **Why it matters:** Large tenants cannot page stably.
-- **Recommended fix:** Cursor pagination on quotes, intents, comparisons.
+- **Before:** Offset-free but still a single `limit` slice. Concurrent inserts could duplicate or skip rows on a subsequent fetch. No `nextCursor`.
+- **After:** Opaque keyset cursor (`ks1.` + base64url `(sortAt, id)`), newest-first `(sortAt DESC, id DESC)`. Query params `limit` (1–100; excess is 400) and `cursor`. Response `meta.nextCursor`. Invalid, truncated, tampered, or foreign-org cursors are 400, not silently ignored. Applied to `GET /comparisons`, `/execution-intents`, `/payment-intents`, `/dashboard/quotes`, `/dashboard/transactions`, `/dashboard/invoices`. OpenAPI documents the contract.
+- **Tests:** `packages/core/src/pagination/cursor.test.ts`; `apps/api/src/routes/pagination.test.ts`
 - **Priority:** P2
-- **Deferred because:** New list protocol (cursors on quotes, intents, comparisons) is a product API change, not a smallest-possible cleanup.
 
 #### PA-M08 — Postgres integration tests are opt-in; daily-spend query under-indexed
 
@@ -412,14 +413,15 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-M10 — Multi-rail results have no comparison-style fingerprint/replay
 
-- **Status:** **DEFERRED** (feature-scale — public snapshot would require a new engine version)
-- **File:** `packages/core/src/engine/routing-engine.ts`; fingerprints in `packages/core/src/reproducibility/fingerprint.ts` used by comparison service
+- **Status:** **FIXED** (2026-08-29, PHASE 34)
+- **File:** `packages/core/src/engine/routing-evaluation-service.ts`; `packages/core/src/engine/routing-snapshot.ts`; `prisma/schema.prisma` (`RoutingEvaluation`); `POST /api/v1/routes/:routingId/replay`; `POST /api/v1/quote/:routingId/replay`
 - **Component:** reproducibility
 - **Problem:** Agent intents hash create-payload for idempotency, not provider quotes. `/routes` has `routingId` only.
 - **Why it matters:** Disputes on multi-rail quotes cannot replay like `/comparisons/:id/replay`.
-- **Recommended fix:** Snapshot + fingerprint multi-rail evaluations (new engine version if the snapshot shape is public).
+- **Before:** Only `/comparisons` persisted a MultiRail snapshot. `/routes` and `/quote` returned `routingId` with no replay.
+- **After:** Every `/routes` and `/quote` evaluation persists a versioned ranking snapshot (quotes, freshness at ranking time, pricing rules, `ROUTING_ENGINE_VERSION` 1.0.0). HTTP returns a SHA-256 `fingerprint` only — the snapshot JSON is not a response field. Replay re-runs `MultiRailRouter.recomputeFromSnapshot` and reports identical ranked route ids. Public `/routes` replay uses the public routing DTO (quoted monetization still `realizedRevenue: false`). Authenticated `/quote` replay returns the billed quote DTO with **no** monetization field (PA-M05). Cross-surface replay is 404. Ranking behaviour is unchanged; `ROUTING_ENGINE_VERSION` was **not** bumped.
+- **Tests:** `apps/api/src/routes/routing-fingerprint.test.ts`
 - **Priority:** P2
-- **Deferred because:** A public multi-rail snapshot/fingerprint is a new reproducibility surface and must not bump `ROUTING_ENGINE_VERSION` in this cleanup phase.
 
 #### PA-M11 — `preferredRoutePreference` is not a policy rule
 
@@ -556,14 +558,15 @@ Priority: **P0** = do before any production-labelled deploy of quoting; **P1** =
 
 #### PA-L06 — E2E uses memory driver by design
 
-- **Status:** **DEFERRED** (feature-scale — new postgres e2e pipeline)
-- **File:** `playwright.config.ts`
-- **Component:** Phase 19
+- **Status:** **FIXED** (2026-08-29, PHASE 34)
+- **File:** `.github/workflows/ci.yml` (`e2e-postgres`); `playwright.config.ts` (`E2E_DATABASE_DRIVER`)
+- **Component:** Phase 19 / CI
 - **Problem:** Does not exercise Postgres CHECKs over the wire.
 - **Why it matters:** Complementary to unit postgres tests, not a replacement.
-- **Recommended fix:** Optional e2e job with `DATABASE_DRIVER=postgres`.
+- **Before:** Playwright e2e always used `DATABASE_DRIVER=memory`. CI `verify` ran unit/integration against Postgres via `TEST_DATABASE_URL`.
+- **After:** A separate `e2e-postgres` job boots an empty Postgres 16, runs `prisma migrate deploy` from scratch (no reused volume), then the full Playwright suite with `E2E_DATABASE_DRIVER=postgres` and `SEED_DEMO_TENANTS=true`. The existing memory e2e job is unchanged. Migrations-from-scratch is seconds relative to Playwright, so the job runs on every push/PR rather than main-only.
+- **Tests:** `apps/api/src/ops/ci-hardening.test.ts` asserts the job exists
 - **Priority:** P3
-- **Deferred because:** A second e2e job is a CI architecture change; CHECKs are already covered by gated postgres integration tests.
 
 ---
 
@@ -605,11 +608,11 @@ No critical issue is “the app secretly moves money.” Custody and live execut
 
 **Medium closed (prior):** PA-M01 (credential hashing), PA-M02 (shared rate limits on postgres), PA-M03 (error DTO), PA-M04 (audit actor), PA-M05 (OpenAPI + public vs billed quote surfaces), PA-M06 (agent issuance docs), PA-M11 (`preferredRoutePreference` ranking input), PA-M12 (cookie Secure), PA-M13 (dashboard session middleware), PA-M15 (failed-auth audit).
 
-**Medium still open (deferred, feature-scale):** PA-M07 (cursor pagination), PA-M09 remainder (payment collection, tax, partner AP), PA-M10 (multi-rail fingerprint/replay; would bump engine version if public).
+**Medium still open (deferred, feature-scale):** PA-M09 remainder (payment collection, tax, partner AP).
 
-**Low closed:** PA-L01, PA-L02, PA-L03 (TOTP MFA + OIDC; SCIM still out of scope), PA-L04 (quote cache and circuit breaker; worker queue not added).
+**Low closed:** PA-L01, PA-L02, PA-L03 (TOTP MFA + OIDC; SCIM still out of scope), PA-L04 (quote cache and circuit breaker; worker queue not added), PA-L06 (postgres e2e job).
 
-**Low still open (deferred, feature-scale):** PA-L05 (A2A/treasury/KYC-as-product), PA-L06 (postgres e2e job). SCIM (PA-L03 remainder) and worker queue (PA-L04 remainder) remain out of scope.
+**Low still open (deferred, feature-scale):** PA-L05 (A2A/treasury/KYC-as-product). SCIM (PA-L03 remainder) and worker queue (PA-L04 remainder) remain out of scope.
 
 ---
 
@@ -677,6 +680,18 @@ The prompt required four confirmations **outside Cursor** before lifting `POST /
 
 ---
 
+## PHASE 34 — Pagination, multi-rail fingerprint/replay, clean-Postgres e2e
+
+No ranking-relevant behaviour changed. `ROUTING_ENGINE_VERSION` remains **1.0.0**. `POST /api/v1/executions` remains 501. PHASE 30 (licensed partner) and PHASE 33 (execution pilot) stay blocked.
+
+| ID | Change |
+| -- | ------ |
+| PA-M07 | Opaque keyset cursor (`ks1.` + `(sortAt, id)`) on list GETs. Limit 1–100 (400 if exceeded). Newest-first; concurrent inserts after page 1 do not appear in page 2 of that sequence. |
+| PA-M10 | `/routes` and `/quote` persist a ranking snapshot (`routing_evaluations`). HTTP returns a SHA-256 fingerprint only. Replay re-runs `MultiRailRouter.recomputeFromSnapshot`. Snapshot JSON is not a response field. Quote replay stays authenticated and omits monetization (PA-M05). |
+| PA-L06 | Separate CI job `e2e-postgres`: empty Postgres 16, `prisma migrate deploy` from scratch, full Playwright suite. The memory e2e job is unchanged. Migrations are seconds relative to Playwright, so the job runs on every push/PR. |
+
+---
+
 ## Controls to keep
 
 Do not “clean up” these as if they were incomplete features:
@@ -693,4 +708,4 @@ Do not “clean up” these as if they were incomplete features:
 
 ---
 
-*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M06, PA-M08, PA-M11–PA-M16, PA-L01–PA-L04 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M07, PA-M09 collection/tax/partner AP, PA-M10, PA-L05, PA-L06, plus SCIM and worker queue.*
+*End of original audit. PA-C01, PA-C02, PA-C03, PA-H01–PA-H13, PA-M01–PA-M08, PA-M10, PA-M11–PA-M16, PA-L01–PA-L04, PA-L06 (SCIM out of scope; worker queue out of scope) were fixed in later changes. PHASE 32 implemented invoice generation (PA-M09 invoices). PHASE 33 was refused pending the four business/legal gates. PHASE 34 added cursor pagination, multi-rail fingerprint/replay, and a clean-Postgres e2e job. All CRITICAL and HIGH issues are closed. Remaining Medium/Low items are explicitly deferred as feature-scale: PA-M09 collection/tax/partner AP, PA-L05, plus SCIM and worker queue.*

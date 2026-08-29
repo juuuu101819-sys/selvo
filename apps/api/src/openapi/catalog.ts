@@ -128,7 +128,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'Public indicative comparison. Same MultiRailRouter as POST /routes. Not the billed /quote surface.',
     ['Discovery'],
   ),
-  r('GET', '/comparisons', 'public', 'none', 'List stored comparisons visible to this caller.', [
+  r('GET', '/comparisons', 'public', 'none', 'Keyset-paginated stored comparisons visible to this caller.', [
     'Discovery',
   ]),
   r('GET', '/comparisons/:comparisonId', 'public', 'none', 'Fetch one stored comparison.', [
@@ -157,6 +157,14 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'public',
     'none',
     'Public multi-rail ranking. Indicative. Returns quoted (unrealized) monetization. Anonymous is 201.',
+    ['Discovery'],
+  ),
+  r(
+    'POST',
+    '/routes/:routingId/replay',
+    'public',
+    'none',
+    'Replay a stored public multi-rail ranking snapshot. Does not return the snapshot JSON.',
     ['Discovery'],
   ),
   r('GET', '/route-graph', 'public', 'none', 'Demo financial-route graph. Not a quote.', [
@@ -211,6 +219,14 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'authenticated',
     'quote:read',
     'Org-scoped billed quote. Same MultiRailRouter. Returns quoteExpiresAt. Anonymous is 401.',
+    ['Quotes'],
+  ),
+  r(
+    'POST',
+    '/quote/:routingId/replay',
+    'authenticated',
+    'quote:read',
+    'Replay a stored billed quote ranking. No monetization field (PA-M05).',
     ['Quotes'],
   ),
   r(
@@ -286,7 +302,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'Create a non-custodial payment intent (mag_ only).',
     ['Agents'],
   ),
-  r('GET', '/payment-intents', 'authenticated', 'organization', 'List payment intents.', ['Agents']),
+  r('GET', '/payment-intents', 'authenticated', 'organization', 'Keyset-paginated payment intents.', ['Agents']),
   r('GET', '/payment-intents/:id', 'authenticated', 'organization', 'Fetch one payment intent.', [
     'Agents',
   ]),
@@ -342,7 +358,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
   r('GET', '/dashboard/metrics', 'authenticated', 'organization', 'Organization dashboard metrics.', [
     'Dashboard',
   ]),
-  r('GET', '/dashboard/quotes', 'authenticated', 'organization', 'Stored dashboard quotes.', [
+  r('GET', '/dashboard/quotes', 'authenticated', 'organization', 'Keyset-paginated stored dashboard quotes.', [
     'Dashboard',
   ]),
   r('GET', '/dashboard/quotes/:id', 'authenticated', 'organization', 'One dashboard quote.', [
@@ -353,7 +369,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     '/dashboard/transactions',
     'authenticated',
     'organization',
-    'Dashboard transaction requests.',
+    'Keyset-paginated dashboard transaction requests.',
     ['Dashboard'],
   ),
   r(
@@ -487,7 +503,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     '/dashboard/invoices',
     'authenticated',
     'organization',
-    'Issued platform-fee invoices for this organization. Not cash received.',
+    'Keyset-paginated issued platform-fee invoices. Not cash received.',
     ['Dashboard'],
   ),
   r(
@@ -512,7 +528,7 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     '/execution-intents',
     'authenticated',
     'transaction:create',
-    'List recorded execution intents.',
+    'Keyset-paginated recorded execution intents.',
     ['Execution'],
   ),
   r(

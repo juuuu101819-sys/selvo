@@ -27,9 +27,9 @@ import {
   requireKeyManager,
   requireOrganization,
 } from '../http/require-organization.js';
-import { parseOrThrow, patchAgentPolicySchema } from '../http/validation.js';
+import { parseOrThrow, patchAgentPolicySchema, dashboardListQuerySchema } from '../http/validation.js';
+import { resolveListCursor, slicePage } from '../http/list-page.js';
 
-const listQuery = z.object({ limit: z.coerce.number().int().min(1).max(100).default(50) }).strict();
 const idParams = z.object({ id: z.string().min(1).max(128) }).strict();
 const patchOrgAuthSchema = z
   .object({
@@ -78,11 +78,30 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
 
   app.get('/dashboard/quotes', async (request) => {
     const principal = requireOrganization(request);
-    const { limit } = parseOrThrow(listQuery, request.query, 'query');
+    const query = parseOrThrow(dashboardListQuerySchema, request.query, 'query');
+    const after = await resolveListCursor(
+      query.cursor,
+      (id) => container.persistence.dashboard.getQuote(principal.organizationId, id),
+      (quote) => ({ sortAt: quote.quotedAt, id: quote.id }),
+    );
     const quotes = await container.persistence.dashboard.listQuotes(principal.organizationId, {
-      limit,
+      limit: query.limit + 1,
+      ...(after === undefined ? {} : { after }),
     });
-    return envelope(request, { quotes });
+    const page = slicePage(quotes, query.limit, (quote) => ({
+      sortAt: quote.quotedAt,
+      id: quote.id,
+    }));
+    return {
+      data: { quotes: page.items },
+      meta: {
+        mode: container.config.mode,
+        disclaimer: container.disclaimer,
+        requestId: request.id,
+        limit: query.limit,
+        nextCursor: page.nextCursor,
+      },
+    };
   });
 
   app.get('/dashboard/quotes/:id', async (request) => {
@@ -97,12 +116,33 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
 
   app.get('/dashboard/transactions', async (request) => {
     const principal = requireOrganization(request);
-    const { limit } = parseOrThrow(listQuery, request.query, 'query');
+    const query = parseOrThrow(dashboardListQuerySchema, request.query, 'query');
+    const after = await resolveListCursor(
+      query.cursor,
+      (id) => container.persistence.dashboard.getTransaction(principal.organizationId, id),
+      (row) => ({ sortAt: row.createdAt, id: row.id }),
+    );
     const transactions = await container.persistence.dashboard.listTransactions(
       principal.organizationId,
-      { limit },
+      {
+        limit: query.limit + 1,
+        ...(after === undefined ? {} : { after }),
+      },
     );
-    return envelope(request, { transactions });
+    const page = slicePage(transactions, query.limit, (row) => ({
+      sortAt: row.createdAt,
+      id: row.id,
+    }));
+    return {
+      data: { transactions: page.items },
+      meta: {
+        mode: container.config.mode,
+        disclaimer: container.disclaimer,
+        requestId: request.id,
+        limit: query.limit,
+        nextCursor: page.nextCursor,
+      },
+    };
   });
 
   app.get('/dashboard/transactions/:id', async (request) => {

@@ -66,4 +66,6 @@ export {
 export { InMemoryRateLimitStore } from './rate-limit/memory-store.js';
 export { PrismaRateLimitStore } from './rate-limit/prisma-store.js';
 export { consumeFixedWindow } from './rate-limit/fixed-window.js';
+export { InMemoryRoutingEvaluationRepository } from './memory/memory-routing-evaluations.js';
+export { PrismaRoutingEvaluationRepository } from './postgres/prisma-routing-evaluations.js';
 export { readMigrations, locateMigrationRoot, MIGRATION_DIRECTORY } from './migrations.js';

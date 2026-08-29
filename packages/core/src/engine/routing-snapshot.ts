@@ -1,4 +1,5 @@
 import type { ProviderCapabilityProfile } from '../domain/provider-catalog.js';
+import type { FinancialProviderRegistry } from './financial-registry.js';
 import type { PlatformPricingRule } from '../domain/platform-pricing.js';
 import type { ProviderDescriptor } from '../domain/provider.js';
 import type { PlatformMode } from '../domain/provider.js';
@@ -83,6 +84,25 @@ export function snapshotFromRouting(
 
 function sortById<T>(items: readonly T[], key: (item: T) => string): readonly T[] {
   return [...items].sort((left, right) => key(left).localeCompare(key(right), 'en'));
+}
+
+/** Capability profiles as they were at ranking time. Live registry first; route metadata as fallback. */
+export function capabilitiesFromRouting(
+  routing: MultiRailRouting,
+  registry: FinancialProviderRegistry,
+): Readonly<Record<string, ProviderCapabilityProfile>> {
+  const capabilities: Record<string, ProviderCapabilityProfile> = {};
+  for (const route of routing.routes) {
+    const live = registry.get(route.provider.id);
+    capabilities[route.provider.id] =
+      live?.getCapabilities() ?? {
+        category: route.category,
+        features: [],
+        conversionKinds: [route.conversionKind],
+        rails: [route.rail],
+      };
+  }
+  return capabilities;
 }
 
 /**

@@ -1,4 +1,5 @@
 import type { MonetizationEvent, MonetizationReport } from '../domain/monetization.js';
+import type { ListCursor } from '../pagination/cursor.js';
 
 /**
  * Organization-scoped dashboard projections.
@@ -108,12 +109,12 @@ export interface DashboardRepository {
   quotesByProvider(organizationId: string): Promise<readonly DashboardProviderUsage[]>;
   listQuotes(
     organizationId: string,
-    options?: { readonly limit?: number },
+    options?: { readonly limit?: number; readonly after?: ListCursor },
   ): Promise<readonly DashboardQuote[]>;
   getQuote(organizationId: string, quoteId: string): Promise<DashboardQuote | null>;
   listTransactions(
     organizationId: string,
-    options?: { readonly limit?: number },
+    options?: { readonly limit?: number; readonly after?: ListCursor },
   ): Promise<readonly DashboardTransaction[]>;
   getTransaction(organizationId: string, id: string): Promise<DashboardTransaction | null>;
   recordTransaction(input: RecordTransactionInput): Promise<void>;

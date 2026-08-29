@@ -7,13 +7,13 @@ import { ROUTING_ENGINE_VERSION } from './routing-config.js';
 import type { MultiRailRouter } from './routing-engine.js';
 import type { FinancialProviderRegistry } from './financial-registry.js';
 import {
+  capabilitiesFromRouting,
   isRoutingComparisonSnapshot,
   snapshotFromRouting,
   fingerprintableRoutingSnapshot,
   type RoutingComparisonSnapshot,
 } from './routing-snapshot.js';
 import type { ComparisonDto, ReplayResultDto } from '../serialization/dto.js';
-import type { ProviderCapabilityProfile } from '../domain/provider-catalog.js';
 import { NotFoundError } from '../errors/index.js';
 import { fingerprint } from '../reproducibility/index.js';
 import type {
@@ -101,7 +101,7 @@ export class ComparisonRoutingService {
       routing,
       input.rails,
       routing.pricingRules,
-      capabilitiesOf(routing, this.deps.registry),
+      capabilitiesFromRouting(routing, this.deps.registry),
     );
     const digest = fingerprint(fingerprintableRoutingSnapshot(snapshot));
     const dto = serializeComparisonFromRouting({
@@ -238,24 +238,6 @@ export class ComparisonRoutingService {
       comparison: dto,
     };
   }
-}
-
-function capabilitiesOf(
-  routing: MultiRailRouting,
-  registry: FinancialProviderRegistry,
-): Readonly<Record<string, ProviderCapabilityProfile>> {
-  const capabilities: Record<string, ProviderCapabilityProfile> = {};
-  for (const route of routing.routes) {
-    const live = registry.get(route.provider.id);
-    capabilities[route.provider.id] =
-      live?.getCapabilities() ?? {
-        category: route.category,
-        features: [],
-        conversionKinds: [route.conversionKind],
-        rails: [route.rail],
-      };
-  }
-  return capabilities;
 }
 
 function rehydrateStored(stored: {

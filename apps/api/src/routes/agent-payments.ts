@@ -40,6 +40,7 @@ import {
   paymentIntentIdParamsSchema,
   selectPaymentRouteSchema,
 } from '../http/validation.js';
+import { resolveListCursor, slicePage } from '../http/list-page.js';
 
 const ISSUED_AGENT_PREFIX = 'mag_';
 
@@ -279,13 +280,44 @@ export function registerAgentPaymentRoutes(
   app.get('/payment-intents', async (request) => {
     const principal = requireOrganization(request);
     const query = parseOrThrow(listQuerySchema, request.query, 'query');
+    const agentId =
+      principal.kind === 'agent' && principal.subjectId !== null ? principal.subjectId : undefined;
+    const after = await resolveListCursor(
+      query.cursor,
+      async (id) => {
+        const intent = await container.persistence.agentPayments.findIntentById(
+          id,
+          principal.organizationId,
+        );
+        if (intent === null) {
+          return null;
+        }
+        if (agentId !== undefined && intent.agentId !== agentId) {
+          return null;
+        }
+        return intent;
+      },
+      (intent) => ({ sortAt: intent.createdAt, id: intent.id }),
+    );
     const intents = await container.persistence.agentPayments.listIntents(principal.organizationId, {
-      limit: query.limit,
-      ...(principal.kind === 'agent' && principal.subjectId !== null
-        ? { agentId: principal.subjectId }
-        : {}),
+      limit: query.limit + 1,
+      ...(after === undefined ? {} : { after }),
+      ...(agentId === undefined ? {} : { agentId }),
     });
-    return envelope(request, { paymentIntents: intents.map(serializePaymentIntent) });
+    const page = slicePage(intents, query.limit, (intent) => ({
+      sortAt: intent.createdAt,
+      id: intent.id,
+    }));
+    return {
+      data: { paymentIntents: page.items.map(serializePaymentIntent) },
+      meta: {
+        mode: container.config.mode,
+        disclaimer: container.disclaimer,
+        requestId: request.id,
+        limit: query.limit,
+        nextCursor: page.nextCursor,
+      },
+    };
   });
 
   app.get('/payment-intents/:id', async (request) => {

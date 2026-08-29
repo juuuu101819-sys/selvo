@@ -172,6 +172,21 @@ export interface ReplayResultDto {
   readonly comparison: ComparisonDto;
 }
 
+export interface RoutingReplayResultDto {
+  readonly routingId: string;
+  readonly surface: 'routes' | 'quote';
+  readonly reproducible: boolean;
+  readonly divergence: 'fingerprint_mismatch' | 'engine_version_changed' | null;
+  readonly originalFingerprint: string;
+  readonly replayedFingerprint: string;
+  readonly originalEngineVersion: string;
+  readonly replayEngineVersion: string;
+  readonly replayedAt: string;
+  readonly rankedRouteIds: readonly string[];
+  readonly routing: MultiRailRoutingDto | null;
+  readonly quote: FinancialQuoteDto | null;
+}
+
 export interface NormalizedFeeDto {
   readonly code: string;
   readonly label: string;
@@ -431,6 +446,8 @@ export interface MultiRailRoutingDto {
   readonly plannedRoutes: readonly PlannedRouteDto[];
   readonly providerFailures: readonly ProviderFailureDto[];
   readonly monetization: RouteMonetizationDto | null;
+  /** SHA-256 of the ranking snapshot. Replay input is not included on this DTO. */
+  readonly fingerprint: string;
 }
 
 export interface RouteMonetizationDto {
@@ -698,6 +715,8 @@ export interface FinancialQuoteDto {
   readonly routes: readonly MultiRailRouteDto[];
   readonly recommendedRoute: MultiRailRouteDto | null;
   readonly quoteExpiresAt: string | null;
+  readonly fingerprint: string;
+  readonly routingId: string;
 }
 
 export interface RouteSearchDto {

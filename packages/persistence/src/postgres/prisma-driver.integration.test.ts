@@ -87,6 +87,7 @@ describeIntegration('PostgreSQL schema', () => {
           'organization_invites',
           'invoices',
           'invoice_lines',
+          'routing_evaluations',
         ]),
       );
     });

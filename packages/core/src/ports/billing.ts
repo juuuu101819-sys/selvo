@@ -1,5 +1,6 @@
 import type { Invoice, InvoiceLine } from '../domain/billing.js';
 import type { MonetizationEvent } from '../domain/monetization.js';
+import type { ListCursor } from '../pagination/cursor.js';
 
 export interface IssueInvoiceInput {
   readonly id: string;
@@ -36,7 +37,7 @@ export interface BillingStore {
   getInvoiceForOrganization(organizationId: string, invoiceId: string): Promise<Invoice | null>;
   listInvoicesForOrganization(
     organizationId: string,
-    options?: { readonly limit?: number },
+    options?: { readonly limit?: number; readonly after?: ListCursor },
   ): Promise<readonly Invoice[]>;
   listInvoicesForPeriod(periodStart: string): Promise<readonly Invoice[]>;
   /**

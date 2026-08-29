@@ -1,5 +1,6 @@
 import {
   IdempotencyConflictError,
+  takeKeysetPage,
   type AuditEvent,
   type AuditEventType,
   type AuditLogRepository,
@@ -8,8 +9,10 @@ import {
   type DashboardRepository,
   type ExecutionIntentRepository,
   type IdentityStore,
+  type ListCursor,
   type MonetizationEvent,
   type PersistenceDriver,
+  type RoutingEvaluationRepository,
   type StoredComparison,
 } from '@meridian/core';
 import { InMemoryAgentPaymentsRepository } from './memory-agent-payments.js';
@@ -19,6 +22,7 @@ import { InMemoryExecutionIntentRepository } from './memory-execution-intents.js
 import { InMemoryIdentityStore } from './memory-identity.js';
 import { InMemoryOnboardingStore } from './memory-onboarding.js';
 import { InMemoryRateLimitStore } from '../rate-limit/memory-store.js';
+import { InMemoryRoutingEvaluationRepository } from './memory-routing-evaluations.js';
 
 const DEFAULT_LIST_LIMIT = 50;
 
@@ -70,34 +74,27 @@ export class InMemoryComparisonRepository implements ComparisonRepository {
     return comparisonId === undefined ? Promise.resolve(null) : this.findById(comparisonId);
   }
 
-  list(options: { limit?: number } = {}): Promise<readonly StoredComparison[]> {
+  list(options: { limit?: number; after?: ListCursor } = {}): Promise<readonly StoredComparison[]> {
     const limit = options.limit ?? DEFAULT_LIST_LIMIT;
-    const ordered = [...this.byId.values()]
-      .sort(
-        (left, right) =>
-          right.createdAt.localeCompare(left.createdAt) ||
-          (this.sequenceById.get(right.comparisonId) ?? 0) -
-            (this.sequenceById.get(left.comparisonId) ?? 0),
-      )
-      .slice(0, limit);
-    return Promise.resolve(ordered.map((item) => structuredClone(item)));
+    const page = takeKeysetPage(
+      [...this.byId.values()],
+      { limit, ...(options.after === undefined ? {} : { after: options.after }) },
+      (item) => ({ sortAt: item.createdAt, id: item.comparisonId }),
+    );
+    return Promise.resolve(page.map((item) => structuredClone(item)));
   }
 
   listByOrganization(
     organizationId: string | null,
-    options: { limit?: number } = {},
+    options: { limit?: number; after?: ListCursor } = {},
   ): Promise<readonly StoredComparison[]> {
     const limit = options.limit ?? DEFAULT_LIST_LIMIT;
-    const ordered = [...this.byId.values()]
-      .filter((item) => (item.organizationId ?? null) === organizationId)
-      .sort(
-        (left, right) =>
-          right.createdAt.localeCompare(left.createdAt) ||
-          (this.sequenceById.get(right.comparisonId) ?? 0) -
-            (this.sequenceById.get(left.comparisonId) ?? 0),
-      )
-      .slice(0, limit);
-    return Promise.resolve(ordered.map((item) => structuredClone(item)));
+    const page = takeKeysetPage(
+      [...this.byId.values()].filter((item) => (item.organizationId ?? null) === organizationId),
+      { limit, ...(options.after === undefined ? {} : { after: options.after }) },
+      (item) => ({ sortAt: item.createdAt, id: item.comparisonId }),
+    );
+    return Promise.resolve(page.map((item) => structuredClone(item)));
   }
 
   get size(): number {
@@ -168,11 +165,13 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly rateLimits = new InMemoryRateLimitStore();
   readonly onboarding = new InMemoryOnboardingStore(this.identity);
   readonly billing: BillingStore;
+  readonly routingEvaluations: RoutingEvaluationRepository;
 
   constructor() {
     const monetization = new Map<string, MonetizationEvent>();
     this.dashboard = new InMemoryDashboardRepository(monetization);
     this.billing = new InMemoryBillingStore(monetization);
+    this.routingEvaluations = new InMemoryRoutingEvaluationRepository();
   }
 
   healthCheck(): Promise<void> {

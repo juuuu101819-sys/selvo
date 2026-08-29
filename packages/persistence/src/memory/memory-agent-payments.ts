@@ -1,5 +1,6 @@
 import {
   IdempotencyConflictError,
+  takeKeysetPage,
   type Agent,
   type AgentCredential,
   type AgentPaymentsRepository,
@@ -11,6 +12,7 @@ import {
   type CreatePaymentPolicyInput,
   type CreateWalletReferenceInput,
   type DailySpendingQuery,
+  type ListCursor,
   type Merchant,
   type PaymentIntent,
   type PaymentPolicy,
@@ -310,16 +312,18 @@ export class InMemoryAgentPaymentsRepository implements AgentPaymentsRepository 
 
   listIntents(
     organizationId: string,
-    options: { readonly agentId?: string; readonly limit?: number } = {},
+    options: { readonly agentId?: string; readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly PaymentIntent[]> {
     const limit = options.limit ?? DEFAULT_LIST_LIMIT;
-    const rows = [...this.intents.values()]
+    const filtered = [...this.intents.values()]
       .filter((intent) => intent.organizationId === organizationId)
-      .filter((intent) => options.agentId === undefined || intent.agentId === options.agentId)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, limit)
-      .map((intent) => structuredClone(intent));
-    return Promise.resolve(rows);
+      .filter((intent) => options.agentId === undefined || intent.agentId === options.agentId);
+    const page = takeKeysetPage(
+      filtered,
+      { limit, ...(options.after === undefined ? {} : { after: options.after }) },
+      (intent) => ({ sortAt: intent.createdAt, id: intent.id }),
+    );
+    return Promise.resolve(page.map((intent) => structuredClone(intent)));
   }
 
   sumDailySpending(query: DailySpendingQuery): Promise<string> {

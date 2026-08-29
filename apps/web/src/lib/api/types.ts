@@ -743,6 +743,7 @@ export interface MultiRailRoutingDto {
   readonly routingId: string;
   readonly routingEngineVersion: string;
   readonly aiUsed: false;
+  readonly fingerprint: string;
   readonly routes: readonly MultiRailRouteDto[];
   readonly recommendedRoute: MultiRailRouteDto | null;
   readonly routeScore: string | null;
@@ -1046,6 +1047,8 @@ export interface DefiCatalogDto {
 
 export interface FinancialQuoteDto {
   readonly requestId: string;
+  readonly routingId: string;
+  readonly fingerprint: string;
   readonly routes: readonly MultiRailRouteDto[];
   readonly recommendedRoute: MultiRailRouteDto | null;
   readonly quoteExpiresAt: string | null;

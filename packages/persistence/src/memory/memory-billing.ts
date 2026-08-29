@@ -1,8 +1,10 @@
 import {
   PersistenceError,
+  takeKeysetPage,
   type BillingStore,
   type Invoice,
   type IssueInvoiceInput,
+  type ListCursor,
   type MonetizationEvent,
 } from '@meridian/core';
 
@@ -60,15 +62,15 @@ export class InMemoryBillingStore implements BillingStore {
 
   listInvoicesForOrganization(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly Invoice[]> {
     const limit = options.limit ?? DEFAULT_LIMIT;
-    const ordered = [...this.invoices.values()]
-      .filter((invoice) => invoice.organizationId === organizationId)
-      .sort((left, right) => right.issuedAt.localeCompare(left.issuedAt))
-      .slice(0, limit)
-      .map((invoice) => structuredClone(invoice));
-    return Promise.resolve(ordered);
+    const page = takeKeysetPage(
+      [...this.invoices.values()].filter((invoice) => invoice.organizationId === organizationId),
+      { limit, ...(options.after === undefined ? {} : { after: options.after }) },
+      (invoice) => ({ sortAt: invoice.issuedAt, id: invoice.id }),
+    );
+    return Promise.resolve(page.map((invoice) => structuredClone(invoice)));
   }
 
   listInvoicesForPeriod(periodStart: string): Promise<readonly Invoice[]> {

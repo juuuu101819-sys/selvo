@@ -34,6 +34,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "test:e2e": "playwright test",
+    "test:e2e:postgres": "npm run test:e2e",
     "test:e2e:ui": "playwright test --ui",
     "pretest:e2e": "npm run build && npm run build --workspace @meridian/web",
     "test:staging-smoke": "vitest run apps/api/src/ops/staging-smoke.test.ts",

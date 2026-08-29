@@ -1,16 +1,18 @@
-import type {
-  CostPoint,
-  DashboardMetrics,
-  DashboardProviderUsage,
-  DashboardQuote,
-  DashboardRepository,
-  DashboardTransaction,
-  MonetizationEvent,
-  MonetizationReport,
-  RecordTransactionInput,
-  VolumePoint,
+import {
+  aggregateMonetization,
+  takeKeysetPage,
+  type CostPoint,
+  type DashboardMetrics,
+  type DashboardProviderUsage,
+  type DashboardQuote,
+  type DashboardRepository,
+  type DashboardTransaction,
+  type ListCursor,
+  type MonetizationEvent,
+  type MonetizationReport,
+  type RecordTransactionInput,
+  type VolumePoint,
 } from '@meridian/core';
-import { aggregateMonetization } from '@meridian/core';
 import {
   aggregateCostByDay,
   aggregateMetrics,
@@ -54,14 +56,15 @@ export class InMemoryDashboardRepository implements DashboardRepository {
 
   listQuotes(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly DashboardQuote[]> {
     const limit = options.limit ?? DEFAULT_LIMIT;
-    const ordered = this.quotesFor(organizationId)
-      .sort((left, right) => right.quotedAt.localeCompare(left.quotedAt))
-      .slice(0, limit)
-      .map((quote) => structuredClone(quote));
-    return Promise.resolve(ordered);
+    const page = takeKeysetPage(
+      this.quotesFor(organizationId),
+      { limit, ...(options.after === undefined ? {} : { after: options.after }) },
+      (quote) => ({ sortAt: quote.quotedAt, id: quote.id }),
+    );
+    return Promise.resolve(page.map((quote) => structuredClone(quote)));
   }
 
   getQuote(organizationId: string, quoteId: string): Promise<DashboardQuote | null> {
@@ -74,14 +77,15 @@ export class InMemoryDashboardRepository implements DashboardRepository {
 
   listTransactions(
     organizationId: string,
-    options: { readonly limit?: number } = {},
+    options: { readonly limit?: number; readonly after?: ListCursor } = {},
   ): Promise<readonly DashboardTransaction[]> {
     const limit = options.limit ?? DEFAULT_LIMIT;
-    const ordered = this.transactionsFor(organizationId)
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-      .slice(0, limit)
-      .map((row) => structuredClone(row));
-    return Promise.resolve(ordered);
+    const page = takeKeysetPage(
+      this.transactionsFor(organizationId),
+      { limit, ...(options.after === undefined ? {} : { after: options.after }) },
+      (row) => ({ sortAt: row.createdAt, id: row.id }),
+    );
+    return Promise.resolve(page.map((row) => structuredClone(row)));
   }
 
   getTransaction(organizationId: string, id: string): Promise<DashboardTransaction | null> {
