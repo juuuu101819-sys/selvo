@@ -71,6 +71,12 @@ const envSchema = z
     MANDATE_INGESTION_ENABLED: booleanFlag,
 
     /**
+     * Admit `kind: 'live'` execution-partner adapters. Default false. This repository has no live
+     * adapters; even when true the registry still refuses them. POST /executions remains 501.
+     */
+    PARTNER_LIVE_ENABLED: booleanFlag,
+
+    /**
      * Deployment label. Safety rules come from production-lock (PA-C01–C03), not from this value.
      * `staging` and `production` both require a production-locked process. Staging is not a
      * relaxed sandbox.
@@ -270,6 +276,10 @@ export interface AppConfig {
    * HTTP mandate ingestion. Default false. Verification/storage only — never execution.
    */
   readonly mandateIngestionEnabled: boolean;
+  /**
+   * Live execution-partner adapters. Default false. No live adapters are registered in this tree.
+   */
+  readonly partnerLiveEnabled: boolean;
   /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
   readonly authSecretConfigured: boolean;
   /**
@@ -373,6 +383,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       executionAvailable: false,
     },
     mandateIngestionEnabled: env.MANDATE_INGESTION_ENABLED,
+    partnerLiveEnabled: env.PARTNER_LIVE_ENABLED,
     authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
     sessionTokenPepper: deriveSessionTokenPepper(env.AUTH_SECRET, { productionLocked }),
     dataEncryptionKey: deriveDataEncryptionKeyHex(env.AUTH_SECRET, { productionLocked }),

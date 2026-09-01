@@ -253,6 +253,7 @@ model Organization {
   invoices            Invoice[]
   routingEvaluations  RoutingEvaluation[]
   mandates            Mandate[]
+  partnerInstructions PartnerInstruction[]
 
   @@map("organizations")
 }
@@ -516,6 +517,40 @@ model MandateX402Challenge {
 
   @@index([organizationId, agentId])
   @@map("mandate_x402_challenges")
+}
+
+enum PartnerInstructionStatus {
+  accepted
+  settling
+  partial
+  settled
+  failed
+}
+
+/// Sandbox record of a signed instruction forwarded to an execution partner.
+/// The partner settles to the beneficiary. Meridian stores hashes only — no funds, keys, or PII.
+model PartnerInstruction {
+  id                 String                   @id
+  organizationId     String                   @map("organization_id")
+  partnerId          String                   @map("partner_id")
+  quotedProviderId   String                   @map("quoted_provider_id")
+  status             PartnerInstructionStatus
+  sourceAsset        String                   @map("source_asset") @db.VarChar(16)
+  destinationAsset   String                   @map("destination_asset") @db.VarChar(16)
+  amountMinorUnits   Decimal                  @map("amount_minor_units") @db.Decimal(38, 0)
+  filledMinorUnits   Decimal                  @map("filled_minor_units") @db.Decimal(38, 0)
+  instructionHash    String                   @map("instruction_hash")
+  signatureHash      String                   @map("signature_hash")
+  failureCode        String?                  @map("failure_code")
+  sandboxScenario    String                   @map("sandbox_scenario") @db.VarChar(32)
+  failoverFrom       String[]                 @map("failover_from")
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("partner_instructions")
 }
 
 /// Autonomous AI agent acting *for* an organization. Never a custodian of funds.

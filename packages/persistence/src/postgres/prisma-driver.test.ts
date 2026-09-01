@@ -138,6 +138,7 @@ describe('migrations', () => {
           'provider_credentials',
           'mandates',
           'mandate_x402_challenges',
+          'partner_instructions',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -269,6 +270,8 @@ describe('migrations', () => {
     expect(sql).toContain('CREATE TABLE "mandates"');
     expect(sql).toContain('"mandates_spend_cap_positive"');
     expect(sql).toContain('CREATE TABLE "mandate_x402_challenges"');
+    expect(sql).toContain('CREATE TABLE "partner_instructions"');
+    expect(sql).toContain('"partner_instructions_amounts_non_negative"');
   });
 
   /**

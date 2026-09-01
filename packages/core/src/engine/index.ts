@@ -173,3 +173,28 @@ export {
   violationFromAuditPayload,
 } from './agent-dashboard.js';
 export { MandateService, type MandateServiceDependencies } from './mandate-service.js';
+export {
+  ExecutionPartnerRegistry,
+  type ExecutionPartnerExclusion,
+  type ExecutionPartnerRegistryOptions,
+} from './execution-partner-registry.js';
+export {
+  PartnerInstructionService,
+  type DispatchPartnerInstructionCommand,
+  type PartnerCatalogEntry,
+  type PartnerInstructionPublic,
+  type PartnerInstructionServiceDependencies,
+} from './partner-instruction-service.js';
+export {
+  corridorAllowed,
+  hashExecutionInstruction,
+  hoursOpen,
+  partnerSupportsRequest,
+  type PartnerMatchRequest,
+} from './partner-capability.js';
+export {
+  advanceSandboxSimulation,
+  applySandboxWebhook,
+  initialSandboxDispatch,
+  type SandboxSimulationState,
+} from './sandbox-partner-simulation.js';

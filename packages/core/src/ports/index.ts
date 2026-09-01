@@ -70,6 +70,28 @@ export type {
 export type {
   MandateStore,
 } from './mandates.js';
+export {
+  ALWAYS_OPEN_HOURS,
+  EXECUTION_PARTNER_KINDS,
+  PARTNER_INSTRUCTION_STATUSES,
+  SANDBOX_PARTNER_SCENARIOS,
+  isExecutionPartnerKind,
+  isPartnerInstructionStatus,
+  isSandboxPartnerScenario,
+  type ExecutionPartner,
+  type ExecutionPartnerCapabilities,
+  type ExecutionPartnerKind,
+  type PartnerCorridor,
+  type PartnerDispatchResult,
+  type PartnerExecutionContext,
+  type PartnerInstructionStatus,
+  type PartnerInstructionStore,
+  type PartnerOperatingHours,
+  type PartnerWebhookEvent,
+  type SandboxPartnerScenario,
+  type SignedExecutionInstruction,
+  type StoredPartnerInstruction,
+} from './execution-partner.js';
 export type { FXProvider, FXQuote, FXQuoteRequest } from './fx-provider.js';
 export { SequentialIdGenerator, uuidIdGenerator, type IdGenerator } from './id-generator.js';
 export { FixedClock, systemClock, type Clock } from './clock.js';

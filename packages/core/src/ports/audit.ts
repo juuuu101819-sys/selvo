@@ -65,6 +65,9 @@ export const AUDIT_EVENT_TYPES = [
   'mandate.verified',
   'mandate.rejected',
   'mandate.revoked',
+  'partner.dispatched',
+  'partner.status_changed',
+  'partner.failed',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

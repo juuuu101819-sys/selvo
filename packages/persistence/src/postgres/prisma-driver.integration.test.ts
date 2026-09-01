@@ -92,6 +92,7 @@ describeIntegration('PostgreSQL schema', () => {
           'provider_credentials',
           'mandates',
           'mandate_x402_challenges',
+          'partner_instructions',
         ]),
       );
     });

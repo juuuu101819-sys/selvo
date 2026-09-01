@@ -23,6 +23,7 @@ import { InMemoryIdentityStore } from './memory-identity.js';
 import { InMemoryOnboardingStore } from './memory-onboarding.js';
 import { InMemoryProviderCredentialStore } from './memory-provider-credentials.js';
 import { InMemoryMandateStore } from './memory-mandates.js';
+import { InMemoryPartnerInstructionStore } from './memory-partner-instructions.js';
 import { InMemoryRateLimitStore } from '../rate-limit/memory-store.js';
 import { InMemoryRoutingEvaluationRepository } from './memory-routing-evaluations.js';
 import { InMemoryRoutingOverrideStore } from './memory-routing-overrides.js';
@@ -172,6 +173,7 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly routingOverrides = new InMemoryRoutingOverrideStore();
   readonly providerCredentials = new InMemoryProviderCredentialStore();
   readonly mandates = new InMemoryMandateStore();
+  readonly partnerInstructions = new InMemoryPartnerInstructionStore();
 
   constructor() {
     const monetization = new Map<string, MonetizationEvent>();

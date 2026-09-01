@@ -19,6 +19,8 @@ import { FinancialProviderRegistry } from './financial-registry.js';
 import { MultiRailCostEngine } from './routing-cost.js';
 import { MultiRailRouter } from './routing-engine.js';
 import { defaultRoutingWeights } from './routing-config.js';
+import { ExecutionPartnerRegistry } from './execution-partner-registry.js';
+import { ALWAYS_OPEN_HOURS, type ExecutionPartner } from '../ports/execution-partner.js';
 
 class RecordingAuditLogger implements AuditLogger {
   readonly events: AuditEvent[] = [];
@@ -108,6 +110,7 @@ function router(
   options: {
     readonly clock?: FixedClock;
     readonly pricingResolver?: PlatformPricingResolver;
+    readonly executionPartners?: ExecutionPartnerRegistry;
   } = {},
 ): MultiRailRouter {
   return new MultiRailRouter({
@@ -121,6 +124,7 @@ function router(
     logger: noopLogger,
     providerTimeoutMs: 1_000,
     ...(options.pricingResolver === undefined ? {} : { pricingResolver: options.pricingResolver }),
+    ...(options.executionPartners === undefined ? {} : { executionPartners: options.executionPartners }),
   });
 }
 
@@ -313,5 +317,59 @@ describe('MultiRailRouter', () => {
     expect(result.routes.every((route) => route.quote.timestamp && route.quote.expiresAt)).toBe(
       true,
     );
+  });
+
+  it('excludes a financial provider whose linked execution partner cannot cover the corridor', async () => {
+    const mismatch: ExecutionPartner = {
+      kind: 'sandbox_mock',
+      descriptor: buildProviderDescriptor({ id: 'sandbox-partner-yen-only' }),
+      capabilities: {
+        partnerId: 'sandbox-partner-yen-only',
+        kind: 'sandbox_mock',
+        rail: 'bank_fx',
+        quotedProviderId: 'restricted-bank',
+        corridors: [{ source: 'JPY', destination: 'INR' }],
+        currencies: ['JPY', 'INR'],
+        minAmountMinorUnits: '0',
+        maxAmountMinorUnits: '100000000000',
+        maxAmountAsset: 'JPY',
+        operatingHours: ALWAYS_OPEN_HOURS,
+        licenses: ['sandbox_mock'],
+        sandbox: true,
+        live: false,
+      },
+      quote: () => Promise.reject(new Error('unused')),
+      dispatchInstruction: () => Promise.reject(new Error('unused')),
+      getExecutionStatus: () => Promise.reject(new Error('unused')),
+      handleWebhook: () => Promise.reject(new Error('unused')),
+    };
+
+    const result = await router(
+      [
+        new StubFinancialProvider(
+          { id: 'restricted-bank', name: 'Restricted Bank', rail: 'bank_fx' },
+          buildNormalizedQuote({ providerId: 'restricted-bank' }),
+          'USD',
+          'KRW',
+        ),
+        new StubFinancialProvider(
+          { id: 'open-bank', name: 'Open Bank', rail: 'bank_fx' },
+          buildNormalizedQuote({ providerId: 'open-bank', indicatedRate: '1294' }),
+          'USD',
+          'KRW',
+        ),
+      ],
+      { executionPartners: ExecutionPartnerRegistry.create([mismatch], { liveEnabled: false }) },
+    ).evaluate({
+      organizationId: 'org_demo',
+      sourceAsset: 'USD',
+      destinationAsset: 'KRW',
+      amountMinorUnits: '10000000',
+      weights: null,
+      actor: 'test',
+      requestId: 'req_cap',
+    });
+
+    expect(result.routes.map((route) => route.provider.id)).toEqual(['open-bank']);
   });
 });

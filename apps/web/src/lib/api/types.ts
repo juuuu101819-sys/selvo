@@ -237,7 +237,8 @@ export interface MetaDto {
     readonly agentFinancialDashboard?: boolean;
                 readonly b2bOnboarding?: boolean;
     readonly platformInvoicing?: boolean;
-    readonly mandateIngestion?: boolean;
+                readonly mandateIngestion?: boolean;
+    readonly executionPartnerAdapters?: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -250,6 +251,7 @@ export interface MetaDto {
     readonly executionAvailable: boolean;
   };
   readonly mandateIngestionEnabled?: boolean;
+  readonly partnerLiveEnabled?: boolean;
   readonly pricing: {
     readonly datasetVersion: string;
     readonly referenceRatesVersion: string;

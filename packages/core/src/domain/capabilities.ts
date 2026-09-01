@@ -104,6 +104,13 @@ export const PLATFORM_CAPABILITIES = {
    * MANDATE_INGESTION_ENABLED (default false). Never execution, custody, or private-key holding.
    */
   mandateIngestion: true,
+  /**
+   * Sandbox execution-partner adapters: Meridian forwards a caller-signed instruction and records
+   * partner-reported status. The partner settles to the beneficiary. Live adapters are fail-closed
+   * behind PARTNER_LIVE_ENABLED (default false). Distinct from `delegateExecution` (still false).
+   * POST /executions remains 501. No funds or keys pass through Meridian.
+   */
+  executionPartnerAdapters: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

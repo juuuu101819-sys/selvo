@@ -212,7 +212,8 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "agentFinancialDashboard": true,
   "b2bOnboarding": true,
   "platformInvoicing": true,
-  "mandateIngestion": true
+  "mandateIngestion": true,
+  "executionPartnerAdapters": true
 }
 ```
 
@@ -229,6 +230,9 @@ simulator. They still cannot move money. The NL parser does not compute rates, f
 settlement amounts. `mandateIngestion` is true (the code exists) and `GET /meta` also publishes
 `mandateIngestionEnabled` from `MANDATE_INGESTION_ENABLED` (**default false**). Verification and
 storage of signed AP2 / x402 / MPP mandates never executes, holds keys, or moves funds.
+`executionPartnerAdapters` is true: sandbox mocks can receive a caller-signed instruction and
+report partner status. `GET /meta` publishes `partnerLiveEnabled` from `PARTNER_LIVE_ENABLED`
+(**default false**). No live adapter is registered. `POST /executions` remains 501.
 `paymentPolicyEngine` is true: every agent request is evaluated fail-closed
 before quotes, authorization, simulation, and execution-intent recording. `multiRailMonetization`
 is true: quoted TPV, platform revenue, provider cost, partner commission, gross profit and take
@@ -966,6 +970,24 @@ Formats:
 A verified mandate is bound to the presenting organization and `mag_` agent (`mdt_…`). The spend
 cap is a **limit**, not a balance. Wrong-tenant ids are `404`, never `403`. Audit:
 `mandate.verified`, `mandate.rejected`, `mandate.revoked`.
+
+## Execution-partner adapters
+
+Meridian forwards a **caller-signed** instruction to a sandbox execution partner. The partner
+settles to the beneficiary. Meridian does not hold funds or keys. `POST /api/v1/executions`
+remains 501. Live adapters are behind `PARTNER_LIVE_ENABLED` (default `false`) and are not
+implemented.
+
+| Method | Path | Auth |
+| ------ | ---- | ---- |
+| GET | `/api/v1/execution-partners` | public catalog of mock capabilities |
+| POST | `/api/v1/partner-instructions` | organization |
+| GET | `/api/v1/partner-instructions/:id` | organization; wrong tenant 404 |
+| POST | `/api/v1/partner-webhooks/:partnerId` | sandbox mock callback |
+
+Responses carry `sandbox: true`, `fundsMoved: false`, `meridianKeysUsed: false`. Status walks
+`accepted → settling → settled` (or `partial` / `failed`). Audit: `partner.dispatched`,
+`partner.status_changed`, `partner.failed` (hashes only; no PII, no raw signature).
 
 `POST /comparisons`, `POST /routes`, and `POST /quote` accept optional `mandateId`. Out-of-scope
 routes are dropped after ranking; an empty set is `422 NO_ROUTES_AVAILABLE`. Anonymous callers

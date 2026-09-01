@@ -46,6 +46,8 @@ import { MultiRailScorer } from './routing-scorer.js';
 import { explainRecommendation } from './routing-explanation.js';
 import type { MultiRailRouting, PlannedRoute, PricedMultiRailRoute } from './routing-types.js';
 import type { RoutingComparisonSnapshot } from './routing-snapshot.js';
+import type { ExecutionPartnerRegistry } from './execution-partner-registry.js';
+import { partnerSupportsRequest } from './partner-capability.js';
 
 export interface RoutingEngineInput {
   readonly organizationId: string | null;
@@ -72,6 +74,11 @@ export interface MultiRailRouterDependencies {
   readonly logger: Logger;
   readonly providerTimeoutMs: number;
   readonly pricingResolver?: PlatformPricingResolver | undefined;
+  /**
+   * When set, financial providers that have a linked execution partner are admitted only if that
+   * partner's corridor/currency/limit/hours cover the request. Quote-only providers are unchanged.
+   */
+  readonly executionPartners?: ExecutionPartnerRegistry | undefined;
 }
 
 type QuoteOutcome =
@@ -131,6 +138,23 @@ export class MultiRailRouter {
     if (input.rails !== undefined && input.rails !== null) {
       const allowed = new Set(input.rails);
       eligible = eligible.filter((provider) => allowed.has(provider.descriptor.rail));
+    }
+    const partnerRegistry = this.deps.executionPartners;
+    if (partnerRegistry !== undefined) {
+      eligible = eligible.filter((provider) => {
+        const linked = partnerRegistry.forQuotedProvider(provider.descriptor.id);
+        if (linked.length === 0) {
+          return true;
+        }
+        return linked.some((partner) =>
+          partnerSupportsRequest(partner.capabilities, {
+            sourceAsset: input.sourceAsset,
+            destinationAsset: input.destinationAsset,
+            amountMinorUnits: input.amountMinorUnits,
+            atIso: requestedAt,
+          }),
+        );
+      });
     }
     if (eligible.length === 0) {
       await auditLogger.record({

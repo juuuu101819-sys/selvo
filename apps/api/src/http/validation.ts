@@ -686,3 +686,54 @@ export const patchAgentPolicySchema = z
 
 export type PatchAgentPolicyBody = z.infer<typeof patchAgentPolicySchema>;
 
+const partnerScenario = z.enum(['settle', 'fail', 'partial', 'webhook']);
+
+/**
+ * Body of `POST /api/v1/partner-instructions`.
+ *
+ * Forwards a caller-signed instruction to a sandbox execution partner. Meridian does not generate
+ * the signature. Account numbers, keys, wallets and `execute` are rejected by `.strict()`.
+ */
+export const dispatchPartnerInstructionSchema = z
+  .object({
+    partnerId: z.string().trim().min(1).max(128).optional(),
+    quoteReference: z.string().trim().min(1).max(128),
+    sourceAsset: z.string().trim().min(2).max(16),
+    destinationAsset: z.string().trim().min(2).max(16),
+    amount: assetAmount,
+    beneficiaryRef: z.string().trim().min(1).max(80).optional(),
+    signedAt: isoTimestamp,
+    signature: z.string().trim().min(16).max(4096),
+    sandboxScenario: partnerScenario.optional(),
+  })
+  .strict()
+  .refine((body) => body.sourceAsset !== body.destinationAsset, {
+    message: 'sourceAsset and destinationAsset must differ',
+    path: ['destinationAsset'],
+  });
+
+export type DispatchPartnerInstructionBody = z.infer<typeof dispatchPartnerInstructionSchema>;
+
+export const partnerInstructionIdParamsSchema = z
+  .object({ id: z.string().trim().min(1).max(128) })
+  .strict();
+
+export const partnerWebhookParamsSchema = z
+  .object({ partnerId: z.string().trim().min(1).max(128) })
+  .strict();
+
+export const partnerWebhookBodySchema = z
+  .object({
+    executionRef: z.string().trim().min(1).max(128),
+    status: z.enum(['settling', 'partial', 'settled', 'failed']),
+    filledMinorUnits: z
+      .string()
+      .trim()
+      .regex(/^\d+$/, 'must be a non-negative integer string of minor units')
+      .optional(),
+    reasonCode: z.string().trim().min(1).max(64).optional(),
+  })
+  .strict();
+
+export type PartnerWebhookBody = z.infer<typeof partnerWebhookBodySchema>;
+

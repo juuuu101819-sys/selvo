@@ -70,8 +70,10 @@ export { InMemoryRoutingEvaluationRepository } from './memory/memory-routing-eva
 export { InMemoryRoutingOverrideStore } from './memory/memory-routing-overrides.js';
 export { InMemoryProviderCredentialStore } from './memory/memory-provider-credentials.js';
 export { InMemoryMandateStore } from './memory/memory-mandates.js';
+export { InMemoryPartnerInstructionStore } from './memory/memory-partner-instructions.js';
 export { PrismaRoutingEvaluationRepository } from './postgres/prisma-routing-evaluations.js';
 export { PrismaRoutingOverrideStore } from './postgres/prisma-routing-overrides.js';
 export { PrismaProviderCredentialStore } from './postgres/prisma-provider-credentials.js';
 export { PrismaMandateStore } from './postgres/prisma-mandates.js';
+export { PrismaPartnerInstructionStore } from './postgres/prisma-partner-instructions.js';
 export { readMigrations, locateMigrationRoot, MIGRATION_DIRECTORY } from './migrations.js';

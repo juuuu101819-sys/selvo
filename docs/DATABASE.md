@@ -88,6 +88,7 @@ Organization ──┬── OrganizationMember ── User ── MfaRecoveryCo
                ├── Agent ── AgentCredential / AgentWalletReference / PaymentPolicy / PaymentIntent / Mandate
                ├── Merchant
                ├── MandateX402Challenge
+               ├── PartnerInstruction
                ├── MonetizationEvent ── Invoice / InvoiceLine
                ├── RoutingEvaluation
                └── AuditLog
@@ -240,6 +241,12 @@ No private key material is stored. Wrong-tenant lookups are scoped by `organizat
 **`MandateX402Challenge`** (`mandate_x402_challenges`) — ephemeral x402 nonce. Not a mandate, not
 a spendable balance. Deleted after authorization.
 
+**`PartnerInstruction`** (`partner_instructions`) — sandbox record of a signed instruction
+forwarded to an execution partner. Amounts are limits/reported fills (`DECIMAL(38,0)`), not a
+customer balance. `instruction_hash` and `signature_hash` are SHA-256; the raw signature and any
+account/PII are not stored. Partner-reported status is `accepted | settling | partial | settled |
+failed`. Meridian does not settle.
+
 ### Reproducibility and audit
 
 **`Comparison`** — the immutable, replayable record: the snapshot the engine needs to recompute a
@@ -279,6 +286,7 @@ runs anywhere, and by execution against a real server in the integration suite.
 | API key scopes are the known three values                        | `api_keys_scopes_known`                                                      |
 | An execution intent is recorded, never executable or submitted   | `execution_intents_status_recorded`, `execution_intents_not_executable`, `execution_intents_not_submitted` |
 | Mandate spend cap is a positive limit, not a balance             | `mandates_spend_cap_positive` |
+| Partner instruction amounts are non-negative                     | `partner_instructions_amounts_non_negative` |
 | Invoice tax is zero; status is issued; collection is uncollected | `invoices_tax_zero`, `invoices_status_issued`, `invoices_collection_uncollected` |
 | Realized revenue only with collected recognition                 | `monetization_events_realized_revenue_collected_chk` |
 | A snapshot appears on at most one invoice                        | unique `invoice_lines.monetization_event_id` |

@@ -257,6 +257,34 @@ export function buildOpenApiDocument(): OpenApiDocument {
             fundsMoved: { type: 'boolean', enum: [false] },
           },
         },
+        PartnerInstruction: {
+          type: 'object',
+          description:
+            'Sandbox record of a signed instruction forwarded to an execution partner. The partner settles. fundsMoved and meridianKeysUsed are always false.',
+          required: [
+            'id',
+            'partnerId',
+            'status',
+            'instructionHash',
+            'fundsMoved',
+            'custody',
+            'meridianKeysUsed',
+            'sandbox',
+          ],
+          properties: {
+            id: { type: 'string' },
+            partnerId: { type: 'string' },
+            status: {
+              type: 'string',
+              enum: ['accepted', 'settling', 'partial', 'settled', 'failed'],
+            },
+            instructionHash: { type: 'string' },
+            fundsMoved: { type: 'boolean', enum: [false] },
+            custody: { type: 'boolean', enum: [false] },
+            meridianKeysUsed: { type: 'boolean', enum: [false] },
+            sandbox: { type: 'boolean', enum: [true] },
+          },
+        },
       },
     },
   };

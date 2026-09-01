@@ -1,6 +1,7 @@
 import {
   createFinancialCatalog,
   createSandboxAdapters,
+  createSandboxExecutionPartners,
   CircuitBreakerRegistry,
   ManualOverrideRegistry,
   QuoteCache,
@@ -15,11 +16,13 @@ import {
   DEFI_ROUTING_ENGINE_VERSION,
   DefiRouter,
   ENGINE_VERSION,
+  ExecutionPartnerRegistry,
   FinancialProviderRegistry,
   GRAPH_ENGINE_VERSION,
   MultiRailCostEngine,
   MultiRailRouter,
   NlRoutingService,
+  PartnerInstructionService,
   ProviderRegistry,
   ROUTING_ENGINE_VERSION,
   RepositoryAuditLogger,
@@ -65,6 +68,8 @@ export interface AppContainer {
   readonly oidcClient: OidcClient;
   readonly agentPayments: AgentPaymentService;
   readonly mandates: MandateService;
+  readonly partnerInstructions: PartnerInstructionService;
+  readonly executionPartners: ExecutionPartnerRegistry;
   readonly nlRouting: NlRoutingService;
   readonly disclaimer: string;
   readonly pricing: {
@@ -170,6 +175,11 @@ export function createContainer(options: ContainerOptions): AppContainer {
 
   const costEngine = new MultiRailCostEngine();
 
+  const executionPartners = ExecutionPartnerRegistry.create(
+    config.mode === 'sandbox' ? createSandboxExecutionPartners() : [],
+    { liveEnabled: config.partnerLiveEnabled },
+  );
+
   const routing = new MultiRailRouter({
     mode: config.mode,
     registry: financialProviders,
@@ -184,6 +194,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
     providerTimeoutMs: config.providerTimeoutMs,
     pricingResolver,
+    executionPartners,
   });
 
   const comparisons = new ComparisonRoutingService({
@@ -270,6 +281,17 @@ export function createContainer(options: ContainerOptions): AppContainer {
     enabled: config.mandateIngestionEnabled,
   });
 
+  const partnerInstructions = new PartnerInstructionService({
+    registry: executionPartners,
+    store: persistence.partnerInstructions,
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+    logger,
+    liveEnabled: config.partnerLiveEnabled,
+    sandboxMode: config.mode === 'sandbox',
+  });
+
   const nlRouting = new NlRoutingService({
     agentPayments,
     agentPaymentStore: persistence.agentPayments,
@@ -314,6 +336,8 @@ export function createContainer(options: ContainerOptions): AppContainer {
     oidcClient,
     agentPayments,
     mandates,
+    partnerInstructions,
+    executionPartners,
     nlRouting,
     disclaimer: disclaimerFor(config.mode),
     pricing:
