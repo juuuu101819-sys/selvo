@@ -1,11 +1,14 @@
 import {
+  NoRoutesAvailableError,
   NotFoundError,
+  serializeComparisonFromRouting,
   type ComparisonDto,
   type Principal,
   type ReplayResultDto,
   type StoredComparison,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { applyOptionalMandateToRouting } from '../http/mandate-context.js';
 import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
 import { resolveListCursor, slicePage } from '../http/list-page.js';
@@ -53,8 +56,6 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       parseOrThrow(idempotencyKeySchema, request.headers['idempotency-key'], 'headers') ?? null;
 
     const comparison = await container.comparisons.compare({
-      // Taken from the authenticated principal, never from the request body: a caller must not be
-      // able to select which organization's negotiated pricing they are quoted on.
       organizationId: principalOf(request).organizationId,
       sourceCurrency: body.sourceCurrency,
       targetCurrency: resolveTargetCurrency(body),
@@ -70,19 +71,39 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
       requestId: request.id,
     });
 
+    const attached = await applyOptionalMandateToRouting(
+      container,
+      request,
+      body.mandateId,
+      comparison.routing,
+    );
+    const routing = attached.routing;
+    if (body.mandateId !== undefined && routing.routes.length === 0) {
+      throw new NoRoutesAvailableError('No priced route is inside the attached mandate scope.');
+    }
+    const dto =
+      attached.mandateScope === null
+        ? comparison.dto
+        : serializeComparisonFromRouting({
+            comparisonId: comparison.comparisonId,
+            fingerprint: comparison.fingerprint,
+            rails: resolveRequestedRails(body),
+            routing,
+          });
+
     await recordComparisonMonetization({
       comparisonId: comparison.comparisonId,
       organizationId: comparison.organizationId,
       createdAt: comparison.createdAt,
-      routingId: comparison.routing.routingId,
-      route: comparison.routing.recommendedRoute,
+      routingId: routing.routingId,
+      route: routing.recommendedRoute,
       dashboard: container.persistence.dashboard,
       auditLogger: container.auditLogger,
       actor: principalOf(request).actor,
       requestId: request.id,
     });
 
-    return reply.status(201).send(envelope<ComparisonDto>(request, comparison.dto));
+    return reply.status(201).send(envelope<ComparisonDto>(request, dto));
   });
 
   app.get('/comparisons', async (request) => {

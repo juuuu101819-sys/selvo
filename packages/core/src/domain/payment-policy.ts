@@ -6,6 +6,8 @@ import type {
   QuotedRouteOption,
   RoutePreference,
 } from './agent-payments.js';
+import type { MandateScope } from '../mandates/types.js';
+import { assertMandateConstraints, constrainPolicyByMandate } from '../mandates/policy-bridge.js';
 
 export interface PolicyEvaluationInput {
   readonly amountMinorUnits: string;
@@ -17,6 +19,8 @@ export interface PolicyEvaluationInput {
   readonly selectedRouteCostBps: string | null;
   readonly selectedRoute: QuotedRouteOption | null;
   readonly dailySpentMinorUnits: string;
+  /** Verified mandate constraints, when the caller attached one. Null means policy-only. */
+  readonly mandate?: MandateScope | null;
 }
 
 export interface PolicyDecision {
@@ -35,15 +39,22 @@ export function evaluatePaymentPolicy(
   policy: PaymentPolicy,
   input: PolicyEvaluationInput,
 ): PolicyDecision {
-  assertMaxTransaction(policy, input);
-  assertAllowedAssets(policy, input);
-  assertAllowedRecipient(policy, input);
-  assertDailySpending(policy, input);
-  assertMaximumFee(policy, input);
-  assertAllowedProvider(policy, input);
+  const constrained =
+    input.mandate === undefined || input.mandate === null
+      ? policy
+      : constrainPolicyByMandate(policy, input.mandate);
+  if (input.mandate !== undefined && input.mandate !== null) {
+    assertMandateConstraints(input.mandate, input);
+  }
+  assertMaxTransaction(constrained, input);
+  assertAllowedAssets(constrained, input);
+  assertAllowedRecipient(constrained, input);
+  assertDailySpending(constrained, input);
+  assertMaximumFee(constrained, input);
+  assertAllowedProvider(constrained, input);
   if (input.selectedRoute !== null) {
-    assertRoutePolicy(policy, input.maxFeeBps, input.selectedRoute);
-    assertPreferredRoutePreference(policy, input.selectedRoute);
+    assertRoutePolicy(constrained, input.maxFeeBps, input.selectedRoute);
+    assertPreferredRoutePreference(constrained, input.selectedRoute);
   }
   return { allowed: true, aiUsed: false, failClosed: true };
 }

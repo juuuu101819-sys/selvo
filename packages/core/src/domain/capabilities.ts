@@ -99,6 +99,11 @@ export const PLATFORM_CAPABILITIES = {
    * Payment collection is deferred. Distinct from `executeTransactions`.
    */
   platformInvoicing: true,
+  /**
+   * Verify and store signed agent mandates (AP2, x402, MPP). HTTP is fail-closed behind
+   * MANDATE_INGESTION_ENABLED (default false). Never execution, custody, or private-key holding.
+   */
+  mandateIngestion: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

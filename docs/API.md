@@ -51,7 +51,10 @@ tampered, or foreign-org cursor is `400 VALIDATION_ERROR`, not silently ignored.
 | `NOT_FOUND`                           | 404       | Unknown comparison, quote, transaction — or one that belongs to another organization.        |
 | `UNAUTHENTICATED`                     | 401       | Missing or unverifiable session / API key.                                                   |
 | `FORBIDDEN`                           | 403       | Authenticated, but the credential lacks the required scope or claimed org does not match.    |
+| `POLICY_DENIED`                       | 403       | Agent policy or a verified mandate rejected the request. `details.rule` names the rule.      |
 | `ONBOARDING_INCOMPLETE`               | 403       | Production-locked licensed quotes: KYB is not verified and/or no explicit CustomerPricing row exists. Sandbox exploration is not gated. |
+| `MANDATE_REJECTED`                    | 422       | Signed mandate could not be accepted. `details.reason`: `expired`, `revoked`, `signature_invalid`, `scope_invalid`, `challenge_invalid`. |
+| `X402_PAYMENT_REQUIRED`               | 402       | x402 challenge. Retry `POST /mandates/verify` with a signed authorization. Never moves funds. |
 | `IDEMPOTENCY_CONFLICT`                | 409       | Idempotency key reused with a different payload.                                             |
 | `QUOTE_EXPIRED`                       | 409       | Quoted price is past `expiresAt`. `requoteRequired: true` — request a new quote.             |
 | `RATE_LIMITED`                        | 429       | Too many requests in the current window. `Retry-After` is set.                               |
@@ -207,7 +210,9 @@ The `capabilities` block is the machine-readable form of the compliance boundary
   "executionIntents": true,
   "multiRailMonetization": true,
   "agentFinancialDashboard": true,
-  "b2bOnboarding": true
+  "b2bOnboarding": true,
+  "platformInvoicing": true,
+  "mandateIngestion": true
 }
 ```
 
@@ -221,7 +226,10 @@ authenticated routing API; `transaction:create` records an intent, it does not p
 `agentPayments`, `agentPaymentSimulation` and `agentNaturalLanguageRouting` are true: agents may
 create payment intents, interpret natural language into structured intent, and run the sandbox
 simulator. They still cannot move money. The NL parser does not compute rates, fees, slippage or
-settlement amounts. `paymentPolicyEngine` is true: every agent request is evaluated fail-closed
+settlement amounts. `mandateIngestion` is true (the code exists) and `GET /meta` also publishes
+`mandateIngestionEnabled` from `MANDATE_INGESTION_ENABLED` (**default false**). Verification and
+storage of signed AP2 / x402 / MPP mandates never executes, holds keys, or moves funds.
+`paymentPolicyEngine` is true: every agent request is evaluated fail-closed
 before quotes, authorization, simulation, and execution-intent recording. `multiRailMonetization`
 is true: quoted TPV, platform revenue, provider cost, partner commission, gross profit and take
 rate are attributed on the revenue dashboard. `agentFinancialDashboard` is true: organization
@@ -916,6 +924,8 @@ The policy engine evaluates, fail-closed:
 - minimum liquidity (unknown headroom denies when the minimum is greater than 0)
 - maximum slippage (missing slippage denies)
 - preferred route preference (when set: ranking input to MultiRailRouter, and select must use the recommended route)
+- verified mandate scope (`mandate_scope`), when `MANDATE_INGESTION_ENABLED` is on and the agent has
+  verified, unexpired mandates. Intersection is fail-closed: empty allowlists deny.
 
 Every decision writes `payment.policy.evaluated` (`allowed`, `aiUsed: false`, `failClosed: true`).
 Denials also write `payment.policy.denied`. The engine runs at intent create, quote, select,
@@ -928,6 +938,38 @@ Quoted routes snapshot `routeScore`, `slippageBps`, `liquidityHeadroom`, `chainI
 
 Simulate sets `SIMULATION_COMPLETED` with `simulated: true` and `fundsMoved: false`. It does not call a real
 provider. `POST /api/v1/executions` is still 501.
+
+## Signed mandate ingestion
+
+Agents present a signed authorization (how much, which corridor / currencies / beneficiaries).
+Meridian **verifies and stores** it. Money does not move. Private keys are not generated or held
+on the request path. HTTP is fail-closed behind `MANDATE_INGESTION_ENABLED` (default `false`) →
+`403 FORBIDDEN` `ingestion_disabled`. Responses carry `sandbox: true`.
+
+| Method | Path | Scope |
+| ------ | ---- | ----- |
+| POST | `/api/v1/mandates/verify` | `mag_` `mandate:verify` |
+| GET | `/api/v1/mandates/:id` | organization; agents only see their own (else 404) |
+| POST | `/api/v1/mandates/:id/revoke` | owner/admin `mandate:revoke` |
+
+Formats:
+
+- **AP2** Intent Mandate and Cart Mandate — W3C Verifiable Credential, ECDSA P-256 + SHA-256 over
+  canonical JSON of the credential without `proof`.
+- **x402** — first `POST` with `{ "format": "x402", "scope": { … } }` returns `402 X402_PAYMENT_REQUIRED`
+  and a challenge. Retry with `challengeId` and `authorization: { publicKeyJwk, signature }` over
+  canonical `{ challengeId, nonce, organizationId, agentId, scope }`. The 402 is not audited as
+  `mandate.rejected`.
+- **MPP** — session mandate that locks a spend cap for later batched consumption. Consumption is
+  not performed; `POST /executions` remains 501.
+
+A verified mandate is bound to the presenting organization and `mag_` agent (`mdt_…`). The spend
+cap is a **limit**, not a balance. Wrong-tenant ids are `404`, never `403`. Audit:
+`mandate.verified`, `mandate.rejected`, `mandate.revoked`.
+
+`POST /comparisons`, `POST /routes`, and `POST /quote` accept optional `mandateId`. Out-of-scope
+routes are dropped after ranking; an empty set is `422 NO_ROUTES_AVAILABLE`. Anonymous callers
+cannot attach a mandate (`401`).
 
 ## AI agent natural-language routing
 

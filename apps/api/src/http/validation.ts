@@ -55,6 +55,8 @@ export const createComparisonSchema = z
      */
     railFamilies: z.array(z.enum(RAIL_FAMILIES)).min(1).max(RAIL_FAMILIES.length).optional(),
     weights: z.object({ cost: weight, speed: weight, reliability: weight }).strict().optional(),
+    /** Optional verified mandate. Out-of-scope routes are dropped after ranking. */
+    mandateId: z.string().trim().min(1).max(128).optional(),
   })
   .strict()
   .refine((body) => (body.targetCurrency ?? body.destinationCurrency) !== undefined, {
@@ -262,6 +264,7 @@ export const createRouteSchema = z
       })
       .strict()
       .optional(),
+    mandateId: z.string().trim().min(1).max(128).optional(),
   })
   .strict()
   .refine((body) => (body.destinationAsset ?? body.targetAsset) !== undefined, {
@@ -464,6 +467,7 @@ export const createFinancialQuoteSchema = z
       })
       .strict()
       .optional(),
+    mandateId: z.string().trim().min(1).max(128).optional(),
   })
   .strict()
   .refine((body) => body.sourceAsset !== body.destinationAsset, {

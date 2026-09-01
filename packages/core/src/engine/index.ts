@@ -172,3 +172,4 @@ export {
   summarizeAgentDashboard,
   violationFromAuditPayload,
 } from './agent-dashboard.js';
+export { MandateService, type MandateServiceDependencies } from './mandate-service.js';

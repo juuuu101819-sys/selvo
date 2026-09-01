@@ -9,6 +9,7 @@ import {
 } from '@meridian/adapters';
 import {
   AgentPaymentService,
+  MandateService,
   ConfigurationError,
   ComparisonRoutingService,
   DEFI_ROUTING_ENGINE_VERSION,
@@ -63,6 +64,7 @@ export interface AppContainer {
   readonly authenticator: Authenticator;
   readonly oidcClient: OidcClient;
   readonly agentPayments: AgentPaymentService;
+  readonly mandates: MandateService;
   readonly nlRouting: NlRoutingService;
   readonly disclaimer: string;
   readonly pricing: {
@@ -256,6 +258,16 @@ export function createContainer(options: ContainerOptions): AppContainer {
     clock,
     ids: uuidIdGenerator,
     auditLogger,
+    mandates: persistence.mandates,
+    mandatesEnabled: config.mandateIngestionEnabled,
+  });
+
+  const mandates = new MandateService({
+    store: persistence.mandates,
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+    enabled: config.mandateIngestionEnabled,
   });
 
   const nlRouting = new NlRoutingService({
@@ -301,6 +313,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     authenticator,
     oidcClient,
     agentPayments,
+    mandates,
     nlRouting,
     disclaimer: disclaimerFor(config.mode),
     pricing:

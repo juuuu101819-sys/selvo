@@ -62,6 +62,9 @@ export const AUDIT_EVENT_TYPES = [
   'provider.credential.stored',
   'organization.execution_authorization.updated',
   'agent.execution_authorization.updated',
+  'mandate.verified',
+  'mandate.rejected',
+  'mandate.revoked',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

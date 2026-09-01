@@ -19,9 +19,9 @@ An agent is **not**:
 
 | Credential | Prefix | Who | Typical scopes |
 | ---------- | ------ | --- | -------------- |
-| Human session | `mds_` | Owner/admin/member/viewer | Role-derived: `quote:read`, `route:read`; owner/admin also `agent_policy:write`. **Never** `payment:*` or `transaction:create`. |
-| Organization API key | `mk_` | Business/service | Default `quote:read` + `route:read`. Optional explicit `transaction:create`. **Never** `payment:*` or `agent_policy:write`. |
-| Agent credential | `mag_` | AI agent acting *for* the organization | Always `quote:read`, `payment:create`, `payment:quote`, `payment:authorize`. **Never** `agent_policy:write` or `transaction:create`. |
+| Human session | `mds_` | Owner/admin/member/viewer | Role-derived: `quote:read`, `route:read`; owner/admin also `agent_policy:write` and `mandate:revoke`. **Never** `payment:*`, `mandate:verify`, or `transaction:create`. |
+| Organization API key | `mk_` | Business/service | Default `quote:read` + `route:read`. Optional explicit `transaction:create`. **Never** `payment:*`, `mandate:*`, or `agent_policy:write`. |
+| Agent credential | `mag_` | AI agent acting *for* the organization | Always `quote:read`, `payment:create`, `payment:quote`, `payment:authorize`, `mandate:verify`. **Never** `agent_policy:write`, `mandate:revoke`, or `transaction:create`. |
 
 Callers that present no credential remain anonymous on public discovery routes. A credential that
 cannot be verified is `401 UNAUTHENTICATED`, never silently treated as anonymous.
@@ -43,8 +43,8 @@ Human MFA and OIDC change only how an `mds_` session is obtained. They do not ap
    `secret`. It is hashed with per-credential salted scrypt (`hashCredential`) before persist.
    The first 16 characters are stored as `keyPrefix` for display. The hash is never returned.
 3. Stores scopes **exactly** `DEFAULT_AGENT_SCOPES`:
-   `quote:read`, `payment:create`, `payment:quote`, `payment:authorize`.
-   There is no API to add `agent_policy:write` or `transaction:create` to a `mag_` credential.
+   `quote:read`, `payment:create`, `payment:quote`, `payment:authorize`, `mandate:verify`.
+   There is no API to add `agent_policy:write`, `mandate:revoke`, or `transaction:create` to a `mag_` credential.
 4. Creates one **external account reference** (`controlledByPlatform: false`) labelled
    “External operating account”. The platform does not generate keys or hold the account.
    Making this row optional is deferred (would change `POST /agents` issuance).

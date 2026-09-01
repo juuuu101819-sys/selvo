@@ -85,8 +85,9 @@ Organization ──┬── OrganizationMember ── User ── MfaRecoveryCo
                ├── CustomerPricing
                ├── Comparison
                ├── ExecutionIntent
-               ├── Agent ── AgentCredential / AgentWalletReference / PaymentPolicy / PaymentIntent
+               ├── Agent ── AgentCredential / AgentWalletReference / PaymentPolicy / PaymentIntent / Mandate
                ├── Merchant
+               ├── MandateX402Challenge
                ├── MonetizationEvent ── Invoice / InvoiceLine
                ├── RoutingEvaluation
                └── AuditLog
@@ -229,6 +230,16 @@ double-billing. `tax_minor_units` is constrained to 0. `status` is `issued`, `co
 is `unrealized | invoiced | collected`. `realized_revenue` may be true only when recognition is
 `collected`; this tree never writes `collected`.
 
+### Mandates
+
+**`Mandate`** (`mandates`) — a verified signed authorization bound to an organization and agent.
+AP2 Intent/Cart, x402, or MPP. Status is `verified` or `revoked`. `spend_cap_minor_units` is a
+**limit** (CHECK `> 0`), not a customer balance. Payload hash is SHA-256 of the canonical document.
+No private key material is stored. Wrong-tenant lookups are scoped by `organization_id`.
+
+**`MandateX402Challenge`** (`mandate_x402_challenges`) — ephemeral x402 nonce. Not a mandate, not
+a spendable balance. Deleted after authorization.
+
 ### Reproducibility and audit
 
 **`Comparison`** — the immutable, replayable record: the snapshot the engine needs to recompute a
@@ -267,6 +278,7 @@ runs anywhere, and by execution against a real server in the integration suite.
 | The audit trail is immutable                                     | trigger `audit_logs_no_mutation`                                             |
 | API key scopes are the known three values                        | `api_keys_scopes_known`                                                      |
 | An execution intent is recorded, never executable or submitted   | `execution_intents_status_recorded`, `execution_intents_not_executable`, `execution_intents_not_submitted` |
+| Mandate spend cap is a positive limit, not a balance             | `mandates_spend_cap_positive` |
 | Invoice tax is zero; status is issued; collection is uncollected | `invoices_tax_zero`, `invoices_status_issued`, `invoices_collection_uncollected` |
 | Realized revenue only with collected recognition                 | `monetization_events_realized_revenue_collected_chk` |
 | A snapshot appears on at most one invoice                        | unique `invoice_lines.monetization_event_id` |

@@ -65,6 +65,12 @@ const envSchema = z
     PRODUCTION_EXECUTION_AVAILABLE: booleanFlag,
 
     /**
+     * Signed mandate verification/storage (AP2, x402, MPP). Default false — fail closed.
+     * Does not enable execution. POST /executions remains 501.
+     */
+    MANDATE_INGESTION_ENABLED: booleanFlag,
+
+    /**
      * Deployment label. Safety rules come from production-lock (PA-C01–C03), not from this value.
      * `staging` and `production` both require a production-locked process. Staging is not a
      * relaxed sandbox.
@@ -260,6 +266,10 @@ export interface AppConfig {
   readonly productionLocked: boolean;
   readonly deployment: DeploymentInfo;
   readonly productionGates: ProductionGates;
+  /**
+   * HTTP mandate ingestion. Default false. Verification/storage only — never execution.
+   */
+  readonly mandateIngestionEnabled: boolean;
   /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
   readonly authSecretConfigured: boolean;
   /**
@@ -362,6 +372,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       routingAvailable: env.PRODUCTION_ROUTING_AVAILABLE,
       executionAvailable: false,
     },
+    mandateIngestionEnabled: env.MANDATE_INGESTION_ENABLED,
     authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
     sessionTokenPepper: deriveSessionTokenPepper(env.AUTH_SECRET, { productionLocked }),
     dataEncryptionKey: deriveDataEncryptionKeyHex(env.AUTH_SECRET, { productionLocked }),

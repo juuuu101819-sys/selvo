@@ -23,6 +23,8 @@ export const ErrorCode = {
   EXECUTION_NOT_IMPLEMENTED: 'EXECUTION_NOT_IMPLEMENTED',
   POLICY_DENIED: 'POLICY_DENIED',
   ONBOARDING_INCOMPLETE: 'ONBOARDING_INCOMPLETE',
+  MANDATE_REJECTED: 'MANDATE_REJECTED',
+  X402_PAYMENT_REQUIRED: 'X402_PAYMENT_REQUIRED',
   CONFIGURATION_ERROR: 'CONFIGURATION_ERROR',
   PERSISTENCE_ERROR: 'PERSISTENCE_ERROR',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
@@ -333,6 +335,32 @@ export class InternalError extends AppError {
   readonly code = ErrorCode.INTERNAL_ERROR;
   readonly httpStatus = 500;
   override readonly operational = false;
+}
+
+/**
+ * A signed mandate could not be accepted. Distinct from {@link ValidationError} (malformed JSON)
+ * so clients can branch on `reason`: expired, revoked, signature_invalid, scope_invalid, …
+ */
+export class MandateRejectedError extends AppError {
+  readonly code = ErrorCode.MANDATE_REJECTED;
+  readonly httpStatus = 422;
+
+  constructor(reason: string, message: string, details: ErrorDetails = {}) {
+    super(message, { failClosed: true, reason, ...details });
+  }
+}
+
+/**
+ * x402 challenge. The client must retry `POST /mandates/verify` with a signed authorization.
+ * Never moves funds.
+ */
+export class PaymentRequiredError extends AppError {
+  readonly code = ErrorCode.X402_PAYMENT_REQUIRED;
+  readonly httpStatus = 402;
+
+  constructor(message: string, details: ErrorDetails = {}) {
+    super(message, { failClosed: true, ...details });
+  }
 }
 
 export function isAppError(error: unknown): error is AppError {

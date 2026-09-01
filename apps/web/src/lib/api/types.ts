@@ -235,7 +235,9 @@ export interface MetaDto {
     readonly executionIntents?: boolean;
     readonly multiRailMonetization?: boolean;
     readonly agentFinancialDashboard?: boolean;
-    readonly b2bOnboarding?: boolean;
+                readonly b2bOnboarding?: boolean;
+    readonly platformInvoicing?: boolean;
+    readonly mandateIngestion?: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -247,6 +249,7 @@ export interface MetaDto {
     readonly routingAvailable: boolean;
     readonly executionAvailable: boolean;
   };
+  readonly mandateIngestionEnabled?: boolean;
   readonly pricing: {
     readonly datasetVersion: string;
     readonly referenceRatesVersion: string;

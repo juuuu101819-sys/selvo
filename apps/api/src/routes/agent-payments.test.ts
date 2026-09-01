@@ -350,7 +350,13 @@ describe('AI agent payment infrastructure', () => {
     expect(issued.secret.startsWith('mag_')).toBe(true);
     expect(issued.secret.startsWith('mk_')).toBe(false);
     expect(issued.secret.startsWith('mds_')).toBe(false);
-    expect(issued.scopes).toEqual(['quote:read', 'payment:create', 'payment:quote', 'payment:authorize']);
+    expect(issued.scopes).toEqual([
+      'quote:read',
+      'payment:create',
+      'payment:quote',
+      'payment:authorize',
+      'mandate:verify',
+    ]);
     expect(issued.scopes).not.toContain('agent_policy:write');
     expect(issued.scopes).not.toContain('transaction:create');
     expect(issued.keyPrefix).toBe(issued.secret.slice(0, 16));

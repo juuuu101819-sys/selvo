@@ -122,6 +122,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
         routingAvailable: container.config.productionGates.routingAvailable,
         executionAvailable: container.config.productionGates.executionAvailable,
       },
+      mandateIngestionEnabled: container.config.mandateIngestionEnabled,
       deployment: {
         environment: container.config.deployment.environment,
         imageTag: container.config.deployment.imageTag,

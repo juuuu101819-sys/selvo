@@ -90,6 +90,8 @@ describeIntegration('PostgreSQL schema', () => {
           'routing_evaluations',
           'routing_manual_overrides',
           'provider_credentials',
+          'mandates',
+          'mandate_x402_challenges',
         ]),
       );
     });

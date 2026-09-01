@@ -94,6 +94,7 @@ describe('GET /v1/meta', () => {
       agentFinancialDashboard: true,
       b2bOnboarding: true,
       platformInvoicing: true,
+      mandateIngestion: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,
@@ -104,6 +105,9 @@ describe('GET /v1/meta', () => {
       routingAvailable: false,
       executionAvailable: false,
     });
+    expect(
+      response.json<{ data: { mandateIngestionEnabled: boolean } }>().data.mandateIngestionEnabled,
+    ).toBe(false);
     expect(body.deployment).toEqual({ environment: 'development', imageTag: null });
     expect(body.pipeline).toEqual(
       expect.arrayContaining([

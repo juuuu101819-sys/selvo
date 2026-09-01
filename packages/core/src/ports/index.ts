@@ -67,9 +67,12 @@ export type {
   OnboardingStore,
   OrganizationInviteRecord,
 } from './onboarding.js';
-export { FixedClock, systemClock, type Clock } from './clock.js';
+export type {
+  MandateStore,
+} from './mandates.js';
 export type { FXProvider, FXQuote, FXQuoteRequest } from './fx-provider.js';
 export { SequentialIdGenerator, uuidIdGenerator, type IdGenerator } from './id-generator.js';
+export { FixedClock, systemClock, type Clock } from './clock.js';
 export type {
   LiquidityProvider,
   LiquidityQuote,

@@ -160,6 +160,25 @@ describe('evaluatePaymentPolicy', () => {
     ).toBe('daily_spending_limit');
   });
 
+  it('denies a corridor outside an attached mandate', () => {
+    expect(
+      deniedRule(() =>
+        evaluatePaymentPolicy(
+          policy,
+          input({
+            mandate: {
+              spendCapMinorUnits: '100000',
+              spendCapAsset: 'USD',
+              allowedCorridors: [{ source: 'USD', destination: 'EUR' }],
+              allowedCurrencies: ['USD', 'EUR'],
+              allowedBeneficiaries: ['merchant-x'],
+            },
+          }),
+        ),
+      ),
+    ).toBe('mandate_scope');
+  });
+
   it('treats an empty allowed-asset list as none, not all', () => {
     expect(deniedRule(() => evaluatePaymentPolicy({ ...policy, allowedAssets: [] }, input()))).toBe(
       'allowed_assets',

@@ -3,6 +3,7 @@ import {
   serializeCurrencyCatalog,
   serializeFinancialQuote,
   serializeRouteSearch,
+  NoRoutesAvailableError,
   type AssetCatalogEntryDto,
   type CurrencyCatalogEntryDto,
   type FinancialQuoteDto,
@@ -11,6 +12,7 @@ import {
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
+import { applyOptionalMandateToRouting } from '../http/mandate-context.js';
 import { assertClaimedOrganization, capabilityPreHandler, requireScope } from '../http/require-organization.js';
 import { assertLicensedQuoteEligibility } from '../onboarding/eligibility.js';
 import {
@@ -74,7 +76,7 @@ export function registerFinancialRoutingRoutes(
     assertLicensedQuoteEligibility(container.config.productionLocked, snapshot);
     const resolved = resolveRouteRequest(body);
 
-    const routing = await container.routing.evaluate({
+    const evaluated = await container.routing.evaluate({
       organizationId: principal.organizationId,
       sourceAsset: resolved.sourceAsset,
       destinationAsset: resolved.destinationAsset,
@@ -83,6 +85,16 @@ export function registerFinancialRoutingRoutes(
       actor: principal.actor,
       requestId: request.id,
     });
+    const attached = await applyOptionalMandateToRouting(
+      container,
+      request,
+      body.mandateId,
+      evaluated,
+    );
+    if (body.mandateId !== undefined && attached.routing.routes.length === 0) {
+      throw new NoRoutesAvailableError('No priced route is inside the attached mandate scope.');
+    }
+    const routing = attached.routing;
 
     const persisted = await container.routingEvaluations.persist(routing, null, 'quote');
 

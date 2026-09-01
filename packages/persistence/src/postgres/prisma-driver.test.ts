@@ -136,6 +136,8 @@ describe('migrations', () => {
           'routing_evaluations',
           'routing_manual_overrides',
           'provider_credentials',
+          'mandates',
+          'mandate_x402_challenges',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -264,6 +266,9 @@ describe('migrations', () => {
     expect(sql).toContain('CREATE TABLE "routing_manual_overrides"');
     expect(sql).toContain('"routing_manual_overrides_active_target_key"');
     expect(sql).toContain('"execution_authorized" BOOLEAN NOT NULL DEFAULT false');
+    expect(sql).toContain('CREATE TABLE "mandates"');
+    expect(sql).toContain('"mandates_spend_cap_positive"');
+    expect(sql).toContain('CREATE TABLE "mandate_x402_challenges"');
   });
 
   /**

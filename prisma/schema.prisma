@@ -252,6 +252,7 @@ model Organization {
   invites             OrganizationInvite[]
   invoices            Invoice[]
   routingEvaluations  RoutingEvaluation[]
+  mandates            Mandate[]
 
   @@map("organizations")
 }
@@ -460,6 +461,63 @@ model ExecutionIntent {
   @@map("execution_intents")
 }
 
+enum MandateFormat {
+  ap2_intent
+  ap2_cart
+  x402
+  mpp
+}
+
+enum MandateStatus {
+  verified
+  revoked
+}
+
+/// Signed agent mandate. Authorization record only — never a balance, wallet, or execution.
+model Mandate {
+  id                     String        @id
+  organizationId         String        @map("organization_id")
+  agentId                String        @map("agent_id")
+  format                 MandateFormat
+  status                 MandateStatus
+  spendCapMinorUnits     Decimal       @map("spend_cap_minor_units") @db.Decimal(38, 0)
+  spendCapAsset          String        @map("spend_cap_asset") @db.VarChar(16)
+  allowedCorridors       Json          @map("allowed_corridors")
+  allowedCurrencies      String[]      @map("allowed_currencies")
+  allowedBeneficiaries   String[]      @map("allowed_beneficiaries")
+  issuer                 String
+  expiresAt              DateTime      @map("expires_at") @db.Timestamptz(3)
+  payloadHash            String        @map("payload_hash")
+  payload                Json
+  boundCredentialPrefix  String?       @map("bound_credential_prefix")
+  verifiedAt             DateTime      @map("verified_at") @db.Timestamptz(3)
+  revokedAt              DateTime?     @map("revoked_at") @db.Timestamptz(3)
+  revokedByActor         String?       @map("revoked_by_actor")
+  createdAt              DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime      @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  agent        Agent        @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, agentId, status])
+  @@index([organizationId, createdAt])
+  @@map("mandates")
+}
+
+/// Ephemeral x402 challenge. Not a mandate. Never a spendable balance.
+model MandateX402Challenge {
+  id             String   @id
+  organizationId String   @map("organization_id")
+  agentId        String   @map("agent_id")
+  nonce          String
+  scope          Json
+  expiresAt      DateTime @map("expires_at") @db.Timestamptz(3)
+  createdAt      DateTime @map("created_at") @db.Timestamptz(3)
+
+  @@index([organizationId, agentId])
+  @@map("mandate_x402_challenges")
+}
+
 /// Autonomous AI agent acting *for* an organization. Never a custodian of funds.
 model Agent {
   id             String       @id
@@ -480,6 +538,7 @@ model Agent {
   walletReferences  AgentWalletReference[]
   paymentPolicies   PaymentPolicy[]
   paymentIntents    PaymentIntent[]
+  mandates          Mandate[]
 
   @@index([organizationId])
   @@map("agents")

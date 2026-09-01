@@ -17,6 +17,7 @@ backed by something in the code rather than by good intentions. Canonical produc
 | **No DeFi execution**                                          | `defiExecution` is false. `defiQuotes` and `defiLiquidityRouting` are true: demo DEX, AMM and aggregator venues return read-only quotes. No adapter is registered as a `RouteProvider`. No swaps, wraps, bridges, keys or wallets. `POST /api/v1/defi-routes` ranks quotes only; `executable` and `swapSubmitted` are always false. The route graph walks indicative edges only. |
 | **No stablecoin custody**                                      | `stablecoinRouting` is true: quotes for USDC/USDT name a chain but never open an RPC. `holdCryptoAssets`, `holdPrivateKeys` and `controlCustomerWallets` remain false. There is no wallet, mint, burn or balance. |
 | **No AI-agent real payment execution**                         | `agentPayments`, `agentPaymentSimulation`, `agentNaturalLanguageRouting` and `paymentPolicyEngine` are true: agents create intents, interpret natural language, quote, select, receive policy approval and run the sandbox simulator. The policy engine is fail-closed and runs before an execution intent is recorded. The NL parser never computes rates, fees, slippage or settlement amounts. `SIMULATION_COMPLETED` is simulated. `fundsMoved` stays false. Principals of kind `agent` (`mag_` credentials) still act *for* an organization. Wallet references are external handles; `controlledByPlatform` is always false. `POST /executions` remains 501. |
+| **Signed mandate ingestion is not custody or execution**       | `mandateIngestion` is true (code exists). HTTP is fail-closed behind `MANDATE_INGESTION_ENABLED` (default false). Meridian verifies ECDSA P-256 + SHA-256 proofs and stores the authorization record (`mdt_`). It does not generate keys, hold `d`, custody funds, or execute. Test-only key generation lives in `packages/core/src/mandates/test-keys.ts` and is never on the HTTP path. `holdPrivateKeys` stays false. Spend cap is a limit, not a balance. `POST /executions` remains 501. |
 | **Quoted revenue is not money collected**                      | `multiRailMonetization` is true. The revenue dashboard attributes TPV, platform routing fees, provider cost, partner commission, gross profit and take rate on quoted activity. `fundsMoved` / `custody` / `realExecution` stay false. There is no cash ledger, payout rail, or settlement of partner commission. |
 | **Agent financial dashboard is not custody**                   | `agentFinancialDashboard` is true. Operators inspect volume, fees, success rate, spending limits and policy denials, and may patch allow-lists. The dashboard never generates a wallet, stores a private key, or moves funds. `fundsMoved` / `custody` / `walletsGenerated` / `privateKeysHeld` stay false. |
 | **No stablecoin issuance**                                     | No minting, burning, reserve or attestation logic. `issueStablecoins` is false.                                                                                                                                                        |
@@ -43,13 +44,17 @@ and NL route completed, `monetization.recorded`, `onboarding.organization.create
 `onboarding.kyb.reviewed`, `onboarding.pricing.configured`, `billing.invoice.issued`,
 `billing.revenue.recognized`, `routing.override.engaged`, `routing.override.released`,
 `provider.credential.stored`, `organization.execution_authorization.updated`,
-`agent.execution_authorization.updated`. The audit repository exposes no update or delete operation.
+`agent.execution_authorization.updated`, `mandate.verified`, `mandate.rejected`,
+`mandate.revoked`. The audit repository exposes no update or delete operation.
 
 ## Data handling
 
 Phase 1 stores no personal data: a comparison request is a currency pair, an amount and
 optional scoring weights. No beneficiary, payer, account number or identity document is
-accepted by any endpoint — the request schemas reject unknown fields, so such data cannot be
+accepted by the comparison/quote schemas — those request schemas reject unknown fields, so such data cannot be
+smuggled in. Signed mandates may list **beneficiary codes** (for example `merchant-x`) as
+authorization constraints bound to a `mag_` agent. That is not a payout instruction, not an
+account number, and not a wallet Meridian controls.
 smuggled in.
 
 ## Before any delegated-execution (Phase 7) work

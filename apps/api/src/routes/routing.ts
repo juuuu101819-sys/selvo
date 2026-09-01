@@ -1,5 +1,6 @@
-import { serializeMultiRailRouting, type MultiRailRoutingDto, type RoutingReplayResult } from '@meridian/core';
+import { serializeMultiRailRouting, NoRoutesAvailableError, type MultiRailRoutingDto, type RoutingReplayResult } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { applyOptionalMandateToRouting } from '../http/mandate-context.js';
 import { principalOf } from '../http/authentication.js';
 import type { AppContainer } from '../container.js';
 import { recordRouteQuoteMonetization } from '../monetization/record.js';
@@ -36,7 +37,7 @@ export function registerRoutingRoutes(app: FastifyInstance, container: AppContai
     const resolved = resolveRouteRequest(body);
     const principal = principalOf(request);
 
-    const routing = await container.routing.evaluate({
+    const evaluated = await container.routing.evaluate({
       organizationId: principal.organizationId,
       sourceAsset: resolved.sourceAsset,
       destinationAsset: resolved.destinationAsset,
@@ -45,6 +46,16 @@ export function registerRoutingRoutes(app: FastifyInstance, container: AppContai
       actor: principal.actor,
       requestId: request.id,
     });
+    const attached = await applyOptionalMandateToRouting(
+      container,
+      request,
+      body.mandateId,
+      evaluated,
+    );
+    if (body.mandateId !== undefined && attached.routing.routes.length === 0) {
+      throw new NoRoutesAvailableError('No priced route is inside the attached mandate scope.');
+    }
+    const routing = attached.routing;
 
     const persisted = await container.routingEvaluations.persist(routing, null, 'routes');
 

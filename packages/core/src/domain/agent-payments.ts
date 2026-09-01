@@ -61,6 +61,7 @@ export const POLICY_RULES = [
   'maximum_slippage',
   'preferred_route_preference',
   'route_policy',
+  'mandate_scope',
 ] as const;
 export type PolicyRule = (typeof POLICY_RULES)[number];
 

@@ -26,6 +26,8 @@ describe('API scopes', () => {
       'payment:quote',
       'payment:authorize',
       'agent_policy:write',
+      'mandate:verify',
+      'mandate:revoke',
     ]);
     expect(isApiScope('quote:read')).toBe(true);
     expect(isApiScope('payment:authorize')).toBe(true);
@@ -46,8 +48,8 @@ describe('API scopes', () => {
     const expected: Record<OrganizationSessionRole, readonly ApiScope[]> = {
       viewer: ['quote:read', 'route:read'],
       member: ['quote:read', 'route:read'],
-      admin: ['quote:read', 'route:read', 'agent_policy:write'],
-      owner: ['quote:read', 'route:read', 'agent_policy:write'],
+      admin: ['quote:read', 'route:read', 'agent_policy:write', 'mandate:revoke'],
+      owner: ['quote:read', 'route:read', 'agent_policy:write', 'mandate:revoke'],
     };
 
     expect([...ORGANIZATION_SESSION_ROLES].sort()).toEqual(
@@ -64,7 +66,7 @@ describe('API scopes', () => {
     }
 
     expect(sessionScopesForRole('unknown-role')).toEqual(expected.viewer);
-    expect(SESSION_API_SCOPES).toEqual(['quote:read', 'route:read', 'agent_policy:write']);
+    expect(SESSION_API_SCOPES).toEqual(['quote:read', 'route:read', 'agent_policy:write', 'mandate:revoke']);
     expect(SESSION_API_SCOPES).not.toContain('transaction:create');
   });
 
@@ -74,6 +76,7 @@ describe('API scopes', () => {
       'payment:create',
       'payment:quote',
       'payment:authorize',
+      'mandate:verify',
     ]);
     expect(DEFAULT_AGENT_SCOPES).not.toContain('agent_policy:write');
     expect(DEFAULT_AGENT_SCOPES).not.toContain('transaction:create');

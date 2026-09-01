@@ -28,5 +28,6 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.agentFinancialDashboard).toBe(true);
     expect(PLATFORM_CAPABILITIES.b2bOnboarding).toBe(true);
     expect(PLATFORM_CAPABILITIES.platformInvoicing).toBe(true);
+    expect(PLATFORM_CAPABILITIES.mandateIngestion).toBe(true);
   });
 });

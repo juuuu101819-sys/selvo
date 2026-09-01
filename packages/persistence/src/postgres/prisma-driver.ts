@@ -28,6 +28,7 @@ import { PrismaIdentityStore } from './prisma-identity.js';
 import { PrismaOnboardingStore } from './prisma-onboarding.js';
 import { PrismaBillingStore } from './prisma-billing.js';
 import { PrismaProviderCredentialStore } from './prisma-provider-credentials.js';
+import { PrismaMandateStore } from './prisma-mandates.js';
 import { PrismaRoutingEvaluationRepository } from './prisma-routing-evaluations.js';
 import { PrismaRoutingOverrideStore } from './prisma-routing-overrides.js';
 import { PrismaRateLimitStore } from '../rate-limit/prisma-store.js';
@@ -73,6 +74,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly routingEvaluations: RoutingEvaluationRepository;
   readonly routingOverrides: PrismaRoutingOverrideStore;
   readonly providerCredentials: PrismaProviderCredentialStore;
+  readonly mandates: PrismaMandateStore;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -104,6 +106,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.routingEvaluations = new PrismaRoutingEvaluationRepository(this.client);
     this.routingOverrides = new PrismaRoutingOverrideStore(this.client);
     this.providerCredentials = new PrismaProviderCredentialStore(this.client);
+    this.mandates = new PrismaMandateStore(this.client);
   }
 
   ensureSandboxCatalog(): Promise<void> {
@@ -129,7 +132,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
                 AND to_regclass('public.invoice_lines') IS NOT NULL
                 AND to_regclass('public.routing_evaluations') IS NOT NULL
                 AND to_regclass('public.routing_manual_overrides') IS NOT NULL
-                AND to_regclass('public.provider_credentials') IS NOT NULL) AS present
+                AND to_regclass('public.provider_credentials') IS NOT NULL
+                AND to_regclass('public.mandates') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(

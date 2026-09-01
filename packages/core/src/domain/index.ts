@@ -262,6 +262,7 @@ export type {
   PreferredRouteRow,
 } from './agent-dashboard.js';
 export { AGENT_DASHBOARD_VOLUME_STATUSES } from './agent-dashboard.js';
+export * from '../mandates/index.js';
 export type { StructuredNlPaymentIntent } from './nl-intent.js';
 export {
   NL_DID_NOT_COMPUTE,

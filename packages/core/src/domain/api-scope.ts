@@ -14,7 +14,8 @@ import { ValidationError } from '../errors/index.js';
  * `payment:*` scopes drive the AI-agent payment infrastructure (intent, quote, authorize,
  * sandbox simulate). They never grant real execution. They belong to `mag_` credentials.
  *
- * `agent_policy:write` is a session capability for owner/admin. It is never stored on API keys.
+ * `mandate:verify` lets a mag_ credential submit a signed AP2/x402/MPP mandate.
+ * `mandate:revoke` is a session capability for owner/admin. Neither moves funds.
  */
 export const API_SCOPES = [
   'quote:read',
@@ -24,6 +25,8 @@ export const API_SCOPES = [
   'payment:quote',
   'payment:authorize',
   'agent_policy:write',
+  'mandate:verify',
+  'mandate:revoke',
 ] as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
@@ -44,11 +47,13 @@ const ADMIN_SESSION_SCOPES: readonly ApiScope[] = [
   'quote:read',
   'route:read',
   'agent_policy:write',
+  'mandate:revoke',
 ];
 const OWNER_SESSION_SCOPES: readonly ApiScope[] = [
   'quote:read',
   'route:read',
   'agent_policy:write',
+  'mandate:revoke',
 ];
 
 /**
@@ -81,6 +86,7 @@ export const SESSION_API_SCOPES: readonly ApiScope[] = [
   'quote:read',
   'route:read',
   'agent_policy:write',
+  'mandate:revoke',
 ];
 
 /** Issued by default on organization API keys. Payment scopes belong to agent credentials. */
@@ -92,6 +98,7 @@ export const DEFAULT_AGENT_SCOPES: readonly ApiScope[] = [
   'payment:create',
   'payment:quote',
   'payment:authorize',
+  'mandate:verify',
 ];
 
 /** Organization API keys may only be minted with these scopes — never payment or policy rights. */

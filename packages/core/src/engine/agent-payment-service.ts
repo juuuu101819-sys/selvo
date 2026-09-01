@@ -36,6 +36,10 @@ import type {
   Clock,
   IdGenerator,
 } from '../ports/index.js';
+import type { MandateStore } from '../ports/mandates.js';
+import { constrainPolicyByMandate } from '../mandates/policy-bridge.js';
+import { intersectScopes } from '../mandates/scope.js';
+import type { MandateScope } from '../mandates/types.js';
 import { simulateSandboxExecution } from './sandbox-simulator.js';
 import { convertDestMinorToSource } from './monetization-engine.js';
 import type { MultiRailRouter } from './routing-engine.js';
@@ -67,6 +71,9 @@ export interface AgentPaymentServiceDependencies {
   readonly clock: Clock;
   readonly ids: IdGenerator;
   readonly auditLogger: AuditLogger;
+  readonly mandates?: MandateStore;
+  /** When false or omitted, verified mandates are ignored. Default off — fail closed. */
+  readonly mandatesEnabled?: boolean;
 }
 
 export class AgentPaymentService {
@@ -265,9 +272,12 @@ export class AgentPaymentService {
       if (quoted.length === 0) {
         throw new NoRoutesAvailableError('No provider priced this payment corridor.');
       }
-      const allowed = filterRoutesByPolicy(policy, quoting.maxFeeBps, quoted);
+      const mandate = await this.activeMandateScope(quoting.organizationId, quoting.agentId);
+      const policyForFilter =
+        mandate === null ? policy : constrainPolicyByMandate(policy, mandate);
+      const allowed = filterRoutesByPolicy(policyForFilter, quoting.maxFeeBps, quoted);
       if (allowed.length === 0) {
-        const rule = deniedRuleWhenNoPolicyRoutes(policy, quoting.maxFeeBps, quoted);
+        const rule = deniedRuleWhenNoPolicyRoutes(policyForFilter, quoting.maxFeeBps, quoted);
         const denied = new PolicyDeniedError(
           rule,
           'No priced route satisfies this agent policy.',
@@ -816,6 +826,7 @@ export class AgentPaymentService {
       statuses: DAILY_SPENDING_STATUSES,
       ...(input.paymentIntentId === null ? {} : { excludeIntentId: input.paymentIntentId }),
     });
+    const mandate = await this.activeMandateScope(policy.organizationId, policy.agentId);
     const providerId = input.selectedRoute?.providerId ?? input.selectedProviderId;
     try {
       evaluatePaymentPolicy(policy, {
@@ -828,6 +839,7 @@ export class AgentPaymentService {
         selectedRouteCostBps: input.selectedRouteCostBps,
         selectedRoute: input.selectedRoute,
         dailySpentMinorUnits,
+        mandate,
       });
     } catch (error) {
       const denied =
@@ -914,6 +926,24 @@ export class AgentPaymentService {
         },
       });
     }
+  }
+
+  private async activeMandateScope(
+    organizationId: string,
+    agentId: string,
+  ): Promise<MandateScope | null> {
+    if (this.deps.mandates === undefined || this.deps.mandatesEnabled !== true) {
+      return null;
+    }
+    const rows = await this.deps.mandates.listVerified(
+      organizationId,
+      agentId,
+      this.deps.clock.nowIso(),
+    );
+    if (rows.length === 0) {
+      return null;
+    }
+    return intersectScopes(rows.map((row) => row.scope));
   }
 }
 
