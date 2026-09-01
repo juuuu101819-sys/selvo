@@ -12,6 +12,8 @@ import type { RoutingOverrideStore } from './routing-overrides.js';
 import type { ProviderCredentialStore } from './provider-credentials.js';
 import type { MandateStore } from './mandates.js';
 import type { PartnerInstructionStore } from './execution-partner.js';
+import type { OrchestratedExecutionStore } from './orchestrated-executions.js';
+import type { ExecutionReceiptStore } from './execution-receipts.js';
 
 /**
  * A persisted comparison. The stored form is the serialised DTO plus the snapshot needed for
@@ -77,6 +79,8 @@ export interface PersistenceDriver {
   readonly providerCredentials: ProviderCredentialStore;
   readonly mandates: MandateStore;
   readonly partnerInstructions: PartnerInstructionStore;
+  readonly orchestratedExecutions: OrchestratedExecutionStore;
+  readonly executionReceipts: ExecutionReceiptStore;
   /**
    * Upserts ISO currencies and sandbox provider rows the demo dashboard seed needs as FK targets.
    * Memory is a no-op. Called only when `SEED_DEMO_TENANTS` provisions quotes.

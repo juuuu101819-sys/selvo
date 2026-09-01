@@ -92,6 +92,8 @@ export {
   type SignedExecutionInstruction,
   type StoredPartnerInstruction,
 } from './execution-partner.js';
+export type { OrchestratedExecutionStore } from './orchestrated-executions.js';
+export type { ExecutionReceiptStore } from './execution-receipts.js';
 export type { FXProvider, FXQuote, FXQuoteRequest } from './fx-provider.js';
 export { SequentialIdGenerator, uuidIdGenerator, type IdGenerator } from './id-generator.js';
 export { FixedClock, systemClock, type Clock } from './clock.js';

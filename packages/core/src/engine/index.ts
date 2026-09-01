@@ -198,3 +198,42 @@ export {
   initialSandboxDispatch,
   type SandboxSimulationState,
 } from './sandbox-partner-simulation.js';
+export {
+  partnerInstructionHmacPayload,
+  sandboxPartnerHmacSecret,
+  signPartnerInstructionHmac,
+  type PartnerInstructionHmacPayload,
+} from './instruction-hmac.js';
+export { evaluateSandboxCompliance } from './execution-compliance.js';
+export {
+  ExecutionOrchestrationService,
+  type CreateOrchestratedExecutionCommand,
+  type ExecutionOrchestrationDependencies,
+} from './execution-orchestration-service.js';
+export {
+  ExecutionReceiptService,
+  buildExecutionReceiptPayload,
+  type ExecutionReceiptServiceDependencies,
+  type IssueExecutionReceiptInput,
+} from './execution-receipt-service.js';
+export {
+  RECEIPT_VERIFICATION_DOCS,
+  canonicalizeReceiptPayload,
+  fingerprintPublicKeyPem,
+  generateReceiptKeyPair,
+  loadOrCreateReceiptSigningKey,
+  publicKeyPemFromPrivate,
+  signCanonicalReceipt,
+  verifyCanonicalReceipt,
+  verifyExecutionReceipt,
+  type ReceiptKeyPair,
+} from './receipt-signing.js';
+export {
+  RECONCILIATION_MISMATCH_KINDS,
+  ReconciliationEngine,
+  isReconciliationMismatchKind,
+  reconcileExecution,
+  type ReconciliationEngineDependencies,
+  type ReconciliationMismatch,
+  type ReconciliationMismatchKind,
+} from './reconciliation-engine.js';

@@ -30,8 +30,9 @@ export type MonetizationTransactionType = (typeof MONETIZATION_TRANSACTION_TYPES
 /**
  * Funnel stage of an economic record.
  *
- * Realized revenue is only `settled`. Route discovery, selection, and execution intent stay
- * unrealized. This codebase never writes `settled` — that requires a verified external settlement.
+ * `realizedRevenue` on the row is always false in this tree: there is no collected cash.
+ * Sandbox orchestration may write `economicStage: 'settled'` as quoted take-rate attribution
+ * after a mock partner reports settlement. That is not a funds movement (`fundsMoved` stays false).
  */
 export const ECONOMIC_STAGES = [
   'route_quote',

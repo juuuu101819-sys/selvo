@@ -17,6 +17,9 @@ import {
   DefiRouter,
   ENGINE_VERSION,
   ExecutionPartnerRegistry,
+  ExecutionOrchestrationService,
+  ExecutionReceiptService,
+  ReconciliationEngine,
   FinancialProviderRegistry,
   GRAPH_ENGINE_VERSION,
   MultiRailCostEngine,
@@ -70,6 +73,9 @@ export interface AppContainer {
   readonly mandates: MandateService;
   readonly partnerInstructions: PartnerInstructionService;
   readonly executionPartners: ExecutionPartnerRegistry;
+  readonly executions: ExecutionOrchestrationService;
+  readonly receipts: ExecutionReceiptService;
+  readonly reconciliation: ReconciliationEngine;
   readonly nlRouting: NlRoutingService;
   readonly disclaimer: string;
   readonly pricing: {
@@ -292,6 +298,45 @@ export function createContainer(options: ContainerOptions): AppContainer {
     sandboxMode: config.mode === 'sandbox',
   });
 
+  const receipts = new ExecutionReceiptService({
+    enabled: config.executionEnabled,
+    sandboxMode: config.mode === 'sandbox',
+    store: persistence.executionReceipts,
+    vault: providerCredentialVault,
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+  });
+
+  const reconciliation = new ReconciliationEngine({
+    enabled: config.executionEnabled,
+    sandboxMode: config.mode === 'sandbox',
+    executions: persistence.orchestratedExecutions,
+    partners: persistence.partnerInstructions,
+    dashboard: persistence.dashboard,
+    auditLogger,
+  });
+
+  const executions = new ExecutionOrchestrationService({
+    enabled: config.executionEnabled,
+    sandboxMode: config.mode === 'sandbox',
+    store: persistence.orchestratedExecutions,
+    mandates: persistence.mandates,
+    evaluations: persistence.routingEvaluations,
+    routing,
+    partners: executionPartners,
+    partnerInstructions,
+    partnerInstructionStore: persistence.partnerInstructions,
+    receipts,
+    agentPayments: persistence.agentPayments,
+    vault: providerCredentialVault,
+    dashboard: persistence.dashboard,
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+    logger,
+  });
+
   const nlRouting = new NlRoutingService({
     agentPayments,
     agentPaymentStore: persistence.agentPayments,
@@ -338,6 +383,9 @@ export function createContainer(options: ContainerOptions): AppContainer {
     mandates,
     partnerInstructions,
     executionPartners,
+    executions,
+    receipts,
+    reconciliation,
     nlRouting,
     disclaimer: disclaimerFor(config.mode),
     pricing:

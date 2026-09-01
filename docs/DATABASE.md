@@ -89,6 +89,8 @@ Organization ──┬── OrganizationMember ── User ── MfaRecoveryCo
                ├── Merchant
                ├── MandateX402Challenge
                ├── PartnerInstruction
+               ├── OrchestratedExecution
+               ├── ExecutionReceipt
                ├── MonetizationEvent ── Invoice / InvoiceLine
                ├── RoutingEvaluation
                └── AuditLog
@@ -247,6 +249,18 @@ customer balance. `instruction_hash` and `signature_hash` are SHA-256; the raw s
 account/PII are not stored. Partner-reported status is `accepted | settling | partial | settled |
 failed`. Meridian does not settle.
 
+**`OrchestratedExecution`** (`orchestrated_executions`) — sandbox state machine for a mandate +
+selected route against a mock partner. Amounts are limits/reported fills, not a customer balance.
+CHECK `orchestrated_executions_non_custodial` forces `funds_moved`, `custody`, `transfer_signed`,
+and `meridian_keys_used` false and `sandbox` true. Beneficiary is a merchant code, not an account.
+
+**`ExecutionReceipt`** (`execution_receipts`) — Ed25519-signed canonical payload over mandate
+reference hashes, route rationale, partner confirmation hashes, and timestamps. The private key is
+in `provider_credentials` (`meridian-receipt-signer` / `receipt_ed25519`), never in this table.
+This table stores the public key, signature, and canonical payload. CHECK
+`execution_receipts_non_custodial` forces `funds_moved` / `custody` / `meridian_keys_used` false.
+Raw PII, accounts, and wallets are not stored.
+
 ### Reproducibility and audit
 
 **`Comparison`** — the immutable, replayable record: the snapshot the engine needs to recompute a
@@ -287,6 +301,8 @@ runs anywhere, and by execution against a real server in the integration suite.
 | An execution intent is recorded, never executable or submitted   | `execution_intents_status_recorded`, `execution_intents_not_executable`, `execution_intents_not_submitted` |
 | Mandate spend cap is a positive limit, not a balance             | `mandates_spend_cap_positive` |
 | Partner instruction amounts are non-negative                     | `partner_instructions_amounts_non_negative` |
+| Orchestrated executions cannot record custody or a funds transfer | `orchestrated_executions_non_custodial` |
+| Execution receipts cannot record custody                         | `execution_receipts_non_custodial` |
 | Invoice tax is zero; status is issued; collection is uncollected | `invoices_tax_zero`, `invoices_status_issued`, `invoices_collection_uncollected` |
 | Realized revenue only with collected recognition                 | `monetization_events_realized_revenue_collected_chk` |
 | A snapshot appears on at most one invoice                        | unique `invoice_lines.monetization_event_id` |

@@ -9,6 +9,7 @@ describe('loadConfig', () => {
     expect(config.mode).toBe('sandbox');
     expect(config.database.driver).toBe('memory');
     expect(config.port).toBe(47_311);
+    expect(config.executionEnabled).toBe(false);
   });
 
   it('disables rate limiting in tests unless RATE_LIMIT_MAX is set', () => {
@@ -241,6 +242,18 @@ describe('PA-C01 production routing and execution flags', () => {
     const config = loadConfig(productionSource({ PRODUCTION_ROUTING_AVAILABLE: 'true' }));
     expect(config.productionGates.routingAvailable).toBe(true);
     expect(config.productionGates.executionAvailable).toBe(false);
+  });
+
+  it('rejects EXECUTION_ENABLED=true in a production-locked process', () => {
+    const issues = issuesOf(productionSource({ EXECUTION_ENABLED: 'true' }));
+    expect(issues).toMatch(/EXECUTION_ENABLED/);
+    expect(issues).toMatch(/cannot be true/);
+  });
+
+  it('accepts EXECUTION_ENABLED=true only in sandbox', () => {
+    const config = loadConfig({ NODE_ENV: 'development', PLATFORM_MODE: 'sandbox', EXECUTION_ENABLED: 'true' });
+    expect(config.executionEnabled).toBe(true);
+    expect(config.productionLocked).toBe(false);
   });
 
   it('rejects PRODUCTION_ROUTING_AVAILABLE outside production mode', () => {

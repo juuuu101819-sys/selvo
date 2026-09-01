@@ -96,6 +96,10 @@ describe('GET /v1/meta', () => {
       platformInvoicing: true,
       mandateIngestion: true,
       executionPartnerAdapters: true,
+      sandboxExecutionOrchestration: true,
+      verifiableExecutionReceipts: true,
+      settlementReconciliation: true,
+      auditTrailExport: true,
     });
     expect(body.execution).toMatchObject({
       implemented: false,
@@ -111,7 +115,11 @@ describe('GET /v1/meta', () => {
         .data.mandateIngestionEnabled,
     ).toBe(false);
     expect(
-      response.json<{ data: { partnerLiveEnabled: boolean } }>().data.partnerLiveEnabled,
+      response.json<{ data: { partnerLiveEnabled: boolean; executionEnabled: boolean } }>().data
+        .partnerLiveEnabled,
+    ).toBe(false);
+    expect(
+      response.json<{ data: { executionEnabled: boolean } }>().data.executionEnabled,
     ).toBe(false);
     expect(body.deployment).toEqual({ environment: 'development', imageTag: null });
     expect(body.pipeline).toEqual(

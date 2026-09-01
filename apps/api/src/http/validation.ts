@@ -737,3 +737,39 @@ export const partnerWebhookBodySchema = z
 
 export type PartnerWebhookBody = z.infer<typeof partnerWebhookBodySchema>;
 
+/**
+ * Body of `POST /api/v1/executions` when EXECUTION_ENABLED=true.
+ *
+ * Mandate + selected route only. Account numbers, wallets, keys, and `execute` are rejected.
+ */
+export const createOrchestratedExecutionSchema = z
+  .object({
+    mandateId: z.string().trim().min(1).max(128),
+    routingId: z.string().trim().min(1).max(128),
+    routeId: z.string().trim().min(1).max(256),
+    beneficiaryRef: z.string().trim().min(1).max(80),
+    complianceOutcome: z.enum(['pass', 'deny', 'review']).optional(),
+    sandboxScenario: partnerScenario.optional(),
+  })
+  .strict();
+
+export type CreateOrchestratedExecutionBody = z.infer<typeof createOrchestratedExecutionSchema>;
+
+export const verifyExecutionReceiptSchema = z
+  .object({
+    payload: z.record(z.string(), z.unknown()),
+    signature: z.string().trim().min(1).max(512),
+    publicKeyPem: z.string().trim().min(32).max(4096),
+  })
+  .strict();
+
+export type VerifyExecutionReceiptBody = z.infer<typeof verifyExecutionReceiptSchema>;
+
+export const auditExportQuerySchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(1000).optional(),
+    from: z.string().trim().min(10).max(40).optional(),
+    to: z.string().trim().min(10).max(40).optional(),
+  })
+  .strict();
+

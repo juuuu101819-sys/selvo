@@ -93,6 +93,8 @@ describeIntegration('PostgreSQL schema', () => {
           'mandates',
           'mandate_x402_challenges',
           'partner_instructions',
+          'orchestrated_executions',
+          'execution_receipts',
         ]),
       );
     });

@@ -67,6 +67,9 @@ function foreignIdFor(path: string): string {
   if (path.includes('mandates')) {
     return 'mdt_other_secret';
   }
+  if (path.includes('/executions')) {
+    return 'ex_other_secret';
+  }
   return 'foreign_secret_id';
 }
 

@@ -1023,16 +1023,43 @@ foreign id is `404 NOT_FOUND`.
 
 ## `POST /api/v1/executions`
 
-Always returns `501 EXECUTION_NOT_IMPLEMENTED`, and audits the attempt.
+When `EXECUTION_ENABLED` is false (the default), this route always returns `501 EXECUTION_NOT_IMPLEMENTED` and audits `execution.rejected`. Anonymous callers receive the same 501.
 
-This endpoint exists so the refusal to move money is visible in the API surface, recorded when
-someone tries, and covered by a test — rather than being an absent route that answers 404 and
-explains nothing. Nothing in the codebase can initiate a payment, hold a key, or act as principal.
-Delegated settlement (`delegateExecution`) is the future form of this endpoint and is not
-implemented.
+When the flag is true in **sandbox** mode, `POST` creates an orchestration from a verified mandate and a selected multi-rail route:
 
-PHASE 33 (AI-agent payment pilot) did **not** change this. The four business/legal gates in
-[`COMPLIANCE.md`](./COMPLIANCE.md) (licensed execution rights, compliance sign-off, bounded
-org/agent allowlist with caps and corridor, incident/rollback plan) were not confirmed outside
-Cursor, so the 501 was left in place. Non-allowlisted callers do not receive a new error code:
-there is no allowlist, because the endpoint is still unimplemented for everyone.
+`CREATED → ROUTED → COMPLIANCE_PASSED → mandate recheck → daily-limit reserve → DISPATCHED → SETTLING → SETTLED | FAILED`
+
+Quote expiry becomes `EXPIRED`. Compliance deny or mandate/policy/limit failure becomes `BLOCKED`. Compliance `review` parks at `COMPLIANCE_REVIEW`. Each transition is audited and the `Idempotency-Key` is honoured (same payload replays; different payload is `409`).
+
+Meridian HMAC-signs the **instruction envelope** with a vault partner-scoped credential (`instruction_hmac`). It does not sign a funds transfer. Responses carry `sandbox: true`, `fundsMoved: false`, `custody: false`, `transferSigned: false`, `meridianKeysUsed: false`. Mock partners simulate settlement. Success records take-rate / partner-commission attribution (`realizedRevenue` stays false).
+
+`GET /api/v1/executions/:id` is organization-scoped (wrong tenant `404`). Live partners are never called. `delegateExecution` and `executeTransactions` stay false. Production-locked processes cannot enable the flag.
+
+## `GET /api/v1/executions/:id/receipt`
+
+Issued after a sandbox orchestration reaches `SETTLED`. The body is an Ed25519 signature over canonical JSON of:
+
+- mandate reference (id, issuer, agent, payload/scope hashes, spend-cap limit, corridors — **not** raw beneficiaries)
+- selected route and best-execution rationale (deterministic `routeExplanation`)
+- partner settlement confirmation hashes (`instructionHash`, `signatureHash`, partner status, filled amount)
+- timestamps (`quotedAt`, `quoteExpiresAt`, `createdAt`, `dispatchedAt`, `settledAt`)
+
+`fundsMoved`, `custody`, `transferSigned`, and `meridianKeysUsed` are always false. The signing **private** key lives in the vault (`meridian-receipt-signer` / `receipt_ed25519`) and is never exported. The **public** key is on `receipt.verification.publicKeyPem`.
+
+### Independent verification
+
+1. Canonicalize `receipt.payload` with sorted-key JSON (`canonical-json`, same as comparison fingerprints).
+2. SHA-256 the canonical UTF-8 bytes; it must match `receipt.payloadHash`.
+3. Decode `receipt.signature` as base64url.
+4. Verify Ed25519 over the canonical bytes with `receipt.verification.publicKeyPem`.
+5. Confirm the non-custodial flags are false.
+
+`POST /api/v1/receipts/verify` runs the same check on a presented `{ payload, signature, publicKeyPem }` without looking up tenant data. Flipping one bit of the signature or payload fails verification.
+
+## `GET /api/v1/reconciliation/mismatches`
+
+Organization-scoped. Requires `EXECUTION_ENABLED`. Matches dispatched instruction ↔ partner confirmation ↔ fee attribution and returns flagged disagreements (`instruction_hash_mismatch`, `amount_mismatch`, `filled_amount_mismatch`, `partner_status_mismatch`, `missing_partner_confirmation`, `missing_fee_attribution`, `fee_tpv_mismatch`, `non_custodial_violation`). This does not move funds.
+
+## `GET /api/v1/audit/export`
+
+Owner/admin human session only. Exports this tenant's audit events (`organization_id` from the principal, never from the query). Agents and organization API keys are `403`. Another tenant's rows are never selected. Optional `limit`, `from`, `to` query parameters.

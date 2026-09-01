@@ -77,6 +77,13 @@ const envSchema = z
     PARTNER_LIVE_ENABLED: booleanFlag,
 
     /**
+     * Sandbox execution orchestration against mock partners. Default false — fail closed.
+     * When false, POST /executions remains 501. Production-locked processes cannot enable this.
+     * Does not enable live partners, custody, or principal execution.
+     */
+    EXECUTION_ENABLED: booleanFlag,
+
+    /**
      * Deployment label. Safety rules come from production-lock (PA-C01–C03), not from this value.
      * `staging` and `production` both require a production-locked process. Staging is not a
      * relaxed sandbox.
@@ -162,6 +169,16 @@ const envSchema = z
           'PRODUCTION_EXECUTION_AVAILABLE cannot be true. Partner execution is not implemented; ' +
           'POST /api/v1/executions remains 501. A production environment with no licensed execution ' +
           'partner must never pretend that execution is available.',
+      });
+    }
+
+    if (env.EXECUTION_ENABLED && productionLocked) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['EXECUTION_ENABLED'],
+        message:
+          'EXECUTION_ENABLED cannot be true in a production-locked process. Sandbox orchestration ' +
+          'is sandbox-mode only; live partners and custody are out of scope.',
       });
     }
 
@@ -280,6 +297,10 @@ export interface AppConfig {
    * Live execution-partner adapters. Default false. No live adapters are registered in this tree.
    */
   readonly partnerLiveEnabled: boolean;
+  /**
+   * Sandbox orchestration of POST /executions. Default false. When false the route stays 501.
+   */
+  readonly executionEnabled: boolean;
   /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
   readonly authSecretConfigured: boolean;
   /**
@@ -384,6 +405,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     },
     mandateIngestionEnabled: env.MANDATE_INGESTION_ENABLED,
     partnerLiveEnabled: env.PARTNER_LIVE_ENABLED,
+    executionEnabled: env.EXECUTION_ENABLED,
     authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
     sessionTokenPepper: deriveSessionTokenPepper(env.AUTH_SECRET, { productionLocked }),
     dataEncryptionKey: deriveDataEncryptionKeyHex(env.AUTH_SECRET, { productionLocked }),

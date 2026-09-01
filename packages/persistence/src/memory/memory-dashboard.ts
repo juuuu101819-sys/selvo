@@ -132,6 +132,14 @@ export class InMemoryDashboardRepository implements DashboardRepository {
     return Promise.resolve();
   }
 
+  getMonetizationEvent(organizationId: string, id: string): Promise<MonetizationEvent | null> {
+    const event = this.monetization.get(id);
+    if (event === undefined || event.organizationId !== organizationId) {
+      return Promise.resolve(null);
+    }
+    return Promise.resolve(structuredClone(event));
+  }
+
   listMonetizationEvents(
     organizationId: string,
     options: { readonly limit?: number } = {},

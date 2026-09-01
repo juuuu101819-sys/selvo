@@ -26,6 +26,8 @@ export interface DispatchPartnerInstructionCommand {
   readonly actor: string;
   readonly requestId: string;
   readonly partnerId: string | null;
+  /** Tried first when `partnerId` is null; remaining eligible partners are failover. */
+  readonly preferredPartnerId?: string | null;
   readonly instruction: SignedExecutionInstruction;
 }
 
@@ -110,7 +112,7 @@ export class PartnerInstructionService {
     const hashes = hashExecutionInstruction(command.instruction);
     const attempted: string[] = [];
 
-    const candidates = this.candidates(command.partnerId, match);
+    const candidates = this.candidates(command.partnerId, command.preferredPartnerId ?? null, match);
     if (candidates.length === 0) {
       await this.deps.auditLogger.record({
         type: 'partner.failed',
@@ -329,6 +331,7 @@ export class PartnerInstructionService {
 
   private candidates(
     partnerId: string | null,
+    preferredPartnerId: string | null,
     match: {
       readonly sourceAsset: string;
       readonly destinationAsset: string;
@@ -344,7 +347,13 @@ export class PartnerInstructionService {
       this.assertNotLive(partner);
       return partnerSupportsRequest(partner.capabilities, match) ? [partner] : [];
     }
-    return this.deps.registry.eligible(match);
+    const eligible = this.deps.registry.eligible(match);
+    if (preferredPartnerId === null) {
+      return eligible;
+    }
+    const preferred = eligible.filter((partner) => partner.capabilities.partnerId === preferredPartnerId);
+    const rest = eligible.filter((partner) => partner.capabilities.partnerId !== preferredPartnerId);
+    return [...preferred, ...rest];
   }
 
   private assertSandboxDispatch(): void {

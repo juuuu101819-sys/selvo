@@ -239,6 +239,10 @@ export interface MetaDto {
     readonly platformInvoicing?: boolean;
                 readonly mandateIngestion?: boolean;
     readonly executionPartnerAdapters?: boolean;
+    readonly sandboxExecutionOrchestration?: boolean;
+    readonly verifiableExecutionReceipts?: boolean;
+    readonly settlementReconciliation?: boolean;
+    readonly auditTrailExport?: boolean;
   };
   readonly execution: {
     readonly implemented: boolean;
@@ -252,6 +256,7 @@ export interface MetaDto {
   };
   readonly mandateIngestionEnabled?: boolean;
   readonly partnerLiveEnabled?: boolean;
+  readonly executionEnabled?: boolean;
   readonly pricing: {
     readonly datasetVersion: string;
     readonly referenceRatesVersion: string;

@@ -38,9 +38,9 @@ unconfirmed; invoices stay uncollected.
 PHASE 36 (subscriptions and partner payouts) was not run: tiers, contracted partners, and a
 payout rail remain unconfirmed; PHASE 35 collection is still deferred.
 PHASE 38 added operator kill switch, provider credential vault, and inert execution-consent
-flags; `POST /v1/executions` stays 501. Sandbox execution-partner adapters forward a
-**caller-signed** instruction and record partner-reported status; they do not hold funds or keys.
-Live partners stay behind `PARTNER_LIVE_ENABLED` (default false) and are not implemented.
+flags; `POST /v1/executions` stays 501 unless `EXECUTION_ENABLED=true` in sandbox, where
+orchestration talks only to mock partners. Meridian HMAC-signs the instruction, not a funds
+transfer. Live partners stay behind `PARTNER_LIVE_ENABLED` (default false) and are not implemented.
 
 ## Running it locally
 

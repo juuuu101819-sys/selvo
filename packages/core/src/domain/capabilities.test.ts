@@ -30,5 +30,9 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.platformInvoicing).toBe(true);
     expect(PLATFORM_CAPABILITIES.mandateIngestion).toBe(true);
     expect(PLATFORM_CAPABILITIES.executionPartnerAdapters).toBe(true);
+    expect(PLATFORM_CAPABILITIES.sandboxExecutionOrchestration).toBe(true);
+    expect(PLATFORM_CAPABILITIES.verifiableExecutionReceipts).toBe(true);
+    expect(PLATFORM_CAPABILITIES.settlementReconciliation).toBe(true);
+    expect(PLATFORM_CAPABILITIES.auditTrailExport).toBe(true);
   });
 });

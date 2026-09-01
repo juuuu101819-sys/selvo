@@ -96,10 +96,18 @@ export function assertClaimedOrganization(
 export function requireKeyManager(
   request: FastifyRequest,
 ): Principal & { organizationId: string } {
+  return requirePrivilegedSession(request, 'manage API keys');
+}
+
+/** Owner or admin human session. Organization keys and agents are denied. */
+export function requirePrivilegedSession(
+  request: FastifyRequest,
+  action: string,
+): Principal & { organizationId: string } {
   const principal = requireOrganization(request);
   const role = principal.roles[0];
   if (principal.kind !== 'user' || (role !== 'owner' && role !== 'admin')) {
-    throw new ForbiddenError('Only an organization owner or admin can manage API keys.', {
+    throw new ForbiddenError(`Only an organization owner or admin can ${action}.`, {
       requiredRoles: ['owner', 'admin'],
     });
   }

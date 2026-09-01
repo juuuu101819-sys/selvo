@@ -245,6 +245,13 @@ export class PrismaDashboardRepository implements DashboardRepository {
     }
   }
 
+  async getMonetizationEvent(organizationId: string, id: string): Promise<MonetizationEvent | null> {
+    const row = await this.query(() =>
+      this.client.monetizationEvent.findFirst({ where: { id, organizationId } }),
+    );
+    return row === null ? null : toMonetizationEvent(row);
+  }
+
   async listMonetizationEvents(
     organizationId: string,
     options: { readonly limit?: number } = {},

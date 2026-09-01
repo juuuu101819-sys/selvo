@@ -254,6 +254,8 @@ model Organization {
   routingEvaluations  RoutingEvaluation[]
   mandates            Mandate[]
   partnerInstructions PartnerInstruction[]
+  orchestratedExecutions OrchestratedExecution[]
+  executionReceipts   ExecutionReceipt[]
 
   @@map("organizations")
 }
@@ -527,6 +529,19 @@ enum PartnerInstructionStatus {
   failed
 }
 
+enum OrchestratedExecutionStatus {
+  CREATED
+  ROUTED
+  COMPLIANCE_PASSED
+  COMPLIANCE_REVIEW
+  BLOCKED
+  EXPIRED
+  DISPATCHED
+  SETTLING
+  SETTLED
+  FAILED
+}
+
 /// Sandbox record of a signed instruction forwarded to an execution partner.
 /// The partner settles to the beneficiary. Meridian stores hashes only — no funds, keys, or PII.
 model PartnerInstruction {
@@ -551,6 +566,77 @@ model PartnerInstruction {
 
   @@index([organizationId, createdAt])
   @@map("partner_instructions")
+}
+
+/// Sandbox orchestration of a caller mandate + selected route against a mock execution partner.
+/// Meridian stores hashes and partner-reported status. No funds, customer keys, or transfers.
+model OrchestratedExecution {
+  id                      String                       @id
+  organizationId          String                       @map("organization_id")
+  agentId                 String                       @map("agent_id")
+  mandateId               String                       @map("mandate_id")
+  routingId               String                       @map("routing_id")
+  routeId                 String                       @map("route_id")
+  partnerId               String?                      @map("partner_id")
+  partnerInstructionId    String?                      @map("partner_instruction_id")
+  status                  OrchestratedExecutionStatus
+  sourceAsset             String                       @map("source_asset") @db.VarChar(16)
+  destinationAsset        String                       @map("destination_asset") @db.VarChar(16)
+  amountMinorUnits        Decimal                      @map("amount_minor_units") @db.Decimal(38, 0)
+  filledMinorUnits        Decimal                      @map("filled_minor_units") @db.Decimal(38, 0)
+  quoteExpiresAt          DateTime?                    @map("quote_expires_at") @db.Timestamptz(3)
+  quotedAt                DateTime?                    @map("quoted_at") @db.Timestamptz(3)
+  dispatchedAt            DateTime?                    @map("dispatched_at") @db.Timestamptz(3)
+  settledAt               DateTime?                    @map("settled_at") @db.Timestamptz(3)
+  receiptId               String?                      @map("receipt_id")
+  beneficiaryRef          String                       @map("beneficiary_ref") @db.VarChar(80)
+  idempotencyKey          String?                      @map("idempotency_key")
+  payloadFingerprint      String                       @map("payload_fingerprint")
+  failureCode             String?                      @map("failure_code")
+  blockedReason           String?                      @map("blocked_reason")
+  dailyLimitReserved      Boolean                      @default(false) @map("daily_limit_reserved")
+  instructionHash         String?                      @map("instruction_hash")
+  signatureHash           String?                      @map("signature_hash")
+  instructionSignatureKind String?                     @map("instruction_signature_kind")
+  transferSigned          Boolean                      @default(false) @map("transfer_signed")
+  fundsMoved              Boolean                      @default(false) @map("funds_moved")
+  custody                 Boolean                      @default(false)
+  meridianKeysUsed        Boolean                      @default(false) @map("meridian_keys_used")
+  sandbox                 Boolean                      @default(true)
+  failoverFrom            String[]                     @map("failover_from")
+  monetizationEventId     String?                      @map("monetization_event_id")
+  createdAt               DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt               DateTime                     @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, agentId, createdAt])
+  @@map("orchestrated_executions")
+}
+
+/// Ed25519-signed sandbox execution receipt. Canonical payload + signature. No raw PII, no private keys.
+model ExecutionReceipt {
+  id                    String   @id
+  organizationId        String   @map("organization_id")
+  executionId           String   @unique @map("execution_id")
+  payloadCanonical      String   @map("payload_canonical")
+  payloadHash           String   @map("payload_hash")
+  signature             String
+  publicKeyPem          String   @map("public_key_pem")
+  publicKeyFingerprint  String   @map("public_key_fingerprint")
+  fundsMoved            Boolean  @default(false) @map("funds_moved")
+  custody               Boolean  @default(false)
+  meridianKeysUsed      Boolean  @default(false) @map("meridian_keys_used")
+  sandbox               Boolean  @default(true)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@map("execution_receipts")
 }
 
 /// Autonomous AI agent acting *for* an organization. Never a custodian of funds.

@@ -30,6 +30,8 @@ import { PrismaBillingStore } from './prisma-billing.js';
 import { PrismaProviderCredentialStore } from './prisma-provider-credentials.js';
 import { PrismaMandateStore } from './prisma-mandates.js';
 import { PrismaPartnerInstructionStore } from './prisma-partner-instructions.js';
+import { PrismaOrchestratedExecutionStore } from './prisma-orchestrated-executions.js';
+import { PrismaExecutionReceiptStore } from './prisma-execution-receipts.js';
 import { PrismaRoutingEvaluationRepository } from './prisma-routing-evaluations.js';
 import { PrismaRoutingOverrideStore } from './prisma-routing-overrides.js';
 import { PrismaRateLimitStore } from '../rate-limit/prisma-store.js';
@@ -77,6 +79,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly providerCredentials: PrismaProviderCredentialStore;
   readonly mandates: PrismaMandateStore;
   readonly partnerInstructions: PrismaPartnerInstructionStore;
+  readonly orchestratedExecutions: PrismaOrchestratedExecutionStore;
+  readonly executionReceipts: PrismaExecutionReceiptStore;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -110,6 +114,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.providerCredentials = new PrismaProviderCredentialStore(this.client);
     this.mandates = new PrismaMandateStore(this.client);
     this.partnerInstructions = new PrismaPartnerInstructionStore(this.client);
+    this.orchestratedExecutions = new PrismaOrchestratedExecutionStore(this.client);
+    this.executionReceipts = new PrismaExecutionReceiptStore(this.client);
   }
 
   ensureSandboxCatalog(): Promise<void> {
@@ -137,7 +143,9 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
                 AND to_regclass('public.routing_manual_overrides') IS NOT NULL
                 AND to_regclass('public.provider_credentials') IS NOT NULL
                 AND to_regclass('public.mandates') IS NOT NULL
-                AND to_regclass('public.partner_instructions') IS NOT NULL) AS present
+                AND to_regclass('public.partner_instructions') IS NOT NULL
+                AND to_regclass('public.orchestrated_executions') IS NOT NULL
+                AND to_regclass('public.execution_receipts') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(

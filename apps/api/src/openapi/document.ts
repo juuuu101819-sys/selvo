@@ -79,9 +79,47 @@ const PAGINATED_GET_PATHS = new Set([
 function responses(route: CatalogRoute): Record<string, unknown> {
   if (route.path === '/executions' && route.method === 'POST') {
     return {
+      '201': {
+        description:
+          'Sandbox orchestration created or advanced (EXECUTION_ENABLED=true). Terminal statuses: SETTLED, FAILED, BLOCKED, EXPIRED. fundsMoved is always false.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/OrchestratedExecution' } } },
+      },
       '501': {
-        description: 'Execution is not implemented. Non-custodial refusal.',
+        description: 'EXECUTION_ENABLED is false. Non-custodial refusal.',
         content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorEnvelope' } } },
+      },
+    };
+  }
+  if (route.path === '/executions/:id/receipt' && route.method === 'GET') {
+    return {
+      '200': {
+        description:
+          'Ed25519-signed sandbox receipt. fundsMoved is always false. Payload is hashes and catalog ids.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/VerifiableExecutionReceipt' } } },
+      },
+    };
+  }
+  if (route.path === '/receipts/verify' && route.method === 'POST') {
+    return {
+      '200': {
+        description: 'Independent verification result. Does not fetch tenant data.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ReceiptVerificationResult' } } },
+      },
+    };
+  }
+  if (route.path === '/reconciliation/mismatches' && route.method === 'GET') {
+    return {
+      '200': {
+        description: 'Mismatches between dispatched instruction, partner confirmation, and fee attribution.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/ReconciliationReport' } } },
+      },
+    };
+  }
+  if (route.path === '/audit/export' && route.method === 'GET') {
+    return {
+      '200': {
+        description: 'Tenant-scoped audit trail. Owner/admin only. Another tenant is never selected.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/AuditExport' } } },
       },
     };
   }
@@ -282,6 +320,90 @@ export function buildOpenApiDocument(): OpenApiDocument {
             fundsMoved: { type: 'boolean', enum: [false] },
             custody: { type: 'boolean', enum: [false] },
             meridianKeysUsed: { type: 'boolean', enum: [false] },
+            sandbox: { type: 'boolean', enum: [true] },
+          },
+        },
+        OrchestratedExecution: {
+          type: 'object',
+          description:
+            'Sandbox orchestration of a mandate + selected route against a mock execution partner. fundsMoved, custody, transferSigned and meridianKeysUsed are always false.',
+          required: [
+            'id',
+            'status',
+            'fundsMoved',
+            'custody',
+            'transferSigned',
+            'meridianKeysUsed',
+            'sandbox',
+          ],
+          properties: {
+            id: { type: 'string' },
+            status: {
+              type: 'string',
+              enum: [
+                'CREATED',
+                'ROUTED',
+                'COMPLIANCE_PASSED',
+                'COMPLIANCE_REVIEW',
+                'BLOCKED',
+                'EXPIRED',
+                'DISPATCHED',
+                'SETTLING',
+                'SETTLED',
+                'FAILED',
+              ],
+            },
+            fundsMoved: { type: 'boolean', enum: [false] },
+            custody: { type: 'boolean', enum: [false] },
+            transferSigned: { type: 'boolean', enum: [false] },
+            meridianKeysUsed: { type: 'boolean', enum: [false] },
+            sandbox: { type: 'boolean', enum: [true] },
+          },
+        },
+        VerifiableExecutionReceipt: {
+          type: 'object',
+          description:
+            'Ed25519-signed execution receipt. Private key stays in the vault. Payload has hashes, not raw PII.',
+          required: ['id', 'executionId', 'payload', 'signature', 'verification', 'fundsMoved', 'sandbox'],
+          properties: {
+            id: { type: 'string' },
+            executionId: { type: 'string' },
+            payloadHash: { type: 'string' },
+            signature: { type: 'string' },
+            fundsMoved: { type: 'boolean', enum: [false] },
+            custody: { type: 'boolean', enum: [false] },
+            meridianKeysUsed: { type: 'boolean', enum: [false] },
+            sandbox: { type: 'boolean', enum: [true] },
+          },
+        },
+        ReceiptVerificationResult: {
+          type: 'object',
+          required: ['valid', 'payloadHash', 'fundsMoved'],
+          properties: {
+            valid: { type: 'boolean' },
+            payloadHash: { type: 'string' },
+            reason: { type: ['string', 'null'] },
+            fundsMoved: { type: 'boolean', enum: [false] },
+          },
+        },
+        ReconciliationReport: {
+          type: 'object',
+          required: ['mismatches', 'fundsMoved', 'sandbox'],
+          properties: {
+            mismatches: { type: 'array', items: { type: 'object' } },
+            fundsMoved: { type: 'boolean', enum: [false] },
+            sandbox: { type: 'boolean', enum: [true] },
+          },
+        },
+        AuditExport: {
+          type: 'object',
+          required: ['organizationId', 'exportedAt', 'eventCount', 'events', 'fundsMoved', 'sandbox'],
+          properties: {
+            organizationId: { type: 'string' },
+            exportedAt: { type: 'string' },
+            eventCount: { type: 'integer' },
+            events: { type: 'array', items: { type: 'object' } },
+            fundsMoved: { type: 'boolean', enum: [false] },
             sandbox: { type: 'boolean', enum: [true] },
           },
         },

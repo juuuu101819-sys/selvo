@@ -18,6 +18,9 @@ import { registerDashboardRoutes } from './dashboard.js';
 import { registerDefiRoutes } from './defi-routes.js';
 import { registerExecutionIntentRoutes } from './execution-intents.js';
 import { registerExecutionRoutes } from './executions.js';
+import { registerReceiptVerificationRoute } from './receipts.js';
+import { registerReconciliationRoutes } from './reconciliation.js';
+import { registerAuditExportRoute } from './audit-export.js';
 import { registerFinancialRoutingRoutes } from './financial-routing.js';
 import { registerOpenApiRoute } from './openapi.js';
 import { registerProviderCatalogRoutes } from './providers.js';
@@ -82,6 +85,9 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerBillingRoutes(instance, container);
     registerExecutionIntentRoutes(instance, container);
     registerExecutionRoutes(instance, container);
+    registerReceiptVerificationRoute(instance, container);
+    registerReconciliationRoutes(instance, container);
+    registerAuditExportRoute(instance, container);
   };
 
   await app.register(v1, { prefix: API_V1_PREFIX });

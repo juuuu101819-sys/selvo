@@ -68,6 +68,19 @@ export const AUDIT_EVENT_TYPES = [
   'partner.dispatched',
   'partner.status_changed',
   'partner.failed',
+  'execution.created',
+  'execution.routed',
+  'execution.compliance_passed',
+  'execution.compliance_review',
+  'execution.blocked',
+  'execution.expired',
+  'execution.dispatched',
+  'execution.settling',
+  'execution.settled',
+  'execution.failed',
+  'receipt.issued',
+  'reconciliation.listed',
+  'audit.exported',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

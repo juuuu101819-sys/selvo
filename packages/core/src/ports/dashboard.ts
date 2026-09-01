@@ -120,6 +120,7 @@ export interface DashboardRepository {
   recordTransaction(input: RecordTransactionInput): Promise<void>;
   recordQuote(input: DashboardQuote): Promise<void>;
   recordMonetizationEvent(event: MonetizationEvent): Promise<void>;
+  getMonetizationEvent(organizationId: string, id: string): Promise<MonetizationEvent | null>;
   listMonetizationEvents(
     organizationId: string,
     options?: { readonly limit?: number },

@@ -108,9 +108,29 @@ export const PLATFORM_CAPABILITIES = {
    * Sandbox execution-partner adapters: Meridian forwards a caller-signed instruction and records
    * partner-reported status. The partner settles to the beneficiary. Live adapters are fail-closed
    * behind PARTNER_LIVE_ENABLED (default false). Distinct from `delegateExecution` (still false).
-   * POST /executions remains 501. No funds or keys pass through Meridian.
+   * No funds or keys pass through Meridian.
    */
   executionPartnerAdapters: true,
+  /**
+   * Sandbox orchestration of mandate + selected route against mock execution partners.
+   * HTTP is fail-closed behind EXECUTION_ENABLED (default false). Distinct from
+   * `executeTransactions` and `delegateExecution` (both still false). Live partners are never called.
+   */
+  sandboxExecutionOrchestration: true,
+  /**
+   * Ed25519-signed sandbox execution receipts. HTTP is fail-closed behind EXECUTION_ENABLED.
+   * Private key stays in the vault. Payload is hashes and catalog ids, never raw PII.
+   */
+  verifiableExecutionReceipts: true,
+  /**
+   * Match dispatched instruction, partner confirmation, and fee attribution. Flags mismatches.
+   * HTTP is fail-closed behind EXECUTION_ENABLED. Never moves funds.
+   */
+  settlementReconciliation: true,
+  /**
+   * Tenant-scoped audit trail export for owner/admin sessions. Wrong tenant is 404, not 403.
+   */
+  auditTrailExport: true,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;
