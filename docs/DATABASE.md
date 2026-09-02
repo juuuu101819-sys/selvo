@@ -96,7 +96,8 @@ Organization ──┬── OrganizationMember ── User ── MfaRecoveryCo
                └── AuditLog
 
 ProviderCredential          (AES-256-GCM vault; keyed by provider id, no FK to Provider)
-RoutingManualOverride       (operator kill switch; not tenant-scoped)
+RoutingManualOverride       (operator kill switch: provider, corridor, or region)
+LiveEnablement              (per-corridor / per-partner / billing flags; sign-off required; default disabled)
 ```
 
 ### Reference data
@@ -182,9 +183,15 @@ credentials**. Adapter secrets live in **`ProviderCredential`** (`provider_crede
 ciphertext keyed by provider id, write-only over HTTP. There is no foreign key to `providers` so a
 synthetic/placeholder id can be stored before a licensed partner row exists.
 
-**`RoutingManualOverride`** — operator kill switch for a provider adapter or a corridor. Active rows
-exclude the target from `MultiRailRouter` via the same `supportsNormalized === false` choke point as
-the quote circuit breaker, with no automatic reset. Released rows remain for audit.
+**`RoutingManualOverride`** — operator kill switch for a provider adapter, a corridor, or a
+licensing **region**. Active rows exclude matching quotes (`supportsNormalized === false`) and
+fail-close live evaluation for corridors that touch the region. See `GO_LIVE_CHECKLIST.md`.
+
+**`LiveEnablement`** — per-corridor, per-partner, and platform-billing live flags. `enabled`
+defaults false. Enabling requires complete legal sign-off columns (`approved_by`, `license_basis`,
+`approved_at`, `expires_at`, `checklist_ref`). A CHECK refuses `enabled=true` with empty sign-off.
+This is not a funds ledger. Licence expiry is evaluated in process (fail-closed); it is not a
+balance. Released kill-switch rows remain for audit.
 
 **`ProviderCapability`** — what a provider can do on one corridor: notional bounds, indicative
 spread, slippage, settlement percentiles, cut-off, intermediary asset. Separate from `Provider`
@@ -303,6 +310,7 @@ runs anywhere, and by execution against a real server in the integration suite.
 | Partner instruction amounts are non-negative                     | `partner_instructions_amounts_non_negative` |
 | Orchestrated executions cannot record custody or a funds transfer | `orchestrated_executions_non_custodial` |
 | Execution receipts cannot record custody                         | `execution_receipts_non_custodial` |
+| Live enablement cannot be on without sign-off metadata           | `live_enablements_signoff_required`, `live_enablements_expiry_after_approval` |
 | Invoice tax is zero; status is issued; collection is uncollected | `invoices_tax_zero`, `invoices_status_issued`, `invoices_collection_uncollected` |
 | Realized revenue only with collected recognition                 | `monetization_events_realized_revenue_collected_chk` |
 | A snapshot appears on at most one invoice                        | unique `invoice_lines.monetization_event_id` |

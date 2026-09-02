@@ -18,6 +18,14 @@ const ASSET = z
   .regex(/^[A-Za-z0-9]+$/)
   .transform((value) => value.toUpperCase());
 
+const REGION = z
+  .string()
+  .trim()
+  .min(2)
+  .max(8)
+  .regex(/^[A-Za-z]{2,8}$/)
+  .transform((value) => value.toUpperCase());
+
 const targetSchema = z.discriminatedUnion('kind', [
   z
     .object({
@@ -30,6 +38,12 @@ const targetSchema = z.discriminatedUnion('kind', [
       kind: z.literal('corridor'),
       sourceAsset: ASSET,
       targetAsset: ASSET,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('region'),
+      region: REGION,
     })
     .strict(),
 ]);
@@ -81,6 +95,9 @@ function toTarget(body: z.infer<typeof targetSchema>): RoutingOverrideTarget {
   if (body.kind === 'provider') {
     return { kind: 'provider', providerId: body.providerId };
   }
+  if (body.kind === 'region') {
+    return { kind: 'region', region: body.region };
+  }
   return { kind: 'corridor', sourceAsset: body.sourceAsset, targetAsset: body.targetAsset };
 }
 
@@ -90,6 +107,7 @@ function publicOverride(record: {
   readonly providerId: string | null;
   readonly sourceAsset: string | null;
   readonly targetAsset: string | null;
+  readonly region: string | null;
   readonly reason: string;
   readonly engagedAt: string;
   readonly engagedByActor: string;
@@ -99,6 +117,7 @@ function publicOverride(record: {
   readonly providerId: string | null;
   readonly sourceAsset: string | null;
   readonly targetAsset: string | null;
+  readonly region: string | null;
   readonly reason: string;
   readonly engagedAt: string;
   readonly engagedByActor: string;
@@ -109,6 +128,7 @@ function publicOverride(record: {
     providerId: record.providerId,
     sourceAsset: record.sourceAsset,
     targetAsset: record.targetAsset,
+    region: record.region,
     reason: record.reason,
     engagedAt: record.engagedAt,
     engagedByActor: record.engagedByActor,
@@ -146,6 +166,7 @@ export function registerOpsRoutingRoutes(app: FastifyInstance, container: AppCon
       providerId: target.kind === 'provider' ? target.providerId : null,
       sourceAsset: target.kind === 'corridor' ? target.sourceAsset : null,
       targetAsset: target.kind === 'corridor' ? target.targetAsset : null,
+      region: target.kind === 'region' ? target.region : null,
       reason: body.reason,
       engagedAt: nowIso,
       engagedByActor: 'onboarding_operator',

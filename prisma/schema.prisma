@@ -950,6 +950,8 @@ model RoutingManualOverride {
   providerId       String?   @map("provider_id")
   sourceAsset      String?   @map("source_asset") @db.VarChar(16)
   targetAsset      String?   @map("target_asset") @db.VarChar(16)
+  /// ISO 3166-1 / EU region when kind = region. Null for provider and corridor rows.
+  region           String?   @db.VarChar(8)
   reason           String
   engagedAt        DateTime  @map("engaged_at") @db.Timestamptz(3)
   engagedByActor   String    @map("engaged_by_actor")
@@ -960,6 +962,30 @@ model RoutingManualOverride {
 
   @@index([targetKey])
   @@map("routing_manual_overrides")
+}
+
+/// Per-corridor / per-partner / platform-billing live flags. Default disabled.
+/// Complete legal sign-off is required to set enabled=true. Not a funds ledger.
+/// See GO_LIVE_CHECKLIST.md.
+model LiveEnablement {
+  id              String    @id
+  scope           String
+  scopeKey        String    @map("scope_key")
+  region          String    @db.VarChar(8)
+  enabled         Boolean   @default(false)
+  approvedBy      String    @map("approved_by")
+  licenseBasis    String    @map("license_basis")
+  approvedAt      DateTime  @map("approved_at") @db.Timestamptz(3)
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz(3)
+  checklistRef    String    @map("checklist_ref")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+  disabledAt      DateTime? @map("disabled_at") @db.Timestamptz(3)
+  disabledReason  String?   @map("disabled_reason")
+
+  @@unique([scope, scopeKey])
+  @@index([region])
+  @@map("live_enablements")
 }
 
 /// What a provider can actually do on one corridor: limits, timing and indicative spread.

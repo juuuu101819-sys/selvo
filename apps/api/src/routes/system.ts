@@ -125,6 +125,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
       mandateIngestionEnabled: container.config.mandateIngestionEnabled,
       partnerLiveEnabled: container.config.partnerLiveEnabled,
       executionEnabled: container.config.executionEnabled,
+      billingLiveEnabled: container.config.billingLiveEnabled,
       deployment: {
         environment: container.config.deployment.environment,
         imageTag: container.config.deployment.imageTag,
@@ -164,7 +165,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
         cooldownMs: container.circuitBreakers.cooldownMs,
         breakers: container.circuitBreakers.snapshot(),
       },
-      manualOverrides: {
+        manualOverrides: {
         autoReset: false,
         active: container.manualOverrides.snapshot().map((row) => ({
           targetKey: row.targetKey,
@@ -172,6 +173,7 @@ export function registerMetaRoutes(app: FastifyInstance, container: AppContainer
           providerId: row.providerId,
           sourceAsset: row.sourceAsset,
           targetAsset: row.targetAsset,
+          region: row.region,
           reason: row.reason,
           engagedAt: row.engagedAt,
           engagedByActor: row.engagedByActor,

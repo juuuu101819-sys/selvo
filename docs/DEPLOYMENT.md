@@ -26,6 +26,7 @@ The artefact CI builds is the artefact staging runs. There is no second untested
 | `MANDATE_INGESTION_ENABLED` | `false` | `false`; verification/storage only | same |
 | `PARTNER_LIVE_ENABLED` | `false` | `false`; no live execution-partner adapters | same |
 | `EXECUTION_ENABLED` | `false` | `false`; startup failure if true (sandbox orchestration is sandbox-only) | same |
+| `BILLING_LIVE_ENABLED` | `false` | `false`; invoices remain record-only | same |
 
 `DEPLOY_ENV=staging` **without** a production-locked process is a startup failure. Staging cannot
 turn demo providers back on, cannot use the memory driver, and cannot seed `treasury@demo-trading.example.invalid`.

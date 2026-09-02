@@ -32,6 +32,7 @@ import { PrismaMandateStore } from './prisma-mandates.js';
 import { PrismaPartnerInstructionStore } from './prisma-partner-instructions.js';
 import { PrismaOrchestratedExecutionStore } from './prisma-orchestrated-executions.js';
 import { PrismaExecutionReceiptStore } from './prisma-execution-receipts.js';
+import { PrismaLiveEnablementStore } from './prisma-live-enablement.js';
 import { PrismaRoutingEvaluationRepository } from './prisma-routing-evaluations.js';
 import { PrismaRoutingOverrideStore } from './prisma-routing-overrides.js';
 import { PrismaRateLimitStore } from '../rate-limit/prisma-store.js';
@@ -81,6 +82,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly partnerInstructions: PrismaPartnerInstructionStore;
   readonly orchestratedExecutions: PrismaOrchestratedExecutionStore;
   readonly executionReceipts: PrismaExecutionReceiptStore;
+  readonly liveEnablement: PrismaLiveEnablementStore;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
   private readonly client: PrismaClient;
@@ -116,6 +118,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.partnerInstructions = new PrismaPartnerInstructionStore(this.client);
     this.orchestratedExecutions = new PrismaOrchestratedExecutionStore(this.client);
     this.executionReceipts = new PrismaExecutionReceiptStore(this.client);
+    this.liveEnablement = new PrismaLiveEnablementStore(this.client);
   }
 
   ensureSandboxCatalog(): Promise<void> {
@@ -145,7 +148,8 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
                 AND to_regclass('public.mandates') IS NOT NULL
                 AND to_regclass('public.partner_instructions') IS NOT NULL
                 AND to_regclass('public.orchestrated_executions') IS NOT NULL
-                AND to_regclass('public.execution_receipts') IS NOT NULL) AS present
+                AND to_regclass('public.execution_receipts') IS NOT NULL
+                AND to_regclass('public.live_enablements') IS NOT NULL) AS present
       `;
       if (rows[0]?.present !== true) {
         throw new ConfigurationError(

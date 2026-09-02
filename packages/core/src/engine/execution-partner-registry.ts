@@ -22,8 +22,10 @@ export interface ExecutionPartnerExclusion {
 /**
  * Catalog of execution partners admitted for this process.
  *
- * Live partners are fail-closed behind `PARTNER_LIVE_ENABLED`. Sandbox mocks may quote and
- * simulate instruction dispatch; they never move Meridian-held funds (there are none).
+ * Live partners are fail-closed behind `PARTNER_LIVE_ENABLED` (default false; see
+ * `GO_LIVE_CHECKLIST.md`). Sandbox mocks may quote and simulate instruction dispatch; they
+ * never move Meridian-held funds (there are none). Per-corridor/per-partner sign-off is an
+ * additional gate and never admits an adapter this repository does not implement.
  */
 export class ExecutionPartnerRegistry {
   private readonly byId: ReadonlyMap<string, ExecutionPartner>;
@@ -59,12 +61,14 @@ export class ExecutionPartnerRegistry {
         if (!options.liveEnabled) {
           exclusions.push({
             partnerId: id,
+            // GO_LIVE_CHECKLIST.md — PARTNER_LIVE_ENABLED defaults false; sign-off cannot override this flag.
             reason: 'live execution partners are disabled (PARTNER_LIVE_ENABLED=false)',
           });
           continue;
         }
         exclusions.push({
           partnerId: id,
+          // GO_LIVE_CHECKLIST.md#partners — no live adapter is registered; sign-off does not invent one.
           reason: 'live execution partners are not implemented',
         });
         continue;

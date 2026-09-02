@@ -37,5 +37,10 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.verifiableExecutionReceipts).toBe(true);
     expect(PLATFORM_CAPABILITIES.settlementReconciliation).toBe(true);
     expect(PLATFORM_CAPABILITIES.auditTrailExport).toBe(true);
+    expect(PLATFORM_CAPABILITIES.liveEnablementGates).toBe(true);
+    expect(PLATFORM_CAPABILITIES.liveFundsMovement).toBe(false);
+    expect(PLATFORM_CAPABILITIES.liveBillingCollection).toBe(false);
+    expect(PLATFORM_CAPABILITIES.liveSubscriptionBilling).toBe(false);
+    expect(PLATFORM_CAPABILITIES.livePartnerPayouts).toBe(false);
   });
 });

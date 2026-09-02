@@ -141,6 +141,7 @@ describe('migrations', () => {
           'partner_instructions',
           'orchestrated_executions',
           'execution_receipts',
+          'live_enablements',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -278,6 +279,9 @@ describe('migrations', () => {
     expect(sql).toContain('"orchestrated_executions_non_custodial"');
     expect(sql).toContain('CREATE TABLE "execution_receipts"');
     expect(sql).toContain('"execution_receipts_non_custodial"');
+    expect(sql).toContain('CREATE TABLE "live_enablements"');
+    expect(sql).toContain('"live_enablements_signoff_required"');
+    expect(sql).toContain('"live_enablements_expiry_after_approval"');
   });
 
   /**

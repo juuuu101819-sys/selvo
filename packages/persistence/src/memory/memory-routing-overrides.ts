@@ -28,6 +28,7 @@ export class InMemoryRoutingOverrideStore implements RoutingOverrideStore {
         providerId: record.providerId,
         sourceAsset: record.sourceAsset,
         targetAsset: record.targetAsset,
+        region: record.region,
         kind: record.kind,
       };
       this.byId.set(active.id, updated);

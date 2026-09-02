@@ -26,6 +26,7 @@ import { InMemoryMandateStore } from './memory-mandates.js';
 import { InMemoryPartnerInstructionStore } from './memory-partner-instructions.js';
 import { InMemoryOrchestratedExecutionStore } from './memory-orchestrated-executions.js';
 import { InMemoryExecutionReceiptStore } from './memory-execution-receipts.js';
+import { InMemoryLiveEnablementStore } from './memory-live-enablement.js';
 import { InMemoryRateLimitStore } from '../rate-limit/memory-store.js';
 import { InMemoryRoutingEvaluationRepository } from './memory-routing-evaluations.js';
 import { InMemoryRoutingOverrideStore } from './memory-routing-overrides.js';
@@ -178,6 +179,7 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly partnerInstructions = new InMemoryPartnerInstructionStore();
   readonly orchestratedExecutions = new InMemoryOrchestratedExecutionStore();
   readonly executionReceipts = new InMemoryExecutionReceiptStore();
+  readonly liveEnablement = new InMemoryLiveEnablementStore();
 
   constructor() {
     const monetization = new Map<string, MonetizationEvent>();

@@ -8,6 +8,7 @@ import { registerPartnerInstructionRoutes } from './partner-instructions.js';
 import { registerNlRoutingRoutes } from './nl-routing.js';
 import { registerOnboardingRoutes } from './onboarding.js';
 import { registerOpsRoutingRoutes } from './ops-routing.js';
+import { registerLiveBillingGateRoutes, registerLiveEnablementRoutes } from './ops-live-enablement.js';
 import { registerBillingRoutes } from './billing.js';
 import { registerApiKeyRoutes } from './api-keys.js';
 import { registerAuthRoutes } from './auth.js';
@@ -84,7 +85,9 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerDashboardRoutes(instance, container);
     registerOnboardingRoutes(instance, container);
     registerOpsRoutingRoutes(instance, container);
+    registerLiveEnablementRoutes(instance, container);
     registerBillingRoutes(instance, container);
+    registerLiveBillingGateRoutes(instance, container);
     registerExecutionIntentRoutes(instance, container);
     registerExecutionRoutes(instance, container);
     registerReceiptVerificationRoute(instance, container);

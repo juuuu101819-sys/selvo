@@ -434,6 +434,7 @@ describe('PHASE 38 manual kill switch', () => {
       providerId: 'healthy',
       sourceAsset: null,
       targetAsset: null,
+      region: null,
       reason: 'incident response',
       engagedAt: clock.nowIso(),
       engagedByActor: 'onboarding_operator',
@@ -464,7 +465,38 @@ describe('PHASE 38 manual kill switch', () => {
       providerId: null,
       sourceAsset: 'USD',
       targetAsset: 'KRW',
+      region: null,
       reason: 'corridor incident',
+      engagedAt: clock.nowIso(),
+      engagedByActor: 'onboarding_operator',
+      releasedAt: null,
+      releasedByActor: null,
+      releaseReason: null,
+    });
+    const inner = new CountingProvider({ id: 'bank', rail: 'bank_fx' }, 'USD', 'KRW', 'quote');
+    const [wrapped] = wrapFinancialProvidersWithQuoteResilience([inner], {
+      cache: new QuoteCache({ clock }),
+      breakers: new CircuitBreakerRegistry({ clock, logger: noopLogger }),
+      manualOverrides: overrides,
+    });
+    if (wrapped === undefined) {
+      throw new Error('expected wrapper');
+    }
+    expect(wrapped.supportsNormalized(REQUEST)).toBe(false);
+  });
+
+  it('excludes every provider when a licensing-region kill switch is engaged', () => {
+    const clock = new FixedClock('2026-03-01T09:00:00.000Z');
+    const overrides = new ManualOverrideRegistry();
+    overrides.engage({
+      id: 'rvo_region',
+      targetKey: 'region:KR',
+      kind: 'region',
+      providerId: null,
+      sourceAsset: null,
+      targetAsset: null,
+      region: 'KR',
+      reason: 'KR licensing incident',
       engagedAt: clock.nowIso(),
       engagedByActor: 'onboarding_operator',
       releasedAt: null,

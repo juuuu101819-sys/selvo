@@ -41,6 +41,9 @@ PHASE 38 added operator kill switch, provider credential vault, and inert execut
 flags; `POST /v1/executions` stays 501 unless `EXECUTION_ENABLED=true` in sandbox, where
 orchestration talks only to mock partners. Meridian HMAC-signs the instruction, not a funds
 transfer. Live partners stay behind `PARTNER_LIVE_ENABLED` (default false) and are not implemented.
+Per-corridor / per-partner live rows require recorded legal sign-off (`GO_LIVE_CHECKLIST.md`);
+missing metadata keeps the path in sandbox. `BILLING_LIVE_ENABLED` (default false) keeps
+platform-fee invoices as record-only; collection, subscriptions, and partner payouts stay refused.
 
 ## Running it locally
 

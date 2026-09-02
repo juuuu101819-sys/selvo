@@ -146,6 +146,19 @@ export const PLATFORM_CAPABILITIES = {
    * Tenant-scoped audit trail export for owner/admin sessions. Wrong tenant is 404, not 403.
    */
   auditTrailExport: true,
+  /**
+   * Per-corridor / per-partner / billing live-enablement records with required legal sign-off.
+   * Enabling a row does not move funds. Live settlement stays false until adapters exist.
+   */
+  liveEnablementGates: true,
+  /** Live partner settlement of customer funds. Always false in this repository. */
+  liveFundsMovement: false,
+  /** Processor collection of platform-fee invoices. Always false. */
+  liveBillingCollection: false,
+  /** Recurring subscription charging. Always false. */
+  liveSubscriptionBilling: false,
+  /** Partner AP disbursement. Always false. Never a custodial payable balance. */
+  livePartnerPayouts: false,
 } as const;
 
 export type PlatformCapabilities = typeof PLATFORM_CAPABILITIES;

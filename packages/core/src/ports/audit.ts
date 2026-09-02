@@ -82,6 +82,12 @@ export const AUDIT_EVENT_TYPES = [
   'receipt.issued',
   'reconciliation.listed',
   'audit.exported',
+  'live_enablement.enabled',
+  'live_enablement.disabled',
+  'live_enablement.refused',
+  'billing.collection.refused',
+  'billing.subscription.refused',
+  'billing.partner_payout.refused',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

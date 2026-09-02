@@ -71,8 +71,10 @@ const envSchema = z
     MANDATE_INGESTION_ENABLED: booleanFlag,
 
     /**
-     * Admit `kind: 'live'` execution-partner adapters. Default false. This repository has no live
-     * adapters; even when true the registry still refuses them. POST /executions remains 501.
+     * Admit `kind: 'live'` execution-partner adapters. Default false.
+     * See GO_LIVE_CHECKLIST.md. Even when true the registry still refuses unimplemented
+     * adapters; per-corridor/per-partner live also requires recorded legal sign-off.
+     * POST /executions remains 501 for principal execution.
      */
     PARTNER_LIVE_ENABLED: booleanFlag,
 
@@ -80,8 +82,17 @@ const envSchema = z
      * Sandbox execution orchestration against mock partners. Default false — fail closed.
      * When false, POST /executions remains 501. Production-locked processes cannot enable this.
      * Does not enable live partners, custody, or principal execution.
+     * Not a corridor live flag — see GO_LIVE_CHECKLIST.md.
      */
     EXECUTION_ENABLED: booleanFlag,
+
+    /**
+     * Real invoice collection, live subscription charging, and partner payouts.
+     * Default false — invoice recording only. See GO_LIVE_CHECKLIST.md#billing-collection.
+     * Even when true, collection still requires recorded legal sign-off, a confirmed legal
+     * entity, and a processor adapter (none of which this repository invents).
+     */
+    BILLING_LIVE_ENABLED: booleanFlag,
 
     /**
      * Deployment label. Safety rules come from production-lock (PA-C01–C03), not from this value.
@@ -301,6 +312,11 @@ export interface AppConfig {
    * Sandbox orchestration of POST /executions. Default false. When false the route stays 501.
    */
   readonly executionEnabled: boolean;
+  /**
+   * Live billing collection / subscriptions / partner payouts. Default false.
+   * See GO_LIVE_CHECKLIST.md#billing-collection.
+   */
+  readonly billingLiveEnabled: boolean;
   /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
   readonly authSecretConfigured: boolean;
   /**
@@ -408,6 +424,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     mandateIngestionEnabled: env.MANDATE_INGESTION_ENABLED,
     partnerLiveEnabled: env.PARTNER_LIVE_ENABLED,
     executionEnabled: env.EXECUTION_ENABLED,
+    billingLiveEnabled: env.BILLING_LIVE_ENABLED,
     authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
     sessionTokenPepper: deriveSessionTokenPepper(env.AUTH_SECRET, { productionLocked }),
     dataEncryptionKey: deriveDataEncryptionKeyHex(env.AUTH_SECRET, { productionLocked }),

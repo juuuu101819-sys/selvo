@@ -269,3 +269,18 @@ export {
   type ReconciliationMismatch,
   type ReconciliationMismatchKind,
 } from './reconciliation-engine.js';
+export {
+  LiveEnablementService,
+  type DisableLiveScopeCommand,
+  type EnableLiveScopeCommand,
+  type LiveEnablementServiceDependencies,
+} from './live-enablement-service.js';
+export {
+  attemptLiveSubscriptionBilling,
+  attemptPartnerPayouts,
+  attemptPlatformFeeCollection,
+  type CollectionAttemptResult,
+  type LiveBillingGateInput,
+  type PartnerPayoutAttemptResult,
+  type SubscriptionAttemptResult,
+} from './live-billing.js';

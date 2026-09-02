@@ -10,6 +10,8 @@ describe('loadConfig', () => {
     expect(config.database.driver).toBe('memory');
     expect(config.port).toBe(47_311);
     expect(config.executionEnabled).toBe(false);
+    expect(config.billingLiveEnabled).toBe(false);
+    expect(config.partnerLiveEnabled).toBe(false);
   });
 
   it('disables rate limiting in tests unless RATE_LIMIT_MAX is set', () => {
@@ -254,6 +256,17 @@ describe('PA-C01 production routing and execution flags', () => {
     const config = loadConfig({ NODE_ENV: 'development', PLATFORM_MODE: 'sandbox', EXECUTION_ENABLED: 'true' });
     expect(config.executionEnabled).toBe(true);
     expect(config.productionLocked).toBe(false);
+  });
+
+  it('defaults BILLING_LIVE_ENABLED to false and does not collect by flag alone', () => {
+    const config = loadConfig({ NODE_ENV: 'development', PLATFORM_MODE: 'sandbox' });
+    expect(config.billingLiveEnabled).toBe(false);
+    const enabled = loadConfig({
+      NODE_ENV: 'development',
+      PLATFORM_MODE: 'sandbox',
+      BILLING_LIVE_ENABLED: 'true',
+    });
+    expect(enabled.billingLiveEnabled).toBe(true);
   });
 
   it('rejects PRODUCTION_ROUTING_AVAILABLE outside production mode', () => {

@@ -258,6 +258,10 @@ export {
   type RoutingOverrideStore,
   type RoutingOverrideTarget,
 } from './routing-overrides.js';
+export type {
+  LiveEnablementStore,
+  UpsertLiveEnablementInput,
+} from './live-enablement.js';
 export {
   decodeBase32,
   encodeBase32,

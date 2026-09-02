@@ -6,6 +6,7 @@
  *
  * Payment collection is deferred: an issued invoice is not cash received. `realizedRevenue` on a
  * snapshot stays false until `revenueRecognition` is `collected`, which this phase never writes.
+ * Live collection is gated by `BILLING_LIVE_ENABLED` (default false) and GO_LIVE_CHECKLIST.md#billing-collection.
  */
 
 export const INVOICE_STATUSES = ['issued'] as const;

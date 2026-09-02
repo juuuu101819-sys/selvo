@@ -103,6 +103,11 @@ describe('GET /v1/meta', () => {
       verifiableExecutionReceipts: true,
       settlementReconciliation: true,
       auditTrailExport: true,
+      liveEnablementGates: true,
+      liveFundsMovement: false,
+      liveBillingCollection: false,
+      liveSubscriptionBilling: false,
+      livePartnerPayouts: false,
     });
     expect(body.execution).toMatchObject({
       implemented: false,
@@ -122,7 +127,11 @@ describe('GET /v1/meta', () => {
         .partnerLiveEnabled,
     ).toBe(false);
     expect(
-      response.json<{ data: { executionEnabled: boolean } }>().data.executionEnabled,
+      response.json<{ data: { executionEnabled: boolean; billingLiveEnabled: boolean } }>().data
+        .executionEnabled,
+    ).toBe(false);
+    expect(
+      response.json<{ data: { billingLiveEnabled: boolean } }>().data.billingLiveEnabled,
     ).toBe(false);
     expect(body.deployment).toEqual({ environment: 'development', imageTag: null });
     expect(body.pipeline).toEqual(

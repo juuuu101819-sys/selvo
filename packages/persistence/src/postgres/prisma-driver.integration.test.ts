@@ -95,6 +95,7 @@ describeIntegration('PostgreSQL schema', () => {
           'partner_instructions',
           'orchestrated_executions',
           'execution_receipts',
+          'live_enablements',
         ]),
       );
     });

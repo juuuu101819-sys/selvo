@@ -768,6 +768,26 @@ Generates one invoice per organization per UTC calendar month per currency from 
 second run return the existing invoice (no double-bill). Unique `invoice_lines.monetization_event_id`
 prevents the same snapshot appearing on two invoices.
 
+## `POST /api/v1/ops/live-enablement`
+
+Operator-authenticated. Records a per-corridor, per-partner, or billing live flag. Body must include
+complete `signOff` (`approvedBy`, `licenseBasis`, `approvedAt`, `expiresAt`, `checklistRef` matching
+[`GO_LIVE_CHECKLIST.md`](../GO_LIVE_CHECKLIST.md)). Missing metadata is `400`; the path stays sandbox.
+`liveFundsMovementActive` in the response is always `false` in this repository.
+
+## `GET /api/v1/ops/live-enablement/evaluate`
+
+Operator-authenticated. Reports whether corridor/partner sign-off is current, whether a region kill
+switch is engaged, and why live funds movement remains inactive (process flag, expiry, missing
+adapter). Licence expiry fail-closes without waiting for an operator.
+
+## `POST /api/v1/ops/billing/collect`
+
+Operator-authenticated. Attempts platform-fee collection. `403` while `BILLING_LIVE_ENABLED` is
+false (the default), when billing sign-off is missing or expired, when the legal entity is
+unconfirmed, or when no processor adapter exists. Never writes `collected`. Same fail-closed
+contract: `POST /ops/billing/subscriptions/run`, `POST /ops/billing/partner-payouts/run`.
+
 Issued invoices set snapshot `revenueRecognition` to `invoiced` and `invoiceId`. `realizedRevenue`
 stays false. Collection is not implemented.
 

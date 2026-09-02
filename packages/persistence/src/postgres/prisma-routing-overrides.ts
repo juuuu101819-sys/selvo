@@ -29,6 +29,7 @@ export class PrismaRoutingOverrideStore implements RoutingOverrideStore {
             providerId: record.providerId,
             sourceAsset: record.sourceAsset,
             targetAsset: record.targetAsset,
+            region: record.region,
             reason: record.reason,
             engagedAt: new Date(record.engagedAt),
             engagedByActor: record.engagedByActor,
@@ -44,6 +45,7 @@ export class PrismaRoutingOverrideStore implements RoutingOverrideStore {
           providerId: record.providerId,
           sourceAsset: record.sourceAsset,
           targetAsset: record.targetAsset,
+          region: record.region,
           reason: record.reason,
           engagedAt: new Date(record.engagedAt),
           engagedByActor: record.engagedByActor,
@@ -90,6 +92,7 @@ function toRecord(row: {
   providerId: string | null;
   sourceAsset: string | null;
   targetAsset: string | null;
+  region: string | null;
   reason: string;
   engagedAt: Date;
   engagedByActor: string;
@@ -97,13 +100,15 @@ function toRecord(row: {
   releasedByActor: string | null;
   releaseReason: string | null;
 }): RoutingOverrideRecord {
+  const kind = row.kind === 'corridor' ? 'corridor' : row.kind === 'region' ? 'region' : 'provider';
   return {
     id: row.id,
     targetKey: row.targetKey,
-    kind: row.kind === 'corridor' ? 'corridor' : 'provider',
+    kind,
     providerId: row.providerId,
     sourceAsset: row.sourceAsset,
     targetAsset: row.targetAsset,
+    region: row.region,
     reason: row.reason,
     engagedAt: row.engagedAt.toISOString(),
     engagedByActor: row.engagedByActor,

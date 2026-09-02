@@ -223,6 +223,19 @@ PHASE 38 is **readiness plumbing**. It does **not** close PA-M09, lift PHASE 30,
 
 These flags currently have **zero functional effect**. They exist so PHASE 33 can consult them later; they do not change quoting, ranking, billing, KYB, or the 501 gate.
 
+## Live enablement gates (corridor / partner / billing)
+
+Control-plane only. See [`GO_LIVE_CHECKLIST.md`](../GO_LIVE_CHECKLIST.md). Defaults stay **off**.
+
+| Mechanism | Status |
+| --- | --- |
+| Per-corridor / per-partner live row | Stored only with complete legal sign-off. Missing metadata → sandbox. Expired `expiresAt` → automatic fail-close. |
+| `PARTNER_LIVE_ENABLED` | Default false. Even true, no live adapter is registered. |
+| `BILLING_LIVE_ENABLED` | Default false. Collection / subscriptions / partner payouts refuse; invoices stay `uncollected`. |
+| Region kill switch | `POST /ops/routing/overrides` `kind: region`. Fail-closes live evaluation and ranking for corridors that touch the region. |
+
+`liveFundsMovement`, `liveBillingCollection`, `liveSubscriptionBilling`, and `livePartnerPayouts` stay **false** in `PLATFORM_CAPABILITIES`. Sign-off does not move funds.
+
 ## PHASE 39 — pre-launch verification (referral-model MVP)
 
 Verification only. No new capabilities. `POST /api/v1/executions` remains **501**. PHASE 30/33/35/36
