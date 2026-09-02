@@ -227,6 +227,9 @@ export interface MetaDto {
     readonly defiQuotes: boolean;
     readonly defiExecution: boolean;
     readonly multiRailRouting: boolean;
+    readonly railHealthMonitoring?: boolean;
+    readonly multiObjectiveRouting?: boolean;
+    readonly preExecutionSimulation?: boolean;
     readonly routeGraph: boolean;
     readonly stablecoinRouting: boolean;
     readonly defiLiquidityRouting: boolean;
@@ -740,11 +743,24 @@ export interface MultiRailRouteDto {
   readonly scoreComponents: {
     readonly cost: string;
     readonly speed: string;
+    readonly finality: string;
+    readonly fxRate: string;
+    readonly slippage: string;
     readonly liquidity: string;
-    readonly reliability: string;
-    readonly settlementConfidence: string;
+    readonly compliance: string;
   };
   readonly routeExplanation: string;
+  readonly railHealth?: {
+    readonly state: string;
+    readonly liquidityState: string;
+    readonly deprioritized: boolean;
+    readonly reason: string;
+  };
+  readonly bestExecution?: {
+    readonly selected: boolean;
+    readonly rationale: string;
+    readonly rationaleHash: string;
+  };
   readonly executable: false;
   readonly breakdown: {
     readonly providerFee: AssetAmountJson;
@@ -784,9 +800,11 @@ export interface MultiRailRoutingDto {
   readonly scoringWeights: {
     readonly cost: string;
     readonly speed: string;
+    readonly finality: string;
+    readonly fxRate: string;
+    readonly slippage: string;
     readonly liquidity: string;
-    readonly reliability: string;
-    readonly settlementConfidence: string;
+    readonly compliance: string;
   };
 }
 

@@ -18,6 +18,9 @@ describe('PLATFORM_CAPABILITIES', () => {
     expect(PLATFORM_CAPABILITIES.defiQuotes).toBe(true);
     expect(PLATFORM_CAPABILITIES.defiExecution).toBe(false);
     expect(PLATFORM_CAPABILITIES.multiRailRouting).toBe(true);
+    expect(PLATFORM_CAPABILITIES.railHealthMonitoring).toBe(true);
+    expect(PLATFORM_CAPABILITIES.multiObjectiveRouting).toBe(true);
+    expect(PLATFORM_CAPABILITIES.preExecutionSimulation).toBe(true);
     expect(PLATFORM_CAPABILITIES.routeGraph).toBe(true);
     expect(PLATFORM_CAPABILITIES.stablecoinRouting).toBe(true);
     expect(PLATFORM_CAPABILITIES.defiLiquidityRouting).toBe(true);

@@ -162,7 +162,7 @@ describe('MultiRailRouter', () => {
     });
 
     expect(result.aiUsed).toBe(false);
-    expect(result.routingEngineVersion).toBe('1.0.0');
+    expect(result.routingEngineVersion).toBe('2.0.0');
     expect(result.routes.length).toBe(2);
     expect(result.recommendedRoute?.recommended).toBe(true);
     expect(result.routeScore).not.toBeNull();

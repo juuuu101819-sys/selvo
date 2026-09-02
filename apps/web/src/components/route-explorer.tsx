@@ -237,12 +237,14 @@ function ScoreBar({
   const entries = [
     ['Cost', components.cost],
     ['Speed', components.speed],
+    ['Finality', components.finality],
+    ['FX', components.fxRate],
+    ['Slippage', components.slippage],
     ['Liquidity', components.liquidity],
-    ['Reliability', components.reliability],
-    ['Confidence', components.settlementConfidence],
+    ['Compliance', components.compliance],
   ] as const;
   return (
-    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+    <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {entries.map(([label, value]) => (
         <div key={label}>
           <dt className="text-muted-foreground text-xs">{label}</dt>

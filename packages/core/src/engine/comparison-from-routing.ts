@@ -27,9 +27,11 @@ export function routingWeightsFromComparisonInput(
   return {
     cost: toWeightString(input.cost),
     speed: toWeightString(input.speed),
-    reliability: toWeightString(input.reliability),
+    finality: toWeightString(input.reliability),
+    fxRate: '0',
+    slippage: toWeightString(input.slippage ?? '0'),
     liquidity: toWeightString(input.liquidity ?? '0'),
-    settlementConfidence: '0',
+    compliance: toWeightString(input.risk ?? '0'),
   };
 }
 
@@ -72,9 +74,10 @@ export function serializeComparisonFromRouting(input: {
     scoringWeights: {
       cost: routing.scoringWeights.cost,
       speed: routing.scoringWeights.speed,
-      reliability: routing.scoringWeights.reliability,
+      reliability: '0',
       liquidity: routing.scoringWeights.liquidity,
-      settlementConfidence: routing.scoringWeights.settlementConfidence,
+      slippage: routing.scoringWeights.slippage,
+      settlementConfidence: routing.scoringWeights.finality,
     },
   };
 }
@@ -139,9 +142,11 @@ function serializeRouteFromMultiRail(route: ScoredMultiRailRoute): RouteDto {
     scoreComponents: {
       cost: route.scoreComponents.cost.toDecimalPlaces(6).toFixed(),
       speed: route.scoreComponents.speed.toDecimalPlaces(6).toFixed(),
-      reliability: route.scoreComponents.reliability.toDecimalPlaces(6).toFixed(),
+      reliability: '0',
+      slippage: route.scoreComponents.slippage.toDecimalPlaces(6).toFixed(),
       liquidity: route.scoreComponents.liquidity.toDecimalPlaces(6).toFixed(),
-      settlementConfidence: route.scoreComponents.settlementConfidence.toDecimalPlaces(6).toFixed(),
+      risk: route.scoreComponents.compliance.toDecimalPlaces(6).toFixed(),
+      settlementConfidence: route.scoreComponents.finality.toDecimalPlaces(6).toFixed(),
     },
   };
 }

@@ -44,7 +44,7 @@ test.describe('CASE 1 — USD 100,000 → KRW compares traditional FX and stable
     const created = await request.post('/api/v1/comparisons', { data: { ...USD_100K_KRW } });
     expect(created.status()).toBe(201);
     const body = await jsonBody<ComparisonBody>(created);
-    expect(body.data.engineVersion).toBe('1.0.0');
+    expect(body.data.engineVersion).toBe('2.0.0');
     expect(body.data.routes.length).toBeGreaterThan(1);
 
     const rails = new Set(body.data.routes.map((route) => route.provider.rail));
@@ -432,7 +432,7 @@ test.describe('CASE 8 — High slippage', () => {
     });
     expect(multi.status()).toBe(201);
     const multiBody = await jsonBody<Envelope<MultiRailBody>>(multi);
-    expect(multiBody.data.routingEngineVersion).toBe('1.0.0');
+    expect(multiBody.data.routingEngineVersion).toBe('2.0.0');
     expect(multiBody.data.aiUsed).toBe(false);
     expect(multiBody.data.routes.every((route) => route.executable === false)).toBe(true);
 
@@ -514,7 +514,7 @@ test.describe('Cross-cutting financial routing invariants', () => {
     expect(meta.status()).toBe(200);
     const body = await jsonBody<MetaBody>(meta);
     expect(body.data.engineVersion).toBe('2.0.0');
-    expect(body.data.routingEngineVersion).toBe('1.0.0');
+    expect(body.data.routingEngineVersion).toBe('2.0.0');
     expect(body.data.graphEngineVersion).toBe('1.0.0');
     expect(body.data.stablecoinRoutingEngineVersion).toBe('1.0.0');
     expect(body.data.defiRoutingEngineVersion).toBe('1.0.0');

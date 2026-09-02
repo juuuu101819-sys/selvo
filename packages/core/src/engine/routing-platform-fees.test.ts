@@ -430,13 +430,15 @@ describe('PA-H10 — platform fee across non-fiat corridors', () => {
       scoreComponents: {
         cost: first.totalCostBps,
         speed: first.totalCostBps,
+        finality: first.settlementConfidence,
+        fxRate: first.totalCostBps,
+        slippage: first.slippageBps,
         liquidity: first.totalCostBps,
-        reliability: first.reliabilityScore,
-        settlementConfidence: first.settlementConfidence,
+        compliance: first.totalCostBps,
       },
       routeExplanation: 'test',
     };
-    const once = priceRouteMonetization(scored);
+    const once = priceRouteMonetization(scored as never);
     const twice = priceRouteMonetization(scored);
     expect(twice.platformRevenueMinorUnits).toBe(once.platformRevenueMinorUnits);
     expect(BigInt(once.platformRevenueMinorUnits) + BigInt(once.partnerCommissionMinorUnits)).toBe(

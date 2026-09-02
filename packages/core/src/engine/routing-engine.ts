@@ -36,15 +36,19 @@ import { quoteFreshnessView } from '../quotes/quote-freshness.js';
 import { NO_ROUTING_PLATFORM_CHARGE, type RoutingPlatformCharge } from './routing-cost.js';
 import type { MultiRailCostEngine } from './routing-cost.js';
 import {
+  DEFAULT_OBJECTIVE_WEIGHT_BOUNDS,
   ROUTING_ENGINE_VERSION,
   parseRoutingWeights,
   serializeRoutingWeights,
+  type RoutingObjectiveSource,
   type RoutingWeights,
   type RoutingWeightsInput,
 } from './routing-config.js';
 import { MultiRailScorer } from './routing-scorer.js';
 import { explainRecommendation } from './routing-explanation.js';
 import type { MultiRailRouting, PlannedRoute, PricedMultiRailRoute } from './routing-types.js';
+import { MemoryRailHealthMonitor, type RailHealthMonitor } from './rail-health.js';
+import type { ProviderHealth } from '../ports/provider-adapter.js';
 import type { RoutingComparisonSnapshot } from './routing-snapshot.js';
 import type { ExecutionPartnerRegistry } from './execution-partner-registry.js';
 import { partnerSupportsRequest } from './partner-capability.js';
@@ -55,6 +59,7 @@ export interface RoutingEngineInput {
   readonly destinationAsset: string;
   readonly amountMinorUnits: string;
   readonly weights: RoutingWeightsInput | null;
+  readonly objectiveSource?: RoutingObjectiveSource | undefined;
   readonly actor: string;
   readonly requestId: string | null;
   /** Restrict eligible providers to these rails. `null` / omitted means every rail. */
@@ -79,6 +84,11 @@ export interface MultiRailRouterDependencies {
    * partner's corridor/currency/limit/hours cover the request. Quote-only providers are unchanged.
    */
   readonly executionPartners?: ExecutionPartnerRegistry | undefined;
+  /**
+   * Rail health + liquidity observations. Defaults to quote-derived health. Never calls a live
+   * settlement partner.
+   */
+  readonly railHealth?: RailHealthMonitor | undefined;
 }
 
 type QuoteOutcome =
@@ -249,7 +259,19 @@ export class MultiRailRouter {
       );
     }
 
-    const routes = new MultiRailScorer(weights).score(priced);
+    const probes = await this.probeProviders(eligible, input);
+    const railHealth = (this.deps.railHealth ?? new MemoryRailHealthMonitor()).observe({
+      priced,
+      probes,
+      nowIso: requestedAt,
+    });
+    const routes = new MultiRailScorer(weights).score(priced, { health: railHealth, observedAt: requestedAt });
+    if (routes.length === 0) {
+      throw new NoRoutesAvailableError(
+        'Every priced rail was down and excluded by rail-health failover.',
+        { providerFailures: [...failures, ...pricingFailures] },
+      );
+    }
     const recommended = routes[0] ?? null;
     const allFailures = [...failures, ...pricingFailures];
 
@@ -267,6 +289,9 @@ export class MultiRailRouter {
         requestedAt,
       },
       scoringWeights: serializeRoutingWeights(weights),
+      objectiveSource: input.objectiveSource ?? (input.weights === null ? 'platform_default' : 'request'),
+      objectiveBounds: DEFAULT_OBJECTIVE_WEIGHT_BOUNDS,
+      railHealth,
       routes,
       recommendedRoute: recommended,
       routeScore: recommended?.routeScore ?? null,
@@ -368,7 +393,16 @@ export class MultiRailRouter {
       );
     }
 
-    const routes = new MultiRailScorer(weights).score(priced);
+    const routes = new MultiRailScorer(weights).score(priced, {
+      health: snapshot.railHealth,
+      observedAt: snapshot.request.requestedAt,
+    });
+    if (routes.length === 0) {
+      throw new NoRoutesAvailableError(
+        'Stored quotes could not be re-ranked: every rail was down.',
+        { providerFailures: [...snapshot.providerFailures, ...pricingFailures] },
+      );
+    }
     const recommended = routes[0] ?? null;
     return {
       routingId: snapshot.routingId,
@@ -384,6 +418,9 @@ export class MultiRailRouter {
         requestedAt: snapshot.request.requestedAt,
       },
       scoringWeights: snapshot.weights,
+      objectiveSource: snapshot.objectiveSource ?? 'platform_default',
+      objectiveBounds: snapshot.objectiveBounds ?? DEFAULT_OBJECTIVE_WEIGHT_BOUNDS,
+      railHealth: snapshot.railHealth ?? [],
       routes,
       recommendedRoute: recommended,
       routeScore: recommended?.routeScore ?? null,
@@ -473,6 +510,48 @@ export class MultiRailRouter {
       flatFee: flatFeeInSource(rule, input.sourceAsset),
       surcharge,
     };
+  }
+
+  private async probeProviders(
+    providers: readonly FinancialProvider[],
+    input: RoutingEngineInput,
+  ): Promise<readonly ProviderHealth[]> {
+    const observations = await Promise.all(
+      providers.map(async (provider): Promise<ProviderHealth | null> => {
+        if (provider.probe === undefined) {
+          return null;
+        }
+        const controller = new AbortController();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        try {
+          const timeoutMs = Math.min(this.deps.providerTimeoutMs, 750);
+          const pending = provider.probe({
+            clock: this.deps.clock,
+            logger: this.deps.logger.child({ providerId: provider.descriptor.id }),
+            requestId: input.requestId,
+            signal: controller.signal,
+          });
+          const timeout = new Promise<never>((_resolve, reject) => {
+            timer = setTimeout(() => {
+              controller.abort();
+              reject(new ProviderTimeoutError(provider.descriptor.id, timeoutMs));
+            }, timeoutMs);
+          });
+          return await Promise.race([pending, timeout]);
+        } catch (error) {
+          this.deps.logger.warn('Financial provider probe failed; using quote-derived rail health', {
+            providerId: provider.descriptor.id,
+            message: error instanceof Error ? error.message : String(error),
+          });
+          return null;
+        } finally {
+          if (timer !== undefined) {
+            clearTimeout(timer);
+          }
+        }
+      }),
+    );
+    return observations.filter((item): item is ProviderHealth => item !== null);
   }
 
   private async requestQuote(
@@ -566,7 +645,7 @@ export function plannedRoutesOf(sourceAsset: string, destinationAsset: string): 
       status: 'planned',
       explanation:
         `Route D (${sourceAsset} → stablecoin → DEX liquidity → ${destinationAsset}) is not ` +
-        'composed in routing engine 1.0.0. Direct DEX quotes are included when the corridor is ' +
+        'composed in routing engine 2.0.0. Direct DEX quotes are included when the corridor is ' +
         'on-chain. No hops are executed.',
     },
   ];

@@ -63,7 +63,9 @@ describe('the quote engine over HTTP', () => {
       'cost',
       'liquidity',
       'reliability',
+      'risk',
       'settlementConfidence',
+      'slippage',
       'speed',
     ]);
   });
@@ -197,7 +199,7 @@ describe('the quote engine over HTTP', () => {
 
       expect(replay.reproducible).toBe(true);
       expect(replay.divergence).toBeNull();
-      expect(replay.replayEngineVersion).toBe('1.0.0');
+      expect(replay.replayEngineVersion).toBe('2.0.0');
     });
 
     it('names both engine versions, so a divergence is diagnosable', async () => {

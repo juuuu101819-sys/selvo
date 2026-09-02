@@ -4,6 +4,7 @@ import {
   DEFAULT_ROUTING_WEIGHTS,
   parseRoutingWeights,
   serializeRoutingWeights,
+  zeroedRoutingWeights,
 } from './routing-config.js';
 
 describe('parseRoutingWeights', () => {
@@ -17,10 +18,18 @@ describe('parseRoutingWeights', () => {
       parseRoutingWeights({
         cost: '0.5',
         speed: '0.5',
-        liquidity: '0.5',
-        reliability: '0',
-        settlementConfidence: '0',
+        finality: '0.5',
+        fxRate: '0',
+        slippage: '0',
+        liquidity: '0',
+        compliance: '0',
       }),
+    ).toThrow(ValidationError);
+  });
+
+  it('rejects a weight outside the policy range', () => {
+    expect(() =>
+      parseRoutingWeights(zeroedRoutingWeights({ cost: '1.1' })),
     ).toThrow(ValidationError);
   });
 
@@ -29,9 +38,11 @@ describe('parseRoutingWeights', () => {
       parseRoutingWeights({
         cost: '-0.45',
         speed: '0.65',
-        liquidity: '0.2',
-        reliability: '0.3',
-        settlementConfidence: '0.3',
+        finality: '0.2',
+        fxRate: '0.2',
+        slippage: '0.2',
+        liquidity: '0.1',
+        compliance: '0.1',
       }),
     ).toThrow(ValidationError);
   });

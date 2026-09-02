@@ -22,6 +22,7 @@ import {
   ReconciliationEngine,
   FinancialProviderRegistry,
   GRAPH_ENGINE_VERSION,
+  MemoryRailHealthMonitor,
   MultiRailCostEngine,
   MultiRailRouter,
   NlRoutingService,
@@ -63,6 +64,7 @@ export interface AppContainer {
   readonly comparisons: ComparisonRoutingService;
   readonly routingEvaluations: RoutingEvaluationService;
   readonly routing: MultiRailRouter;
+  readonly railHealth: MemoryRailHealthMonitor;
   readonly stablecoinRouting: StablecoinRouter;
   readonly defiRouting: DefiRouter;
   readonly routeGraph: RouteGraphService;
@@ -186,6 +188,8 @@ export function createContainer(options: ContainerOptions): AppContainer {
     { liveEnabled: config.partnerLiveEnabled },
   );
 
+  const railHealth = new MemoryRailHealthMonitor();
+
   const routing = new MultiRailRouter({
     mode: config.mode,
     registry: financialProviders,
@@ -201,6 +205,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     providerTimeoutMs: config.providerTimeoutMs,
     pricingResolver,
     executionPartners,
+    railHealth,
   });
 
   const comparisons = new ComparisonRoutingService({
@@ -373,6 +378,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     comparisons,
     routingEvaluations,
     routing,
+    railHealth,
     stablecoinRouting,
     defiRouting,
     routeGraph,

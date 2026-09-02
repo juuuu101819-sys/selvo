@@ -328,7 +328,7 @@ Tests: `quote-engine.test.ts` (edge cases, platform fee arithmetic, determinism)
 
 ---
 
-## Multi-rail routing engine (version 1.0.0)
+## Multi-rail routing engine (version 2.0.0)
 
 Independent of the comparison engine above. Do not bump `ENGINE_VERSION` when this engine changes.
 
@@ -340,7 +340,7 @@ Independent of the comparison engine above. Do not bump `ENGINE_VERSION` when th
   "destinationAsset": "KRW",
   "amount": "100000.00",
   "organizationId": "org_...", // from the principal, never the body
-  "preferences": { "weights": { "cost": "0.45", "speed": "0.20", "liquidity": "0.15", "reliability": "0.10", "settlementConfidence": "0.10" } }
+  "preferences": { "weights": { "cost": "0.30", "speed": "0.15", "finality": "0.10", "fxRate": "0.15", "slippage": "0.10", "liquidity": "0.10", "compliance": "0.10" } }
 }
 ```
 

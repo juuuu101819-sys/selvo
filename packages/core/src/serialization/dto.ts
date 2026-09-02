@@ -328,11 +328,32 @@ export interface MultiRailRouteDto {
   readonly scoreComponents: {
     readonly cost: string;
     readonly speed: string;
+    readonly finality: string;
+    readonly fxRate: string;
+    readonly slippage: string;
     readonly liquidity: string;
-    readonly reliability: string;
-    readonly settlementConfidence: string;
+    readonly compliance: string;
   };
   readonly routeExplanation: string;
+  readonly railHealth: {
+    readonly state: 'up' | 'degraded' | 'down';
+    readonly liquidityState: 'ample' | 'thin' | 'dry' | 'unknown';
+    readonly deprioritized: boolean;
+    readonly reason: string;
+  };
+  readonly bestExecution: {
+    readonly selected: boolean;
+    readonly rank: number;
+    readonly competingRouteCount: number;
+    readonly rationale: string;
+    readonly rationaleHash: string;
+    readonly alternatives: readonly {
+      readonly routeId: string;
+      readonly providerId: string;
+      readonly rank: number;
+      readonly whyNotSelected: string;
+    }[];
+  };
   readonly executable: false;
 }
 
@@ -432,10 +453,27 @@ export interface MultiRailRoutingDto {
   readonly scoringWeights: {
     readonly cost: string;
     readonly speed: string;
+    readonly finality: string;
+    readonly fxRate: string;
+    readonly slippage: string;
     readonly liquidity: string;
-    readonly reliability: string;
-    readonly settlementConfidence: string;
+    readonly compliance: string;
   };
+  readonly objectiveSource: 'request' | 'policy_preference' | 'platform_default';
+  readonly objectiveBounds: Readonly<
+    Record<
+      'cost' | 'speed' | 'finality' | 'fxRate' | 'slippage' | 'liquidity' | 'compliance',
+      { readonly min: string; readonly max: string }
+    >
+  >;
+  readonly railHealth: readonly {
+    readonly providerId: string;
+    readonly rail: string;
+    readonly state: 'up' | 'degraded' | 'down';
+    readonly liquidityState: 'ample' | 'thin' | 'dry' | 'unknown';
+    readonly deprioritized: boolean;
+    readonly reason: string;
+  }[];
   readonly routes: readonly MultiRailRouteDto[];
   readonly recommendedRoute: MultiRailRouteDto | null;
   readonly routeScore: string | null;

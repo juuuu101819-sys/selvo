@@ -294,9 +294,11 @@ export function weightsForRoutePreference(
 ): {
   readonly cost: string;
   readonly speed: string;
+  readonly finality: string;
+  readonly fxRate: string;
+  readonly slippage: string;
   readonly liquidity: string;
-  readonly reliability: string;
-  readonly settlementConfidence: string;
+  readonly compliance: string;
 } | null {
   return weightsForOptimizationPreference(preference);
 }

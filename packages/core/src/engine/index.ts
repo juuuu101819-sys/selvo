@@ -37,17 +37,47 @@ export {
 export { assertValidProviderQuote } from './quote-validation.js';
 export { RouteScorer } from './route-scorer.js';
 export {
+  DEFAULT_OBJECTIVE_WEIGHT_BOUNDS,
   DEFAULT_ROUTING_WEIGHTS,
   ROUTING_ENGINE_VERSION,
   ROUTING_SCORING_FACTORS,
   defaultRoutingWeights,
   parseRoutingWeights,
   serializeRoutingWeights,
+  zeroedRoutingWeights,
+  type ObjectiveWeightBound,
+  type RoutingObjectiveSource,
   type RoutingScoringFactor,
   type RoutingWeights,
   type RoutingWeightsInput,
+  type SerializedObjectiveWeightBounds,
   type SerializedRoutingWeights,
 } from './routing-config.js';
+export {
+  DEGRADED_SCORE_MULTIPLIER,
+  DRY_LIQUIDITY_SCORE_MULTIPLIER,
+  MemoryRailHealthMonitor,
+  RAIL_DEGRADED_RELIABILITY,
+  RAIL_DOWN_RELIABILITY,
+  RAIL_DRY_HEADROOM,
+  RAIL_HEALTH_STATES,
+  THIN_LIQUIDITY_SCORE_MULTIPLIER,
+  healthMultiplier,
+  observeRoute,
+  type LiquidityState,
+  type RailHealthMonitor,
+  type RailHealthObservation,
+  type RailHealthState,
+} from './rail-health.js';
+export { attestBestExecution } from './best-execution.js';
+export {
+  costDistribution,
+  settlementTimeDistribution,
+  simulateRoute,
+  slippageDistribution,
+  type RouteSimulation,
+  type SimulationPercentiles,
+} from './routing-simulation.js';
 export {
   MultiRailCostEngine,
   NO_ROUTING_PLATFORM_CHARGE,
@@ -100,6 +130,8 @@ export type {
   RoutingRequest,
   RoutingScoreComponents,
   ScoredMultiRailRoute,
+  BestExecutionAttestation,
+  BestExecutionAlternative,
 } from './routing-types.js';
 export { STABLECOIN_ROUTING_ENGINE_VERSION } from './stablecoin-config.js';
 export {

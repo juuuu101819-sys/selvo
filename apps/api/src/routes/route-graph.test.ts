@@ -164,6 +164,6 @@ describe('POST /api/v1/route-graph/paths', () => {
     expect(response.statusCode).toBe(201);
     const body = response.json<ApiEnvelope<{ routes: unknown[]; engineVersion: string }>>();
     expect(body.data.routes.length).toBeGreaterThanOrEqual(3);
-    expect(body.data.engineVersion).toBe('1.0.0');
+    expect(body.data.engineVersion).toBe('2.0.0');
   });
 });

@@ -129,9 +129,11 @@ describe('natural language intent parser', () => {
     expect(weightsForOptimizationPreference(parsed.optimizationPreference)).toEqual({
       cost: '1',
       speed: '0',
+      finality: '0',
+      fxRate: '0',
+      slippage: '0',
       liquidity: '0',
-      reliability: '0',
-      settlementConfidence: '0',
+      compliance: '0',
     });
   });
 });

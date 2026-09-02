@@ -19,7 +19,7 @@ export default async function RailsPage() {
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Score Traditional Finance, stablecoin and DeFi quotes with one framework. Cost, speed,
-            liquidity, reliability and settlement confidence are computed from quotes — never from a
+            liquidity, finality, FX rate, slippage and compliance are computed from quotes — never from a
             model.
           </p>
         </div>

@@ -298,10 +298,13 @@ rejected. `data.executable` is always `false`.
 
 ## `POST /api/v1/routes`
 
-Multi-rail routing engine. Evaluates Traditional Finance, stablecoin and DeFi quotes with one
-deterministic scorer. `POST /comparisons` uses this same MultiRailRouter (`routingEngineVersion`
-**1.0.0**). The fiat library constant `ENGINE_VERSION` **2.0.0** remains on `GET /meta` and is not
-the comparison ranking engine. No model is used for any figure.
+Multi-rail routing engine **2.0.0**. Evaluates Traditional Finance, stablecoin and DeFi quotes
+with one multi-objective scorer (cost, speed, finality, FX rate, slippage, liquidity, compliance).
+Rail health and liquidity observations deprioritize degraded or dry rails and fail over down
+rails. `POST /comparisons` uses this same MultiRailRouter (`routingEngineVersion` **2.0.0**). The
+fiat library constant `ENGINE_VERSION` **2.0.0** remains on `GET /meta` and is not the comparison
+ranking engine. No model is used for any figure. Request weights must lie in the published
+0–1 policy range and sum to exactly 1.
 
 ```jsonc
 {
@@ -310,12 +313,14 @@ the comparison ranking engine. No model is used for any figure.
   "amount": "100000.00",
   "preferences": {
     "weights": {
-      // optional; must sum to exactly 1
-      "cost": "0.45",
-      "speed": "0.20",
-      "liquidity": "0.15",
-      "reliability": "0.10",
-      "settlementConfidence": "0.10"
+      // optional; must sum to exactly 1 and stay inside objectiveBounds
+      "cost": "0.30",
+      "speed": "0.15",
+      "finality": "0.10",
+      "fxRate": "0.15",
+      "slippage": "0.10",
+      "liquidity": "0.10",
+      "compliance": "0.10"
     }
   }
 }
@@ -326,7 +331,8 @@ the comparison ranking engine. No model is used for any figure.
 
 Returns `201` with:
 
-- `routes[]` — ranked best-first, each with hops, economics, score components and `routeExplanation`
+- `routes[]` — ranked best-first, each with hops, economics, score components,
+  `railHealth`, structured `bestExecution` attestation, and `routeExplanation`
 - `recommendedRoute` — the rank-1 route
 - `routeScore`, `estimatedCost`, `estimatedReceiveAmount`, `estimatedSettlementTime`,
   `routeExplanation` — echoed from the recommendation
@@ -344,6 +350,25 @@ Re-runs `MultiRailRouter` over the stored ranking snapshot for a public `/routes
 Returns whether the ranked route ids and fingerprint reproduced. The snapshot JSON is not in the
 response. Cross-surface ids (a billed `/quote` evaluation) are `404`. Quoted monetization on the
 replayed routing DTO still has `realizedRevenue: false`.
+
+## `POST /api/v1/simulate`
+
+Pre-execution simulation. Ranks the same MultiRailRouter (or replays a stored `routingId`) and
+returns expected all-in cost, slippage and settlement-time distributions. Quotes are mock or
+historical sandbox data. `fundsMoved`, `executable` and `livePartnerCalled` are always `false`.
+No live settlement partner is called. The recommended route's `bestExecution` attestation is
+included so a later sandbox receipt can bind the same rationale hash.
+
+```jsonc
+{
+  "sourceAsset": "USD",
+  "destinationAsset": "KRW",
+  "amount": "500.00",
+  "preferences": { "weights": { "cost": "1", "speed": "0", "finality": "0", "fxRate": "0", "slippage": "0", "liquidity": "0", "compliance": "0" } },
+  "routingId": "rte_...", // optional: replay a stored public ranking
+  "routeId": "sandbox-veridian-payments:payment_institution" // optional: simulate a non-recommended path
+}
+```
 
 USD 100,000 → KRW still returns **four** routes on `POST /comparisons`. The routing engine may
 return those same wrapped rails plus catalog-only venues when the corridor is on-chain or a ramp.
@@ -483,7 +508,7 @@ engine does not switch on Ethereum, Base, Arbitrum or Solana.
 ## `POST /api/v1/comparisons`
 
 Ranks every eligible catalog route for a fiat corridor through **MultiRailRouter** (same engine as
-`POST /routes`, `engineVersion` **1.0.0**). `RouteComparisonService` is not on this path.
+`POST /routes`, `engineVersion` **2.0.0**). `RouteComparisonService` is not on this path.
 
 ```jsonc
 {
@@ -807,7 +832,7 @@ Public ISO 4217 catalog from `CURRENCY_REGISTRY`.
 ## `POST /api/v1/quote`
 
 Authenticated financial quote. Requires a verified organization and `quote:read`. Wraps the
-multi-rail engine (`routingEngineVersion` 1.0.0) and returns a slim DTO. Optional `organizationId`
+multi-rail engine (`routingEngineVersion` 2.0.0) and returns a slim DTO. Optional `organizationId`
 in the body is a claim that must match the principal — it is never the source of truth.
 
 ```jsonc
@@ -818,11 +843,13 @@ in the body is a claim that must match the principal — it is never the source 
   "organizationId": "org_...",
   "preferences": {
     "weights": {
-      "cost": "0.45",
-      "speed": "0.2",
-      "liquidity": "0.15",
-      "reliability": "0.1",
-      "settlementConfidence": "0.1"
+      "cost": "0.30",
+      "speed": "0.15",
+      "finality": "0.10",
+      "fxRate": "0.15",
+      "slippage": "0.10",
+      "liquidity": "0.10",
+      "compliance": "0.10"
     }
   }
 }

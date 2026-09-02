@@ -34,9 +34,11 @@ interface RoutePayload {
     readonly scoreComponents: {
       readonly cost: string;
       readonly speed: string;
+      readonly finality: string;
+      readonly fxRate: string;
+      readonly slippage: string;
       readonly liquidity: string;
-      readonly reliability: string;
-      readonly settlementConfidence: string;
+      readonly compliance: string;
     };
     readonly compliance: { readonly eligible: boolean; readonly executable: boolean };
   }[];
@@ -68,7 +70,7 @@ describe('POST /api/v1/routes', () => {
     expect(status).toBe(201);
     const data = (body as ApiEnvelope<RoutePayload>).data;
     expect(data.aiUsed).toBe(false);
-    expect(data.routingEngineVersion).toBe('1.0.0');
+    expect(data.routingEngineVersion).toBe('2.0.0');
     expect(data.routes.length).toBeGreaterThanOrEqual(3);
     const families = new Set(data.routes.map((item) => item.provider.railFamily));
     expect(families.has('tradfi')).toBe(true);
@@ -166,9 +168,11 @@ describe('POST /api/v1/routes', () => {
         weights: {
           cost: '0',
           speed: '1',
+          finality: '0',
+          fxRate: '0',
+          slippage: '0',
           liquidity: '0',
-          reliability: '0',
-          settlementConfidence: '0',
+          compliance: '0',
         },
       },
     });
@@ -190,7 +194,7 @@ describe('POST /api/v1/routes', () => {
     expect(response.statusCode).toBe(201);
     const body = response.json<ApiEnvelope<{ routes: unknown[]; engineVersion: string }>>();
     expect(body.data.routes.length).toBeGreaterThanOrEqual(3);
-    expect(body.data.engineVersion).toBe('1.0.0');
+    expect(body.data.engineVersion).toBe('2.0.0');
   });
 
   it('rejects organizationId, execute flags and keys', async () => {

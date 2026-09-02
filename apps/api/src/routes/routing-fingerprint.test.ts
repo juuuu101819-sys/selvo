@@ -51,7 +51,7 @@ describe('PA-M10 multi-rail fingerprint and replay', () => {
     expect(created.statusCode).toBe(201);
     const routing = created.json<ApiEnvelope<MultiRailRoutingDto>>().data;
     expect(routing.fingerprint).toMatch(SHA256_HEX);
-    expect(routing.routingEngineVersion).toBe('1.0.0');
+    expect(routing.routingEngineVersion).toBe('2.0.0');
     expect(routing).not.toHaveProperty('snapshot');
     expect(routing).not.toHaveProperty('pricingRules');
     expect(routing.monetization?.realizedRevenue).toBe(false);

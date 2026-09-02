@@ -6,8 +6,7 @@ import type { ScoredMultiRailRoute } from './routing-types.js';
 /**
  * Builds a deterministic, human-readable explanation of why a route ranked where it did.
  *
- * This is a template over the score components. It is not a model output. The same route set and
- * weights always produce the same string.
+ * This is a template over the score components and rail health. It is not a model output.
  */
 export function explainRoute(
   route: ScoredMultiRailRoute,
@@ -18,10 +17,11 @@ export function explainRoute(
   const parts: string[] = [];
 
   parts.push(
-    `${route.provider.name} scores ${route.routeScore.toFixed(2)} / 100 using weights ` +
+    `${route.provider.name} scores ${route.routeScore.toFixed(2)} / 100 using objective weights ` +
       `cost ${percent(serialized.cost)}, speed ${percent(serialized.speed)}, ` +
-      `liquidity ${percent(serialized.liquidity)}, reliability ${percent(serialized.reliability)}, ` +
-      `settlement confidence ${percent(serialized.settlementConfidence)}.`,
+      `finality ${percent(serialized.finality)}, fxRate ${percent(serialized.fxRate)}, ` +
+      `slippage ${percent(serialized.slippage)}, liquidity ${percent(serialized.liquidity)}, ` +
+      `compliance ${percent(serialized.compliance)}.`,
   );
 
   parts.push(`Path: ${route.hops.join(' → ')}.`);
@@ -38,6 +38,19 @@ export function explainRoute(
       `${route.settlement.businessDaysOnly ? ', business days only' : ''}).`,
   );
   parts.push(
+    `Finality component ${component(route.scoreComponents.finality)} ` +
+      `(settlement confidence ${route.settlementConfidence.toDecimalPlaces(3).toFixed()}; ` +
+      `p95 ${formatSeconds(route.settlement.p95Seconds)}).`,
+  );
+  parts.push(
+    `FX-rate component ${component(route.scoreComponents.fxRate)} ` +
+      `(indicated ${route.indicatedRate.toFixed()} versus mid ${route.midMarketRate.toFixed()}).`,
+  );
+  parts.push(
+    `Slippage component ${component(route.scoreComponents.slippage)} ` +
+      `(${route.slippageBps.toDecimalPlaces(2).toFixed()} bps).`,
+  );
+  parts.push(
     `Liquidity component ${component(route.scoreComponents.liquidity)}` +
       `${
         route.liquidityHeadroom === null
@@ -46,14 +59,13 @@ export function explainRoute(
       }`,
   );
   parts.push(
-    `Reliability component ${component(route.scoreComponents.reliability)} ` +
-      `(provider score ${route.reliabilityScore.toDecimalPlaces(3).toFixed()}).`,
+    `Compliance component ${component(route.scoreComponents.compliance)} ` +
+      `(licensing ${route.compliance.licensing}; executable false).`,
   );
   parts.push(
-    `Settlement confidence ${component(route.scoreComponents.settlementConfidence)} ` +
-      `(p50 ${formatSeconds(route.settlement.p50Seconds)}, ` +
-      `p95 ${formatSeconds(route.settlement.p95Seconds)}` +
-      `${route.settlement.cutoffUtc === null ? '' : `, cutoff ${route.settlement.cutoffUtc} UTC`}).`,
+    `Rail health ${route.railHealth.state}/${route.railHealth.liquidityState}` +
+      `${route.railHealth.deprioritized ? ' (deprioritized)' : ''}` +
+      ` because ${route.railHealth.reason}.`,
   );
 
   const cheapest = pickBy(all, (left, right) => left.totalCostBps.lessThan(right.totalCostBps));
@@ -67,16 +79,26 @@ export function explainRoute(
   if (fastest.routeId === route.routeId) {
     parts.push('Fastest median settlement in this set.');
   }
+
+  const excluded = all.length;
   if (route.recommended) {
     parts.push(
-      'Recommended because the weighted score is highest. Ties break on cost, then speed, then route id.',
+      `Best execution among ${excluded} admitted path${excluded === 1 ? '' : 's'}: ` +
+        'the weighted multi-objective score is highest after rail-health and liquidity ' +
+        'adjustments. Ties break on cost, then speed, then route id. Down rails are excluded ' +
+        'and failed over. No model is used.',
+    );
+  } else {
+    parts.push(
+      `Not recommended: ${excluded} admitted paths were scored; this path is rank ${route.rank}. ` +
+        'No model is used.',
     );
   }
 
   parts.push(
     `Rail family: ${route.railFamily}. Conversion: ${route.conversionKind}. ` +
       'No rail family is assumed to be cheaper. ' +
-      'Figures are computed by the routing engine from provider quotes. No model is used.',
+      'Figures are computed by the routing engine from provider quotes.',
   );
 
   return parts.join(' ');

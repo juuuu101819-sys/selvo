@@ -48,6 +48,21 @@ export const PLATFORM_CAPABILITIES = {
    */
   multiRailRouting: true,
   /**
+   * Rail health and liquidity observations feed the router. Degraded or dry rails are
+   * deprioritized; down rails fail over. Distinct from `executeTransactions`.
+   */
+  railHealthMonitoring: true,
+  /**
+   * Multi-objective optimizer (cost, speed, finality, FX rate, slippage, liquidity, compliance)
+   * with request-level weights inside a published policy range.
+   */
+  multiObjectiveRouting: true,
+  /**
+   * `POST /simulate` returns expected all-in cost, slippage and time distributions from mock or
+   * historical quotes. Never executes and never calls a live settlement partner.
+   */
+  preExecutionSimulation: true,
+  /**
    * Graph of assets and venues with constrained multi-hop path discovery. Distinct from live
    * quoting: edges carry indicative cost/liquidity metadata and are never executable.
    */

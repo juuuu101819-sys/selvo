@@ -114,6 +114,8 @@ describe('verifiable receipts, reconciliation, and audit export', () => {
     expect(receipt.verification.privateKeyExported).toBe(false);
     expect(JSON.stringify(receipt.payload)).not.toContain('merchant-x');
     expect(receipt.payload.route.bestExecutionRationale.length).toBeGreaterThan(20);
+    expect(receipt.payload.route.bestExecutionRationale).toContain('Best execution among');
+    expect(receipt.payload.route.bestExecutionAttestationHash).toMatch(/^[a-f0-9]{64}$/);
     expect(receipt.payloadCanonical).not.toContain(receipt.verification.vaultKeyName + '_private');
 
     const verified = await harness.app.inject({

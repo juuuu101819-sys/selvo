@@ -47,6 +47,7 @@ function payload(): ExecutionReceiptPayload {
       competingRouteCount: 4,
       bestExecutionRationale: 'Recommended because the weighted score is highest.',
       bestExecutionRationaleHash: 'd'.repeat(64),
+      bestExecutionAttestationHash: '2'.repeat(64),
     },
     settlement: {
       partnerId: 'sandbox-partner-psp-fx',

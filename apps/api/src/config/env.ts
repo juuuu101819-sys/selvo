@@ -115,11 +115,11 @@ const envSchema = z
     ROUTE_WEIGHT_RISK: decimalString.default(DEFAULT_SCORING_WEIGHTS.risk),
     ROUTING_WEIGHT_COST: decimalString.default(DEFAULT_ROUTING_WEIGHTS.cost),
     ROUTING_WEIGHT_SPEED: decimalString.default(DEFAULT_ROUTING_WEIGHTS.speed),
+    ROUTING_WEIGHT_FINALITY: decimalString.default(DEFAULT_ROUTING_WEIGHTS.finality),
+    ROUTING_WEIGHT_FX_RATE: decimalString.default(DEFAULT_ROUTING_WEIGHTS.fxRate),
+    ROUTING_WEIGHT_SLIPPAGE: decimalString.default(DEFAULT_ROUTING_WEIGHTS.slippage),
     ROUTING_WEIGHT_LIQUIDITY: decimalString.default(DEFAULT_ROUTING_WEIGHTS.liquidity),
-    ROUTING_WEIGHT_RELIABILITY: decimalString.default(DEFAULT_ROUTING_WEIGHTS.reliability),
-    ROUTING_WEIGHT_SETTLEMENT_CONFIDENCE: decimalString.default(
-      DEFAULT_ROUTING_WEIGHTS.settlementConfidence,
-    ),
+    ROUTING_WEIGHT_COMPLIANCE: decimalString.default(DEFAULT_ROUTING_WEIGHTS.compliance),
     PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(100).max(60_000).default(4_000),
 
     /** Overrides the bundled sandbox pricing dataset. */
@@ -385,9 +385,11 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   const routingWeights = {
     cost: env.ROUTING_WEIGHT_COST,
     speed: env.ROUTING_WEIGHT_SPEED,
+    finality: env.ROUTING_WEIGHT_FINALITY,
+    fxRate: env.ROUTING_WEIGHT_FX_RATE,
+    slippage: env.ROUTING_WEIGHT_SLIPPAGE,
     liquidity: env.ROUTING_WEIGHT_LIQUIDITY,
-    reliability: env.ROUTING_WEIGHT_RELIABILITY,
-    settlementConfidence: env.ROUTING_WEIGHT_SETTLEMENT_CONFIDENCE,
+    compliance: env.ROUTING_WEIGHT_COMPLIANCE,
   };
   parseRoutingWeights(routingWeights);
 

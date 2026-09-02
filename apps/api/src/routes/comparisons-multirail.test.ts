@@ -56,8 +56,8 @@ describe('PA-H05 — /comparisons uses MultiRailRouter only', () => {
     const comparison = comparisonResponse.json<ApiEnvelope<ComparisonDto>>().data;
     const routed = routesResponse.json<ApiEnvelope<MultiRailRoutingDto>>().data;
 
-    expect(comparison.engineVersion).toBe('1.0.0');
-    expect(routed.routingEngineVersion).toBe('1.0.0');
+    expect(comparison.engineVersion).toBe('2.0.0');
+    expect(routed.routingEngineVersion).toBe('2.0.0');
     expect(comparison.engineVersion).toBe(routed.routingEngineVersion);
 
     const comparisonRank = comparison.routes.map((route) => ({

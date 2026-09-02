@@ -26,6 +26,7 @@ import { registerOpenApiRoute } from './openapi.js';
 import { registerProviderCatalogRoutes } from './providers.js';
 import { registerRouteGraphRoutes } from './route-graph.js';
 import { registerRoutingRoutes } from './routing.js';
+import { registerSimulateRoute } from './simulate.js';
 import { registerStablecoinRoutes } from './stablecoin-routes.js';
 import {
   registerMetaRoutes,
@@ -69,6 +70,7 @@ export async function registerRoutes(app: FastifyInstance, container: AppContain
     registerOidcRoutes(instance, container);
     registerComparisonRoutes(instance, container);
     registerRoutingRoutes(instance, container);
+    registerSimulateRoute(instance, container);
     registerRouteGraphRoutes(instance, container);
     registerStablecoinRoutes(instance, container);
     registerDefiRoutes(instance, container);

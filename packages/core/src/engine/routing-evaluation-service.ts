@@ -4,6 +4,7 @@ import type { AuditLogger, Clock } from '../ports/index.js';
 import type {
   RoutingEvaluationRepository,
   RoutingEvaluationSurface,
+  StoredRoutingEvaluation,
 } from '../ports/routing-evaluation.js';
 import type { FinancialQuoteDto, MultiRailRoutingDto } from '../serialization/dto.js';
 import { serializeFinancialQuote, serializeMultiRailRouting } from '../serialization/serialize.js';
@@ -66,13 +67,7 @@ export class RoutingEvaluationService {
     context: { readonly actor: string; readonly requestId: string | null },
     access: { readonly organizationId: string | null; readonly allowPublic: boolean },
   ): Promise<RoutingReplayResult> {
-    const stored = await this.deps.evaluations.findById(routingId);
-    if (stored === null || stored.surface !== surface) {
-      throw new NotFoundError('RoutingEvaluation', routingId);
-    }
-    if (!canAccessEvaluation(access, stored.organizationId)) {
-      throw new NotFoundError('RoutingEvaluation', routingId);
-    }
+    const stored = await this.requireStored(routingId, surface, access);
 
     const replayedAt = this.deps.clock.nowIso();
     const replayedRouting = this.deps.routing.recomputeFromSnapshot(stored.snapshot);
@@ -129,6 +124,30 @@ export class RoutingEvaluationService {
             })
           : null,
     };
+  }
+
+  async load(
+    routingId: string,
+    surface: RoutingEvaluationSurface,
+    access: { readonly organizationId: string | null; readonly allowPublic: boolean },
+  ): Promise<MultiRailRouting> {
+    const stored = await this.requireStored(routingId, surface, access);
+    return this.deps.routing.recomputeFromSnapshot(stored.snapshot);
+  }
+
+  private async requireStored(
+    routingId: string,
+    surface: RoutingEvaluationSurface,
+    access: { readonly organizationId: string | null; readonly allowPublic: boolean },
+  ): Promise<StoredRoutingEvaluation> {
+    const stored = await this.deps.evaluations.findById(routingId);
+    if (stored === null || stored.surface !== surface) {
+      throw new NotFoundError('RoutingEvaluation', routingId);
+    }
+    if (!canAccessEvaluation(access, stored.organizationId)) {
+      throw new NotFoundError('RoutingEvaluation', routingId);
+    }
+    return stored;
   }
 }
 

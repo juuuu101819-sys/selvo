@@ -73,7 +73,8 @@ made. Nothing below rebuilds the application.
 - `POST /api/v1/comparisons` accepts optional `railFamilies`, intersected with `rails`. A filter
   that names only planned rails (for example DeFi-only) is **400**, not a silent empty quote.
 - `POST /api/v1/routes` ranks tradfi, stablecoin and DeFi quotes with a separate engine
-  (`routingEngineVersion` 1.0.0). Comparison scoring is unchanged.
+  (`routingEngineVersion` 2.0.0). Rail health deprioritizes degraded/dry rails. `POST /simulate`
+  returns expected cost/slippage/time distributions without executing.
 - `GET /api/v1/route-graph` and `POST /api/v1/route-graph/paths` walk a demo asset/venue graph
   (`graphEngineVersion` 1.0.0). Paths are not quotes and are never executable.
 - `GET /api/v1/stablecoins` and `POST /api/v1/stablecoin-routes` quote fiat ↔ stablecoin and
@@ -340,7 +341,7 @@ Natural Language → Intent Parser → Structured Payment Intent → Policy Engi
 
 `POST /api/v1/agent/interpret` and `POST /api/v1/agent/route` are the AI-facing layer. The
 interpreter is a deterministic parser (`aiUsed: false`). It must not calculate exchange rates,
-fees, slippage or settlement amounts. Those come from `MultiRailRouter` (routing engine **1.0.0**).
+fees, slippage or settlement amounts. Those come from `MultiRailRouter` (routing engine **2.0.0**).
 The recorded execution intent is never executable. `POST /executions` remains 501.
 
 ## 12a. Non-custodial payment policy engine

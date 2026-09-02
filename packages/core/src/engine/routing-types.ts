@@ -10,7 +10,13 @@ import type { Decimal } from '../money/index.js';
 import type { AssetAmount } from '../money/asset-amount.js';
 import type { NormalizedQuote } from '../ports/financial-provider.js';
 import type { QuoteFreshnessView } from '../quotes/quote-freshness.js';
-import type { RoutingScoringFactor, SerializedRoutingWeights } from './routing-config.js';
+import type {
+  RoutingObjectiveSource,
+  RoutingScoringFactor,
+  SerializedObjectiveWeightBounds,
+  SerializedRoutingWeights,
+} from './routing-config.js';
+import type { LiquidityState, RailHealthObservation, RailHealthState } from './rail-health.js';
 
 export type RoutingFeeBucket =
   | 'provider'
@@ -118,9 +124,39 @@ export interface PricedMultiRailRoute {
 export interface RoutingScoreComponents {
   readonly cost: Decimal;
   readonly speed: Decimal;
+  readonly finality: Decimal;
+  readonly fxRate: Decimal;
+  readonly slippage: Decimal;
   readonly liquidity: Decimal;
-  readonly reliability: Decimal;
-  readonly settlementConfidence: Decimal;
+  readonly compliance: Decimal;
+}
+
+export interface BestExecutionAlternative {
+  readonly routeId: string;
+  readonly providerId: string;
+  readonly rank: number;
+  readonly whyNotSelected: string;
+}
+
+/**
+ * Deterministic record of why this path is (or is not) the recommended route among the
+ * admitted candidate set. Hashes and catalog ids only — no beneficiary or account data.
+ */
+export interface BestExecutionAttestation {
+  readonly selected: boolean;
+  readonly rank: number;
+  readonly competingRouteCount: number;
+  readonly objectiveWeights: SerializedRoutingWeights;
+  readonly rationale: string;
+  readonly rationaleHash: string;
+  readonly alternatives: readonly BestExecutionAlternative[];
+  readonly railHealth: {
+    readonly state: RailHealthState;
+    readonly liquidityState: LiquidityState;
+    readonly deprioritized: boolean;
+    readonly excluded: false;
+  };
+  readonly constraintsSatisfied: readonly string[];
 }
 
 export interface ScoredMultiRailRoute extends PricedMultiRailRoute {
@@ -129,6 +165,8 @@ export interface ScoredMultiRailRoute extends PricedMultiRailRoute {
   readonly routeScore: Decimal;
   readonly scoreComponents: RoutingScoreComponents;
   readonly routeExplanation: string;
+  readonly railHealth: RailHealthObservation;
+  readonly bestExecution: BestExecutionAttestation;
 }
 
 export interface RoutingRequest {
@@ -147,6 +185,9 @@ export interface MultiRailRouting {
   readonly aiUsed: false;
   readonly request: RoutingRequest;
   readonly scoringWeights: SerializedRoutingWeights;
+  readonly objectiveSource: RoutingObjectiveSource;
+  readonly objectiveBounds: SerializedObjectiveWeightBounds;
+  readonly railHealth: readonly RailHealthObservation[];
   readonly routes: readonly ScoredMultiRailRoute[];
   readonly recommendedRoute: ScoredMultiRailRoute | null;
   readonly routeScore: Decimal | null;
@@ -163,7 +204,9 @@ export interface MultiRailRouting {
 export const ROUTING_SCORE_FACTORS: readonly RoutingScoringFactor[] = [
   'cost',
   'speed',
+  'finality',
+  'fxRate',
+  'slippage',
   'liquidity',
-  'reliability',
-  'settlementConfidence',
+  'compliance',
 ];

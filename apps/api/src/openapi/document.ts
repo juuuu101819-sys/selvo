@@ -115,6 +115,15 @@ function responses(route: CatalogRoute): Record<string, unknown> {
       },
     };
   }
+  if (route.path === '/simulate' && route.method === 'POST') {
+    return {
+      '201': {
+        description:
+          'Indicative all-in cost, slippage and settlement-time distributions. fundsMoved and livePartnerCalled are always false.',
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/RouteSimulation' } } },
+      },
+    };
+  }
   if (route.path === '/audit/export' && route.method === 'GET') {
     return {
       '200': {
@@ -405,6 +414,37 @@ export function buildOpenApiDocument(): OpenApiDocument {
             events: { type: 'array', items: { type: 'object' } },
             fundsMoved: { type: 'boolean', enum: [false] },
             sandbox: { type: 'boolean', enum: [true] },
+          },
+        },
+        RouteSimulation: {
+          type: 'object',
+          description:
+            'Pre-execution simulation from mock or historical quotes. Never executes and never calls a live partner.',
+          required: [
+            'routingId',
+            'routeId',
+            'routingEngineVersion',
+            'fundsMoved',
+            'executable',
+            'livePartnerCalled',
+            'allInCost',
+            'slippage',
+            'settlement',
+            'bestExecution',
+          ],
+          properties: {
+            routingId: { type: 'string' },
+            routeId: { type: 'string' },
+            routingEngineVersion: { type: 'string' },
+            fundsMoved: { type: 'boolean', enum: [false] },
+            custody: { type: 'boolean', enum: [false] },
+            executable: { type: 'boolean', enum: [false] },
+            livePartnerCalled: { type: 'boolean', enum: [false] },
+            sandbox: { type: 'boolean', enum: [true] },
+            allInCost: { type: 'object' },
+            slippage: { type: 'object' },
+            settlement: { type: 'object' },
+            bestExecution: { type: 'object' },
           },
         },
       },

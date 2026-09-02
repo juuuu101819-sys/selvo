@@ -167,6 +167,14 @@ export const API_V1_ROUTE_CATALOG: readonly CatalogRoute[] = [
     'Replay a stored public multi-rail ranking snapshot. Does not return the snapshot JSON.',
     ['Discovery'],
   ),
+  r(
+    'POST',
+    '/simulate',
+    'public',
+    'none',
+    'Pre-execution simulation: expected all-in cost, slippage and settlement-time distribution from mock/historical quotes. Never executes. Never calls a live settlement partner.',
+    ['Discovery'],
+  ),
   r('GET', '/route-graph', 'public', 'none', 'Demo financial-route graph. Not a quote.', [
     'Discovery',
   ]),

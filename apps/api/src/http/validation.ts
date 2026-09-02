@@ -237,6 +237,18 @@ export function resolveProviderQuoteRequest(body: CreateProviderQuoteBody): {
 
 const routingWeight = z.string().regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal string');
 
+export const routingObjectiveWeightsSchema = z
+  .object({
+    cost: routingWeight,
+    speed: routingWeight,
+    finality: routingWeight,
+    fxRate: routingWeight,
+    slippage: routingWeight,
+    liquidity: routingWeight,
+    compliance: routingWeight,
+  })
+  .strict();
+
 /**
  * Body of `POST /v1/routes`.
  *
@@ -251,16 +263,7 @@ export const createRouteSchema = z
     amount: assetAmount,
     preferences: z
       .object({
-        weights: z
-          .object({
-            cost: routingWeight,
-            speed: routingWeight,
-            liquidity: routingWeight,
-            reliability: routingWeight,
-            settlementConfidence: routingWeight,
-          })
-          .strict()
-          .optional(),
+        weights: routingObjectiveWeightsSchema.optional(),
       })
       .strict()
       .optional(),
@@ -287,6 +290,46 @@ export const createRouteSchema = z
   });
 
 export type CreateRouteBody = z.infer<typeof createRouteSchema>;
+
+/**
+ * Body of `POST /v1/simulate`.
+ *
+ * Pre-execution all-in cost / slippage / time distribution from mock or historical quotes.
+ * Never calls a live settlement partner and never moves funds. `routingId` replays a stored
+ * snapshot; otherwise the request is ranked like `POST /routes`.
+ */
+export const createSimulateSchema = z
+  .object({
+    sourceAsset: z.string().trim().min(2).max(16).optional(),
+    destinationAsset: z.string().trim().min(2).max(16).optional(),
+    targetAsset: z.string().trim().min(2).max(16).optional(),
+    amount: assetAmount.optional(),
+    preferences: z
+      .object({
+        weights: routingObjectiveWeightsSchema.optional(),
+      })
+      .strict()
+      .optional(),
+    mandateId: z.string().trim().min(1).max(128).optional(),
+    routingId: z.string().trim().min(1).max(128).optional(),
+    routeId: z.string().trim().min(1).max(256).optional(),
+  })
+  .strict()
+  .refine((body) => body.routingId !== undefined || body.amount !== undefined, {
+    message: 'amount is required when routingId is omitted',
+    path: ['amount'],
+  })
+  .refine(
+    (body) =>
+      body.routingId !== undefined ||
+      (body.destinationAsset ?? body.targetAsset) !== undefined,
+    {
+      message: 'either destinationAsset or targetAsset is required when routingId is omitted',
+      path: ['destinationAsset'],
+    },
+  );
+
+export type CreateSimulateBody = z.infer<typeof createSimulateSchema>;
 
 export function resolveRouteRequest(body: {
   readonly sourceAsset: string;
@@ -454,16 +497,7 @@ export const createFinancialQuoteSchema = z
     organizationId: z.string().trim().min(1).max(128).optional(),
     preferences: z
       .object({
-        weights: z
-          .object({
-            cost: routingWeight,
-            speed: routingWeight,
-            liquidity: routingWeight,
-            reliability: routingWeight,
-            settlementConfidence: routingWeight,
-          })
-          .strict()
-          .optional(),
+        weights: routingObjectiveWeightsSchema.optional(),
       })
       .strict()
       .optional(),

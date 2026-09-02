@@ -117,44 +117,54 @@ export function weightsForOptimizationPreference(
 ): {
   readonly cost: string;
   readonly speed: string;
+  readonly finality: string;
+  readonly fxRate: string;
+  readonly slippage: string;
   readonly liquidity: string;
-  readonly reliability: string;
-  readonly settlementConfidence: string;
+  readonly compliance: string;
 } | null {
   if (preference === 'LOWEST_COST' || preference === 'lowest_cost') {
     return {
       cost: '1',
       speed: '0',
+      finality: '0',
+      fxRate: '0',
+      slippage: '0',
       liquidity: '0',
-      reliability: '0',
-      settlementConfidence: '0',
+      compliance: '0',
     };
   }
   if (preference === 'FASTEST' || preference === 'fastest') {
     return {
       cost: '0',
       speed: '1',
+      finality: '0',
+      fxRate: '0',
+      slippage: '0',
       liquidity: '0',
-      reliability: '0',
-      settlementConfidence: '0',
+      compliance: '0',
     };
   }
   if (preference === 'HIGH_LIQUIDITY' || preference === 'high_liquidity') {
     return {
       cost: '0',
       speed: '0',
+      finality: '0',
+      fxRate: '0',
+      slippage: '0',
       liquidity: '1',
-      reliability: '0',
-      settlementConfidence: '0',
+      compliance: '0',
     };
   }
   if (preference === 'LOWEST_SLIPPAGE' || preference === 'lowest_slippage') {
     return {
-      cost: '0.5',
+      cost: '0',
       speed: '0',
-      liquidity: '0.35',
-      reliability: '0',
-      settlementConfidence: '0.15',
+      finality: '0',
+      fxRate: '0',
+      slippage: '1',
+      liquidity: '0',
+      compliance: '0',
     };
   }
   return null;

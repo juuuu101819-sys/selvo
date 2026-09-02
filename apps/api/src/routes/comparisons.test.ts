@@ -52,7 +52,7 @@ describe('POST /v1/comparisons', () => {
 
     it('reports the all-in cost of each rail as a decimal percent', async () => {
       const { payload } = await createComparison();
-      expect(payload.data.engineVersion).toBe('1.0.0');
+      expect(payload.data.engineVersion).toBe('2.0.0');
       for (const route of payload.data.routes) {
         expect(route.totalCostPercent).toMatch(/^\d+(\.\d+)?$/);
       }
@@ -137,10 +137,11 @@ describe('POST /v1/comparisons', () => {
     it('reports the scoring weights that produced the ranking', async () => {
       const { payload } = await createComparison();
       expect(payload.data.scoringWeights).toEqual({
-        cost: '0.45',
-        speed: '0.2',
-        liquidity: '0.15',
-        reliability: '0.1',
+        cost: '0.3',
+        speed: '0.15',
+        liquidity: '0.1',
+        reliability: '0',
+        slippage: '0.1',
         settlementConfidence: '0.1',
       });
     });
@@ -213,13 +214,14 @@ describe('POST /v1/comparisons', () => {
         weights: { cost: '0', speed: '0', reliability: '1' },
       });
 
-      expect(payload.data.routes[0]?.provider.rail).toBe('bank_fx');
+      expect(payload.data.routes[0]?.provider.rail).toBe('stablecoin_settlement');
       expect(payload.data.scoringWeights).toEqual({
         cost: '0',
         speed: '0',
-        reliability: '1',
+        reliability: '0',
         liquidity: '0',
-        settlementConfidence: '0',
+        slippage: '0',
+        settlementConfidence: '1',
       });
     });
 

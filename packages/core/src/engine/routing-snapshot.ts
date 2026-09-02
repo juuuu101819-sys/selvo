@@ -6,11 +6,17 @@ import type { PlatformMode } from '../domain/provider.js';
 import type { ProviderFailure } from '../domain/route.js';
 import type { RailType } from '../domain/rail.js';
 import type { NormalizedQuote } from '../ports/financial-provider.js';
-import { ROUTING_ENGINE_VERSION, type SerializedRoutingWeights } from './routing-config.js';
+import {
+  ROUTING_ENGINE_VERSION,
+  type RoutingObjectiveSource,
+  type SerializedObjectiveWeightBounds,
+  type SerializedRoutingWeights,
+} from './routing-config.js';
 import type { MultiRailRouting, RoutingRequest } from './routing-types.js';
+import type { RailHealthObservation } from './rail-health.js';
 
 export const ROUTING_COMPARISON_SNAPSHOT_KIND = 'multi_rail' as const;
-export const ROUTING_COMPARISON_SNAPSHOT_VERSION = 1 as const;
+export const ROUTING_COMPARISON_SNAPSHOT_VERSION = 2 as const;
 
 /**
  * Everything needed to re-price and re-rank a `/comparisons` document produced by MultiRailRouter.
@@ -28,6 +34,9 @@ export interface RoutingComparisonSnapshot {
   readonly request: RoutingRequest & { readonly rails: readonly RailType[] | null };
   readonly pricingRules: readonly PlatformPricingRule[];
   readonly weights: SerializedRoutingWeights;
+  readonly objectiveSource: RoutingObjectiveSource;
+  readonly objectiveBounds: SerializedObjectiveWeightBounds;
+  readonly railHealth: readonly RailHealthObservation[];
   readonly quotes: readonly NormalizedQuote[];
   readonly providers: readonly ProviderDescriptor[];
   readonly capabilities: Readonly<Record<string, ProviderCapabilityProfile>>;
@@ -75,6 +84,9 @@ export function snapshotFromRouting(
     },
     pricingRules,
     weights: routing.scoringWeights,
+    objectiveSource: routing.objectiveSource,
+    objectiveBounds: routing.objectiveBounds,
+    railHealth: routing.railHealth,
     quotes,
     providers,
     capabilities,
@@ -120,6 +132,9 @@ export function fingerprintableRoutingSnapshot(
     request: snapshot.request,
     pricingRules: snapshot.pricingRules,
     weights: snapshot.weights,
+    objectiveSource: snapshot.objectiveSource,
+    objectiveBounds: snapshot.objectiveBounds,
+    railHealth: snapshot.railHealth,
     quotes: snapshot.quotes,
     providers: snapshot.providers,
     capabilities: snapshot.capabilities,

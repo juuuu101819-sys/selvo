@@ -57,6 +57,7 @@ export interface ReceiptRouteAttestation {
   readonly competingRouteCount: number;
   readonly bestExecutionRationale: string;
   readonly bestExecutionRationaleHash: string;
+  readonly bestExecutionAttestationHash: string;
 }
 
 export interface ReceiptSettlementConfirmation {

@@ -161,7 +161,8 @@ export class ExecutionReceiptService {
 export function buildExecutionReceiptPayload(
   input: IssueExecutionReceiptInput,
 ): ExecutionReceiptPayload {
-  const rationale = input.route.routeExplanation;
+  const rationale = input.route.bestExecution.rationale;
+  const attestationHash = input.route.bestExecution.rationaleHash;
   const confirmation = {
     partnerId: input.partner.partnerId,
     partnerInstructionId: input.partner.id,
@@ -210,6 +211,7 @@ export function buildExecutionReceiptPayload(
       competingRouteCount: input.competingRouteCount,
       bestExecutionRationale: rationale,
       bestExecutionRationaleHash: hashCanonical(rationale),
+      bestExecutionAttestationHash: attestationHash,
     },
     settlement: {
       ...confirmation,
