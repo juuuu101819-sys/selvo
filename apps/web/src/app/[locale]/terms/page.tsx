@@ -16,34 +16,37 @@ export default function TermsPage() {
           Meridian is a non-custodial comparison layer. It ranks payment routes for businesses and
           for AI agents acting on behalf of an organization. You describe an amount and a currency
           pair; Meridian returns indicative all-in cost, fees, settlement time, slippage, a route
-          score, and quote timing. It does not take custody of money, hold private keys, or move
-          funds.
+          score, and quote timing. It does not take custody of money, hold private keys or wallets,
+          or move funds.
         </p>
       </section>
       <section className="space-y-2">
         <h2 className="text-base font-semibold tracking-tight">2. What Meridian is not</h2>
         <p>
-          Meridian is not a bank, exchange, licensed broker, payment institution, money transmitter,
-          custodian, or settlement provider. It is not a principal on any transaction. Licensed
-          partner adapters are not connected until recorded outside this product. Until then,
-          quotes stay sandbox-labelled and non-binding.
+          Meridian is not a bank, money transmitter, payment institution, foreign-exchange dealer,
+          electronic-money or e-finance institution, virtual-asset service provider, exchange,
+          licensed broker, custodian, or settlement provider. It is not a principal on any
+          transaction. Licensed-partner adapters are not connected in this product. Quotes stay
+          sandbox-labelled and non-binding.
         </p>
       </section>
       <section className="space-y-2">
         <h2 className="text-base font-semibold tracking-tight">3. No funds movement</h2>
         <p>
           Execution is not part of this product. Recording an execution intent, if offered, does
-          not pay anyone. The platform refuses live execution rather than failing open. You transact
-          directly with a provider you choose. Meridian never acts as principal and does not
-          delegate settlement yet.
+          not pay anyone. The platform refuses live execution rather than failing open. Meridian
+          never moves, remits, settles, or executes customer funds. You transact with the provider
+          you choose. If live settlement is ever offered, a licensed partner — not Meridian — would
+          execute; no such partner adapter is connected today.
         </p>
       </section>
       <section className="space-y-2">
         <h2 className="text-base font-semibold tracking-tight">4. Quotes</h2>
         <p>
-          Ranked routes are indicative. Sandbox pricing is synthetic reference data, not a
-          committed market price. A quote may expire. Re-compare before you rely on a figure.
-          Meridian does not guarantee that a provider will honour a displayed price.
+          Ranked routes are indicative estimates, not an offer, commitment, or guarantee. Sandbox
+          pricing is synthetic reference data, not a committed market price. A quote may expire.
+          Re-compare before you rely on a figure. Meridian does not guarantee that a provider will
+          honour a displayed price.
         </p>
       </section>
       <section className="space-y-2">

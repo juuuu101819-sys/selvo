@@ -42,6 +42,8 @@ describe('marketing copy (PHASE 39 positioning)', () => {
     expect(enCatalog).toMatch(/until a licensed partner is connected/i);
     expect(bestRoute).not.toMatch(/through licensed partners/i);
     expect(routeCard).not.toMatch(/through licensed on-ramp/i);
+    expect(terms).toMatch(/no such partner adapter is connected today/i);
+    expect(privacy).toMatch(/licensed-partner adapters are not connected/i);
   });
 });
 
@@ -68,8 +70,15 @@ describe('legal disclosure pages', () => {
   });
 
   it('restates non-custodial boundaries on both pages', () => {
-    expect(terms).toMatch(/does not take custody of money/i);
+    expect(terms).toMatch(/does not take custody of money, hold private keys or wallets/i);
+    expect(terms).toMatch(/never moves, remits, settles, or executes customer funds/i);
+    expect(terms).toMatch(/virtual-asset service provider/i);
+    expect(terms).toMatch(/not an offer, commitment, or guarantee/i);
+    expect(terms).not.toMatch(/delegate settlement yet/i);
     expect(privacy).toMatch(/does not hold customer funds, private keys, or wallets/i);
+    expect(privacy).toMatch(/does not move, remit, settle, or execute transfers of customer funds/i);
+    expect(privacy).toMatch(/virtual-asset service provider/i);
+    expect(privacy).toMatch(/not an offer or guarantee/i);
   });
 });
 

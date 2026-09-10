@@ -10,7 +10,9 @@ test('footer links to draft terms and privacy pages', async ({ page }) => {
   await legal.getByRole('link', { name: /Terms of use/i }).click();
   await expect(page.getByRole('heading', { name: /Terms of use/i })).toBeVisible();
   await expect(page.getByText(/not a binding contract/i)).toBeVisible();
-  await expect(page.getByText(/does not take custody of money/i)).toBeVisible();
+  await expect(page.getByText(/Draft · not in force/i)).toBeVisible();
+  await expect(page.getByText(/does not take custody of money, hold private keys or wallets/i)).toBeVisible();
+  await expect(page.getByText(/not an offer, commitment, or guarantee/i)).toBeVisible();
   await expect(page.getByText(/does not charge a percentage of customer transaction volume/i)).toBeVisible();
   await expect(page.getByRole('button', { name: /^Execute/i })).toHaveCount(0);
 
@@ -18,6 +20,7 @@ test('footer links to draft terms and privacy pages', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /^Privacy$/i })).toBeVisible();
   await expect(page.getByText(/not an in-force privacy policy/i)).toBeVisible();
   await expect(page.getByText(/does not hold customer funds, private keys, or wallets/i)).toBeVisible();
+  await expect(page.getByText(/does not move, remit, settle, or execute transfers of customer funds/i)).toBeVisible();
 });
 
 test('serves a favicon and an open-graph image', async ({ page, request }) => {

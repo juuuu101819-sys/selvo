@@ -54,6 +54,14 @@ export default function PrivacyPage() {
           beneficiary codes as authorization constraints — that is not an account number Meridian
           pays.
         </p>
+        <p>
+          Meridian does not move, remit, settle, or execute transfers of customer funds. It is not
+          a bank, money transmitter, payment institution, foreign-exchange dealer, electronic-money
+          or e-finance institution, or virtual-asset service provider. Quotes shown in the product
+          are indicative estimates, not an offer or guarantee. If live settlement is ever offered,
+          a licensed partner would execute; licensed-partner adapters are not connected in this
+          product.
+        </p>
       </section>
       <section className="space-y-2">
         <h2 className="text-base font-semibold tracking-tight">6. Sharing</h2>
