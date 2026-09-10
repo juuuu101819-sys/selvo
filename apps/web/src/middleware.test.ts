@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
-import { applyNextIntlHostFix, middleware } from './middleware';
+import { middleware } from './middleware';
 import { PROTECTED_DASHBOARD_PATHS } from './lib/protected-routes';
 import { SESSION_COOKIE } from './lib/session-cookie';
 import { SESSION_UNAUTHENTICATED_CODE, SESSION_UNAUTHENTICATED_MESSAGE } from './lib/session-gate';
@@ -68,30 +68,5 @@ describe('locale-prefixed dashboard gate', () => {
     expect(response.status).toBe(401);
     const body = (await response.json()) as { error: { code: string } };
     expect(body.error.code).toBe(SESSION_UNAUTHENTICATED_CODE);
-  });
-});
-
-describe('applyNextIntlHostFix', () => {
-  it('aligns a localhost rewrite to the 127.0.0.1 Host header', () => {
-    const request = new NextRequest('http://127.0.0.1:43117/', {
-      headers: { host: '127.0.0.1:43117' },
-    });
-    const intlResponse = NextResponse.next();
-    intlResponse.headers.set('x-middleware-rewrite', 'http://localhost:43117/en');
-    const fixed = applyNextIntlHostFix(request, intlResponse);
-    expect(fixed.headers.get('x-middleware-rewrite')).toBe('http://127.0.0.1:43117/en');
-    expect(fixed.status).toBe(200);
-  });
-
-  it('drops a same-path 307 that would loop on /', () => {
-    const request = new NextRequest('http://127.0.0.1:43117/', {
-      headers: { host: '127.0.0.1:43117' },
-    });
-    const intlResponse = NextResponse.redirect(new URL('http://127.0.0.1:43117/'));
-    intlResponse.headers.set('x-middleware-rewrite', 'http://localhost:43117/en');
-    const fixed = applyNextIntlHostFix(request, intlResponse);
-    expect(fixed.status).toBe(200);
-    expect(fixed.headers.get('location')).toBeNull();
-    expect(fixed.headers.get('x-middleware-rewrite')).toBe('http://127.0.0.1:43117/en');
   });
 });

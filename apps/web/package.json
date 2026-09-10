@@ -5,7 +5,7 @@
   "description": "Meridian web app: compare financial routes for a business transaction",
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "next dev --port ${WEB_PORT:-43117} --hostname 127.0.0.1",
+    "dev": "NODE_OPTIONS=\"${NODE_OPTIONS:+$NODE_OPTIONS }--dns-result-order=ipv4first\" next dev --port ${WEB_PORT:-43117} --hostname localhost",
     "build": "next build",
     "start": "next start --port ${WEB_PORT:-43117}",
     "lint": "eslint .",
