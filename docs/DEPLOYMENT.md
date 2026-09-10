@@ -316,3 +316,26 @@ KYB verification is a different question. These flags currently have **zero func
 
 `apps/api/src/routes/tenant-isolation.test.ts` enumerates org-scoped authenticated routes from the
 OpenAPI catalog and asserts Organization A cannot read or mutate Organization B data.
+
+---
+
+## 12. TLS termination (required in staging and production)
+
+The API and web Node processes **listen on HTTP**. They are not a public HTTPS server. Staging and
+production **must** terminate TLS at the reverse proxy or load balancer before traffic reaches
+this process.
+
+| Requirement | Rule |
+| ----------- | ---- |
+| Edge TLS | TLS 1.2 or newer at the proxy. Do not publish `API_PORT` / `WEB_PORT` to the public internet. |
+| Private hop | Proxy forwards to `127.0.0.1` or the private mesh only. |
+| HSTS | `Strict-Transport-Security: max-age=31536000; includeSubDomains`. The production-locked API always sets this header. The web app sets it when `PLATFORM_MODE=production`, or when `NODE_ENV=production` unless `COOKIE_SECURE=false` (HTTP Playwright). Browsers ignore HSTS delivered over plaintext, so local staging compose on `127.0.0.1` remains usable. |
+| Session cookies | `Secure` is required when `PLATFORM_MODE=production`. `COOKIE_SECURE=false` is a startup failure in that mode. |
+| Forwarded proto | **Do not** configure the app to trust `X-Forwarded-Proto` for cookie `Secure` or HTTP→HTTPS redirects. That header is spoofable. The proxy is the only HTTPS boundary. |
+| Certificates | Operator-managed (platform certs or Let’s Encrypt). This repository does not ship private keys. |
+
+A deploy that serves Meridian on public plaintext HTTP is incomplete, even if the process is
+production-locked. Fail-closed safety (501 execution, empty licensed registry, no demo tenants)
+does not substitute for TLS.
+
+Related: [`PRODUCTION_GATES.md`](./PRODUCTION_GATES.md), [`PRODUCTION_AUDIT.md`](./PRODUCTION_AUDIT.md) PA-M12.

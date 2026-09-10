@@ -1,4 +1,4 @@
-import { ShieldCheck } from 'lucide-react';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { StablecoinExplorer } from '@/components/stablecoin-explorer';
 import { fetchMeta, fetchStablecoins } from '@/lib/api/client';
@@ -29,17 +29,7 @@ export default async function StablecoinsPage() {
         </div>
         <StablecoinExplorer catalog={catalog.ok ? catalog.data : null} />
       </main>
-      <footer className="border-border/60 border-t">
-        <div className="text-muted-foreground mx-auto w-full max-w-6xl px-4 py-6 text-xs sm:px-6">
-          <p className="flex items-start gap-1.5">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Indicative sandbox quotes. Adding another stablecoin is a registry row plus adapter
-              rates — the routing engine does not switch on ticker. No RPC, no keys, no custody.
-            </span>
-          </p>
-        </div>
-      </footer>
+      <SiteFooter notice="Indicative sandbox quotes. Adding another stablecoin is a registry row plus adapter rates — the routing engine does not switch on ticker. No RPC, no keys, no custody." />
     </>
   );
 }

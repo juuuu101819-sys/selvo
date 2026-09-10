@@ -79,6 +79,7 @@ export default defineConfig({
         NODE_ENV: 'production',
         WEB_PORT: String(WEB_PORT),
         API_BASE_URL,
+        PUBLIC_WEB_ORIGIN: WEB_BASE_URL,
         // HTTP e2e origin. PLATFORM_MODE is not production, so COOKIE_SECURE=false is allowed.
         COOKIE_SECURE: 'false',
       },

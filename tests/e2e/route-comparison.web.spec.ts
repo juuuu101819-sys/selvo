@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('compares routes for the worked example, best route first', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: /Find the best financial route/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Rank payment routes for businesses and AI agents/i })).toBeVisible();
   await expect(page.getByText('No comparison yet')).toBeVisible();
 
   await page.getByRole('button', { name: /Compare routes/i }).click();

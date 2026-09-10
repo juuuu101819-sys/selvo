@@ -1,5 +1,5 @@
-import { ShieldCheck } from 'lucide-react';
 import { DefiExplorer } from '@/components/defi-explorer';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchDefiLiquidity, fetchMeta } from '@/lib/api/client';
 
@@ -28,18 +28,7 @@ export default async function DefiPage() {
         </div>
         <DefiExplorer catalog={catalog.ok ? catalog.data : null} />
       </main>
-      <footer className="border-border/60 border-t">
-        <div className="text-muted-foreground mx-auto w-full max-w-6xl px-4 py-6 text-xs sm:px-6">
-          <p className="flex items-start gap-1.5">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Indicative sandbox quotes. Adding Ethereum, Base, Arbitrum or Solana is a registry
-              row plus an adapter — the routing engine does not switch on chain. No RPC, no keys,
-              no custody, no submitted swap.
-            </span>
-          </p>
-        </div>
-      </footer>
+      <SiteFooter notice="Indicative sandbox quotes. Adding Ethereum, Base, Arbitrum or Solana is a registry row plus an adapter — the routing engine does not switch on chain. No RPC, no keys, no custody, no submitted swap." />
     </>
   );
 }

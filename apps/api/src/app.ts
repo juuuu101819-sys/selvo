@@ -7,6 +7,7 @@ import type { OidcClient } from './auth/oidc-client.js';
 import { shouldProvisionDemoTenants, type AppConfig } from './config/env.js';
 import { createContainer, type AppContainer } from './container.js';
 import { registerErrorHandling } from './http/errors.js';
+import { shouldAttachHsts, HSTS_HEADER_VALUE } from './http/transport-security.js';
 import { PinoLoggerAdapter } from './logging/pino-logger.js';
 import { registerImplementedRouteCollector, type ImplementedRoute } from './openapi/implemented.js';
 import { registerRoutes } from './routes/index.js';
@@ -106,6 +107,9 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
 
   app.addHook('onRequest', (request, reply, done) => {
     reply.header('X-Request-Id', request.id);
+    if (shouldAttachHsts(config.productionLocked)) {
+      reply.header('Strict-Transport-Security', HSTS_HEADER_VALUE);
+    }
     done();
   });
 

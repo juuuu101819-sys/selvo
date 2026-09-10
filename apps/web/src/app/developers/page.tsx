@@ -1,5 +1,5 @@
-import { ShieldCheck } from 'lucide-react';
 import { RoutingApiExplorer } from '@/components/routing-api-explorer';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchAssets, fetchCurrencies, fetchMeta } from '@/lib/api/client';
 import { readSessionToken } from '@/lib/session';
@@ -35,17 +35,7 @@ export default async function DevelopersPage() {
           signedIn={token !== null}
         />
       </main>
-      <footer className="border-border/60 border-t">
-        <div className="text-muted-foreground mx-auto w-full max-w-6xl px-4 py-6 text-xs sm:px-6">
-          <p className="flex items-start gap-1.5">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Organization id is taken from the verified principal. API keys never store plaintext.
-              Rate limits apply. Request logs redact secrets.
-            </span>
-          </p>
-        </div>
-      </footer>
+      <SiteFooter notice="Organization id is taken from the verified principal. API keys never store plaintext. Rate limits apply. Request logs redact secrets." />
     </>
   );
 }

@@ -13,11 +13,32 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 });
 
+const title = 'Meridian — Global financial routing';
+const description =
+  'Non-custodial routing hub for businesses and AI agents: compare traditional finance, ' +
+  'stablecoin and wholesale liquidity routes. Meridian never holds funds or keys and does not ' +
+  'execute, settle, or custody funds.';
+
 export const metadata: Metadata = {
-  title: 'Meridian — Global financial routing',
-  description:
-    'Non-custodial routing hub: compare traditional finance, stablecoin and wholesale liquidity ' +
-    'routes. Meridian never holds funds or keys and does not execute, settle, or custody funds.',
+  metadataBase: new URL(process.env.PUBLIC_WEB_ORIGIN ?? 'http://127.0.0.1:43117'),
+  title: {
+    default: title,
+    template: '%s · Meridian',
+  },
+  description,
+  applicationName: 'Meridian',
+  openGraph: {
+    title,
+    description,
+    type: 'website',
+    siteName: 'Meridian',
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title,
+    description,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

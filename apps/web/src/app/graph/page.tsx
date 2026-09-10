@@ -1,5 +1,5 @@
-import { ShieldCheck } from 'lucide-react';
 import { GraphExplorer } from '@/components/graph-explorer';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMeta, fetchRouteGraph } from '@/lib/api/client';
 
@@ -27,17 +27,7 @@ export default async function GraphPage() {
         </div>
         <GraphExplorer graph={graph.ok ? graph.data : null} />
       </main>
-      <footer className="border-border/60 border-t">
-        <div className="text-muted-foreground mx-auto w-full max-w-6xl px-4 py-6 text-xs sm:px-6">
-          <p className="flex items-start gap-1.5">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Graph metadata is indicative. Meridian never holds funds, keys or wallets, and does
-              not submit a conversion, swap or payout.
-            </span>
-          </p>
-        </div>
-      </footer>
+      <SiteFooter notice="Graph metadata is indicative. Meridian never holds funds, keys or wallets, and does not submit a conversion, swap or payout." />
     </>
   );
 }

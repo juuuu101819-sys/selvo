@@ -1,5 +1,5 @@
-import { ShieldCheck } from 'lucide-react';
 import { RouteExplorer } from '@/components/route-explorer';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMeta } from '@/lib/api/client';
 
@@ -25,17 +25,7 @@ export default async function RailsPage() {
         </div>
         <RouteExplorer />
       </main>
-      <footer className="border-border/60 border-t">
-        <div className="text-muted-foreground mx-auto w-full max-w-6xl px-4 py-6 text-xs sm:px-6">
-          <p className="flex items-start gap-1.5">
-            <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>
-              Indicative sandbox quotes. Meridian never holds funds, keys or wallets, and does not
-              execute a swap, ramp or payout.
-            </span>
-          </p>
-        </div>
-      </footer>
+      <SiteFooter notice="Indicative sandbox quotes. Meridian never holds funds, keys or wallets, and does not execute a swap, ramp or payout." />
     </>
   );
 }

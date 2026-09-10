@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { LoginForm } from '@/app/login/login-form';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMe, fetchMeta } from '@/lib/api/client';
 import { DEMO_LOGIN } from '@/lib/demo-credentials';
@@ -62,6 +63,7 @@ export default async function LoginPage({
           </aside>
         ) : null}
       </main>
+      <SiteFooter notice="Meridian is non-custodial. Sign-in opens an organization dashboard for stored quotes. It never holds customer funds or moves money." />
     </>
   );
 }

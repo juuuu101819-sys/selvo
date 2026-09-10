@@ -9,7 +9,7 @@ import { expect, test } from '@playwright/test';
 test('renders the comparison flow without horizontal overflow', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByRole('heading', { name: /Find the best financial route/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Rank payment routes for businesses and AI agents/i })).toBeVisible();
 
   await page.getByRole('button', { name: /Compare routes/i }).click();
   await expect(page.getByRole('region', { name: /Route comparison results/i })).toBeVisible();

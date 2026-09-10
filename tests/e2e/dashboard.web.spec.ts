@@ -116,7 +116,7 @@ test('invite acceptance page is public', async ({ page }) => {
 
 test('public route comparison still works without signing in', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /Find the best financial route/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Rank payment routes for businesses and AI agents/i })).toBeVisible();
   await page.getByRole('button', { name: /Compare routes/i }).click();
   await expect(page.getByRole('region', { name: /Route comparison results/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Execute/i })).toHaveCount(0);

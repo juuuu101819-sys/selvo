@@ -81,4 +81,12 @@ describe('CI hardening (PA-H11, PA-H12)', () => {
     expect(read('.env.staging.example')).toMatch(/STAGING_AUTH_SECRET=/);
     expect(read('.env.staging.example')).not.toMatch(/MeridianDemo/);
   });
+
+  it('requires TLS at the reverse proxy and forbids trusting X-Forwarded-Proto', () => {
+    const deployment = read('docs/DEPLOYMENT.md');
+    expect(deployment).toMatch(/Strict-Transport-Security/);
+    expect(deployment).toMatch(/max-age=31536000; includeSubDomains/);
+    expect(deployment).toMatch(/Do not[\s\S]*X-Forwarded-Proto/);
+    expect(deployment).toMatch(/listen on HTTP/);
+  });
 });

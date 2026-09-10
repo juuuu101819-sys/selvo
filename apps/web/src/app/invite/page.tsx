@@ -1,3 +1,4 @@
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMeta } from '@/lib/api/client';
 import { InviteForm } from './invite-form';
@@ -27,6 +28,7 @@ export default async function InvitePage({
           <InviteForm initialToken={token ?? ''} />
         </div>
       </main>
+      <SiteFooter notice="Accepting an invite sets a password. It does not verify KYB, attach pricing, enable execution, or move funds." />
     </>
   );
 }
