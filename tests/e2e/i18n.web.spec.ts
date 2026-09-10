@@ -15,9 +15,9 @@ test('serves a locale prefix with matching html lang', async ({ page }) => {
   await expect(page.locator('html')).toHaveAttribute('lang', 'ko');
   await expect(page).toHaveURL(/\/ko\/?$/);
   await expect(
-    page.getByRole('heading', { name: /Rank payment routes for businesses and AI agents/i }),
+    page.getByRole('heading', { name: '기업과 AI 에이전트를 위한 결제 경로 랭킹' }),
   ).toBeVisible();
-  await expect(page.getByRole('navigation', { name: /Legal/i })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: '법적 고지' })).toBeVisible();
 });
 
 test('language switcher prefixes the path and stores meridian_locale', async ({ page, context }) => {

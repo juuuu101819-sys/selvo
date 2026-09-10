@@ -30,10 +30,12 @@ describe('message catalogs', () => {
   });
 
   it.each([...LOCALES].filter((locale) => locale !== 'en'))(
-    '%s currently copies English values as the fallback',
+    '%s keeps Sandbox and may still use English for untranslated keys',
     (locale) => {
-      const catalog = JSON.parse(readFileSync(join(messagesDir, `${locale}.json`), 'utf8')) as unknown;
-      expect(catalog).toEqual(en);
+      const catalog = JSON.parse(readFileSync(join(messagesDir, `${locale}.json`), 'utf8')) as {
+        header: { sandbox: string };
+      };
+      expect(catalog.header.sandbox).toBe('Sandbox');
     },
   );
 });

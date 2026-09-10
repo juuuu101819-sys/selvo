@@ -28,10 +28,10 @@ describe('locale render and catalog fallback', () => {
     expect(html).toContain('No comparison yet');
   });
 
-  it('falls back to English copy when rendering a non-English locale catalog', () => {
+  it('renders EmptyState from the Korean catalog', () => {
     const html = renderWithMessages('ko', ko, createElement(EmptyState));
-    expect(html).toContain(en.states.emptyTitle);
-    expect(ko.states.emptyTitle).toBe(en.states.emptyTitle);
+    expect(html).toContain(ko.states.emptyTitle);
+    expect(html).not.toContain(en.states.emptyTitle);
   });
 
   it('shows API_TIMEOUT display copy from the catalog while keeping the code value', () => {
@@ -53,9 +53,10 @@ describe('locale render and catalog fallback', () => {
   });
 
   it('shows API_UNREACHABLE and NO_ROUTES_AVAILABLE titles from the catalog', () => {
+    const de = JSON.parse(readFileSync(join(messagesDir, 'de.json'), 'utf8')) as typeof enMessages;
     const unreachable = renderWithMessages(
       'de',
-      ko,
+      de,
       createElement(ErrorState, {
         failure: {
           code: 'API_UNREACHABLE',
@@ -66,7 +67,7 @@ describe('locale render and catalog fallback', () => {
       }),
     );
     expect(unreachable).toContain('API_UNREACHABLE');
-    expect(unreachable).toContain(en.errors.apiUnreachable);
+    expect(unreachable).toContain(de.errors.apiUnreachable);
 
     const noRoutes = renderWithMessages(
       'fr',
@@ -96,7 +97,7 @@ describe('locale render and catalog fallback', () => {
     }
   });
 
-  it('renders comparison form labels from the catalog, including a non-English locale fallback', () => {
+  it('renders comparison form labels from the English and Korean catalogs', () => {
     const form = createElement(ComparisonForm, {
       currencies: [
         { code: 'USD', name: 'US Dollar', exponent: 2 },
@@ -130,12 +131,13 @@ describe('locale render and catalog fallback', () => {
     expect(enHtml).toContain(en.comparison.compare);
 
     const koHtml = renderWithMessages('ko', ko, form);
-    expect(koHtml).toContain(en.comparison.youSend);
-    expect(ko.comparison.youSend).toBe(en.comparison.youSend);
+    expect(koHtml).toContain(ko.comparison.youSend);
+    expect(koHtml).not.toContain(en.comparison.youSend);
   });
 
-  it('labels the results skeleton from the catalog', () => {
-    const html = renderWithMessages('ja', ko, createElement(ResultsSkeleton));
-    expect(html).toContain(`aria-label="${en.states.comparingRoutes}"`);
+  it('labels the results skeleton from the Japanese catalog', () => {
+    const ja = JSON.parse(readFileSync(join(messagesDir, 'ja.json'), 'utf8')) as typeof enMessages;
+    const html = renderWithMessages('ja', ja, createElement(ResultsSkeleton));
+    expect(html).toContain(`aria-label="${ja.states.comparingRoutes}"`);
   });
 });
