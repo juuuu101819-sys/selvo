@@ -1,6 +1,7 @@
 'use client';
 
 import { Clock3, TimerOff } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { classifyQuoteExpiry, formatRemaining, type QuoteExpiryState } from '@/lib/quote-expiry';
@@ -35,6 +36,7 @@ export function useQuoteExpiry(expiresAt: string | null): QuoteExpiryState {
  * arithmetic themselves, at exactly the moment it matters.
  */
 export function QuoteExpiryBadge({ expiresAt }: { expiresAt: string | null }) {
+  const t = useTranslations('comparison');
   const expiry = useQuoteExpiry(expiresAt);
 
   switch (expiry.state) {
@@ -44,21 +46,21 @@ export function QuoteExpiryBadge({ expiresAt }: { expiresAt: string | null }) {
       return (
         <Badge variant="outline" className="gap-1 font-mono text-xs tabular-nums">
           <Clock3 className="size-3" aria-hidden />
-          Quote valid {formatRemaining(expiry.remainingMs)}
+          {t('quoteValid', { remaining: formatRemaining(expiry.remainingMs) })}
         </Badge>
       );
     case 'expiring':
       return (
         <Badge className="gap-1 bg-amber-500 font-mono text-xs tabular-nums text-white hover:bg-amber-500">
           <Clock3 className="size-3" aria-hidden />
-          Expires in {formatRemaining(expiry.remainingMs)}
+          {t('expiresIn', { remaining: formatRemaining(expiry.remainingMs) })}
         </Badge>
       );
     case 'expired':
       return (
         <Badge variant="destructive" className="gap-1 text-xs">
           <TimerOff className="size-3" aria-hidden />
-          Quote expired
+          {t('quoteExpired')}
         </Badge>
       );
   }

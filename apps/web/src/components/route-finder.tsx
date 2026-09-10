@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { compareRoutes } from '@/app/actions';
 import { ComparisonForm, type FormValue } from '@/components/comparison-form';
 import { ComparisonResult } from '@/components/comparison-result';
@@ -23,6 +24,7 @@ const INITIAL_FORM: FormValue = {
 };
 
 export function RouteFinder({ meta }: { meta: MetaDto }) {
+  const t = useTranslations('comparison');
   const [form, setForm] = useState<FormValue>(INITIAL_FORM);
   const [state, setState] = useState<ViewState>({ kind: 'idle' });
   const [isPending, startTransition] = useTransition();
@@ -49,11 +51,8 @@ export function RouteFinder({ meta }: { meta: MetaDto }) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Compare a transaction</CardTitle>
-          <CardDescription>
-            Every route is priced against the mid-market rate, so a zero-fee quote on a wide spread
-            cannot look cheaper than an explicit fee on a keen rate.
-          </CardDescription>
+          <CardTitle>{t('cardTitle')}</CardTitle>
+          <CardDescription>{t('cardDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <ComparisonForm

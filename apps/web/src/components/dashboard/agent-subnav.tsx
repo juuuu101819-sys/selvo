@@ -1,10 +1,21 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
-  { href: (id: string) => `/dashboard/agents/${id}`, label: 'Overview', suffix: '' },
-  { href: (id: string) => `/dashboard/agents/${id}/payments`, label: 'Payments', suffix: '/payments' },
-  { href: (id: string) => `/dashboard/agents/${id}/policies`, label: 'Policies', suffix: '/policies' },
+  { href: (id: string) => `/dashboard/agents/${id}`, labelKey: 'agentOverview' as const, suffix: '' },
+  {
+    href: (id: string) => `/dashboard/agents/${id}/payments`,
+    labelKey: 'agentPayments' as const,
+    suffix: '/payments',
+  },
+  {
+    href: (id: string) => `/dashboard/agents/${id}/policies`,
+    labelKey: 'agentPolicies' as const,
+    suffix: '/policies',
+  },
 ] as const;
 
 export function AgentSubnav({
@@ -16,9 +27,11 @@ export function AgentSubnav({
   agentName: string;
   pathname: string;
 }) {
+  const t = useTranslations('dashboard');
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <nav aria-label={`${agentName} dashboard`} className="-mx-1 overflow-x-auto">
+      <nav aria-label={t('agentDashAria', { name: agentName })} className="-mx-1 overflow-x-auto">
         <ul className="flex min-w-max gap-1">
           {LINKS.map((link) => {
             const href = link.href(agentId);
@@ -38,7 +51,7 @@ export function AgentSubnav({
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </Link>
               </li>
             );
@@ -49,7 +62,7 @@ export function AgentSubnav({
         href="/dashboard/agents"
         className="text-muted-foreground hover:text-foreground text-sm"
       >
-        All agents
+        {t('allAgents')}
       </Link>
     </div>
   );

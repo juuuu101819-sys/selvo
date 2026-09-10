@@ -1,27 +1,30 @@
+'use client';
+
 import { AlertCircle, Route, ServerCrash } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ApiFailure } from '@/lib/api/types';
-import { comparisonErrorTitle } from '@/lib/error-title';
+import { comparisonErrorTitleKey } from '@/lib/error-title';
 
 /** Shown before the first comparison: explains the product rather than showing a blank panel. */
 export function EmptyState() {
+  const t = useTranslations('states');
+
   return (
     <div className="border-border/60 rounded-xl border border-dashed p-8 text-center">
       <Route className="text-muted-foreground mx-auto size-8" aria-hidden />
-      <h2 className="mt-3 text-base font-semibold">No comparison yet</h2>
-      <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-        Enter an amount and a currency pair to compare bank FX, payment institution, stablecoin and
-        wholesale liquidity routes side by side. Every route is priced against the mid-market rate,
-        so the all-in cost is comparable.
-      </p>
+      <h2 className="mt-3 text-base font-semibold">{t('emptyTitle')}</h2>
+      <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">{t('emptyBody')}</p>
     </div>
   );
 }
 
 export function ResultsSkeleton() {
+  const t = useTranslations('states');
+
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Comparing routes">
+    <div className="space-y-6" aria-busy="true" aria-label={t('comparingRoutes')}>
       <Skeleton className="h-64 w-full rounded-xl" />
       <div className="space-y-3">
         {[0, 1, 2].map((index) => (
@@ -38,16 +41,17 @@ export function ResultsSkeleton() {
  *
  * An unreachable API and a rejected request are different problems with different fixes, so they
  * get different messages: one tells you to start the server, the other tells you what was wrong
- * with the input.
+ * with the input. The API `code` and `message` body are shown verbatim.
  */
 export function ErrorState({ failure }: { failure: ApiFailure }) {
+  const t = useTranslations('errors');
   const unreachable = failure.code === 'API_UNREACHABLE' || failure.code === 'API_TIMEOUT';
   const issues = extractIssues(failure.details);
 
   return (
     <Alert variant="destructive">
       {unreachable ? <ServerCrash aria-hidden /> : <AlertCircle aria-hidden />}
-      <AlertTitle>{comparisonErrorTitle(failure)}</AlertTitle>
+      <AlertTitle>{t(comparisonErrorTitleKey(failure))}</AlertTitle>
       <AlertDescription>
         <p>{failure.message}</p>
         {issues.length > 0 && (

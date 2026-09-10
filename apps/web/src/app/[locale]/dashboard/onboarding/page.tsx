@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -12,55 +13,20 @@ import { Progress } from '@/components/ui/progress';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { ErrorState } from '@/components/states';
 import { fetchDashboardOnboarding } from '@/lib/api/client';
-import type { KybStatusDto, OnboardingSnapshotDto, OnboardingStepDto } from '@/lib/api/types';
+import type { KybStatusDto, OnboardingStepDto } from '@/lib/api/types';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
 import { KybSubmitForm } from './kyb-submit';
 
-const KYB_LABEL: Record<KybStatusDto, string> = {
-  unverified: 'Unverified',
-  pending: 'Pending manual review',
-  verified: 'Verified',
-  rejected: 'Rejected',
-};
-
-function stepBadge(step: OnboardingStepDto) {
-  if (step.complete) {
-    return <Badge>Complete</Badge>;
-  }
-  if (step.id === 'kyb' && step.status === 'rejected') {
-    return <Badge variant="destructive">Rejected</Badge>;
-  }
-  if (step.id === 'kyb' && step.status === 'pending') {
-    return <Badge variant="secondary">Pending review</Badge>;
-  }
-  return <Badge variant="outline">Incomplete</Badge>;
-}
-
-function stepDetail(snapshot: OnboardingSnapshotDto, step: OnboardingStepDto): string {
-  switch (step.id) {
-    case 'organization':
-      return `Tenant ${snapshot.organizationId} exists. New organizations start with no elevated scopes.`;
-    case 'kyb':
-      if (snapshot.kybStatus === 'rejected' && snapshot.kybReason !== null) {
-        return `Rejected: ${snapshot.kybReason}`;
-      }
-      if (snapshot.kybStatus === 'pending') {
-        return 'Submitted for manual review. A vendor timeout or error never auto-approves.';
-      }
-      if (snapshot.kybStatus === 'verified') {
-        return snapshot.kybReason ?? 'Manual review recorded a verified decision.';
-      }
-      return 'Not submitted. Sandbox quotes stay available; licensed quotes stay blocked.';
-    case 'pricing':
-      return snapshot.pricingConfigured
-        ? 'An explicit CustomerPricing rule is in force. Zero take-rate counts only when that row exists.'
-        : 'No CustomerPricing row. There is no silent default take-rate.';
-    case 'api_key':
-      return snapshot.apiKeyIssued
-        ? 'At least one unrevoked organization API key exists. Issue further keys from Settings.'
-        : 'No API key yet. Owners and admins issue keys from Settings after the rest of onboarding.';
+function kybStatusKey(status: KybStatusDto): 'kybUnverified' | 'kybPending' | 'kybVerified' | 'kybRejected' {
+  switch (status) {
+    case 'pending':
+      return 'kybPending';
+    case 'verified':
+      return 'kybVerified';
+    case 'rejected':
+      return 'kybRejected';
     default:
-      return '';
+      return 'kybUnverified';
   }
 }
 
@@ -75,39 +41,71 @@ export default async function DashboardOnboardingPage() {
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('onboarding');
+  const tCommon = await getTranslations('common');
   const snapshot = result.data;
   const completed = snapshot.steps.filter((step) => step.complete).length;
   const total = snapshot.steps.length;
   const canSubmitKyb =
     (session.me.role === 'owner' || session.me.role === 'admin') && snapshot.kybStatus === 'unverified';
 
+  const stepBadge = (step: OnboardingStepDto) => {
+    if (step.complete) {
+      return <Badge>{t('complete')}</Badge>;
+    }
+    if (step.id === 'kyb' && step.status === 'rejected') {
+      return <Badge variant="destructive">{t('rejected')}</Badge>;
+    }
+    if (step.id === 'kyb' && step.status === 'pending') {
+      return <Badge variant="secondary">{t('pendingReview')}</Badge>;
+    }
+    return <Badge variant="outline">{t('incomplete')}</Badge>;
+  };
+
+  const stepDetail = (step: OnboardingStepDto): string => {
+    switch (step.id) {
+      case 'organization':
+        return t('orgExists', { id: snapshot.organizationId });
+      case 'kyb':
+        if (snapshot.kybStatus === 'rejected' && snapshot.kybReason !== null) {
+          return t('kybRejectedReason', { reason: snapshot.kybReason });
+        }
+        if (snapshot.kybStatus === 'pending') {
+          return t('kybPendingDetail');
+        }
+        if (snapshot.kybStatus === 'verified') {
+          return snapshot.kybReason ?? t('kybVerifiedDetail');
+        }
+        return t('kybNotSubmitted');
+      case 'pricing':
+        return snapshot.pricingConfigured ? t('pricingConfigured') : t('pricingMissing');
+      case 'api_key':
+        return snapshot.apiKeyIssued ? t('apiKeyIssued') : t('apiKeyMissing');
+      default:
+        return '';
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Organization onboarding</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Sales-assisted, invite-only. Each step below is the live backend state for{' '}
-          {session.me.organization.name} — not a preview of work that has not happened.
+          {t('lede', { name: session.me.organization.name })}
         </p>
       </div>
 
       <Alert>
         <AlertTitle>
-          {snapshot.realTransactionEligible
-            ? 'KYB and contracted pricing are complete'
-            : 'Not eligible for licensed quotes'}
+          {snapshot.realTransactionEligible ? t('eligibleTitle') : t('notEligibleTitle')}
         </AlertTitle>
         <AlertDescription>
-          {snapshot.realTransactionEligible
-            ? 'This organization may receive licensed-provider quotes once a partner of record exists. Execution stays unimplemented (POST /api/v1/executions → 501). Customer funds never touch Meridian.'
-            : 'Sandbox and demo quotes are available for exploration. Licensed-provider quotes and any future execution require verified KYB and an explicit CustomerPricing rule. Onboarding itself does not enable execution.'}
+          {snapshot.realTransactionEligible ? t('eligibleBody') : t('notEligibleBody')}
         </AlertDescription>
       </Alert>
 
       <div className="space-y-2">
-        <p className="text-sm font-medium">
-          Checklist · {completed} of {total} complete
-        </p>
+        <p className="text-sm font-medium">{t('checklist', { completed, total })}</p>
         <Progress value={(completed / total) * 100} />
       </div>
 
@@ -118,7 +116,7 @@ export default async function DashboardOnboardingPage() {
               <CardHeader className="flex flex-row items-start justify-between gap-3">
                 <div>
                   <CardTitle>{step.label}</CardTitle>
-                  <CardDescription>{stepDetail(snapshot, step)}</CardDescription>
+                  <CardDescription>{stepDetail(step)}</CardDescription>
                 </div>
                 {stepBadge(step)}
               </CardHeader>
@@ -133,7 +131,7 @@ export default async function DashboardOnboardingPage() {
                     href="/dashboard/settings"
                     className="text-foreground text-sm underline underline-offset-4"
                   >
-                    Open settings to issue an API key
+                    {t('openSettings')}
                   </Link>
                 </CardContent>
               ) : null}
@@ -144,30 +142,29 @@ export default async function DashboardOnboardingPage() {
 
       <dl className="text-muted-foreground grid gap-2 text-xs sm:grid-cols-3">
         <div>
-          <dt>Onboarding mode</dt>
+          <dt>{t('mode')}</dt>
           <dd className="text-foreground font-mono">{snapshot.mode}</dd>
         </div>
         <div>
-          <dt>KYB vendor</dt>
+          <dt>{t('kybVendor')}</dt>
           <dd className="text-foreground font-mono">
-            {snapshot.kybVendor} · {KYB_LABEL[snapshot.kybStatus]}
+            {snapshot.kybVendor} · {t(kybStatusKey(snapshot.kybStatus))}
           </dd>
         </div>
         <div>
-          <dt>Pricing model</dt>
+          <dt>{t('pricingModel')}</dt>
           <dd className="text-foreground font-mono">{snapshot.pricingModel}</dd>
         </div>
         <div>
-          <dt>Licensed provider configured</dt>
-          <dd className="text-foreground">{snapshot.licensedProviderConfigured ? 'yes' : 'no'}</dd>
+          <dt>{t('licensedConfigured')}</dt>
+          <dd className="text-foreground">
+            {snapshot.licensedProviderConfigured ? tCommon('yes') : tCommon('no')}
+          </dd>
         </div>
       </dl>
 
       {!snapshot.licensedProviderConfigured ? (
-        <DashboardEmpty title="Licensed quoting is still blocked at the platform">
-          PHASE 30 has no named licensed partner of record. Completing this checklist does not
-          invent one, and it does not turn executions on.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('licensedBlockedTitle')}>{t('licensedBlockedBody')}</DashboardEmpty>
       ) : null}
     </div>
   );

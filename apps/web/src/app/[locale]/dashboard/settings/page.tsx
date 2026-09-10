@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { ApiKeyManager } from '@/components/dashboard/api-key-manager';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,8 @@ export default async function DashboardSettingsPage() {
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('dashboard');
+  const tCommon = await getTranslations('common');
   const { organization, members, apiKeys, role, auth } = result.data;
   const mfa = await fetchMfaStatus(session.token);
   const canManageOrg = role === 'owner' || role === 'admin' || session.me.role === 'owner' || session.me.role === 'admin';
@@ -33,30 +36,29 @@ export default async function DashboardSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Organization settings</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('settingsTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Membership and API key prefixes for {organization?.name ?? session.me.organization.name}.
-          Secrets are never returned.
+          {t('settingsLede', { name: organization?.name ?? session.me.organization.name })}
         </p>
       </div>
 
       <section className="border-border rounded-xl border p-4 sm:p-5">
-        <h2 className="text-sm font-semibold">Tenant</h2>
+        <h2 className="text-sm font-semibold">{t('tenant')}</h2>
         <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <dt className="text-muted-foreground">Name</dt>
-            <dd>{organization?.name ?? '—'}</dd>
+            <dt className="text-muted-foreground">{t('name')}</dt>
+            <dd>{organization?.name ?? tCommon('emDash')}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Slug</dt>
-            <dd className="font-mono text-xs">{organization?.slug ?? '—'}</dd>
+            <dt className="text-muted-foreground">{t('slug')}</dt>
+            <dd className="font-mono text-xs">{organization?.slug ?? tCommon('emDash')}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Country</dt>
-            <dd className="font-mono text-xs">{organization?.countryCode ?? '—'}</dd>
+            <dt className="text-muted-foreground">{t('country')}</dt>
+            <dd className="font-mono text-xs">{organization?.countryCode ?? tCommon('emDash')}</dd>
           </div>
           <div>
-            <dt className="text-muted-foreground">Your role</dt>
+            <dt className="text-muted-foreground">{t('yourRole')}</dt>
             <dd>
               <Badge variant="secondary">{role ?? session.me.role ?? 'member'}</Badge>
             </dd>
@@ -65,19 +67,17 @@ export default async function DashboardSettingsPage() {
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold">Members</h2>
+        <h2 className="text-sm font-semibold">{t('members')}</h2>
         {members.length === 0 ? (
-          <DashboardEmpty title="No members">
-            This organization has no active members.
-          </DashboardEmpty>
+          <DashboardEmpty title={t('noMembers')}>{t('noMembersBody')}</DashboardEmpty>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>{t('colName')}</TableHead>
+                <TableHead>{t('colEmail')}</TableHead>
+                <TableHead>{t('colRole')}</TableHead>
+                <TableHead>{t('colStatus')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

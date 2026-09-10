@@ -1,3 +1,6 @@
+'use client';
+
+import { useLocale, useTranslations } from 'next-intl';
 import type { MoneyJson, RouteDto } from '@/lib/api/types';
 import { formatBps, formatMoney, formatRate, formatTimestamp } from '@/lib/format';
 
@@ -9,31 +12,36 @@ import { formatBps, formatMoney, formatRate, formatTimestamp } from '@/lib/forma
  * treasury team argue with a provider about a specific number instead of a headline percentage.
  */
 export function CostBreakdown({ route }: { route: RouteDto }) {
+  const t = useTranslations('comparison');
+  const locale = useLocale();
   const { breakdown } = route;
 
   const rows: readonly { label: string; hint?: string; amount: MoneyJson }[] = [
     {
-      label: 'FX spread',
-      hint: `Offered ${formatRate(route.offeredRate.value)} against mid-market ${formatRate(
-        route.midMarketRate.value,
-      )}`,
+      label: t('fxSpread'),
+      hint: t('fxSpreadHint', {
+        offered: formatRate(route.offeredRate.value),
+        mid: formatRate(route.midMarketRate.value),
+      }),
       amount: breakdown.fxSpreadCost,
     },
     {
-      label: 'Sending fees',
-      hint: 'Valued at the mid-market rate',
+      label: t('sendingFees'),
+      hint: t('valuedAtMid'),
       amount: breakdown.sourceFeeCost,
     },
     {
-      label: 'Meridian platform fee',
-      hint: 'Charged by Meridian, not the provider',
+      label: t('meridianPlatformFee'),
+      hint: t('chargedByMeridian'),
       amount: breakdown.platformFeeCost,
     },
-    { label: 'Receiving fees', amount: breakdown.destinationFeeCost },
+    { label: t('receivingFees'), amount: breakdown.destinationFeeCost },
     {
-      label: 'Expected slippage',
+      label: t('expectedSlippage'),
       hint:
-        Number(route.slippageBps) > 0 ? formatBps(route.slippageBps) : 'Firm price, no slippage',
+        Number(route.slippageBps) > 0
+          ? formatBps(route.slippageBps, 1, locale)
+          : t('firmPrice'),
       amount: breakdown.slippageCost,
     },
   ];
@@ -43,8 +51,10 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
       <div>
         <table className="w-full">
           <caption className="text-muted-foreground mb-2 text-left text-xs">
-            All figures in {route.totalCost.currency}, measured against a mid-market benchmark of{' '}
-            {formatMoney(route.benchmarkAmount)}.
+            {t('breakdownCaption', {
+              currency: route.totalCost.currency,
+              amount: formatMoney(route.benchmarkAmount, locale),
+            })}
           </caption>
           <tbody>
             {rows.map((row) => (
@@ -56,29 +66,27 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
                   )}
                 </th>
                 <td className="py-2 text-right font-mono tabular-nums">
-                  {formatMoney(row.amount)}
+                  {formatMoney(row.amount, locale)}
                 </td>
               </tr>
             ))}
             {breakdown.roundingAdjustment.minorUnits !== '0' && (
               <tr className="border-border/40 border-b last:border-0">
                 <th scope="row" className="py-2 pr-3 text-left font-normal">
-                  Rounding
-                  <span className="text-muted-foreground block text-xs">
-                    Sub-minor-unit residue, so the breakdown balances exactly
-                  </span>
+                  {t('rounding')}
+                  <span className="text-muted-foreground block text-xs">{t('roundingHint')}</span>
                 </th>
                 <td className="py-2 text-right font-mono tabular-nums">
-                  {formatMoney(breakdown.roundingAdjustment)}
+                  {formatMoney(breakdown.roundingAdjustment, locale)}
                 </td>
               </tr>
             )}
             <tr>
               <th scope="row" className="pt-3 pr-3 text-left font-semibold">
-                Total cost
+                {t('totalCostLabel')}
               </th>
               <td className="pt-3 text-right font-mono font-semibold tabular-nums">
-                {formatMoney(breakdown.totalCost)}
+                {formatMoney(breakdown.totalCost, locale)}
               </td>
             </tr>
           </tbody>
@@ -88,7 +96,7 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
       {breakdown.appliedFees.length > 0 && (
         <div>
           <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Fees applied
+            {t('feesApplied')}
           </h4>
           <ul className="space-y-1">
             {breakdown.appliedFees.map((fee) => (
@@ -96,12 +104,12 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
                 <span>
                   {fee.label}
                   <span className="text-muted-foreground ml-1 text-xs">
-                    ({fee.side === 'source' ? 'sending' : 'receiving'}
-                    {fee.rateBps !== null ? `, ${formatBps(fee.rateBps)}` : ''}
-                    {fee.capped ? ', capped' : ''})
+                    ({fee.side === 'source' ? t('sending') : t('receiving')}
+                    {fee.rateBps !== null ? `, ${formatBps(fee.rateBps, 1, locale)}` : ''}
+                    {fee.capped ? `, ${t('capped')}` : ''})
                   </span>
                 </span>
-                <span className="font-mono tabular-nums">{formatMoney(fee.amount)}</span>
+                <span className="font-mono tabular-nums">{formatMoney(fee.amount, locale)}</span>
               </li>
             ))}
           </ul>
@@ -110,31 +118,34 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
 
       <dl className="text-muted-foreground grid gap-1 text-xs sm:grid-cols-2">
         <div className="flex gap-1">
-          <dt>Quoted at</dt>
-          <dd className="font-mono">{formatTimestamp(route.quote.quotedAt)}</dd>
+          <dt>{t('quotedAt')}</dt>
+          <dd className="font-mono">{formatTimestamp(route.quote.quotedAt, locale)}</dd>
         </div>
         {route.quote.freshness !== null && route.quote.freshness !== undefined && (
           <div className="flex gap-1">
-            <dt>Quote age</dt>
+            <dt>{t('quoteAge')}</dt>
             <dd className="font-mono">
-              {route.quote.freshness.ageSeconds}s ({route.quote.freshness.state})
+              {t('quoteAgeValue', {
+                count: route.quote.freshness.ageSeconds,
+                state: route.quote.freshness.state,
+              })}
             </dd>
           </div>
         )}
         {route.quote.expiresAt !== null && (
           <div className="flex gap-1">
-            <dt>Quote expires</dt>
-            <dd className="font-mono">{formatTimestamp(route.quote.expiresAt)}</dd>
+            <dt>{t('quoteExpires')}</dt>
+            <dd className="font-mono">{formatTimestamp(route.quote.expiresAt, locale)}</dd>
           </div>
         )}
         {route.quote.quoteReference !== null && (
           <div className="flex gap-1">
-            <dt>Provider reference</dt>
+            <dt>{t('providerReference')}</dt>
             <dd className="font-mono">{route.quote.quoteReference}</dd>
           </div>
         )}
         <div className="flex gap-1">
-          <dt>Pricing version</dt>
+          <dt>{t('pricingVersion')}</dt>
           <dd className="font-mono">{route.quote.pricingVersion}</dd>
         </div>
       </dl>

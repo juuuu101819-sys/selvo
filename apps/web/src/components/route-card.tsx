@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Clock, Coins, ShieldCheck } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
@@ -16,11 +17,16 @@ import {
   formatPercent,
   formatRate,
   formatReliability,
-  formatSettlement,
 } from '@/lib/format';
+import { formatSettlementMessage } from '@/lib/format-i18n';
 
 export function RouteCard({ route }: { route: RouteDto }) {
+  const t = useTranslations('comparison');
+  const tTime = useTranslations('time');
+  const locale = useLocale();
   const [showBreakdown, setShowBreakdown] = useState(false);
+  const settlement = (seconds: number) =>
+    formatSettlementMessage(tTime, seconds, route.settlement.businessDaysOnly);
 
   return (
     <article className="border-border bg-card rounded-xl border">
@@ -38,8 +44,7 @@ export function RouteCard({ route }: { route: RouteDto }) {
             </div>
             {route.quote.intermediaryAsset !== null && (
               <p className="text-muted-foreground text-xs">
-                Quoted middle leg in {route.quote.intermediaryAsset}. Meridian never holds the
-                asset and does not settle this corridor.
+                {t('middleLeg', { asset: route.quote.intermediaryAsset })}
               </p>
             )}
           </div>
@@ -49,13 +54,13 @@ export function RouteCard({ route }: { route: RouteDto }) {
               <TooltipTrigger
                 render={<p className="cursor-help text-2xl font-semibold tabular-nums" />}
               >
-                {formatPercent(route.totalCostPercent)}
+                {formatPercent(route.totalCostPercent, 2, locale)}
               </TooltipTrigger>
               <TooltipContent>
-                {formatBps(route.totalCostBps, 2)} all-in against the mid-market rate
+                {t('allInAgainstMid', { bps: formatBps(route.totalCostBps, 2, locale) })}
               </TooltipContent>
             </Tooltip>
-            <p className="text-muted-foreground text-xs">total cost</p>
+            <p className="text-muted-foreground text-xs">{t('totalCost')}</p>
           </div>
         </div>
 
@@ -64,41 +69,38 @@ export function RouteCard({ route }: { route: RouteDto }) {
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-4">
           <Metric
             icon={<Coins className="size-3.5" aria-hidden />}
-            label="Beneficiary receives"
-            value={formatMoney(route.deliveredAmount)}
+            label={t('beneficiaryReceives')}
+            value={formatMoney(route.deliveredAmount, locale)}
             emphasise
           />
           <Metric
             icon={<Clock className="size-3.5" aria-hidden />}
-            label="Settlement"
-            value={formatSettlement(route.settlement.p50Seconds, route.settlement.businessDaysOnly)}
-            hint={`95th percentile ${formatSettlement(
-              route.settlement.p95Seconds,
-              route.settlement.businessDaysOnly,
-            )}`}
+            label={t('settlement')}
+            value={settlement(route.settlement.p50Seconds)}
+            hint={tTime('p95', { value: settlement(route.settlement.p95Seconds) })}
           />
           <Metric
-            label="All-in rate"
+            label={t('allInRate')}
             value={`${formatRate(route.effectiveRate.value)} ${route.effectiveRate.pair}`}
-            hint={`Mid-market ${formatRate(route.midMarketRate.value)}`}
+            hint={t('midMarket', { rate: formatRate(route.midMarketRate.value) })}
           />
           <Metric
             icon={<ShieldCheck className="size-3.5" aria-hidden />}
-            label="Reliability"
-            value={formatReliability(route.reliabilityScore)}
-            hint={`Route score ${route.score} / 100`}
+            label={t('reliability')}
+            value={formatReliability(route.reliabilityScore, locale)}
+            hint={t('routeScore', { score: route.score })}
           />
         </dl>
 
         {Number(route.slippageBps) > 0 && (
           <p className="text-muted-foreground mt-3 text-xs">
-            Includes {formatBps(route.slippageBps)} of expected execution slippage at this notional.
+            {t('slippageLine', { bps: formatBps(route.slippageBps, 1, locale) })}
           </p>
         )}
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <ScoreBar score={route.score} />
+            <ScoreBar score={route.score} label={t('routeScoreAria')} />
             <ContinueWithPartner providerName={route.provider.name} variant="outline" />
           </div>
           <button
@@ -107,7 +109,7 @@ export function RouteCard({ route }: { route: RouteDto }) {
             aria-expanded={showBreakdown}
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition-colors"
           >
-            {showBreakdown ? 'Hide' : 'Show'} cost breakdown
+            {showBreakdown ? t('hideBreakdown') : t('showBreakdown')}
             <ChevronDown
               aria-hidden
               className={`size-3.5 transition-transform ${showBreakdown ? 'rotate-180' : ''}`}
@@ -155,7 +157,7 @@ function Metric({
   );
 }
 
-function ScoreBar({ score }: { score: string }) {
+function ScoreBar({ score, label }: { score: string; label: string }) {
   const value = Math.max(0, Math.min(100, Number(score)));
   return (
     <div className="flex items-center gap-2">
@@ -165,7 +167,7 @@ function ScoreBar({ score }: { score: string }) {
         aria-valuenow={value}
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-label="Route score"
+        aria-label={label}
       >
         <div
           className="h-full rounded-full bg-emerald-600 transition-[width]"

@@ -58,8 +58,10 @@ describe('legal disclosure pages', () => {
   });
 
   it('marks terms and privacy as draft and not in force', () => {
-    expect(legalDocument).toMatch(/not a binding contract/i);
-    expect(legalDocument).toMatch(/Draft · not in force/i);
+    expect(enCatalog).toMatch(/not a binding contract/i);
+    expect(enCatalog).toMatch(/Draft · not in force/i);
+    expect(legalDocument).toMatch(/t\('draftBanner'/);
+    expect(legalDocument).toMatch(/t\('aside'\)/);
     expect(terms).toMatch(/Counsel has not issued an in-force version/i);
     expect(privacy).toMatch(/not an in-force privacy policy/i);
   });

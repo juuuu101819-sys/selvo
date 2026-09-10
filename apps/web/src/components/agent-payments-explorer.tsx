@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   authorizeAgentPaymentIntent,
   createAgentPaymentIntent,
@@ -33,10 +34,9 @@ export function AgentPaymentsExplorer({
   policies: readonly PaymentPolicyDto[];
   signedIn: boolean;
 }) {
+  const t = useTranslations('agents');
   const [agentId, setAgentId] = useState(agents[0]?.id ?? '');
-  const [instruction, setInstruction] = useState(
-    'Pay 1,000 USD to this merchant using the cheapest compliant route.',
-  );
+  const [instruction, setInstruction] = useState(t('instructionExample'));
   const [intent, setIntent] = useState<PaymentIntentDto | null>(null);
   const [interpretation, setInterpretation] = useState<StructuredNlPaymentIntentDto | null>(null);
   const [nlRoute, setNlRoute] = useState<NlRouteResultDto | null>(null);
@@ -63,12 +63,8 @@ export function AgentPaymentsExplorer({
   if (!signedIn) {
     return (
       <div className="border-border rounded-xl border p-5">
-        <h2 className="text-sm font-semibold">Sign in required</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Agent payment intents are scoped to an organization. Sign in as the demo treasury operator
-          to create an intent, request a quote, authorize, and run the sandbox simulator. The
-          platform never holds the agent wallet.
-        </p>
+        <h2 className="text-sm font-semibold">{t('signInRequired')}</h2>
+        <p className="text-muted-foreground mt-2 text-sm">{t('signInRequiredBody')}</p>
       </div>
     );
   }
@@ -76,11 +72,8 @@ export function AgentPaymentsExplorer({
   if (agents.length === 0) {
     return (
       <div className="border-border rounded-xl border p-5">
-        <h2 className="text-sm font-semibold">No agents yet</h2>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Issue an agent from the API, or load the sandbox demo tenant. Agents act for the
-          organization and never custody funds here.
-        </p>
+        <h2 className="text-sm font-semibold">{t('noAgentsExplorer')}</h2>
+        <p className="text-muted-foreground mt-2 text-sm">{t('noAgentsExplorerBody')}</p>
       </div>
     );
   }
@@ -89,19 +82,19 @@ export function AgentPaymentsExplorer({
     <div className="space-y-8">
       <section className="grid gap-6 lg:grid-cols-3">
         <div className="border-border rounded-xl border p-4">
-          <h2 className="text-sm font-semibold">Agents</h2>
+          <h2 className="text-sm font-semibold">{t('agentsHeading')}</h2>
           <ul className="mt-3 space-y-2 font-mono text-xs">
             {agents.map((agent) => (
               <li key={agent.id}>
-                {agent.name} · {agent.status} · {agent.keyPrefix ?? 'no credential'}
+                {agent.name} · {agent.status} · {agent.keyPrefix ?? t('noCredential')}
               </li>
             ))}
           </ul>
         </div>
         <div className="border-border rounded-xl border p-4">
-          <h2 className="text-sm font-semibold">Merchants</h2>
+          <h2 className="text-sm font-semibold">{t('merchantsHeading')}</h2>
           {merchants.length === 0 ? (
-            <p className="text-muted-foreground mt-2 text-xs">No merchants in this organization.</p>
+            <p className="text-muted-foreground mt-2 text-xs">{t('noMerchants')}</p>
           ) : (
             <ul className="mt-3 space-y-2 font-mono text-xs">
               {merchants.map((merchant) => (
@@ -113,9 +106,9 @@ export function AgentPaymentsExplorer({
           )}
         </div>
         <div className="border-border rounded-xl border p-4">
-          <h2 className="text-sm font-semibold">Policy</h2>
+          <h2 className="text-sm font-semibold">{t('policyHeading')}</h2>
           {policies.length === 0 ? (
-            <p className="text-muted-foreground mt-2 text-xs">No payment policy configured.</p>
+            <p className="text-muted-foreground mt-2 text-xs">{t('noPolicy')}</p>
           ) : (
             <ul className="mt-3 space-y-3 text-xs">
               {policies.map((policy) => (
@@ -147,18 +140,14 @@ export function AgentPaymentsExplorer({
 
       <form onSubmit={onCreate} className="border-border space-y-4 rounded-xl border p-4 sm:p-5">
         <div>
-          <h2 className="text-sm font-semibold">Create a payment intent</h2>
+          <h2 className="text-sm font-semibold">{t('createIntent')}</h2>
           <p className="text-muted-foreground mt-1 text-xs">
-            An instruction such as{' '}
-            <code>Pay 1,000 USD to this merchant using the cheapest compliant route.</code> becomes
-            a structured intent. The policy engine runs before quotes and before an execution intent
-            is recorded. A violation fails closed. The parser never prices the payment. Simulation
-            never moves money.
+            {t('createIntentBody', { example: t('instructionExample') })}
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="agent">Agent</Label>
+            <Label htmlFor="agent">{t('agentLabel')}</Label>
             <select
               id="agent"
               className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
@@ -173,12 +162,12 @@ export function AgentPaymentsExplorer({
             </select>
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="instruction">Instruction</Label>
+            <Label htmlFor="instruction">{t('instructionLabel')}</Label>
             <Input
               id="instruction"
               value={instruction}
               onChange={(event) => setInstruction(event.target.value)}
-              placeholder="Pay 1,000 USD to this merchant using the cheapest compliant route."
+              placeholder={t('instructionExample')}
             />
           </div>
         </div>
@@ -206,7 +195,7 @@ export function AgentPaymentsExplorer({
               })();
             }}
           >
-            Interpret intent
+            {t('interpretIntent')}
           </Button>
           <Button
             type="button"
@@ -227,10 +216,10 @@ export function AgentPaymentsExplorer({
               })();
             }}
           >
-            Route from language
+            {t('routeFromLanguage')}
           </Button>
           <Button type="submit" variant="outline" disabled={pending || agentId === ''}>
-            Create intent
+            {t('createIntentButton')}
           </Button>
           <Button
             type="button"
@@ -242,7 +231,7 @@ export function AgentPaymentsExplorer({
               }
             }}
           >
-            Request quote
+            {t('requestQuote')}
           </Button>
           <Button
             type="button"
@@ -255,7 +244,7 @@ export function AgentPaymentsExplorer({
               }
             }}
           >
-            Select recommended route
+            {t('selectRecommended')}
           </Button>
           <Button
             type="button"
@@ -267,7 +256,7 @@ export function AgentPaymentsExplorer({
               }
             }}
           >
-            Authorize
+            {t('authorize')}
           </Button>
           <Button
             type="button"
@@ -278,14 +267,14 @@ export function AgentPaymentsExplorer({
               }
             }}
           >
-            Simulate execution
+            {t('simulateExecution')}
           </Button>
         </div>
       </form>
 
       {interpretation !== null && (
         <section className="border-border space-y-3 rounded-xl border p-4 sm:p-5">
-          <h2 className="text-sm font-semibold">Structured intent</h2>
+          <h2 className="text-sm font-semibold">{t('structuredIntent')}</h2>
           <p className="text-muted-foreground text-sm">
             {interpretation.amount.decimal} {interpretation.sourceAsset} → {interpretation.destinationAsset}{' '}
             for {interpretation.recipient}. Preference {interpretation.optimizationPreference ?? 'none'}.
@@ -306,12 +295,12 @@ export function AgentPaymentsExplorer({
       )}
 
       {pending && intent === null && interpretation === null && (
-        <p className="text-muted-foreground text-sm">Creating the payment intent…</p>
+        <p className="text-muted-foreground text-sm">{t('creatingIntent')}</p>
       )}
 
       {intent !== null && (
         <section className="border-border space-y-3 rounded-xl border p-4 sm:p-5">
-          <h2 className="text-sm font-semibold">Intent {intent.status}</h2>
+          <h2 className="text-sm font-semibold">{t('intentStatus', { status: intent.status })}</h2>
           <p className="text-muted-foreground text-sm">
             {intent.purpose}. {intent.amount.decimal} {intent.amount.asset} → {intent.destinationAsset}{' '}
             for {intent.recipient}.

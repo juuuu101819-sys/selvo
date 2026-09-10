@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowRightLeft, Loader2, Search } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,14 +42,14 @@ export function ComparisonForm({
   onChange,
   onSubmit,
 }: ComparisonFormProps) {
+  const t = useTranslations('comparison');
   const sourceExponent =
     currencies.find((currency) => currency.code === value.sourceCurrency)?.exponent ?? 2;
   const availableRails = rails.filter((rail) => rail.status === 'available');
-
   const amountHint =
     sourceExponent === 0
-      ? `${value.sourceCurrency} has no minor unit — enter a whole amount.`
-      : `Up to ${sourceExponent} decimal places for ${value.sourceCurrency}.`;
+      ? t('amountHintWhole', { currency: value.sourceCurrency })
+      : t('amountHintMinor', { count: sourceExponent, currency: value.sourceCurrency });
 
   const toggleRail = (rail: string): void => {
     const next = value.rails.includes(rail)
@@ -67,7 +68,7 @@ export function ComparisonForm({
     >
       <div className="grid gap-4 sm:grid-cols-[1fr_auto_1fr]">
         <div className="space-y-2">
-          <Label htmlFor="amount">You send</Label>
+          <Label htmlFor="amount">{t('youSend')}</Label>
           <div className="flex gap-2">
             <Input
               id="amount"
@@ -87,7 +88,7 @@ export function ComparisonForm({
               aria-describedby="amount-hint"
             />
             <CurrencySelect
-              label="Source currency"
+              label={t('sourceCurrency')}
               currencies={currencies}
               value={value.sourceCurrency}
               onChange={(code) => onChange({ ...value, sourceCurrency: code })}
@@ -103,7 +104,7 @@ export function ComparisonForm({
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="Swap currencies"
+            aria-label={t('swapCurrencies')}
             onClick={() =>
               onChange({
                 ...value,
@@ -117,23 +118,21 @@ export function ComparisonForm({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="target-currency">Beneficiary receives</Label>
+          <Label htmlFor="target-currency">{t('beneficiaryReceives')}</Label>
           <CurrencySelect
             id="target-currency"
-            label="Target currency"
+            label={t('targetCurrency')}
             currencies={currencies}
             value={value.targetCurrency}
             onChange={(code) => onChange({ ...value, targetCurrency: code })}
             className="w-full"
           />
-          <p className="text-muted-foreground text-xs">
-            The amount delivered is calculated per route.
-          </p>
+          <p className="text-muted-foreground text-xs">{t('deliveredHint')}</p>
         </div>
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Optimise for</legend>
+        <legend className="text-sm font-medium">{t('optimiseFor')}</legend>
         <div className="flex flex-wrap gap-2">
           {PRIORITY_PRESETS.map((preset) => {
             const selected = preset.id === value.priority;
@@ -146,21 +145,21 @@ export function ComparisonForm({
                 aria-pressed={selected}
                 onClick={() => onChange({ ...value, priority: preset.id })}
               >
-                {preset.label}
+                {t(`priority.${preset.id}.label`)}
               </Button>
             );
           })}
         </div>
         <p className="text-muted-foreground text-xs">
-          {PRIORITY_PRESETS.find((preset) => preset.id === value.priority)?.description}
+          {t(`priority.${value.priority}.description`)}
         </p>
       </fieldset>
 
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium">
-          Rails{' '}
+          {t('rails')}{' '}
           <span className="text-muted-foreground font-normal">
-            {value.rails.length === 0 ? '(all)' : `(${value.rails.length} selected)`}
+            {value.rails.length === 0 ? t('railsAll') : t('railsSelected', { count: value.rails.length })}
           </span>
         </legend>
         <div className="flex flex-wrap gap-2">
@@ -186,7 +185,7 @@ export function ComparisonForm({
             .filter((rail) => rail.status === 'planned')
             .map((rail) => (
               <Badge key={rail.type} variant="outline" className="text-muted-foreground text-xs">
-                {rail.label} · planned
+                {t('plannedRail', { label: rail.label })}
               </Badge>
             ))}
         </div>
@@ -200,12 +199,12 @@ export function ComparisonForm({
         {isPending ? (
           <>
             <Loader2 className="size-4 animate-spin" aria-hidden />
-            Comparing routes…
+            {t('comparing')}
           </>
         ) : (
           <>
             <Search className="size-4" aria-hidden />
-            Compare routes
+            {t('compare')}
           </>
         )}
       </Button>

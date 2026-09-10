@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { AgentPaymentsExplorer } from '@/components/agent-payments-explorer';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
@@ -40,35 +41,33 @@ export default async function DashboardAgentsPage() {
     return <ErrorState failure={policies.failure} />;
   }
 
+  const t = await getTranslations('agents');
+  const tCommon = await getTranslations('common');
+  const locale = await getLocale();
   const rows = dashboard.data.agents;
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">AI agent financial dashboard</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('dashTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Quoted volume, fees, success rate, spending limits and policy denials for agents in{' '}
-          {session.me.organization.name}. Completed means the sandbox simulator finished — funds
-          never move, and Meridian never holds a key or generates a wallet.
+          {t('dashLede', { name: session.me.organization.name })}
         </p>
       </div>
 
       {rows.length === 0 ? (
-        <DashboardEmpty title="No agents yet">
-          Issue an agent from Settings or the agents API. Dashboard figures appear after the agent
-          quotes or the sandbox demo tenant is loaded.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noAgents')}>{t('noAgentsBody')}</DashboardEmpty>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Agent</TableHead>
-              <TableHead>Volume</TableHead>
-              <TableHead>Transactions</TableHead>
-              <TableHead>Average fee</TableHead>
-              <TableHead>Success</TableHead>
-              <TableHead>Daily spend</TableHead>
-              <TableHead>Violations</TableHead>
+              <TableHead>{t('colAgent')}</TableHead>
+              <TableHead>{t('colVolume')}</TableHead>
+              <TableHead>{t('colTransactions')}</TableHead>
+              <TableHead>{t('colAverageFee')}</TableHead>
+              <TableHead>{t('colSuccess')}</TableHead>
+              <TableHead>{t('colDailySpend')}</TableHead>
+              <TableHead>{t('colViolations')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -84,20 +83,22 @@ export default async function DashboardAgentsPage() {
                   <p className="text-muted-foreground font-mono text-xs">{row.agentId}</p>
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
-                  {formatQuotedAmount(row.paymentVolumeMinorUnits, row.currency, row.exponent)}
+                  {formatQuotedAmount(row.paymentVolumeMinorUnits, row.currency, row.exponent, locale)}
                 </TableCell>
                 <TableCell className="tabular-nums">{row.transactionCount}</TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
-                  {row.averageFeeBps === null ? '—' : formatBps(row.averageFeeBps, 2)}
+                  {row.averageFeeBps === null ? tCommon('emDash') : formatBps(row.averageFeeBps, 2, locale)}
                 </TableCell>
                 <TableCell className="tabular-nums">
-                  {row.routeSuccessRatePercent === null ? '—' : `${row.routeSuccessRatePercent}%`}
+                  {row.routeSuccessRatePercent === null
+                    ? tCommon('emDash')
+                    : `${row.routeSuccessRatePercent}%`}
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
-                  {formatQuotedAmount(row.dailySpentMinorUnits, row.currency, row.exponent)}
+                  {formatQuotedAmount(row.dailySpentMinorUnits, row.currency, row.exponent, locale)}
                   {row.dailyLimitMinorUnits === null
                     ? null
-                    : ` / ${formatQuotedAmount(row.dailyLimitMinorUnits, row.currency, row.exponent)}`}
+                    : ` / ${formatQuotedAmount(row.dailyLimitMinorUnits, row.currency, row.exponent, locale)}`}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">{row.policyViolationCount}</Badge>
@@ -110,11 +111,8 @@ export default async function DashboardAgentsPage() {
 
       <section className="space-y-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Sandbox simulator</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Create a payment intent from natural language, quote routes, authorize, and simulate.
-            The parser only interprets intent. This is not custody and not a wallet.
-          </p>
+          <h2 className="text-lg font-semibold tracking-tight">{t('simulator')}</h2>
+          <p className="text-muted-foreground mt-1 text-sm">{t('simulatorLede')}</p>
         </div>
         <AgentPaymentsExplorer
           agents={agents.data.agents}

@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Clock, ShieldCheck, Sparkles } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
@@ -14,8 +15,8 @@ import {
   formatPercent,
   formatRate,
   formatReliability,
-  formatSettlement,
 } from '@/lib/format';
+import { formatSettlementMessage } from '@/lib/format-i18n';
 
 /**
  * The answer, given the prominence of one.
@@ -25,22 +26,28 @@ import {
  * exist to justify this card, not to compete with it for attention.
  */
 export function BestRoute({ route }: { route: RouteDto }) {
+  const t = useTranslations('comparison');
+  const tCommon = useTranslations('common');
+  const tTime = useTranslations('time');
+  const locale = useLocale();
   const [showDetails, setShowDetails] = useState(false);
   const providerFee = sumInTarget(
     route.breakdown.sourceFeeCost,
     route.breakdown.destinationFeeCost,
   );
+  const settlement = (seconds: number) =>
+    formatSettlementMessage(tTime, seconds, route.settlement.businessDaysOnly);
 
   return (
     <article
-      aria-label={`Best route: ${route.provider.name}`}
+      aria-label={t('bestRouteLabel', { provider: route.provider.name })}
       className="rounded-xl border border-emerald-600/60 bg-emerald-50/50 dark:bg-emerald-950/20"
     >
       <div className="p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
-              Best route
+              {t('bestRoute')}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-semibold">{route.provider.name}</h2>
@@ -50,13 +57,12 @@ export function BestRoute({ route }: { route: RouteDto }) {
               <ProviderLicensingBadge licensing={route.provider.licensing} />
               <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">
                 <Sparkles className="size-3" aria-hidden />
-                Recommended
+                {tCommon('recommended')}
               </Badge>
             </div>
             {route.quote.intermediaryAsset !== null && (
               <p className="text-muted-foreground text-xs">
-                Quoted middle leg in {route.quote.intermediaryAsset}. Meridian never holds the
-                asset and does not settle this corridor.
+                {t('middleLeg', { asset: route.quote.intermediaryAsset })}
               </p>
             )}
           </div>
@@ -65,17 +71,17 @@ export function BestRoute({ route }: { route: RouteDto }) {
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-muted-foreground text-xs">Beneficiary receives</p>
+            <p className="text-muted-foreground text-xs">{t('beneficiaryReceives')}</p>
             <p className="text-2xl font-semibold tabular-nums sm:text-3xl">
-              {formatMoney(route.deliveredAmount)}
+              {formatMoney(route.deliveredAmount, locale)}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-muted-foreground text-xs">Estimated total cost</p>
+            <p className="text-muted-foreground text-xs">{t('estimatedTotalCost')}</p>
             <p className="text-xl font-semibold tabular-nums">
-              {formatPercent(route.totalCostPercent)}
+              {formatPercent(route.totalCostPercent, 2, locale)}
               <span className="text-muted-foreground ml-2 text-sm font-normal">
-                {formatMoney(route.totalCost)}
+                {formatMoney(route.totalCost, locale)}
               </span>
             </p>
           </div>
@@ -85,43 +91,44 @@ export function BestRoute({ route }: { route: RouteDto }) {
 
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
           <Field
-            label="Exchange rate"
+            label={t('exchangeRate')}
             value={`${formatRate(route.offeredRate.value)} ${route.offeredRate.pair}`}
-            hint={`Mid-market ${formatRate(route.midMarketRate.value)}`}
+            hint={t('midMarket', { rate: formatRate(route.midMarketRate.value) })}
           />
           <Field
-            label="Provider fee"
-            value={formatMoney(providerFee)}
-            hint="All provider charges, valued at mid"
+            label={t('providerFee')}
+            value={formatMoney(providerFee, locale)}
+            hint={t('providerFeeHint')}
           />
           <Field
-            label="Platform fee"
-            value={formatMoney(route.breakdown.platformFeeCost)}
+            label={t('platformFee')}
+            value={formatMoney(route.breakdown.platformFeeCost, locale)}
             hint={
               route.breakdown.platformFeeCost.minorUnits === '0'
-                ? 'No negotiated terms apply'
-                : 'Meridian’s own charge, shown separately'
+                ? t('platformFeeNone')
+                : t('platformFeeHint')
             }
           />
           <Field
             icon={<Clock className="size-3.5" aria-hidden />}
-            label="Settlement time"
-            value={formatSettlement(route.settlement.p50Seconds, route.settlement.businessDaysOnly)}
-            hint={`95th percentile ${formatSettlement(
-              route.settlement.p95Seconds,
-              route.settlement.businessDaysOnly,
-            )}`}
+            label={t('settlementTime')}
+            value={settlement(route.settlement.p50Seconds)}
+            hint={tTime('p95', { value: settlement(route.settlement.p95Seconds) })}
           />
           <Field
-            label="Quote expires"
-            value={route.quote.expiresAt === null ? 'Not stated' : timeOfDay(route.quote.expiresAt)}
-            hint="Prices are indicative until then"
+            label={t('quoteExpires')}
+            value={
+              route.quote.expiresAt === null
+                ? t('quoteExpiresNotStated')
+                : timeOfDay(route.quote.expiresAt, locale)
+            }
+            hint={t('indicativeUntilThen')}
           />
           <Field
             icon={<ShieldCheck className="size-3.5" aria-hidden />}
-            label="Reliability"
-            value={formatReliability(route.reliabilityScore)}
-            hint={`Route score ${route.score} / 100`}
+            label={t('reliability')}
+            value={formatReliability(route.reliabilityScore, locale)}
+            hint={t('routeScore', { score: route.score })}
           />
         </dl>
 
@@ -133,7 +140,7 @@ export function BestRoute({ route }: { route: RouteDto }) {
             aria-expanded={showDetails}
             className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1 text-xs font-medium transition-colors"
           >
-            {showDetails ? 'Hide' : 'Show'} route details
+            {showDetails ? t('hideDetails') : t('showDetails')}
             <ChevronDown
               aria-hidden
               className={`size-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`}
@@ -187,10 +194,16 @@ function sumInTarget(sourceFeeCost: MoneyJson, destinationFeeCost: MoneyJson): M
   return { ...sourceFeeCost, minorUnits: total.toString(), decimal: '' };
 }
 
-function timeOfDay(iso: string): string {
+function timeOfDay(iso: string, locale: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
     return iso;
   }
-  return `${date.toISOString().slice(11, 19)} UTC`;
+  return `${new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZone: 'UTC',
+    hourCycle: 'h23',
+  }).format(date)} UTC`;
 }

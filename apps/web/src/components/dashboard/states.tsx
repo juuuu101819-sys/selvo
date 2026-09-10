@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { signOut } from '@/app/actions';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,10 @@ export function DashboardEmpty({ title, children }: { title: string; children: R
   );
 }
 
-export function SessionEnded({ failure }: { failure: ApiFailure }) {
+export async function SessionEnded({ failure }: { failure: ApiFailure }) {
+  const t = await getTranslations('errors');
+  const tDash = await getTranslations('dashboard');
+
   if (failure.code !== 'UNAUTHENTICATED') {
     return <ErrorState failure={failure} />;
   }
@@ -23,12 +27,12 @@ export function SessionEnded({ failure }: { failure: ApiFailure }) {
   return (
     <Alert>
       <AlertCircle aria-hidden />
-      <AlertTitle>Sign in required</AlertTitle>
+      <AlertTitle>{t('signInRequired')}</AlertTitle>
       <AlertDescription>
         <p>{failure.message}</p>
         <form action={signOut} className="mt-3">
           <Button type="submit" size="sm">
-            Return to sign in
+            {tDash('returnToSignIn')}
           </Button>
         </form>
       </AlertDescription>

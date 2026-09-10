@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { LegalDocument } from '@/components/legal-document';
 
 export const metadata: Metadata = {
@@ -7,9 +8,10 @@ export const metadata: Metadata = {
     'Draft privacy disclosure for Meridian. Comparison requests are an amount and a currency pair. Not an in-force privacy notice.',
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const t = await getTranslations('legal');
   return (
-    <LegalDocument title="Privacy">
+    <LegalDocument title={t('privacyTitle')}>
       <section className="space-y-2">
         <h2 className="text-base font-semibold tracking-tight">1. Status</h2>
         <p>

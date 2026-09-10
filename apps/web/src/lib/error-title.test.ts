@@ -26,6 +26,18 @@ describe('comparisonErrorTitle', () => {
     );
   });
 
+  it('names a timeout separately from an unreachable host', () => {
+    expect(comparisonErrorTitle({ code: 'API_TIMEOUT', details: {} })).toBe(
+      'The routing API timed out',
+    );
+  });
+
+  it('keeps NO_ROUTES_AVAILABLE as a provider-quote failure, not a corridor diagnosis', () => {
+    expect(comparisonErrorTitle({ code: 'NO_ROUTES_AVAILABLE', details: {} })).toBe(
+      'No provider could quote',
+    );
+  });
+
   it('falls back without inventing a diagnosis', () => {
     expect(comparisonErrorTitle({ code: 'INTERNAL_ERROR', details: {} })).toBe('Comparison failed');
   });

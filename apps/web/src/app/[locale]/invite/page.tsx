@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMeta } from '@/lib/api/client';
@@ -10,6 +11,8 @@ export default async function InvitePage({
 }) {
   const { token } = await searchParams;
   const meta = await fetchMeta();
+  const t = await getTranslations('invite');
+  const tFooter = await getTranslations('footer');
 
   return (
     <>
@@ -18,17 +21,13 @@ export default async function InvitePage({
         engineVersion={meta.ok ? meta.data.engineVersion : null}
       />
       <main className="mx-auto w-full max-w-md flex-1 px-4 py-10 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Accept organization invite</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Meridian is invite-only for this cohort. An operator creates the organization and issues
-          the first owner invite. Accepting sets your password; it does not verify KYB, attach
-          pricing, or enable execution.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-foreground mt-2 text-sm">{t('lede')}</p>
         <div className="mt-6">
           <InviteForm initialToken={token ?? ''} />
         </div>
       </main>
-      <SiteFooter notice="Accepting an invite sets a password. It does not verify KYB, attach pricing, enable execution, or move funds." />
+      <SiteFooter notice={tFooter('inviteNotice')} />
     </>
   );
 }

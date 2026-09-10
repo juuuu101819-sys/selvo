@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,7 +13,8 @@ import { ErrorState } from '@/components/states';
 import { fetchDashboardQuotes } from '@/lib/api/client';
 import { exponentFor } from '@/lib/currency';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
-import { formatBps, formatQuotedAmount, formatSettlement, formatTimestamp } from '@/lib/format';
+import { formatBps, formatQuotedAmount, formatTimestamp } from '@/lib/format';
+import { formatSettlementMessage } from '@/lib/format-i18n';
 
 export default async function DashboardQuotesPage() {
   const session = await loadDashboardSession();
@@ -25,39 +27,38 @@ export default async function DashboardQuotesPage() {
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('dashboard');
+  const tCommon = await getTranslations('common');
+  const tTime = await getTranslations('time');
+  const locale = await getLocale();
   const quotes = result.data.quotes;
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Quotes</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Provider prices stored for this organization. Cross-tenant identifiers never appear here.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('quotesTitle')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('quotesLede')}</p>
       </div>
       {quotes.length === 0 ? (
-        <DashboardEmpty title="No quotes for this organization">
-          A comparison run while signed in writes quotes against your tenant. The public comparison
-          page does not attach an organization.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noQuotesOrg')}>{t('noQuotesOrgBody')}</DashboardEmpty>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Quoted</TableHead>
-              <TableHead>Corridor</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Provider</TableHead>
-              <TableHead>Cost</TableHead>
-              <TableHead>Settlement</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('colQuoted')}</TableHead>
+              <TableHead>{t('colCorridor')}</TableHead>
+              <TableHead>{t('colAmount')}</TableHead>
+              <TableHead>{t('colProvider')}</TableHead>
+              <TableHead>{t('colCost')}</TableHead>
+              <TableHead>{t('colSettlement')}</TableHead>
+              <TableHead>{t('colStatus')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {quotes.map((quote) => (
               <TableRow key={quote.id}>
                 <TableCell className="font-mono text-xs">
-                  {formatTimestamp(quote.quotedAt)}
+                  {formatTimestamp(quote.quotedAt, locale)}
                 </TableCell>
                 <TableCell className="font-mono text-xs">
                   {quote.sourceCurrency}→{quote.targetCurrency}
@@ -67,6 +68,7 @@ export default async function DashboardQuotesPage() {
                     quote.amountMinorUnits,
                     quote.sourceCurrency,
                     exponentFor(quote.sourceCurrency),
+                    locale,
                   )}
                 </TableCell>
                 <TableCell>
@@ -76,14 +78,14 @@ export default async function DashboardQuotesPage() {
                   </div>
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
-                  {formatBps(quote.totalCostBps)}
+                  {formatBps(quote.totalCostBps, 1, locale)}
                 </TableCell>
                 <TableCell className="text-xs">
-                  {formatSettlement(quote.settlementP50Seconds, false)}
+                  {formatSettlementMessage(tTime, quote.settlementP50Seconds, false)}
                 </TableCell>
                 <TableCell>
                   {quote.isRecommended ? (
-                    <Badge>Recommended</Badge>
+                    <Badge>{tCommon('recommended')}</Badge>
                   ) : (
                     <Badge variant="outline">{quote.status}</Badge>
                   )}

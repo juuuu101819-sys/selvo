@@ -1,4 +1,7 @@
+'use client';
+
 import { TrendingDown } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import type { ComparisonDto } from '@/lib/api/types';
 import { displayBarPercentFromDecimal, maxDecimal } from '@/lib/chart-display';
 import { formatMoney, formatPercent } from '@/lib/format';
@@ -13,6 +16,9 @@ import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
  * free.
  */
 export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
+  const t = useTranslations('comparison');
+  const tCommon = useTranslations('common');
+  const locale = useLocale();
   const routes = comparison.routes;
   if (routes.length < 2) {
     return null;
@@ -22,11 +28,9 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
   const insights = comparison.insights;
 
   return (
-    <section aria-label="Cost comparison" className="border-border rounded-xl border p-4 sm:p-5">
-      <h2 className="text-sm font-semibold">Cost comparison</h2>
-      <p className="text-muted-foreground mt-0.5 text-xs">
-        All-in cost of each route against the same mid-market benchmark, so the bars are comparable.
-      </p>
+    <section aria-label={t('costComparison')} className="border-border rounded-xl border p-4 sm:p-5">
+      <h2 className="text-sm font-semibold">{t('costComparison')}</h2>
+      <p className="text-muted-foreground mt-0.5 text-xs">{t('costComparisonHint')}</p>
 
       <ul className="mt-4 space-y-3">
         {routes.map((route) => {
@@ -42,12 +46,12 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
                   {route.recommended && (
                     <span className="ml-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
                       {' '}
-                      best
+                      {tCommon('best')}
                     </span>
                   )}
                 </span>
                 <span className="shrink-0 font-mono text-xs tabular-nums">
-                  {formatPercent(route.totalCostPercent)} · {formatMoney(route.totalCost)}
+                  {formatPercent(route.totalCostPercent, 2, locale)} · {formatMoney(route.totalCost, locale)}
                 </span>
               </div>
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
@@ -68,12 +72,13 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
         <div className="text-muted-foreground mt-4 space-y-1 text-xs">
           <p className="flex items-center gap-1.5">
             <TrendingDown className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
-            Best route saves {formatMoney(insights.savingsVsMostExpensive)} against the most
-            expensive option.
+            {t('savesVsMostExpensive', {
+              amount: formatMoney(insights.savingsVsMostExpensive, locale),
+            })}
           </p>
           {insights.savingsVsBankFx !== null && (
             <p className="pl-5">
-              {formatMoney(insights.savingsVsBankFx)} against the traditional bank route.
+              {t('savesVsBank', { amount: formatMoney(insights.savingsVsBankFx, locale) })}
             </p>
           )}
         </div>

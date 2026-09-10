@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { acceptOrganizationInvite } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useRouter } from '@/i18n/navigation';
 
 export function InviteForm({ initialToken }: { readonly initialToken: string }) {
+  const t = useTranslations('invite');
   const router = useRouter();
   const [token, setToken] = useState(initialToken);
   const [password, setPassword] = useState('');
@@ -36,7 +38,7 @@ export function InviteForm({ initialToken }: { readonly initialToken: string }) 
       }}
     >
       <div className="space-y-1.5">
-        <Label htmlFor="invite-token">Invite token</Label>
+        <Label htmlFor="invite-token">{t('token')}</Label>
         <Input
           id="invite-token"
           name="token"
@@ -48,7 +50,7 @@ export function InviteForm({ initialToken }: { readonly initialToken: string }) 
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="invite-name">Display name (optional)</Label>
+        <Label htmlFor="invite-name">{t('displayName')}</Label>
         <Input
           id="invite-name"
           name="displayName"
@@ -58,7 +60,7 @@ export function InviteForm({ initialToken }: { readonly initialToken: string }) 
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="invite-password">Password</Label>
+        <Label htmlFor="invite-password">{t('password')}</Label>
         <Input
           id="invite-password"
           name="password"
@@ -69,7 +71,7 @@ export function InviteForm({ initialToken }: { readonly initialToken: string }) 
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <p className="text-muted-foreground text-xs">At least 12 characters. Not a documented demo secret.</p>
+        <p className="text-muted-foreground text-xs">{t('passwordHint')}</p>
       </div>
       {error !== null && (
         <p role="alert" className="text-destructive text-sm">
@@ -77,7 +79,7 @@ export function InviteForm({ initialToken }: { readonly initialToken: string }) 
         </p>
       )}
       <Button type="submit" disabled={pending || token.trim() === '' || password.length < 12}>
-        {pending ? 'Accepting…' : 'Accept invite'}
+        {pending ? t('accepting') : t('accept')}
       </Button>
     </form>
   );

@@ -45,6 +45,15 @@ describe('formatMoney', () => {
     );
   });
 
+  it('groups integers with the locale separators without converting the amount', () => {
+    expect(
+      formatMoney({ currency: 'USD', minorUnits: '10000000', decimal: '', exponent: 2 }, 'de'),
+    ).toBe('100.000,00 USD');
+    expect(
+      formatMoney({ currency: 'KRW', minorUnits: '138071533', decimal: '', exponent: 0 }, 'de'),
+    ).toBe('138.071.533 KRW');
+  });
+
   it('is exact beyond the float-safe range', () => {
     expect(
       formatMoney({ currency: 'KRW', minorUnits: '9007199254740993', decimal: '', exponent: 0 }),

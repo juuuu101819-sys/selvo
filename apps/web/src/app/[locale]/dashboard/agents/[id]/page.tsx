@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { AgentMetricsGrid } from '@/components/dashboard/agent-metrics';
 import { AgentSubnav } from '@/components/dashboard/agent-subnav';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
@@ -33,6 +34,9 @@ export default async function DashboardAgentDetailPage({
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('agents');
+  const tDash = await getTranslations('dashboard');
+  const locale = await getLocale();
   const detail = result.data;
   const summary = detail.summary;
   const spending = detail.spending;
@@ -42,9 +46,9 @@ export default async function DashboardAgentDetailPage({
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">{summary.name}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Financial activity for this agent. Quoted and simulated only —{' '}
-          {detail.fundsMoved ? 'funds moved' : 'funds never moved'}, custody is off, no wallets
-          generated, no private keys held.
+          {t('detailLede', {
+            funds: detail.fundsMoved ? t('fundsMoved') : t('fundsNeverMoved'),
+          })}
         </p>
       </div>
       <AgentSubnav agentId={id} agentName={summary.name} pathname={`/dashboard/agents/${id}`} />
@@ -62,52 +66,51 @@ export default async function DashboardAgentDetailPage({
       <AgentMetricsGrid summary={summary} />
 
       {spending === null ? (
-        <DashboardEmpty title="No spending policy">
-          This agent has no fail-closed policy yet. Limits appear here once a policy exists.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noSpendingPolicy')}>{t('noSpendingPolicyBody')}</DashboardEmpty>
       ) : (
         <Card size="sm">
           <CardHeader>
-            <CardTitle>Spending limits</CardTitle>
-            <CardDescription>
-              Daily cap in {spending.asset}. Remaining is limit minus completed and authorized
-              simulations today (UTC).
-            </CardDescription>
+            <CardTitle>{t('spendingLimits')}</CardTitle>
+            <CardDescription>{t('spendingLimitsHint', { asset: spending.asset })}</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-3 sm:grid-cols-3">
             <div>
-              <p className="text-muted-foreground text-xs">Max per payment</p>
+              <p className="text-muted-foreground text-xs">{t('maxPerPayment')}</p>
               <p className="font-mono text-sm tabular-nums">
                 {formatQuotedAmount(
                   spending.maxTransactionMinorUnits,
                   spending.asset,
                   spending.exponent,
+                  locale,
                 )}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Daily spent / limit</p>
+              <p className="text-muted-foreground text-xs">{t('dailySpentLimit')}</p>
               <p className="font-mono text-sm tabular-nums">
                 {formatQuotedAmount(
                   spending.dailySpentMinorUnits,
                   spending.asset,
                   spending.exponent,
+                  locale,
                 )}{' '}
                 /{' '}
                 {formatQuotedAmount(
                   spending.dailyLimitMinorUnits,
                   spending.asset,
                   spending.exponent,
+                  locale,
                 )}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground text-xs">Remaining today</p>
+              <p className="text-muted-foreground text-xs">{t('remainingToday')}</p>
               <p className="font-mono text-sm tabular-nums">
                 {formatQuotedAmount(
                   spending.dailyRemainingMinorUnits,
                   spending.asset,
                   spending.exponent,
+                  locale,
                 )}
               </p>
             </div>
@@ -117,21 +120,19 @@ export default async function DashboardAgentDetailPage({
 
       <Card size="sm">
         <CardHeader>
-          <CardTitle>Preferred routes</CardTitle>
-          <CardDescription>
-            Selected, recommended or first quoted provider per intent. Ranked by count.
-          </CardDescription>
+          <CardTitle>{t('preferredRoutes')}</CardTitle>
+          <CardDescription>{t('preferredRoutesHint')}</CardDescription>
         </CardHeader>
         <CardContent>
           {detail.preferredRoutes.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No quoted routes yet.</p>
+            <p className="text-muted-foreground text-sm">{t('noQuotedRoutes')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Rail</TableHead>
-                  <TableHead>Intents</TableHead>
+                  <TableHead>{tDash('colProvider')}</TableHead>
+                  <TableHead>{tDash('colRail')}</TableHead>
+                  <TableHead>{t('colIntents')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -152,26 +153,26 @@ export default async function DashboardAgentDetailPage({
 
       <Card size="sm">
         <CardHeader>
-          <CardTitle>Policy violations</CardTitle>
-          <CardDescription>Fail-closed denials scoped to this agent.</CardDescription>
+          <CardTitle>{t('policyViolations')}</CardTitle>
+          <CardDescription>{t('violationsHint')}</CardDescription>
         </CardHeader>
         <CardContent>
           {detail.violations.length === 0 ? (
-            <p className="text-muted-foreground text-sm">No policy denials recorded.</p>
+            <p className="text-muted-foreground text-sm">{t('noPolicyDenials')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>Rule</TableHead>
-                  <TableHead>Message</TableHead>
+                  <TableHead>{tDash('colWhen')}</TableHead>
+                  <TableHead>{t('colRule')}</TableHead>
+                  <TableHead>{t('colMessage')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {detail.violations.map((row) => (
                   <TableRow key={row.eventId}>
                     <TableCell className="font-mono text-xs">
-                      {formatTimestamp(row.occurredAt)}
+                      {formatTimestamp(row.occurredAt, locale)}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {row.rule.replaceAll('_', ' ')}

@@ -1,8 +1,11 @@
+import { getTranslations } from 'next-intl/server';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function DashboardLoading() {
+export default async function DashboardLoading() {
+  const t = await getTranslations('states');
+
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading dashboard">
+    <div className="space-y-4" aria-busy="true" aria-label={t('loadingDashboard')}>
       <Skeleton className="h-8 w-64" />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {[0, 1, 2, 3, 4, 5].map((index) => (

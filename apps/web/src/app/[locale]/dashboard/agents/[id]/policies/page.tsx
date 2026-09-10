@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { AgentPolicyForm } from '@/components/dashboard/agent-policy-form';
 import { AgentSubnav } from '@/components/dashboard/agent-subnav';
 import { SessionEnded } from '@/components/dashboard/states';
@@ -37,13 +38,17 @@ export default async function DashboardAgentPoliciesPage({
     return <ErrorState failure={controls.failure} />;
   }
 
+  const t = await getTranslations('agents');
+  const tDash = await getTranslations('dashboard');
+  const tCommon = await getTranslations('common');
+  const locale = await getLocale();
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Payment policy</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('paymentPolicy')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Fail-closed spending controls for {detail.data.summary.name}. Empty allow-lists mean none.
-          This page does not create wallets, hold keys, or move funds.
+          {t('policyPageLede', { name: detail.data.summary.name })}
         </p>
       </div>
       <AgentSubnav
@@ -54,30 +59,30 @@ export default async function DashboardAgentPoliciesPage({
       <AgentPolicyForm agentId={id} controls={controls.data} />
 
       <section className="space-y-3">
-        <h2 className="text-lg font-semibold tracking-tight">Policy violations</h2>
+        <h2 className="text-lg font-semibold tracking-tight">{t('policyViolations')}</h2>
         {controls.data.violations.length === 0 ? (
-          <p className="text-muted-foreground text-sm">No policy denials recorded for this agent.</p>
+          <p className="text-muted-foreground text-sm">{t('noPolicyDenialsAgent')}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>When</TableHead>
-                <TableHead>Rule</TableHead>
-                <TableHead>Intent</TableHead>
-                <TableHead>Message</TableHead>
+                <TableHead>{tDash('colWhen')}</TableHead>
+                <TableHead>{t('colRule')}</TableHead>
+                <TableHead>{t('colIntent')}</TableHead>
+                <TableHead>{t('colMessage')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {controls.data.violations.map((row) => (
                 <TableRow key={row.eventId}>
                   <TableCell className="font-mono text-xs">
-                    {formatTimestamp(row.occurredAt)}
+                    {formatTimestamp(row.occurredAt, locale)}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{row.rule.replaceAll('_', ' ')}</Badge>
                   </TableCell>
                   <TableCell className="font-mono text-xs">
-                    {row.paymentIntentId ?? '—'}
+                    {row.paymentIntentId ?? tCommon('emDash')}
                   </TableCell>
                   <TableCell className="text-sm">{row.message}</TableCell>
                 </TableRow>

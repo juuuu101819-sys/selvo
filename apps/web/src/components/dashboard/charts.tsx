@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { getLocale, getTranslations } from 'next-intl/server';
 import type { CostPointDto, DashboardProviderUsageDto, VolumePointDto } from '@/lib/api/types';
 import { displayBarPercent, displayBarPercentFromDecimal, maxDecimal, maxMinorUnits } from '@/lib/chart-display';
 import { exponentFor } from '@/lib/currency';
@@ -11,7 +12,7 @@ function barWidth(value: number, max: number): number {
   return Math.max((value / max) * 100, 2);
 }
 
-export function DashboardCharts({
+export async function DashboardCharts({
   volumeByDay,
   costByDay,
   providers,
@@ -20,6 +21,9 @@ export function DashboardCharts({
   costByDay: readonly CostPointDto[];
   providers: readonly DashboardProviderUsageDto[];
 }) {
+  const t = await getTranslations('dashboard');
+  const tCommon = await getTranslations('common');
+  const locale = await getLocale();
   const maxVolumeMinor = maxMinorUnits(volumeByDay.map((point) => point.minorUnits));
   const maxCostBps = maxDecimal(costByDay.map((point) => point.averageCostBps));
   const maxQuotes = Math.max(0, ...providers.map((provider) => provider.quoteCount));
@@ -27,9 +31,10 @@ export function DashboardCharts({
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <ChartCard
-        title="Quoted volume by day"
-        description="Transaction request notional in the last 30 days, taken from stored requests."
+        title={t('chartVolumeTitle')}
+        description={t('chartVolumeHint')}
         empty={volumeByDay.length === 0}
+        emptyLabel={t('chartEmpty')}
       >
         <ul className="space-y-3">
           {volumeByDay.map((point) => {
@@ -44,6 +49,7 @@ export function DashboardCharts({
                       point.minorUnits,
                       point.currency,
                       exponentFor(point.currency),
+                      locale,
                     )}
                   </span>
                 </div>
@@ -62,9 +68,10 @@ export function DashboardCharts({
       </ChartCard>
 
       <ChartCard
-        title="Average recommended cost"
-        description="Mean all-in cost of the recommended quote each day, in basis points."
+        title={t('chartCostTitle')}
+        description={t('chartCostHint')}
         empty={costByDay.length === 0}
+        emptyLabel={t('chartEmpty')}
       >
         <ul className="space-y-3">
           {costByDay.map((point) => (
@@ -72,7 +79,10 @@ export function DashboardCharts({
               <div className="flex items-baseline justify-between gap-3 text-sm">
                 <span className="font-mono text-xs">{point.date}</span>
                 <span className="font-mono text-xs tabular-nums">
-                  {formatBps(point.averageCostBps)} · {point.quoteCount} quotes
+                  {t('chartCostPoint', {
+                    bps: formatBps(point.averageCostBps, 1, locale),
+                    quotes: tCommon('quotesCount', { count: point.quoteCount }),
+                  })}
                 </span>
               </div>
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
@@ -91,9 +101,10 @@ export function DashboardCharts({
       </ChartCard>
 
       <ChartCard
-        title="Quotes by provider"
-        description="How often each rail was priced for this organization."
+        title={t('chartProvidersTitle')}
+        description={t('chartProvidersHint')}
         empty={providers.length === 0}
+        emptyLabel={t('chartEmpty')}
         className="lg:col-span-2"
       >
         <ul className="space-y-3">
@@ -107,7 +118,10 @@ export function DashboardCharts({
                   </span>
                 </span>
                 <span className="shrink-0 font-mono text-xs tabular-nums">
-                  {provider.quoteCount} quotes · {provider.recommendedCount} recommended
+                  {t('chartProviderPoint', {
+                    quotes: tCommon('quotesCount', { count: provider.quoteCount }),
+                    recommended: tCommon('recommendedCount', { count: provider.recommendedCount }),
+                  })}
                 </span>
               </div>
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
@@ -130,12 +144,14 @@ function ChartCard({
   title,
   description,
   empty,
+  emptyLabel,
   className,
   children,
 }: {
   title: string;
   description: string;
   empty: boolean;
+  emptyLabel: string;
   className?: string;
   children: ReactNode;
 }) {
@@ -147,10 +163,7 @@ function ChartCard({
       <h2 className="text-sm font-semibold">{title}</h2>
       <p className="text-muted-foreground mt-0.5 text-xs">{description}</p>
       {empty ? (
-        <p className="text-muted-foreground mt-4 text-sm">
-          No stored rows in this window. Charts are built from database data only — they stay empty
-          until this organization has quotes.
-        </p>
+        <p className="text-muted-foreground mt-4 text-sm">{emptyLabel}</p>
       ) : (
         <div className="mt-4">{children}</div>
       )}

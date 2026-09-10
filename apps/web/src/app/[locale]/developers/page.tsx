@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { RoutingApiExplorer } from '@/components/routing-api-explorer';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -11,6 +12,8 @@ export default async function DevelopersPage() {
     fetchCurrencies(),
     readSessionToken(),
   ]);
+  const t = await getTranslations('pages');
+  const tFooter = await getTranslations('footer');
 
   return (
     <>
@@ -20,13 +23,13 @@ export default async function DevelopersPage() {
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mb-8 max-w-2xl">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Financial routing API
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('developersTitle')}</h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Versioned quote, path search and catalogs under <code>/api/v1</code>. Authenticate with
-            a session or an organization API key. Keys are hashed, scoped, expirable and revocable.
-            <code>transaction:create</code> records an execution intent — it never moves money.
+            {t.rich('developersLede', {
+              path: '/api/v1',
+              intent: 'transaction:create',
+              code: (chunks) => <code>{chunks}</code>,
+            })}
           </p>
         </div>
         <RoutingApiExplorer
@@ -35,7 +38,7 @@ export default async function DevelopersPage() {
           signedIn={token !== null}
         />
       </main>
-      <SiteFooter notice="Organization id is taken from the verified principal. API keys never store plaintext. Rate limits apply. Request logs redact secrets." />
+      <SiteFooter notice={tFooter('developersNotice')} />
     </>
   );
 }

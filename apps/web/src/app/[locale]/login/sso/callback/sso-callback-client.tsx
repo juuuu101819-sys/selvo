@@ -1,9 +1,10 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState, useTransition } from 'react';
 import { completeSsoSignIn } from '@/app/actions';
 import { Button } from '@/components/ui/button';
+import { useRouter } from '@/i18n/navigation';
 import { safeDashboardPath } from '@/lib/session-cookie';
 
 export function SsoCallbackClient({
@@ -17,6 +18,7 @@ export function SsoCallbackClient({
   readonly nextPath: string;
   readonly errorDescription: string | null;
 }) {
+  const t = useTranslations('sso');
   const router = useRouter();
   const [error, setError] = useState<string | null>(errorDescription);
   const [pending, startTransition] = useTransition();
@@ -40,11 +42,11 @@ export function SsoCallbackClient({
           {error}
         </p>
         <Button type="button" variant="outline" onClick={() => router.push('/login')}>
-          Back to sign in
+          {t('back')}
         </Button>
       </div>
     );
   }
 
-  return <p className="text-sm">{pending ? 'Completing organization SSO…' : 'Redirecting…'}</p>;
+  return <p className="text-sm">{pending ? t('completing') : t('redirecting')}</p>;
 }

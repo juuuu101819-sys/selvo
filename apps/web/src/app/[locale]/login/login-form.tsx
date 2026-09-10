@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { beginSsoSignIn, completeMfaSignIn, signIn } from '@/app/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ export function LoginForm({
   nextPath: string;
   allowDemoCredentials?: boolean;
 }) {
+  const t = useTranslations('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [organizationSlug, setOrganizationSlug] = useState(
@@ -40,12 +42,9 @@ export function LoginForm({
           });
         }}
       >
-        <p className="text-sm">
-          This account requires an authenticator code or a unused recovery code before a session is
-          issued.
-        </p>
+        <p className="text-sm">{t('mfaBody')}</p>
         <div className="space-y-1.5">
-          <Label htmlFor="mfa-code">Authenticator or recovery code</Label>
+          <Label htmlFor="mfa-code">{t('mfaCode')}</Label>
           <Input
             id="mfa-code"
             name="code"
@@ -63,7 +62,7 @@ export function LoginForm({
         )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={pending}>
-            {pending ? 'Verifying…' : 'Verify and sign in'}
+            {pending ? t('verifying') : t('verify')}
           </Button>
           <Button
             type="button"
@@ -75,7 +74,7 @@ export function LoginForm({
               setError(null);
             }}
           >
-            Back
+            {t('back')}
           </Button>
         </div>
       </form>
@@ -102,7 +101,7 @@ export function LoginForm({
         }}
       >
         <div className="space-y-1.5">
-          <Label htmlFor="email">Work email</Label>
+          <Label htmlFor="email">{t('email')}</Label>
           <Input
             id="email"
             name="email"
@@ -114,7 +113,7 @@ export function LoginForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">{t('password')}</Label>
           <Input
             id="password"
             name="password"
@@ -133,7 +132,7 @@ export function LoginForm({
         )}
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={pending}>
-            {pending ? 'Signing in…' : 'Sign in'}
+            {pending ? t('signingIn') : t('signIn')}
           </Button>
           {allowDemoCredentials ? (
             <Button
@@ -146,7 +145,7 @@ export function LoginForm({
                 setOrganizationSlug(DEMO_LOGIN.organizationSlug);
               }}
             >
-              Use demo credentials
+              {t('useDemo')}
             </Button>
           ) : null}
         </div>
@@ -167,13 +166,10 @@ export function LoginForm({
           });
         }}
       >
-        <p className="text-sm font-medium">Organization SSO</p>
-        <p className="text-muted-foreground text-sm">
-          Off by default. When your organization has enabled OIDC, sign in with the organization
-          slug. Unmapped identities are rejected.
-        </p>
+        <p className="text-sm font-medium">{t('ssoTitle')}</p>
+        <p className="text-muted-foreground text-sm">{t('ssoBody')}</p>
         <div className="space-y-1.5">
-          <Label htmlFor="organization-slug">Organization slug</Label>
+          <Label htmlFor="organization-slug">{t('orgSlug')}</Label>
           <Input
             id="organization-slug"
             name="organizationSlug"
@@ -183,7 +179,7 @@ export function LoginForm({
           />
         </div>
         <Button type="submit" variant="outline" disabled={pending || organizationSlug.trim() === ''}>
-          {pending ? 'Redirecting…' : 'Continue with SSO'}
+          {pending ? t('redirecting') : t('continueSso')}
         </Button>
       </form>
     </div>

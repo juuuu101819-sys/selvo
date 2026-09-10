@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { Badge } from '@/components/ui/badge';
@@ -26,40 +27,35 @@ export default async function DashboardInvoicesPage() {
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('dashboard');
+  const locale = await getLocale();
   const invoices = result.data.invoices;
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Invoices</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Monthly platform-fee invoices copied from recorded monetization snapshots. Issued is not
-          collected: payment collection is deferred until a legal entity, tax handling, and
-          payment mechanism are confirmed. Realized revenue stays false.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('invoicesTitle')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('invoicesLede')}</p>
       </div>
       {invoices.length === 0 ? (
-        <DashboardEmpty title="No invoices issued yet">
-          Invoices are generated at month-end from execution-intent and subscription snapshots.
-          Route quotes are never billed. Nothing here means cash was received.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noInvoices')}>{t('noInvoicesBody')}</DashboardEmpty>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Issued</TableHead>
-              <TableHead>Number</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Collection</TableHead>
+              <TableHead>{t('colIssued')}</TableHead>
+              <TableHead>{t('colNumber')}</TableHead>
+              <TableHead>{t('colPeriod')}</TableHead>
+              <TableHead>{t('colTotal')}</TableHead>
+              <TableHead>{t('colStatus')}</TableHead>
+              <TableHead>{t('colCollection')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {invoices.map((invoice) => (
               <TableRow key={invoice.id}>
                 <TableCell className="font-mono text-xs">
-                  {formatTimestamp(invoice.issuedAt)}
+                  {formatTimestamp(invoice.issuedAt, locale)}
                 </TableCell>
                 <TableCell>
                   <Link
@@ -77,6 +73,7 @@ export default async function DashboardInvoicesPage() {
                     invoice.totalMinorUnits,
                     invoice.currency,
                     exponentFor(invoice.currency),
+                    locale,
                   )}
                 </TableCell>
                 <TableCell>

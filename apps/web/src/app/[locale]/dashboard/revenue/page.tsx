@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { RevenueReport } from '@/components/dashboard/revenue-report';
 import { ErrorState } from '@/components/states';
@@ -15,24 +16,20 @@ export default async function DashboardRevenuePage() {
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('dashboard');
   const report = result.data;
   const empty = report.summary.eventCount === 0;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Revenue</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('revenueTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Multi-rail monetization for {session.me.organization.name}. Figures are quoted platform
-          fees, not settlements. Provider cost, partner commission, gross profit and take rate use
-          Decimal arithmetic. Another organization&apos;s events never enter these totals.
+          {t('revenueLede', { name: session.me.organization.name })}
         </p>
       </div>
       {empty ? (
-        <DashboardEmpty title="No quoted revenue yet">
-          Compare a route while signed in, quote an agent payment, or load the sandbox demo tenant.
-          The ledger records attributed fees only — funds never move.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noRevenue')}>{t('noRevenueBody')}</DashboardEmpty>
       ) : (
         <RevenueReport report={report} />
       )}

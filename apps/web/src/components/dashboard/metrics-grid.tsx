@@ -1,57 +1,67 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { DashboardMetricsDto } from '@/lib/api/types';
-import { formatBps, formatQuotedAmount, formatSettlement } from '@/lib/format';
+import { formatBps, formatQuotedAmount } from '@/lib/format';
+import { formatSettlementMessage } from '@/lib/format-i18n';
 
-function amountsList(
-  rows: readonly { currency: string; exponent: number; minorUnits: string }[],
-): string {
-  if (rows.length === 0) {
-    return '—';
-  }
-  return rows
-    .map((row) => formatQuotedAmount(row.minorUnits, row.currency, row.exponent))
-    .join(' · ');
-}
+export async function MetricsGrid({ metrics }: { metrics: DashboardMetricsDto }) {
+  const t = await getTranslations('dashboard');
+  const tCommon = await getTranslations('common');
+  const tTime = await getTranslations('time');
+  const locale = await getLocale();
 
-export function MetricsGrid({ metrics }: { metrics: DashboardMetricsDto }) {
+  const amountsList = (
+    rows: readonly { currency: string; exponent: number; minorUnits: string }[],
+  ): string => {
+    if (rows.length === 0) {
+      return tCommon('emDash');
+    }
+    return rows
+      .map((row) => formatQuotedAmount(row.minorUnits, row.currency, row.exponent, locale))
+      .join(' · ');
+  };
+
   const cards = [
     {
-      title: 'Total quoted volume',
+      title: t('metricVolume'),
       value: amountsList(metrics.totalQuotedVolume),
-      hint: 'Sum of transaction requests, counted once per payment rather than once per quote.',
+      hint: t('metricVolumeHint'),
     },
     {
-      title: 'Estimated savings',
+      title: t('metricSavings'),
       value: amountsList(metrics.estimatedSavings),
-      hint: 'Recommended route cost versus the most expensive quote on the same request.',
+      hint: t('metricSavingsHint'),
     },
     {
-      title: 'Quotes',
+      title: t('metricQuotes'),
       value: String(metrics.quoteCount),
-      hint: 'Every stored provider quote scoped to this organization.',
+      hint: t('metricQuotesHint'),
     },
     {
-      title: 'Successful route requests',
+      title: t('metricSuccessful'),
       value: String(metrics.successfulRouteRequests),
-      hint: 'Requests that reached quoted or quote-selected status.',
+      hint: t('metricSuccessfulHint'),
     },
     {
-      title: 'Average route cost',
-      value: metrics.averageRouteCostBps === null ? '—' : formatBps(metrics.averageRouteCostBps),
-      hint: 'Mean all-in cost of recommended quotes, in basis points against mid-market.',
+      title: t('metricAvgCost'),
+      value:
+        metrics.averageRouteCostBps === null
+          ? tCommon('emDash')
+          : formatBps(metrics.averageRouteCostBps, 1, locale),
+      hint: t('metricAvgCostHint'),
     },
     {
-      title: 'Average settlement estimate',
+      title: t('metricAvgSettlement'),
       value:
         metrics.averageSettlementP50Seconds === null
-          ? '—'
-          : formatSettlement(metrics.averageSettlementP50Seconds, false),
-      hint: 'Mean p50 settlement time of recommended quotes.',
+          ? tCommon('emDash')
+          : formatSettlementMessage(tTime, metrics.averageSettlementP50Seconds, false),
+      hint: t('metricAvgSettlementHint'),
     },
   ];
 
   return (
-    <section aria-label="Dashboard metrics" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <section aria-label={t('metricsAria')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (
         <Card key={card.title} size="sm">
           <CardHeader>

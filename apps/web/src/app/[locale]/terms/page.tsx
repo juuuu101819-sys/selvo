@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getTranslations } from 'next-intl/server';
 import { LegalDocument } from '@/components/legal-document';
 
 export const metadata: Metadata = {
@@ -7,9 +8,10 @@ export const metadata: Metadata = {
     'Draft terms of use for Meridian, a non-custodial route comparison hub. Not a binding contract. Meridian does not execute, settle, or custody funds.',
 };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const t = await getTranslations('legal');
   return (
-    <LegalDocument title="Terms of use">
+    <LegalDocument title={t('termsTitle')}>
       <section className="space-y-2">
         <h2 className="text-base font-semibold tracking-tight">1. What Meridian is</h2>
         <p>

@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { AgentPaymentsExplorer } from '@/components/agent-payments-explorer';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -6,6 +7,8 @@ import { readSessionToken } from '@/lib/session';
 
 export default async function AgentsPage() {
   const token = await readSessionToken();
+  const t = await getTranslations('agents');
+  const tFooter = await getTranslations('footer');
   const [meta, agents, merchants, policies] = await Promise.all([
     fetchMeta(),
     token === null
@@ -27,15 +30,8 @@ export default async function AgentsPage() {
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mb-8 max-w-2xl">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            AI agent payments
-          </h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Agents request a payment in natural language. Meridian interprets that into a structured
-            intent, then the deterministic routing engine quotes and ranks rails. The parser never
-            computes rates, fees, slippage or settlement amounts. The platform never custodies an
-            external operating account and never moves funds.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('publicTitle')}</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">{t('publicLede')}</p>
         </div>
         <AgentPaymentsExplorer
           agents={agents.ok ? agents.data.agents : []}
@@ -44,7 +40,7 @@ export default async function AgentsPage() {
           signedIn={token !== null}
         />
       </main>
-      <SiteFooter notice="Sandbox simulation only. SIMULATION_COMPLETED means the simulator finished. Wallet references are external handles; controlledByPlatform is always false." />
+      <SiteFooter notice={tFooter('agentsNotice')} />
     </>
   );
 }

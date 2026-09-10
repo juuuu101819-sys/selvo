@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { AgentSubnav } from '@/components/dashboard/agent-subnav';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { Badge } from '@/components/ui/badge';
@@ -36,15 +37,18 @@ export default async function DashboardAgentPaymentsPage({
     return <ErrorState failure={history.failure} />;
   }
 
+  const t = await getTranslations('agents');
+  const tDash = await getTranslations('dashboard');
+  const tCommon = await getTranslations('common');
+  const locale = await getLocale();
   const payments = history.data.payments;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Payment history</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('paymentHistory')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Intents for {detail.data.summary.name}. Status SIMULATION_COMPLETED is a sandbox
-          simulation. Funds never move.
+          {t('paymentHistoryLede', { name: detail.data.summary.name })}
         </p>
       </div>
       <AgentSubnav
@@ -53,19 +57,17 @@ export default async function DashboardAgentPaymentsPage({
         pathname={`/dashboard/agents/${id}/payments`}
       />
       {payments.length === 0 ? (
-        <DashboardEmpty title="No payment intents">
-          Quote an instruction in the sandbox simulator on the agents list, or load the demo tenant.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noPaymentIntents')}>{t('noPaymentIntentsBody')}</DashboardEmpty>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Created</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Corridor</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Fee</TableHead>
-              <TableHead>Provider</TableHead>
+              <TableHead>{tDash('colCreated')}</TableHead>
+              <TableHead>{tDash('colStatus')}</TableHead>
+              <TableHead>{tDash('colCorridor')}</TableHead>
+              <TableHead>{tDash('colAmount')}</TableHead>
+              <TableHead>{t('colFee')}</TableHead>
+              <TableHead>{tDash('colProvider')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -78,7 +80,7 @@ export default async function DashboardAgentPaymentsPage({
               return (
                 <TableRow key={intent.id}>
                   <TableCell className="font-mono text-xs">
-                    {formatTimestamp(intent.createdAt)}
+                    {formatTimestamp(intent.createdAt, locale)}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline">{intent.status.replaceAll('_', ' ')}</Badge>
@@ -91,14 +93,15 @@ export default async function DashboardAgentPaymentsPage({
                       intent.amount.minorUnits,
                       intent.amount.asset,
                       intent.amount.exponent,
+                      locale,
                     )}
                   </TableCell>
                   <TableCell className="font-mono text-xs tabular-nums">
                     {selected === undefined || selected === null
-                      ? '—'
-                      : formatBps(selected.totalCostBps, 2)}
+                      ? tCommon('emDash')
+                      : formatBps(selected.totalCostBps, 2, locale)}
                   </TableCell>
-                  <TableCell className="text-sm">{selected?.providerName ?? '—'}</TableCell>
+                  <TableCell className="text-sm">{selected?.providerName ?? tCommon('emDash')}</TableCell>
                 </TableRow>
               );
             })}

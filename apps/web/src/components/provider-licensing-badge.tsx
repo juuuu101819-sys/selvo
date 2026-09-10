@@ -1,9 +1,21 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
-import {
-  isUnlicensedSandbox,
-  providerLicensingHint,
-  providerLicensingLabel,
-} from '@/lib/licensing';
+import { isUnlicensedSandbox } from '@/lib/licensing';
+
+function licensingKey(licensing: string | undefined): 'sandbox' | 'licensedPartner' | 'internalModel' | 'unknown' {
+  if (licensing === undefined || licensing === 'unlicensed_sandbox') {
+    return 'sandbox';
+  }
+  if (licensing === 'licensed_partner') {
+    return 'licensedPartner';
+  }
+  if (licensing === 'internal_model') {
+    return 'internalModel';
+  }
+  return 'unknown';
+}
 
 /**
  * Visual distinction for sandbox/demo vs licensed sources (PHASE 30 / PHASE 38).
@@ -16,8 +28,17 @@ export function ProviderLicensingBadge({
 }: {
   readonly licensing: string | undefined;
 }) {
-  const label = providerLicensingLabel(licensing);
-  const hint = providerLicensingHint(licensing);
+  const t = useTranslations('licensing');
+  const key = licensingKey(licensing);
+  const hintKey = (
+    {
+      sandbox: 'sandboxHint',
+      licensedPartner: 'licensedHint',
+      internalModel: 'internalHint',
+      unknown: 'unknownHint',
+    } as const
+  )[key];
+  const hint = t(hintKey);
   const sandbox = isUnlicensedSandbox(licensing);
 
   return (
@@ -31,7 +52,7 @@ export function ProviderLicensingBadge({
           : undefined
       }
     >
-      {label}
+      {t(key)}
     </Badge>
   );
 }

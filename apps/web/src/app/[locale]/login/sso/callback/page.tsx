@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { SsoCallbackClient } from './sso-callback-client';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMeta } from '@/lib/api/client';
@@ -16,6 +17,7 @@ export default async function SsoCallbackPage({
 }) {
   const params = await searchParams;
   const meta = await fetchMeta();
+  const t = await getTranslations('sso');
 
   return (
     <>
@@ -24,19 +26,15 @@ export default async function SsoCallbackPage({
         engineVersion={meta.ok ? meta.data.engineVersion : null}
       />
       <main className="mx-auto w-full max-w-md flex-1 px-4 py-10 sm:px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Organization SSO</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Completing federated sign-in. A session is issued only for an existing organization
-          member — unmapped identities are rejected.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('title')}</h1>
+        <p className="text-muted-foreground mt-2 text-sm">{t('lede')}</p>
         <div className="mt-6">
           <SsoCallbackClient
             code={params.code ?? null}
             state={params.state ?? null}
             nextPath={safeDashboardPath(params.next)}
             errorDescription={
-              params.error_description ??
-              (params.error !== undefined ? 'The identity provider rejected the sign-in.' : null)
+              params.error_description ?? (params.error !== undefined ? t('providerRejected') : null)
             }
           />
         </div>

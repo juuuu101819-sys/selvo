@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { DashboardCharts } from '@/components/dashboard/charts';
 import { MetricsGrid } from '@/components/dashboard/metrics-grid';
@@ -17,24 +18,20 @@ export default async function DashboardOverviewPage() {
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('dashboard');
   const { metrics, charts } = result.data;
   const empty = metrics.quoteCount === 0 && metrics.successfulRouteRequests === 0;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Organization overview</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('overviewTitle')}</h1>
         <p className="text-muted-foreground mt-1 text-sm">
-          Figures below are computed from quotes and transaction requests stored for{' '}
-          {session.me.organization.name}. Another organization&apos;s rows never enter these
-          queries.
+          {t('overviewLede', { name: session.me.organization.name })}
         </p>
       </div>
       {empty ? (
-        <DashboardEmpty title="No quotes stored yet">
-          Compare a route while signed in, or load the sandbox demo tenant, and the metrics and
-          charts will fill from that stored data.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noQuotesStored')}>{t('noQuotesStoredBody')}</DashboardEmpty>
       ) : (
         <>
           <MetricsGrid metrics={metrics} />
@@ -44,11 +41,11 @@ export default async function DashboardOverviewPage() {
             providers={charts.providers}
           />
           <p className="text-muted-foreground text-sm">
-            Quoted platform fees, partner commission and take rate live on{' '}
+            {t('revenueLinkLead')}{' '}
             <Link href="/dashboard/revenue" className="text-foreground underline underline-offset-4">
-              Revenue
+              {t('revenueLink')}
             </Link>
-            . Those figures are attributed, not collected.
+            {t('revenueLinkTrail')}
           </p>
         </>
       )}

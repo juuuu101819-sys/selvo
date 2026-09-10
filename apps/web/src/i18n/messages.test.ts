@@ -28,4 +28,12 @@ describe('message catalogs', () => {
     const catalog = JSON.parse(readFileSync(join(messagesDir, `${locale}.json`), 'utf8')) as unknown;
     expect(flatten(catalog).sort()).toEqual(enKeys);
   });
+
+  it.each([...LOCALES].filter((locale) => locale !== 'en'))(
+    '%s currently copies English values as the fallback',
+    (locale) => {
+      const catalog = JSON.parse(readFileSync(join(messagesDir, `${locale}.json`), 'utf8')) as unknown;
+      expect(catalog).toEqual(en);
+    },
+  );
 });

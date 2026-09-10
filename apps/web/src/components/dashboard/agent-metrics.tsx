@@ -1,46 +1,64 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AgentDashboardSummaryDto } from '@/lib/api/types';
 import { formatBps, formatQuotedAmount } from '@/lib/format';
 
-export function AgentMetricsGrid({ summary }: { summary: AgentDashboardSummaryDto }) {
+export async function AgentMetricsGrid({ summary }: { summary: AgentDashboardSummaryDto }) {
+  const t = await getTranslations('agents');
+  const tCommon = await getTranslations('common');
+  const locale = await getLocale();
+
   const cards = [
     {
-      title: 'Payment volume',
-      value: formatQuotedAmount(summary.paymentVolumeMinorUnits, summary.currency, summary.exponent),
-      hint: 'Quoted and simulated notional in the reporting asset. Includes failed intents.',
+      title: t('metricVolume'),
+      value: formatQuotedAmount(
+        summary.paymentVolumeMinorUnits,
+        summary.currency,
+        summary.exponent,
+        locale,
+      ),
+      hint: t('metricVolumeHint'),
     },
     {
-      title: 'Transactions',
+      title: t('metricTx'),
       value: String(summary.transactionCount),
-      hint: `${summary.completedCount} completed simulations, ${summary.failedCount} failed.`,
+      hint: t('metricTxHint', { completed: summary.completedCount, failed: summary.failedCount }),
     },
     {
-      title: 'Average fee',
-      value: summary.averageFeeBps === null ? '—' : formatBps(summary.averageFeeBps, 2),
-      hint: 'Mean all-in cost of the selected, recommended or first quoted route.',
-    },
-    {
-      title: 'Route success rate',
+      title: t('metricFee'),
       value:
-        summary.routeSuccessRatePercent === null ? '—' : `${summary.routeSuccessRatePercent}%`,
-      hint: 'Completed simulations divided by completed plus failed.',
+        summary.averageFeeBps === null
+          ? tCommon('emDash')
+          : formatBps(summary.averageFeeBps, 2, locale),
+      hint: t('metricFeeHint'),
     },
     {
-      title: 'Preferred route',
-      value: summary.preferredRoute?.providerName ?? '—',
+      title: t('metricSuccess'),
+      value:
+        summary.routeSuccessRatePercent === null
+          ? tCommon('emDash')
+          : `${summary.routeSuccessRatePercent}%`,
+      hint: t('metricSuccessHint'),
+    },
+    {
+      title: t('metricPreferred'),
+      value: summary.preferredRoute?.providerName ?? tCommon('emDash'),
       hint: summary.preferredRoute
-        ? `${summary.preferredRoute.rail.replaceAll('_', ' ')} · ${summary.preferredRoute.intentCount} intents`
-        : 'No quoted route yet.',
+        ? t('metricPreferredHint', {
+            rail: summary.preferredRoute.rail.replaceAll('_', ' '),
+            count: summary.preferredRoute.intentCount,
+          })
+        : t('metricPreferredNone'),
     },
     {
-      title: 'Policy violations',
+      title: t('metricViolations'),
       value: String(summary.policyViolationCount),
-      hint: 'Fail-closed denials recorded for this agent.',
+      hint: t('metricViolationsHint'),
     },
   ];
 
   return (
-    <section aria-label="Agent financial metrics" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <section aria-label={t('metricsAria')} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {cards.map((card) => (
         <Card key={card.title} size="sm">
           <CardHeader>

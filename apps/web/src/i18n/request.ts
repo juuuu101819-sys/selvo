@@ -39,6 +39,7 @@ export default getRequestConfig(async ({ requestLocale }) => {
   return {
     locale,
     messages,
+    timeZone: 'UTC',
     onError(error) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn('[i18n]', error.code, error.message);

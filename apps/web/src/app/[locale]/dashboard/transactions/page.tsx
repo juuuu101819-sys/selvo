@@ -1,3 +1,4 @@
+import { getLocale, getTranslations } from 'next-intl/server';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -25,39 +26,38 @@ export default async function DashboardTransactionsPage() {
     return <ErrorState failure={result.failure} />;
   }
 
+  const t = await getTranslations('dashboard');
+  const tCommon = await getTranslations('common');
+  const locale = await getLocale();
   const transactions = result.data.transactions;
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Transactions</h1>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Priced requests, not settlements. Meridian never records a payment moving.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight">{t('transactionsTitle')}</h1>
+        <p className="text-muted-foreground mt-1 text-sm">{t('transactionsLede')}</p>
       </div>
       {transactions.length === 0 ? (
-        <DashboardEmpty title="No transaction requests">
-          Requests appear here after this organization asks the engine to price a corridor.
-        </DashboardEmpty>
+        <DashboardEmpty title={t('noTransactions')}>{t('noTransactionsBody')}</DashboardEmpty>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Created</TableHead>
-              <TableHead>Reference</TableHead>
-              <TableHead>Corridor</TableHead>
-              <TableHead>Amount</TableHead>
-              <TableHead>Quotes</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>{t('colCreated')}</TableHead>
+              <TableHead>{t('colReference')}</TableHead>
+              <TableHead>{t('colCorridor')}</TableHead>
+              <TableHead>{t('colAmount')}</TableHead>
+              <TableHead>{t('colQuotes')}</TableHead>
+              <TableHead>{t('colStatus')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {transactions.map((row) => (
               <TableRow key={row.id}>
                 <TableCell className="font-mono text-xs">
-                  {formatTimestamp(row.createdAt)}
+                  {formatTimestamp(row.createdAt, locale)}
                 </TableCell>
-                <TableCell className="font-mono text-xs">{row.reference ?? '—'}</TableCell>
+                <TableCell className="font-mono text-xs">{row.reference ?? tCommon('emDash')}</TableCell>
                 <TableCell className="font-mono text-xs">
                   {row.sourceCurrency}→{row.targetCurrency}
                 </TableCell>
@@ -66,6 +66,7 @@ export default async function DashboardTransactionsPage() {
                     row.amountMinorUnits,
                     row.sourceCurrency,
                     exponentFor(row.sourceCurrency),
+                    locale,
                   )}
                 </TableCell>
                 <TableCell className="tabular-nums">{row.quoteCount}</TableCell>

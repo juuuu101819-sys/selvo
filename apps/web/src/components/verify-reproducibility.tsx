@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle2, Loader2, ShieldQuestion, XCircle } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 import { verifyComparison } from '@/app/actions';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ export function VerifyReproducibility({
   comparisonId: string;
   fingerprint: string;
 }) {
+  const t = useTranslations('verify');
   const [state, setState] = useState<VerificationState>({ kind: 'idle' });
   const [isPending, startTransition] = useTransition();
 
@@ -54,12 +56,12 @@ export function VerifyReproducibility({
         {isPending ? (
           <>
             <Loader2 className="size-3.5 animate-spin" aria-hidden />
-            Replaying…
+            {t('replaying')}
           </>
         ) : (
           <>
             <ShieldQuestion className="size-3.5" aria-hidden />
-            Verify reproducibility
+            {t('button')}
           </>
         )}
       </Button>
@@ -72,14 +74,16 @@ export function VerifyReproducibility({
         {state.kind === 'reproduced' && (
           <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
             <CheckCircle2 className="size-3.5" aria-hidden />
-            Replayed to an identical result and fingerprint.
+            {t('reproduced')}
           </span>
         )}
         {state.kind === 'diverged' && (
           <span className="text-destructive inline-flex items-center gap-1">
             <XCircle className="size-3.5" aria-hidden />
-            Replay produced {shortFingerprint(state.actual)}, expected{' '}
-            {shortFingerprint(state.expected)}.
+            {t('diverged', {
+              actual: shortFingerprint(state.actual),
+              expected: shortFingerprint(state.expected),
+            })}
           </span>
         )}
         {state.kind === 'error' && (

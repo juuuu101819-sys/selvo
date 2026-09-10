@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { GraphExplorer } from '@/components/graph-explorer';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -5,6 +6,8 @@ import { fetchMeta, fetchRouteGraph } from '@/lib/api/client';
 
 export default async function GraphPage() {
   const [meta, graph] = await Promise.all([fetchMeta(), fetchRouteGraph()]);
+  const t = await getTranslations('pages');
+  const tFooter = await getTranslations('footer');
 
   return (
     <>
@@ -16,18 +19,12 @@ export default async function GraphPage() {
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6 sm:py-12">
         <div className="mb-8 max-w-2xl">
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            Financial route graph
-          </h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Assets and venues as a directed graph. Discover multi-hop conversions such as USD →
-            USDC → USDT → KRW, then prune by hops, cost, liquidity, availability and compliance.
-            Nothing here is a quote, a swap or a payout.
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t('graphTitle')}</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">{t('graphLede')}</p>
         </div>
         <GraphExplorer graph={graph.ok ? graph.data : null} />
       </main>
-      <SiteFooter notice="Graph metadata is indicative. Meridian never holds funds, keys or wallets, and does not submit a conversion, swap or payout." />
+      <SiteFooter notice={tFooter('graphNotice')} />
     </>
   );
 }

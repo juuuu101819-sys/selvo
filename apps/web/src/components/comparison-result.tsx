@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle, RefreshCw, TimerOff } from 'lucide-react';
+import { useLocale, useTranslations } from 'next-intl';
 import { BestRoute } from '@/components/best-route';
 import { CostComparison } from '@/components/cost-comparison';
 import { QuoteExpiryBadge, useQuoteExpiry } from '@/components/quote-expiry';
@@ -28,6 +29,9 @@ export function ComparisonResult({
   onRefresh: () => void;
   refreshing: boolean;
 }) {
+  const t = useTranslations('comparison');
+  const tCommon = useTranslations('common');
+  const locale = useLocale();
   const best = comparison.routes.find((route) => route.recommended) ?? comparison.routes[0];
   const alternatives = comparison.routes.filter((route) => route !== best);
 
@@ -40,18 +44,15 @@ export function ComparisonResult({
   return (
     <section
       className={`space-y-6 ${refreshing ? 'pointer-events-none opacity-60' : ''}`}
-      aria-label="Route comparison results"
+      aria-label={t('resultsLabel')}
       aria-busy={refreshing}
     >
       {comparisonExpiry.state === 'expired' && (
         <Alert variant="destructive">
           <TimerOff aria-hidden />
-          <AlertTitle>These quotes have expired</AlertTitle>
+          <AlertTitle>{t('expiredTitle')}</AlertTitle>
           <AlertDescription>
-            <p>
-              At least one provider&rsquo;s price has lapsed, so this ranking no longer reflects
-              what you can get. Refresh to compare live quotes.
-            </p>
+            <p>{t('expiredBody')}</p>
             <Button
               size="sm"
               variant="outline"
@@ -60,7 +61,7 @@ export function ComparisonResult({
               disabled={refreshing}
             >
               <RefreshCw className={`size-3.5 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
-              {refreshing ? 'Refreshing…' : 'Refresh quotes'}
+              {refreshing ? tCommon('refreshing') : t('refreshQuotes')}
             </Button>
           </AlertDescription>
         </Alert>
@@ -69,12 +70,10 @@ export function ComparisonResult({
       {best !== undefined && <BestRoute route={best} />}
 
       {alternatives.length > 0 && (
-        <section aria-label="Alternative routes" className="space-y-3">
+        <section aria-label={t('alternativeRoutes')} className="space-y-3">
           <h2 className="text-sm font-semibold">
-            Alternative routes
-            <span className="text-muted-foreground ml-2 font-normal">
-              ranked by the same scoring, shown for the comparison
-            </span>
+            {t('alternativeRoutes')}
+            <span className="text-muted-foreground ml-2 font-normal">{t('alternativeHint')}</span>
           </h2>
           {alternatives.map((route) => (
             <RouteCard key={route.routeId} route={route} />
@@ -87,10 +86,7 @@ export function ComparisonResult({
       {comparison.providerFailures.length > 0 && (
         <Alert variant="default">
           <AlertTriangle aria-hidden />
-          <AlertTitle>
-            {comparison.providerFailures.length} provider
-            {comparison.providerFailures.length === 1 ? '' : 's'} could not quote
-          </AlertTitle>
+          <AlertTitle>{t('providerFailures', { count: comparison.providerFailures.length })}</AlertTitle>
           <AlertDescription>
             <ul className="list-inside list-disc">
               {comparison.providerFailures.map((failure) => (
@@ -115,19 +111,19 @@ export function ComparisonResult({
         </div>
         <dl className="text-muted-foreground grid gap-1 sm:grid-cols-2">
           <div className="flex gap-1">
-            <dt>Comparison</dt>
+            <dt>{t('comparisonId')}</dt>
             <dd className="truncate font-mono">{comparison.comparisonId}</dd>
           </div>
           <div className="flex gap-1">
-            <dt>Requested</dt>
-            <dd className="font-mono">{formatTimestamp(comparison.request.requestedAt)}</dd>
+            <dt>{t('requested')}</dt>
+            <dd className="font-mono">{formatTimestamp(comparison.request.requestedAt, locale)}</dd>
           </div>
           <div className="flex gap-1">
-            <dt>Engine</dt>
+            <dt>{t('engine')}</dt>
             <dd className="font-mono">{comparison.engineVersion}</dd>
           </div>
           <div className="flex gap-1">
-            <dt>Weights</dt>
+            <dt>{t('weights')}</dt>
             <dd className="truncate font-mono">
               {Object.entries(comparison.scoringWeights)
                 .filter(([, value]) => Number(value) > 0)

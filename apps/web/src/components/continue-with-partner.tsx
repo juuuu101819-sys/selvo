@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowUpRight, ShieldCheck } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -28,36 +29,30 @@ export function ContinueWithPartner({
   providerName: string;
   variant?: 'default' | 'outline';
 }) {
+  const t = useTranslations('partner');
+
   return (
     <Dialog>
       <DialogTrigger
         render={<Button variant={variant} size={variant === 'default' ? 'default' : 'sm'} />}
       >
-        Continue with partner
+        {t('continue')}
         <ArrowUpRight className="size-4" aria-hidden />
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Transact directly with {providerName}</DialogTitle>
+          <DialogTitle>{t('title', { provider: providerName })}</DialogTitle>
           <DialogDescription className="space-y-3 pt-1 text-left">
-            <span className="block">
-              Meridian is a comparison platform. It does not hold funds, execute transactions or
-              touch the money at any point — you transact with the provider you choose, on their
-              terms.
-            </span>
-            <span className="block">
-              A direct hand-off to licensed partners is planned. Until it ships, use this quote as
-              your negotiating reference with {providerName}: the mid-market benchmark, the offered
-              rate and every fee are itemised in the route details.
-            </span>
+            <span className="block">{t('body1')}</span>
+            <span className="block">{t('body2', { provider: providerName })}</span>
             <span className="text-muted-foreground flex items-start gap-1.5 text-xs">
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-              Quotes are indicative and non-binding. No funds move through Meridian.
+              {t('indicative')}
             </span>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Close</DialogClose>
+          <DialogClose render={<Button variant="outline" />}>{t('close')}</DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

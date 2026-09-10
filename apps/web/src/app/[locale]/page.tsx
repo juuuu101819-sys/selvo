@@ -36,8 +36,11 @@ export default async function HomePage() {
         extra={
           meta.ok && meta.data.pricing !== null ? (
             <p className="font-mono">
-              pricing {meta.data.pricing.datasetVersion} · rates{' '}
-              {meta.data.pricing.referenceRatesVersion} · {meta.data.providers.length} providers
+              {t('landing.pricingLine', {
+                dataset: meta.data.pricing.datasetVersion,
+                rates: meta.data.pricing.referenceRatesVersion,
+                count: meta.data.providers.length,
+              })}
             </p>
           ) : null
         }
