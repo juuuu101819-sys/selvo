@@ -1,5 +1,8 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
 import { HSTS_HEADER_VALUE, shouldAttachHsts } from './src/lib/transport-security';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   // Repository documentation lives in docs/ and README.md; the generated agent rule files would
@@ -19,4 +22,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

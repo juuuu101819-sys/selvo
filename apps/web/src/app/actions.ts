@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { redirect as redirectLocalized } from '@/i18n/navigation';
 import { acceptInvite, createComparison, createDeFiRoute, createFinancialQuote, createOrganizationApiKey, createPaymentIntent, createRoute, createStablecoinRoute, discoverGraphPaths, interpretAgentInstruction, login, logout, quotePaymentIntent, replayComparison, revokeOrganizationApiKey, routeAgentInstruction, searchRoutes, selectPaymentRoute, authorizePaymentIntent, simulatePaymentIntent, submitOnboardingKyb, updateAgentPolicy, verifyMfa, startOidcLogin, completeOidcLogin, enrollMfa, confirmMfa, regenerateMfaRecovery, updateOrgAuthSettings, updateOrgExecutionAuthorization, updateAgentExecutionAuthorization } from '@/lib/api/client';
 import type { AcceptInviteDto, ApiResult, AgentPolicyControlsDto, ComparisonDto, DefiRoutingDto, ExecutionAuthorizationDto, FinancialQuoteDto, GraphSearchDto, IssuedApiKeyDto, KybSubmitDto, LoginDto, MfaChallengeDto, MfaConfirmDto, MfaEnrollDto, MultiRailRoutingDto, NlInterpretDto, NlRouteResultDto, OrgAuthSettingsDto, PaymentIntentDto, ReplayResultDto, RouteSearchDto, StablecoinRoutingDto } from '@/lib/api/types';
 import { isMfaChallenge } from '@/lib/api/types';
@@ -175,7 +177,7 @@ export async function signOut(): Promise<void> {
     await logout(token);
   }
   await clearSessionCookie();
-  redirect('/login');
+  redirectLocalized({ href: '/login', locale: await getLocale() });
 }
 
 export async function createOrganizationKey(input: {

@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { AgentPaymentsExplorer } from '@/components/agent-payments-explorer';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';
 import { Badge } from '@/components/ui/badge';

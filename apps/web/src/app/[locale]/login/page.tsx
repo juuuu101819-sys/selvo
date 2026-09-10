@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { LoginForm } from '@/app/login/login-form';
+import { LoginForm } from './login-form';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMe, fetchMeta } from '@/lib/api/client';

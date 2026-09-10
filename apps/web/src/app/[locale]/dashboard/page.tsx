@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { Link } from '@/i18n/navigation';
 import { DashboardCharts } from '@/components/dashboard/charts';
 import { MetricsGrid } from '@/components/dashboard/metrics-grid';
 import { DashboardEmpty, SessionEnded } from '@/components/dashboard/states';

@@ -4,13 +4,15 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const layout = readFileSync(join(root, 'layout.tsx'), 'utf8');
-const landing = readFileSync(join(root, 'page.tsx'), 'utf8');
+const localeRoot = join(root, '[locale]');
+const enCatalog = readFileSync(join(root, '../../messages/en.json'), 'utf8');
+const localeLayout = readFileSync(join(localeRoot, 'layout.tsx'), 'utf8');
+const landing = readFileSync(join(localeRoot, 'page.tsx'), 'utf8');
 const bestRoute = readFileSync(join(root, '../components/best-route.tsx'), 'utf8');
 const routeCard = readFileSync(join(root, '../components/route-card.tsx'), 'utf8');
 const footer = readFileSync(join(root, '../components/site-footer.tsx'), 'utf8');
-const terms = readFileSync(join(root, 'terms/page.tsx'), 'utf8');
-const privacy = readFileSync(join(root, 'privacy/page.tsx'), 'utf8');
+const terms = readFileSync(join(localeRoot, 'terms/page.tsx'), 'utf8');
+const privacy = readFileSync(join(localeRoot, 'privacy/page.tsx'), 'utf8');
 const legalDocument = readFileSync(join(root, '../components/legal-document.tsx'), 'utf8');
 
 describe('marketing copy (PHASE 39 positioning)', () => {
@@ -20,25 +22,24 @@ describe('marketing copy (PHASE 39 positioning)', () => {
       /operate as (a |an )?(licensed )?(bank|exchange|broker)/i,
     ];
     for (const pattern of claimPatterns) {
-      expect(layout).not.toMatch(pattern);
+      expect(enCatalog).not.toMatch(pattern);
       expect(landing).not.toMatch(pattern);
       expect(terms).not.toMatch(pattern);
     }
   });
 
   it('states that Meridian does not execute or settle', () => {
-    expect(layout).toMatch(/does not execute, settle, or custody funds/i);
-    expect(landing).toMatch(/does not execute or delegate settlement/i);
+    expect(enCatalog).toMatch(/does not execute, settle, or custody funds/i);
+    expect(enCatalog).toMatch(/does not execute or delegate settlement/i);
   });
 
   it('names businesses and AI agents as the audience', () => {
-    expect(landing).toMatch(/businesses and AI agents/i);
-    expect(layout).toMatch(/businesses and AI agents/i);
+    expect(enCatalog).toMatch(/businesses and AI agents/i);
   });
 
   it('does not claim a licensed partner is already connected', () => {
-    expect(landing).not.toMatch(/delegated to licensed partners/i);
-    expect(landing).toMatch(/until a licensed partner is connected/i);
+    expect(enCatalog).not.toMatch(/delegated to licensed partners/i);
+    expect(enCatalog).toMatch(/until a licensed partner is connected/i);
     expect(bestRoute).not.toMatch(/through licensed partners/i);
     expect(routeCard).not.toMatch(/through licensed on-ramp/i);
   });
@@ -48,8 +49,10 @@ describe('legal disclosure pages', () => {
   it('links terms and privacy from the shared footer', () => {
     expect(footer).toMatch(/href="\/terms"/);
     expect(footer).toMatch(/href="\/privacy"/);
-    expect(footer).toMatch(/Terms of use/);
-    expect(footer).toMatch(/Privacy/);
+    expect(footer).toMatch(/t\('terms'\)/);
+    expect(footer).toMatch(/t\('privacy'\)/);
+    expect(enCatalog).toMatch(/"terms": "Terms of use"/);
+    expect(enCatalog).toMatch(/"privacy": "Privacy"/);
   });
 
   it('marks terms and privacy as draft and not in force', () => {
@@ -71,10 +74,12 @@ describe('legal disclosure pages', () => {
 });
 
 describe('open graph and icons', () => {
-  it('declares Open Graph and Twitter metadata on the root layout', () => {
-    expect(layout).toMatch(/openGraph:/);
-    expect(layout).toMatch(/twitter:/);
-    expect(layout).toMatch(/summary_large_image/);
-    expect(layout).toMatch(/metadataBase:/);
+  it('declares Open Graph and Twitter metadata on the locale layout', () => {
+    expect(localeLayout).toMatch(/openGraph:/);
+    expect(localeLayout).toMatch(/twitter:/);
+    expect(localeLayout).toMatch(/summary_large_image/);
+    expect(localeLayout).toMatch(/metadataBase:/);
+    expect(localeLayout).toMatch(/alternates:/);
+    expect(localeLayout).toMatch(/html lang=\{locale\}/);
   });
 });

@@ -1,15 +1,29 @@
+import createIntlMiddleware from 'next-intl/middleware';
 import { NextResponse, type NextRequest } from 'next/server';
+import { routing } from '@/i18n/routing';
+import { isDashboardPath } from '@/i18n/pathname';
 import { decideDashboardAccess } from '@/lib/session-gate';
 import { SESSION_COOKIE } from '@/lib/session-cookie';
 
+const handleI18nRouting = createIntlMiddleware(routing);
+
 /**
- * Single session gate for every `/dashboard` route (PA-M13).
+ * Locale negotiation first, then the dashboard session gate (PA-M13).
  *
- * Presence, format, expiry, and API validity are decided here. Handlers must not re-implement a
- * weaker cookie check. Invalid cookies produce either a login redirect (document navigation) or
- * a PA-M03 401 (programmatic JSON) — never a reason that distinguishes missing vs expired.
+ * Invalid dashboard cookies still produce either a locale-preserving login redirect or a PA-M03
+ * 401 — never a reason that distinguishes missing vs expired.
  */
 export async function middleware(request: NextRequest) {
+  const intlResponse = handleI18nRouting(request);
+  const location = intlResponse.headers.get('location');
+  if (location !== null && intlResponse.status >= 300 && intlResponse.status < 400) {
+    return intlResponse;
+  }
+
+  if (!isDashboardPath(request.nextUrl.pathname)) {
+    return intlResponse;
+  }
+
   const decision = await decideDashboardAccess({
     pathname: request.nextUrl.pathname,
     cookieValue: request.cookies.get(SESSION_COOKIE)?.value,
@@ -24,7 +38,7 @@ export async function middleware(request: NextRequest) {
   });
 
   if (decision.kind === 'next') {
-    return NextResponse.next();
+    return intlResponse;
   }
   if (decision.kind === 'redirect') {
     return NextResponse.redirect(decision.location);
@@ -35,5 +49,5 @@ export async function middleware(request: NextRequest) {
 export const runtime = 'nodejs';
 
 export const config = {
-  matcher: ['/dashboard', '/dashboard/:path*'],
+  matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],
 };

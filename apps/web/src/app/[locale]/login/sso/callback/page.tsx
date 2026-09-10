@@ -1,4 +1,4 @@
-import { SsoCallbackClient } from '@/app/login/sso/callback/sso-callback-client';
+import { SsoCallbackClient } from './sso-callback-client';
 import { SiteHeader } from '@/components/site-header';
 import { fetchMeta } from '@/lib/api/client';
 import { safeDashboardPath } from '@/lib/session';

@@ -1,6 +1,8 @@
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LocaleSwitcher } from '@/components/locale-switcher';
+import { Link } from '@/i18n/navigation';
 import { readSessionToken } from '@/lib/session';
 
 export async function SiteHeader({
@@ -15,6 +17,7 @@ export async function SiteHeader({
   authLinks?: 'default' | 'none';
 }) {
   const signedIn = (await readSessionToken()) !== null;
+  const t = await getTranslations('header');
 
   return (
     <header className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur">
@@ -30,7 +33,7 @@ export async function SiteHeader({
             <div className="leading-tight">
               <p className="text-sm font-semibold tracking-tight">Meridian</p>
               <p className="text-muted-foreground truncate text-xs">
-                {organizationName ?? 'Global financial routing'}
+                {organizationName ?? t('tagline')}
               </p>
             </div>
           </Link>
@@ -42,14 +45,15 @@ export async function SiteHeader({
               variant={mode === 'sandbox' ? 'secondary' : 'default'}
               className="font-mono text-[11px] uppercase"
             >
-              {mode}
+              {mode === 'sandbox' ? t('sandbox') : mode}
             </Badge>
           )}
           {engineVersion !== null && (
             <span className="text-muted-foreground hidden font-mono text-[11px] sm:inline">
-              engine {engineVersion}
+              {t('engine', { version: engineVersion })}
             </span>
           )}
+          <LocaleSwitcher />
           {authLinks === 'default' &&
             (signedIn ? (
               <Button
@@ -58,7 +62,7 @@ export async function SiteHeader({
                 nativeButton={false}
                 render={<Link href="/dashboard" />}
               >
-                Dashboard
+                {t('dashboard')}
               </Button>
             ) : (
               <Button
@@ -67,14 +71,14 @@ export async function SiteHeader({
                 nativeButton={false}
                 render={<Link href="/login" />}
               >
-                Sign in
+                {t('signIn')}
               </Button>
             ))}
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/rails" />}>
-            Multi-rail
+            {t('navRails')}
           </Button>
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/graph" />}>
-            Graph
+            {t('navGraph')}
           </Button>
           <Button
             variant="ghost"
@@ -82,13 +86,13 @@ export async function SiteHeader({
             nativeButton={false}
             render={<Link href="/stablecoins" />}
           >
-            Stablecoins
+            {t('navStablecoins')}
           </Button>
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/defi" />}>
-            DeFi
+            {t('navDefi')}
           </Button>
           <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/agents" />}>
-            Agents
+            {t('navAgents')}
           </Button>
           <Button
             variant="ghost"
@@ -96,7 +100,7 @@ export async function SiteHeader({
             nativeButton={false}
             render={<Link href="/developers" />}
           >
-            API
+            {t('navApi')}
           </Button>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { PROTECTED_DASHBOARD_PATHS } from './protected-routes';
@@ -12,7 +12,7 @@ import {
   unauthenticatedErrorBody,
 } from './session-gate';
 
-const DASHBOARD_APP_DIR = fileURLToPath(new URL('../app/dashboard', import.meta.url));
+const DASHBOARD_APP_DIR = join(dirname(fileURLToPath(import.meta.url)), '../app/[locale]/dashboard');
 
 function collectPageRoutes(dir: string, urlPrefix: string): string[] {
   const routes: string[] = [];
@@ -161,6 +161,20 @@ describe('PA-M13 session gate', () => {
     if (decision.kind === 'redirect') {
       expect(decision.location).toContain('/login?next=%2Fdashboard%2Fquotes');
       expect(decision.location.toLowerCase()).not.toMatch(/expired|malformed|missing/);
+    }
+  });
+
+  it('keeps the locale prefix on the login redirect', async () => {
+    const decision = await decideDashboardAccess({
+      pathname: '/ko/dashboard/quotes',
+      cookieValue: undefined,
+      origin: 'http://127.0.0.1:43117',
+      requestId: 'req_ko',
+      headers: { accept: 'text/html', fetchMode: 'navigate' },
+    });
+    expect(decision.kind).toBe('redirect');
+    if (decision.kind === 'redirect') {
+      expect(decision.location).toContain('/ko/login?next=%2Fko%2Fdashboard%2Fquotes');
     }
   });
 });

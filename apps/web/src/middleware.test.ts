@@ -1,9 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { middleware } from './middleware';
 import { PROTECTED_DASHBOARD_PATHS } from './lib/protected-routes';
 import { SESSION_COOKIE } from './lib/session-cookie';
 import { SESSION_UNAUTHENTICATED_CODE, SESSION_UNAUTHENTICATED_MESSAGE } from './lib/session-gate';
+
+vi.mock('next-intl/middleware', () => ({
+  default: () => () => NextResponse.next(),
+}));
 
 const VALID_LOOKING = `mds_${'B'.repeat(43)}`;
 
@@ -55,5 +59,14 @@ describe('dashboard middleware (PA-M13)', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('locale-prefixed dashboard gate', () => {
+  it('returns 401 JSON for /ko/dashboard with no cookie', async () => {
+    const response = await middleware(jsonRequest('/ko/dashboard'));
+    expect(response.status).toBe(401);
+    const body = (await response.json()) as { error: { code: string } };
+    expect(body.error.code).toBe(SESSION_UNAUTHENTICATED_CODE);
   });
 });

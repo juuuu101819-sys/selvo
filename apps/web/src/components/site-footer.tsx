@@ -1,14 +1,17 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 import { ShieldCheck } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 
-export function SiteFooter({
+export async function SiteFooter({
   notice,
   extra,
 }: {
   notice: ReactNode;
   extra?: ReactNode;
 }) {
+  const t = await getTranslations('footer');
+
   return (
     <footer className="border-border/60 border-t">
       <div className="text-muted-foreground mx-auto w-full max-w-6xl space-y-3 px-4 py-6 text-xs sm:px-6">
@@ -17,12 +20,12 @@ export function SiteFooter({
           <span>{notice}</span>
         </p>
         {extra}
-        <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-1">
+        <nav aria-label={t('legalNav')} className="flex flex-wrap gap-x-4 gap-y-1">
           <Link href="/terms" className="hover:text-foreground underline-offset-4 hover:underline">
-            Terms of use
+            {t('terms')}
           </Link>
           <Link href="/privacy" className="hover:text-foreground underline-offset-4 hover:underline">
-            Privacy
+            {t('privacy')}
           </Link>
         </nav>
       </div>

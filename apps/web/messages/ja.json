@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "title": "Meridian — Global financial routing",
+    "titleTemplate": "%s · Meridian",
+    "description": "Non-custodial routing hub for businesses and AI agents: compare traditional finance, stablecoin and wholesale liquidity routes. Meridian never holds funds or keys and does not execute, settle, or custody funds."
+  },
+  "header": {
+    "tagline": "Global financial routing",
+    "signIn": "Sign in",
+    "dashboard": "Dashboard",
+    "navRails": "Multi-rail",
+    "navGraph": "Graph",
+    "navStablecoins": "Stablecoins",
+    "navDefi": "DeFi",
+    "navAgents": "Agents",
+    "navApi": "API",
+    "language": "Language",
+    "engine": "engine {version}",
+    "sandbox": "Sandbox"
+  },
+  "landing": {
+    "title": "Rank payment routes for businesses and AI agents",
+    "lede": "Meridian is a non-custodial comparison layer for businesses and AI agents. It compares traditional finance, stablecoin and wholesale liquidity routes, then reports all-in cost, fees, settlement time, slippage and a route score — without taking custody or moving funds. Quotes stay sandbox-labelled until a licensed partner is connected. Execution is not in this product. Meridian does not execute or delegate settlement."
+  },
+  "footer": {
+    "legalNav": "Legal",
+    "terms": "Terms of use",
+    "privacy": "Privacy",
+    "landingNotice": "Meridian is non-custodial. It compares routes and never holds customer funds, private keys or wallets, never acts as principal, and does not execute or delegate settlement yet. Quotes are indicative and non-binding; transact directly with the provider you choose."
+  }
+}

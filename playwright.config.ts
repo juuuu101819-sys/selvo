@@ -30,6 +30,7 @@ export default defineConfig({
 
   use: {
     baseURL: WEB_BASE_URL,
+    locale: 'en-US',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

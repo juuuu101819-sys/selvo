@@ -9,6 +9,8 @@ describe('safeDashboardPath', () => {
 
   it('allows nested dashboard routes', () => {
     expect(safeDashboardPath('/dashboard/quotes')).toBe('/dashboard/quotes');
+    expect(safeDashboardPath('/ko/dashboard/quotes')).toBe('/ko/dashboard/quotes');
+    expect(safeDashboardPath('/zh-CN/dashboard')).toBe('/zh-CN/dashboard');
   });
 
   it('rejects open redirects', () => {

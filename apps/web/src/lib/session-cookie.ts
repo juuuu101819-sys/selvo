@@ -1,3 +1,5 @@
+import { isDashboardPath } from '@/i18n/pathname';
+
 /** httpOnly cookie holding the API session token. Never readable from client JavaScript. */
 export const SESSION_COOKIE = 'meridian_session';
 
@@ -49,16 +51,17 @@ export function resolveSessionCookieSecurity(
 
 /**
  * Only dashboard paths are valid post-login redirects, so a crafted `next` query cannot send the
- * browser to an external origin.
+ * browser to an external origin. Locale prefixes (`/ko/dashboard`) are kept when they are real
+ * app locales; everything else collapses to `/dashboard`.
  */
 export function safeDashboardPath(next: string | null | undefined): string {
   if (next === undefined || next === null || next === '') {
     return '/dashboard';
   }
-  if (!next.startsWith('/dashboard')) {
+  if (next.startsWith('//') || next.includes('\\') || next.includes('://')) {
     return '/dashboard';
   }
-  if (next.startsWith('//') || next.includes('\\') || next.includes('://')) {
+  if (!isDashboardPath(next)) {
     return '/dashboard';
   }
   return next;

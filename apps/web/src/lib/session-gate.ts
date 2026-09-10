@@ -1,3 +1,4 @@
+import { isDashboardPath, loginPathFor } from '@/i18n/pathname';
 import { SESSION_COOKIE } from './session-cookie';
 
 export { SESSION_COOKIE };
@@ -130,7 +131,7 @@ export interface DashboardAccessInput extends EvaluateSessionInput {
 export async function decideDashboardAccess(
   input: DashboardAccessInput,
 ): Promise<DashboardAccessDecision> {
-  if (!input.pathname.startsWith('/dashboard')) {
+  if (!isDashboardPath(input.pathname)) {
     return { kind: 'next' };
   }
   const allowed = await evaluateSessionCookie(input);
@@ -140,7 +141,7 @@ export async function decideDashboardAccess(
   if (wantsUnauthenticatedJson(input.headers ?? {})) {
     return { kind: 'unauthorized', body: unauthenticatedErrorBody(input.requestId) };
   }
-  const login = new URL('/login', input.origin);
+  const login = new URL(loginPathFor(input.pathname), input.origin);
   login.searchParams.set('next', input.pathname);
   return { kind: 'redirect', location: login.toString() };
 }
