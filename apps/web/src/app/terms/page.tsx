@@ -60,8 +60,8 @@ export default function TermsPage() {
         <h2 className="text-base font-semibold tracking-tight">6. Charges</h2>
         <p>
           Meridian does not charge a percentage of customer transaction volume as a public
-          take-rate. If a platform fee appears on a quote or invoice, it is a negotiated usage or
-          subscription term for that organization. Invoices in this product are record-only;
+          take-rate. If a platform fee appears on a quote or invoice, it is a negotiated
+          usage or subscription term for that organization. Invoices in this product are record-only;
           collection, subscriptions, and partner payouts are not live.
         </p>
       </section>
