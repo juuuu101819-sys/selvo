@@ -19,25 +19,170 @@
     "sandbox": "Sandbox"
   },
   "landing": {
-    "title": "为企业和 AI 代理对支付路径进行排名",
-    "lede": "Meridian 是面向企业和 AI 代理的非托管比较层。它比较传统金融、稳定币和批发流动性路径,然后报告全包成本、费用、结算时间、滑点和路径评分 — 从不托管或转移资金。在接入持牌合作伙伴之前,报价始终标注为 Sandbox。本产品不包含执行功能。Meridian 不执行或委托结算。",
-    "pricingLine": "定价 {dataset} · 汇率 {rates} · {count} 家提供方"
+    "title": "在资金移动之前，为每一条可能的路径排名。",
+    "lede": "Meridian 解读金融意图，比较银行、FX、稳定币与流动性路径，检查合规，并返回最佳执行决策。结算由持牌合作伙伴完成。",
+    "pricingLine": "定价 {dataset} · 汇率 {rates} · {count} 家提供方",
+    "eyebrow": "AI 金融编排基础设施",
+    "ctaPrimary": "在 Sandbox 中开始",
+    "ctaSecondary": "阅读文档",
+    "noncustodialNote": "非托管设计 — 不持有资金或密钥，也不代您移动资金。",
+    "trustLine": "为跨境运营的金融科技、平台与财资团队而建",
+    "model": {
+      "heading": "一层，三项职责",
+      "sub": "Meridian 位于所有轨道之上，做三件事 — 刻意不做第四项：从不执行或持有。",
+      "discover": {
+        "title": "Discover",
+        "body": "在所有轨道中发现可行路径，并将报价规范为单一可比模型。",
+        "bullet1": "提供商发现",
+        "bullet2": "报价规范化",
+        "bullet3": "路径图搜索"
+      },
+      "decide": {
+        "title": "Decide",
+        "body": "按成本、速度、流动性、可靠性与合规为路径评分，返回最优路径。",
+        "bullet1": "最佳执行",
+        "bullet2": "合规情报",
+        "bullet3": "流动性情报"
+      },
+      "coordinate": {
+        "title": "Coordinate",
+        "body": "返回您的系统与持牌合作伙伴可验证并使用的签名执行意图。",
+        "bullet1": "签名执行意图",
+        "bullet2": "结算编排",
+        "bullet3": "对账与审计"
+      }
+    },
+    "features": {
+      "heading": "平台能力",
+      "item1": {
+        "title": "通用路径图",
+        "body": "法币、银行、FX、稳定币、链与流动性统一为一张规范化图。"
+      },
+      "item2": {
+        "title": "可解释的最佳执行",
+        "body": "按总成本、速度、流动性、可靠性与合规排名 — 展示理由。"
+      },
+      "item3": {
+        "title": "合规情报",
+        "body": "返回路径前预检管辖区、提供商资格与筛查。"
+      },
+      "item4": {
+        "title": "签名执行意图",
+        "body": "可验证的建议 — 不是移动资金的指令。"
+      },
+      "item5": {
+        "title": "流动性情报",
+        "body": "各场所深度与质量评分，支持多跳发现。"
+      },
+      "item6": {
+        "title": "对账与审计",
+        "body": "每个决策端到端可追溯，完整审计轨迹。"
+      }
+    },
+    "stats": {
+      "stat1": "一张图涵盖 14+ 轨道类型",
+      "stat2": "六维最佳执行评分",
+      "stat3": "1 个 API：意图 → 路径 → 决策",
+      "stat4": "持有客户资金：0"
+    },
+    "rails": {
+      "heading": "所有轨道，同一套维度",
+      "tagSandbox": "SANDBOX",
+      "tagPartnerRequired": "需合作伙伴",
+      "tagPlanned": "规划中",
+      "tradfi": {
+        "title": "传统金融",
+        "body": "银行转账、FX 提供商、PSP、代理行。"
+      },
+      "stablecoin": {
+        "title": "稳定币",
+        "body": "法币 ↔ 稳定币、出入金、稳定币互换。"
+      },
+      "defi": {
+        "title": "DeFi 流动性",
+        "body": "DEX、AMM 与聚合场所，按深度评分。"
+      },
+      "liquidity": {
+        "title": "流动性提供商",
+        "body": "支撑多跳发现的批发流动性。"
+      },
+      "tokenized": {
+        "title": "代币化资产",
+        "body": "仅注册与路由；发行由合作伙伴完成。"
+      },
+      "treasury": {
+        "title": "财资产品",
+        "body": "MMF 与财资工具作为可路由目的地。"
+      }
+    },
+    "how": {
+      "heading": "路径如何解析",
+      "step1": {
+        "title": "理解意图",
+        "body": "自然语言或结构化请求变为规范化金融意图。"
+      },
+      "step2": {
+        "title": "搜索路径图",
+        "body": "按轨道类型枚举单跳与多跳路径 — 单一提供商无法报价的路径。"
+      },
+      "step3": {
+        "title": "检查每一跳",
+        "body": "验证管辖区、资格与流动性；评分前剔除不合格跳。"
+      },
+      "step4": {
+        "title": "返回决策",
+        "body": "最佳执行路径以签名意图返回 — 由合作伙伴结算。"
+      }
+    },
+    "customers": {
+      "heading": "谁在 Meridian 上构建",
+      "fintechs": {
+        "title": "金融科技",
+        "body": "嵌入决策层，无需自行集成每条轨道即可为用户提供最优路径。"
+      },
+      "platforms": {
+        "title": "平台与市场",
+        "body": "代表用户跨境路由，每条走廊预检合规。"
+      },
+      "enterprises": {
+        "title": "企业与财资",
+        "body": "按总成本与结算时间优化跨境与财资流。"
+      }
+    },
+    "dev": {
+      "heading": "一个 API，所有轨道",
+      "body": "发送意图，获得评分与签名的路径。Sandbox 无需资金与牌照。",
+      "cta": "打开 API 探索器",
+      "codeSample": "POST /api/v1/quote\n{\n  \"sourceAsset\": \"USD\",\n  \"destinationAsset\": \"KRW\",\n  \"amount\": \"100000.00\"\n}\n→ 评分路径 + 签名意图"
+    },
+    "finalCta": {
+      "title": "今天路由您的第一个意图",
+      "body": "启动 Sandbox，发送意图，观看路径图解析。资金不移动 — 执行由持牌合作伙伴完成。",
+      "button": "在 Sandbox 中开始"
+    }
   },
   "footer": {
     "legalNav": "法律",
     "terms": "使用条款",
     "privacy": "隐私",
     "landingNotice": "Meridian 是非托管的。它仅比较路径,从不持有客户资金、私钥或钱包,从不作为主体行事,也不执行或委托结算。报价为指示性且不具约束力;请与您选择的提供方直接交易。",
-    "loginNotice": "Meridian 是非托管的。登录后会为已保存的报价打开组织仪表板。它从不持有客户资金或转移资金。",
+    "loginNotice": "Meridian 是非托管的。登录后会为已保存的报价打开组织仪表板。它从不持有客户资金，也从不转移资金。",
     "inviteNotice": "接受邀请只是设置密码。它不会验证 KYB、附加定价、启用执行或转移资金。",
-    "dashboardNotice": "Meridian 是非托管的。仪表板仅报告已保存的报价和估算的平台收入;从不持有客户资金、执行交易或发行稳定币。",
+    "dashboardNotice": "Meridian 是非托管的。仪表板仅报告已保存的报价和估算的平台收入;从不持有客户资金，从不执行交易，也不发行稳定币。",
     "agentsNotice": "仅限 Sandbox 模拟。SIMULATION_COMPLETED 表示模拟器已完成。钱包引用为外部句柄;controlledByPlatform 始终为 false。",
     "railsNotice": "指示性 Sandbox 报价。Meridian 从不持有资金、密钥或钱包,也不执行兑换、出入金或付款。",
     "graphNotice": "图谱元数据为指示性。Meridian 从不持有资金、密钥或钱包,也不提交转换、兑换或付款。",
     "defiNotice": "指示性 Sandbox 报价。添加 Ethereum、Base、Arbitrum 或 Solana 只是一条注册表记录加一个适配器 — 路由引擎不会切换到链上。无 RPC、无密钥、无托管、无已提交的兑换。",
     "stablecoinsNotice": "指示性 Sandbox 报价。添加另一种稳定币只是一条注册表记录加适配器汇率 — 路由引擎不会按代码切换。无 RPC、无密钥、无托管。",
     "developersNotice": "组织 id 取自经过验证的主体。API 密钥从不以明文存储。适用速率限制。请求日志会屏蔽机密信息。",
-    "legalNotice": "Meridian 是非托管的。从不持有客户资金、私钥或钱包,也不执行或委托结算。报价为指示性。"
+    "legalNotice": "Meridian 是非托管的。从不持有客户资金、私钥或钱包,也不执行或委托结算。报价为指示性。",
+    "tagline": "全球金融轨道之上的非托管决策层。",
+    "disclosure": "Meridian 非托管。仅比较路径 — 不持有客户资金、私钥或钱包，不以本人身份行事，不执行或委托结算。报价仅供参考、无约束力；请直接与您选择的提供商交易。",
+    "marketingNotice": "Meridian 非托管。比较路径并返回决策 — 不持有客户资金、私钥或钱包，不以本人身份行事，不执行或委托结算。定价与公司页面描述使用量与订阅；交易价值定价在适用法律要求满足前不提供。",
+    "trustNotice": "Meridian 非托管。信任页面说明我们如何比较路径并保护数据 — 不持有客户资金、私钥或钱包，不以本人身份行事，不执行或委托结算。报价仅供参考、无约束力。",
+    "resourcesNotice": "Meridian 非托管。资源仅供教育 — 不持有客户资金、私钥或钱包，不以本人身份行事，不执行或委托结算。",
+    "devDocsNotice": "Meridian 非托管。开发者文档描述用于路径发现与决策的 API — 不通过 Meridian 启用托管、钱包生成或结算。",
+    "howItWorksNotice": "Meridian 非托管。本页说明路径如何解析 — Meridian 返回签名决策，持牌合作伙伴结算。不持有客户资金、密钥或钱包。"
   },
   "common": {
     "emDash": "—",
@@ -267,9 +412,9 @@
     "overviewLede": "Figures below are computed from quotes and transaction requests stored for {name}. Another organization's rows never enter these queries.",
     "noQuotesStored": "No quotes stored yet",
     "noQuotesStoredBody": "Compare a route while signed in, or load the sandbox demo tenant, and the metrics and charts will fill from that stored data.",
-    "revenueLinkLead": "Quoted platform fees, partner commission and take rate live on",
+    "revenueLinkLead": "Quoted platform fees, take rate and the revenue lifecycle live on",
     "revenueLink": "Revenue",
-    "revenueLinkTrail": ". Those figures are attributed, not collected.",
+    "revenueLinkTrail": ". Those figures are quoted or attributed, not collected.",
     "metricsAria": "Dashboard metrics",
     "metricVolume": "Total quoted volume",
     "metricVolumeHint": "Sum of transaction requests, counted once per payment rather than once per quote.",
@@ -311,11 +456,11 @@
     "colAvgCost": "Avg cost",
     "colAvgSettlement": "Avg settlement",
     "revenueTitle": "Revenue",
-    "revenueLede": "Multi-rail monetization for {name}. Figures are quoted platform fees, not settlements. Provider cost, partner commission, gross profit and take rate use Decimal arithmetic. Another organization's events never enter these totals.",
+    "revenueLede": "Multi-rail monetization for {name}. Figures are quoted platform fees, not settlements. Every amount is computed with Decimal arithmetic over integer minor units. A pricing shape that is switched off is absent from these totals rather than shown as zero. Another organization's events never enter them.",
     "noRevenue": "No quoted revenue yet",
     "noRevenueBody": "Compare a route while signed in, quote an agent payment, or load the sandbox demo tenant. The ledger records attributed fees only — funds never move.",
     "invoicesTitle": "Invoices",
-    "invoicesLede": "Monthly platform-fee invoices copied from recorded monetization snapshots. Issued is not collected: payment collection is deferred until a legal entity, tax handling, and payment mechanism are confirmed. Realized revenue stays false.",
+    "invoicesLede": "Monthly platform-fee invoices copied from recorded monetization snapshots. Issued is not collected: each invoice carries its own collection status, and only one collected against a processor reference is cash received.",
     "noInvoices": "No invoices issued yet",
     "noInvoicesBody": "Invoices are generated at month-end from execution-intent and subscription snapshots. Route quotes are never billed. Nothing here means cash was received.",
     "colIssued": "Issued",
@@ -354,7 +499,7 @@
     "agentPayments": "Payments",
     "agentPolicies": "Policies",
     "agentDashAria": "{name} dashboard",
-    "invoiceDetailLede": "Line items copy platform revenue from named monetization snapshots. Totals use integer minor units. Tax is deferred (always zero). Collection is deferred — this invoice is not cash received and is not realized revenue.",
+    "invoiceDetailLede": "Line items copy platform revenue from named monetization snapshots. Totals use integer minor units and tax is always zero. This invoice is cash received, and counts toward realized revenue, only if its collection status reads collected and a processor reference stands behind it.",
     "subtotal": "Subtotal",
     "tax": "Tax",
     "taxHint": "{method} — no jurisdiction rates in this phase.",
@@ -493,12 +638,472 @@
     "stablecoinsTitle": "稳定币路由",
     "stablecoinsLede": "对 USDC 和 USDT 相对法币以及彼此进行报价。Meridian 从不持有代币、从不连接主网、从不创建钱包。路径在此被发现、定价和比较;执行仍由外部提供方负责。",
     "developersTitle": "金融路由 API",
-    "developersLede": "位于 <code>{path}</code> 下的带版本报价、路径搜索和目录。使用会话或组织 API 密钥进行身份验证。密钥经过哈希、限定范围、可过期且可撤销。<code>{intent}</code> 记录执行意图 — 它从不转移资金。"
+    "developersLede": "位于 <code>{path}</code> 下的带版本报价、路径搜索和目录。使用会话或组织 API 密钥进行身份验证。密钥经过哈希、限定范围、可过期且可撤销。<code>{intent}</code> 记录执行意图 — 它从不转移资金。",
+    "pricing": {
+      "heroTitle": "按使用量定价，而非按您的交易。",
+      "heroLede": "Meridian 对决策层收费 — API 使用量、订阅与企业协议。交易价值定价在适用法律与合作伙伴要求满足前不提供。",
+      "note": "所示价格为参考值，可能变更。Meridian 不收取交易价值的一定比例。",
+      "sandboxName": "Sandbox",
+      "sandboxDesc": "免费。比较路径、探索图、测试 API。无需资金与牌照。",
+      "starterName": "Starter",
+      "starterDesc": "按使用量。报价、路径与合规检查的按次计量。",
+      "growthName": "Growth",
+      "growthDesc": "订阅 + 使用量。更高配额、优先路由情报。",
+      "enterpriseName": "Enterprise",
+      "enterpriseDesc": "定制。批量协议、专属支持、定制走廊。",
+      "indicative": "参考",
+      "disclaimerTitle": "仅供参考的定价",
+      "disclaimerBody": "所示计划与费率为例示，可能变更。Meridian 对决策层收费 — 非交易价值比例。交易价值定价在适用要求满足前仍受门控。",
+      "ctaTitle": "开始比较路径",
+      "ctaBody": "在 Sandbox 中免费探索图与 API。企业批量或定制走廊请联系销售。",
+      "ctaPrimary": "在 Sandbox 中开始",
+      "ctaSecondary": "联系销售"
+    },
+    "about": {
+      "heroTitle": "我们正在构建全球资金移动的决策层。",
+      "heroLede": "银行、FX、稳定币、DeFi 与代币化资产各自在独立 silo 中解决资金移动的一片。Meridian 将其连接为一张路径图并返回最优路径，而不成为其中任何一方。",
+      "missionTitle": "使命",
+      "missionBody": "我们刻意保持非托管：决策归我们，执行归持牌合作伙伴。Meridian 比较每条可行路径，在单一模型上评分，并返回系统可验证的签名建议。",
+      "principlesTitle": "原则",
+      "principle1Title": "非托管",
+      "principle1Body": "Meridian 不持有客户资金、私钥或钱包。返回决策；受监管合作伙伴在其授权下结算。",
+      "principle2Title": "确定性",
+      "principle2Body": "路由引擎为真值来源。报价、评分与签名意图可复现 — 不从提供商数据偏离或捏造。",
+      "principle3Title": "中立",
+      "principle3Body": "Meridian 不以本人身份行事，不偏袒某条通道，不收取交易价值比例。最优执行在所有提供商上按可比维度评分。",
+      "teamTitle": "团队",
+      "teamBody": "团队简介与领导层信息将在发布时显示于此。"
+    },
+    "careers": {
+      "heroTitle": "构建让金融可互操作的层。",
+      "heroLede": "我们是一支构建金融编排基础设施的小团队。若您重视正确性、监管感知设计与清晰抽象，欢迎联系。",
+      "whyTitle": "为何选择 Meridian",
+      "whyBody": "您将参与路径发现、合规情报与签名执行意图 — 银行、FX、稳定币与流动性之上的决策层。我们以监管清晰出货：Meridian 比较与建议，合作伙伴结算。",
+      "rolesTitle": "开放职位",
+      "rolesBody": "招聘时将在此列出。若暂无合适职位，欢迎联系我们。",
+      "workTitle": "工作方式",
+      "workBody": "远程友好、默认异步，偏好书面设计与确定性系统。小步正确增量优于大爆炸发布。"
+    },
+    "partners": {
+      "heroTitle": "执行留在持牌合作伙伴。这才是要点。",
+      "heroLede": "Meridian 返回决策；受监管银行、支付机构、FX 提供商与结算基础设施在其牌照下执行。若您运营持牌金融基础设施，作为 Meridian 执行合作伙伴集成可让您的通道出现在每个路由意图前。",
+      "typesTitle": "合作伙伴类型",
+      "type1Title": "银行",
+      "type1Body": "法币走廊的代理行与本地清算。报价进入路径图；结算仍在您的牌照下。",
+      "type2Title": "支付服务提供商",
+      "type2Body": "可为嵌入式路由定价支付与收款通道的 PSP 与支付机构。",
+      "type3Title": "FX 提供商",
+      "type3Body": "批发与零售 FX 台汇率规范为可比成本模型。",
+      "type4Title": "稳定币基础设施",
+      "type4Body": "为法币↔稳定币及稳定币间腿报价的出入金与场所。",
+      "type5Title": "结算基础设施",
+      "type5Body": "执行 Meridian 返回的签名意图的持牌结算与财资通道。",
+      "integrationTitle": "集成方式",
+      "integrationBody": "合作伙伴向 Meridian 暴露报价与资格元数据。我们发现、评分并返回签名执行意图；您的系统或 API 在授权下执行。Meridian 不持有资金或密钥。",
+      "ctaTitle": "成为合作伙伴",
+      "ctaBody": "介绍您的持牌通道与走廊。我们将跟进技术集成与商业条款。",
+      "ctaPrimary": "联系合作伙伴"
+    },
+    "brand": {
+      "heroTitle": "Meridian 品牌与标识。",
+      "heroLede": "为媒体、合作伙伴与产品嵌入下载标识、颜色令牌与字体指南。勿暗示 Meridian 未提供的托管、结算或牌照。",
+      "logosTitle": "标识",
+      "logosBody": "主要字标与图标资产可应要求提供。保留等于“M”图标高度的留白。勿扭曲、使用调色板外颜色或置于杂乱背景。",
+      "primaryColor": "Primary —  violet",
+      "accentColor": "Accent — 琥珀（仅品牌强调）",
+      "recommendColor": "Recommend — 排名路径成功绿",
+      "typeTitle": "字体",
+      "typeBody": "标题：Fraunces（拉丁）。正文与 UI：Inter。CJK 语言环境显示标题回退 sans CJK 栈。",
+      "usageTitle": "使用",
+      "usageBody": "描述产品时使用“Meridian 返回决策 — 合作伙伴结算”。勿暗示 Meridian 移动资金、持有钱包或执行交易。"
+    },
+    "contact": {
+      "heroTitle": "联系我们。",
+      "heroLede": "销售、合作伙伴与一般咨询。技术帮助请使用 Sandbox 与开发者文档。",
+      "formName": "姓名",
+      "formCompany": "公司",
+      "formMessage": "消息",
+      "formHint": "API 与路由问题请用 Sandbox 与 OpenAPI 参考 — 比较路径无需账户。",
+      "formSubmit": "发送消息",
+      "formSuccess": "感谢 — 我们已收到您的消息。此表单不创建账户或移动资金。"
+    },
+    "solCrossBorder": {
+      "heroTitle": "为每个跨境意图找到最佳走廊。",
+      "heroLede": "在同一可比模型上比较同一走廊的银行 FX、稳定币与流动性路径 — 总成本、结算时间与合规资格并列。Meridian 返回最优路径；持牌合作伙伴结算。",
+      "section1Title": "问题",
+      "section1Body": "跨境支付碎片化：银行 FX、稳定币 ramp 与批发流动性各自报不同格式。团队手动比表格或逐个集成提供商。",
+      "section2Title": "Meridian 如何路由",
+      "section2Body": "发送一个意图。Meridian 搜索路径图、规范报价、检查管辖区与资格，并按成本、速度、流动性、可靠性与合规为每条可行路径评分。",
+      "section3Title": "您获得什么",
+      "section3Body": "系统与持牌合作伙伴可验证的排名决策与签名执行意图。Meridian 不持有资金或执行支付。",
+      "ctaTitle": "尝试跨境意图",
+      "ctaBody": "在 Sandbox 中比较走廊，无需资金与牌照。",
+      "ctaPrimary": "在 Sandbox 中开始",
+      "ctaSecondary": "阅读 API 文档"
+    },
+    "solTreasury": {
+      "heroTitle": "财库流的最优执行。",
+      "heroLede": "在按管辖区预检合规下，为最低总成本与可预测结算时间跨通道路由财库移动。非托管 — Meridian 不持有财库资金。",
+      "section1Title": "用例",
+      "section1Body": "为子公司供资、再平衡流动性池、在法币与稳定币财库间移动 — 每条路径在同一维度评分。",
+      "section2Title": "如何评分",
+      "section2Body": "相对中间价总成本、结算 p50/p95、流动性深度、提供商可靠性与走廊合规汇入单一最优执行排名。",
+      "section3Title": "控制与审计",
+      "section3Body": "每个决策可通过签名意图与审计轨迹追溯。执行由持牌银行与结算合作伙伴完成。",
+      "ctaTitle": "优化财库路由",
+      "ctaBody": "连接生产合作伙伴前在 Sandbox 比较财库走廊。",
+      "ctaPrimary": "在 Sandbox 中开始",
+      "ctaSecondary": "联系销售"
+    },
+    "solFintechs": {
+      "heroTitle": "嵌入决策层。跳过集成每条通道。",
+      "heroLede": "一个 API 跨银行、FX、稳定币与流动性提供最优执行路由 — 无需逐个集成或接触客户资金。Meridian 返回决策；用户的持牌提供商结算。",
+      "section1Title": "嵌入内容",
+      "section1Body": "通过一个 API 报价、路径搜索与合规检查。在产品 UI 或代理工作流中展示排名路径与签名意图。",
+      "section2Title": "非托管模型",
+      "section2Body": "Meridian 不持有客户资金、密钥或钱包。用户与所选提供商交易；您远离托管与结算。",
+      "section3Title": "开发者快速开始",
+      "section3Body": "创建 Sandbox 租户，向 /api/v1/quote 发送意图并查看评分路径。资金不移动 — 连接持牌执行后由合作伙伴结算。",
+      "ctaTitle": "在 Meridian 上构建",
+      "ctaBody": "获取 API 密钥并探索开发者中心。",
+      "ctaPrimary": "获取 API 密钥",
+      "ctaSecondary": "打开 API 探索器"
+    },
+    "solPlatforms": {
+      "heroTitle": "代表用户跨境路由。",
+      "heroLede": "为 marketplace 卖家、创作者或商户提供每条支付意图的最优路径，按走廊预检合规。Meridian 决策；持牌合作伙伴结算。",
+      "section1Title": "Marketplace 用例",
+      "section1Body": "卖家支付、创作者汇款、商户结算 — 每条意图在目的地走廊的银行、FX、稳定币通道上比较。",
+      "section2Title": "按走廊的合规",
+      "section2Body": "管辖区、提供商资格与筛查在路径返回前验证。不合格跳在评分前剔除，而非藏在通用报价后。",
+      "section3Title": "用户看到什么",
+      "section3Body": "展示理由的透明排名路径。签名意图是建议 — 执行由您或用户选择的持牌提供商完成。",
+      "ctaTitle": "路由 marketplace 支付",
+      "ctaBody": "在 Sandbox 测试走廊覆盖，然后洽谈平台集成。",
+      "ctaPrimary": "在 Sandbox 中开始",
+      "ctaSecondary": "联系我们"
+    },
+    "solEnterprises": {
+      "heroTitle": "全球走廊覆盖，一个决策层。",
+      "heroLede": "标准化组织在全球如何选择金融路径 — 跨每条通道的可比模型，内置审计与对账。",
+      "section1Title": "覆盖",
+      "section1Body": "银行、FX、稳定币、DeFi 流动性与代币化注册于一张规范图 — 财库与运营团队苹果对苹果比较。",
+      "section2Title": "审计与控制",
+      "section2Body": "签名执行意图、可复现评分与组织范围审计日志。每个决策可追溯；无静默模型覆盖。",
+      "section3Title": "运营一致性",
+      "section3Body": "子公司与业务单元共享一个 API 与策略层。持牌合作伙伴执行；Meridian 不持有企业资金。",
+      "ctaTitle": "标准化路径选择",
+      "ctaBody": "在 Sandbox 与团队评估走廊覆盖，或联系销售了解企业条款。",
+      "ctaPrimary": "联系销售",
+      "ctaSecondary": "在 Sandbox 中开始"
+    },
+    "trustNonCustodial": {
+      "heroTitle": "Meridian 为何从不持有您的资金。",
+      "heroLede": "Meridian 是决策层，而非资金移动者。它比较路径并返回签名执行意图 — 一项建议。它不持有客户资金、私钥或钱包；不以本人身份行事；不执行或委托结算。受监管、持牌的合作伙伴在其自身授权下执行任何实际资金移动。",
+      "doesTitle": "Meridian 做什么",
+      "does1Title": "Discover",
+      "does1Body": "在所有通道中发现可行路径，并将报价规范为单一可比模型。",
+      "does2Title": "Decide",
+      "does2Body": "按成本、速度、流动性、可靠性与合规为路径评分，并返回最优路径。",
+      "does3Title": "Coordinate",
+      "does3Body": "返回您的系统与持牌合作伙伴可验证并使用的签名执行意图。",
+      "neverTitle": "Meridian 从不做什么",
+      "never1": "持有客户资金",
+      "never2": "控制私钥或钱包",
+      "never3": "代您执行交易",
+      "never4": "结算或委托结算",
+      "never5": "发行代币或提供托管",
+      "boundaryTitle": "执行边界",
+      "boundaryBody": "Meridian 返回签名执行意图 — 一项建议。客户或持牌合作伙伴在其授权下发起任何实际资金移动。Meridian 从不代您传输资金。",
+      "signatureTitle": "签名语义",
+      "signatureBody": "签名证明建议真实且未被篡改。它不授权资金移动、不批准交易、不替代合作伙伴的结算流程。",
+      "ctaTitle": "看路径如何解析",
+      "ctaBody": "走过从意图到签名决策的四步，然后在 Sandbox 探索路径图。",
+      "ctaPrimary": "看路径如何解析",
+      "ctaSecondary": "探索路径图"
+    },
+    "trustSecurity": {
+      "heroTitle": "安全与数据保护。",
+      "heroLede": "Meridian 保护组织数据、凭证与审计轨迹。不持有客户资金、私钥或钱包，不声称未获得的认证。",
+      "section1Title": "加密与传输",
+      "section1Body": "API 流量使用 TLS。凭证存储前用 salted scrypt 哈希；明文密钥仅在签发时显示一次。",
+      "section2Title": "组织隔离",
+      "section2Body": "报价、交易、代理与审计事件限定于已认证组织。跨租户标识符不出现在仪表板查询中。",
+      "section3Title": "审计与确定性",
+      "section3Body": "请求日志脱敏密钥。路由决策可从存储输入复现 — 确定性引擎为真值来源，非生成模型。"
+    },
+    "resourcesBlog": {
+      "heroTitle": "博客",
+      "heroLede": "Meridian 团队的产品更新、编排模式与行业笔记。",
+      "placeholderDate": "即将推出",
+      "placeholderTitle": "首篇文章筹备中",
+      "placeholderBody": "将在此发布 — 不捏造回溯文章。可通过联系订阅首发通知。"
+    },
+    "resourcesPlaybook": {
+      "heroTitle": "金融编排手册。",
+      "heroLede": "团队如何在 fragmented 通道上路由而不成为资金移动者。",
+      "placeholderTitle": "手册 — 即将推出",
+      "placeholderBody": "关于意图设计、走廊选择与合作伙伴交接的结构化指南。审阅后发布 — 不将占位章节当作成稿。"
+    },
+    "resourcesWebinars": {
+      "heroTitle": "网络研讨会",
+      "heroLede": "关于多通道路由、合规与集成的直播与录播。",
+      "placeholderDate": "日程待定",
+      "placeholderTitle": "首场活动即将公布",
+      "placeholderBody": "将在此列出真实日期与注册链接。无捏造的录播或参会人数。"
+    },
+    "devReference": {
+      "heroTitle": "API 参考。",
+      "heroLede": "报价、路径搜索、目录与代理端点的渲染文档。Meridian 返回决策 — 不移动资金。",
+      "sectionTitle": "OpenAPI 驱动文档",
+      "sectionBody": "参考由 live OpenAPI 模式生成。与 API 探索器配合在 Sandbox 发送意图并查看评分路径。",
+      "openapiLink": "打开 OpenAPI JSON"
+    },
+    "devSdks": {
+      "heroTitle": "客户端库。",
+      "heroLede": "集成报价与路径发现的官方 SDK。结算由持牌合作伙伴完成。",
+      "listTitle": "可用与计划中的库",
+      "sdk1Title": "TypeScript / JavaScript",
+      "sdk1Body": "报价与路径 API 的浏览器与 Node 客户端 — 计划中；发布前请对 OpenAPI 使用 fetch。",
+      "sdk2Title": "Python",
+      "sdk2Body": "批量报价与财库自动化的服务端客户端 — 计划中。",
+      "sdk3Title": "Go",
+      "sdk3Body": "平台路由服务的低延迟客户端 — 计划中。"
+    },
+    "devChangelog": {
+      "heroTitle": "新动态。",
+      "heroLede": "路由 API 与 Web 应用的发布说明。出货时才有条目 — 从不捏造。",
+      "emptyBody": "尚无已发布版本。请在下次 tagged 发布后查看。"
+    },
+    "devStatus": {
+      "heroTitle": "系统状态。",
+      "heroLede": "公共路由 API 的运行状态。参考 Sandbox 报价；不通过 Meridian 结算。",
+      "apiLabel": "路由 API",
+      "statusOperational": "运行中",
+      "statusUnavailable": "不可用",
+      "modeLabel": "模式",
+      "engineLabel": "引擎版本",
+      "unavailableBody": "此环境无法访问路由 API。状态仅反映 live 健康检查 — 非历史 SLA。"
+    },
+    "howItWorks": {
+      "heroTitle": "路径如何解析",
+      "heroLede": "从自然语言或结构化意图到签名最优执行决策 — 四步。Meridian 比较与建议；持牌合作伙伴结算。",
+      "ctaTitle": "在 Sandbox 中尝试",
+      "ctaBody": "发送意图并观看路径图解析。资金不移动 — 执行留在持牌合作伙伴。",
+      "ctaPrimary": "在 Sandbox 中开始",
+      "ctaSecondary": "探索路径图"
+    }
   },
   "legal": {
     "termsTitle": "使用条款",
     "privacyTitle": "隐私",
     "draftBanner": "草案 · 未生效 · {date} 更新",
     "aside": "本页面说明 Meridian 目前如何运作。这是一份等待法律顾问审阅的产品披露,而非具约束力的合同、生效中的隐私声明或牌照。请勿将其视为您已同意的条款。在其被表述为生效之前,顾问必须替换此草案。"
+  },
+  "nav": {
+    "ariaLabel": "主导航",
+    "signIn": "登录",
+    "getKeys": "获取 API 密钥",
+    "tagLive": "Live",
+    "tagSoon": "Soon",
+    "platform": {
+      "label": "平台",
+      "visualTitle": "编排层",
+      "visualBody": "一个意图，跨所有通道比较，返回最优执行决策。Meridian 从不移动资金。",
+      "visualLink": "在 Sandbox 中开始",
+      "exploreHeading": "探索",
+      "railsHeading": "通道",
+      "ctaText": "非托管：Meridian 返回决策 — 合作伙伴结算。",
+      "ctaButton": "工作原理",
+      "items": {
+        "compare": {
+          "label": "比较路径",
+          "desc": "为一个意图对所有路径排名"
+        },
+        "multirail": {
+          "label": "多通道",
+          "desc": "银行 · 外汇 · 稳定币 · 流动性"
+        },
+        "graph": {
+          "label": "路径图",
+          "desc": "多跳路径发现"
+        },
+        "stablecoins": {
+          "label": "稳定币",
+          "desc": "法币 ↔ 稳定币路由"
+        },
+        "defi": {
+          "label": "DeFi 流动性",
+          "desc": "DEX / AMM 场所报价"
+        },
+        "agents": {
+          "label": "AI 代理",
+          "desc": "代理支付意图"
+        }
+      }
+    },
+    "solutions": {
+      "label": "解决方案",
+      "usecaseHeading": "按用例",
+      "customerHeading": "按客户",
+      "ctaText": "不确定哪个适合？联系我们。",
+      "ctaButton": "联系我们",
+      "items": {
+        "crossborder": {
+          "label": "跨境支付",
+          "desc": "路由国际走廊"
+        },
+        "treasury": {
+          "label": "财库优化",
+          "desc": "财库流的最优执行"
+        },
+        "agentpay": {
+          "label": "AI 代理支付",
+          "desc": "自主金融路由"
+        },
+        "fintechs": {
+          "label": "金融科技",
+          "desc": "嵌入决策层"
+        },
+        "platforms": {
+          "label": "平台",
+          "desc": "代表用户路由"
+        },
+        "enterprises": {
+          "label": "企业",
+          "desc": "全球走廊覆盖"
+        }
+      }
+    },
+    "developers": {
+      "label": "开发者",
+      "visualTitle": "开发者中心",
+      "visualBody": "通过一个 API 集成。发送意图，获得评分并签名的路径。",
+      "visualLink": "API 探索器",
+      "buildHeading": "构建",
+      "toolkitHeading": "工具包",
+      "ctaText": "Sandbox 无需资金和许可证。",
+      "ctaButton": "获取 API 密钥",
+      "items": {
+        "explorer": {
+          "label": "API 探索器",
+          "desc": "实时报价与路径表单"
+        },
+        "openapi": {
+          "label": "OpenAPI 规范",
+          "desc": "机器可读模式"
+        },
+        "reference": {
+          "label": "API 参考",
+          "desc": "渲染文档"
+        },
+        "sdks": {
+          "label": "SDK",
+          "desc": "客户端库"
+        },
+        "changelog": {
+          "label": "更新日志",
+          "desc": "发布说明"
+        },
+        "status": {
+          "label": "状态",
+          "desc": "系统状态"
+        }
+      }
+    },
+    "resources": {
+      "label": "资源",
+      "learnHeading": "学习",
+      "trustHeading": "信任",
+      "ctaText": "非托管披露是我们的监管锚点。",
+      "ctaButton": "阅读模型",
+      "items": {
+        "blog": {
+          "label": "博客",
+          "desc": "产品与行业文章"
+        },
+        "playbook": {
+          "label": "手册",
+          "desc": "金融编排指南"
+        },
+        "webinars": {
+          "label": "网络研讨会",
+          "desc": "直播与录播"
+        },
+        "noncustodial": {
+          "label": "非托管模型",
+          "desc": "Meridian 为何从不持有资金"
+        },
+        "security": {
+          "label": "信任与安全",
+          "desc": "我们如何保护数据"
+        },
+        "legal": {
+          "label": "法律",
+          "desc": "条款与隐私"
+        }
+      }
+    },
+    "company": {
+      "label": "公司",
+      "companyHeading": "公司",
+      "moreHeading": "更多",
+      "ctaText": "定价为使用量与订阅 — 交易定价仍受门控。",
+      "ctaButton": "查看定价",
+      "items": {
+        "about": {
+          "label": "关于",
+          "desc": "我们的使命"
+        },
+        "careers": {
+          "label": "招聘",
+          "desc": "开放职位"
+        },
+        "partners": {
+          "label": "合作伙伴",
+          "desc": "许可执行合作伙伴"
+        },
+        "pricing": {
+          "label": "定价",
+          "desc": "使用量与订阅"
+        },
+        "brand": {
+          "label": "品牌",
+          "desc": "标识与指南"
+        }
+      }
+    }
+  },
+  "graph": {
+    "metaSummary": "{nodeCount} 个节点 · {edgeCount} 条转换边 · 图引擎 {version}。边为指示性，不可执行。",
+    "cardTitle": "发现转换路径",
+    "cardDescription": "在跳数、成本、流动性、可用性与合规约束下遍历资产–场所图。这是路径发现，不是实时报价。",
+    "presets": {
+      "one": "一跳 · USD → KRW",
+      "two": "两跳 · 经 USDC",
+      "three": "三跳 · USDC → USDT",
+      "usdcUsdt": "USDC → USDT",
+      "tightCost": "成本上限 1 bps"
+    },
+    "source": "来源",
+    "destination": "目标",
+    "maxHops": "最大跳数",
+    "maxCost": "最大成本 (bps)",
+    "minLiquidity": "最小流动性",
+    "placeholderUnbounded": "无上限",
+    "placeholderNone": "无",
+    "findPaths": "查找路径",
+    "searching": "搜索中…",
+    "emptyTitle": "尚未搜索路径",
+    "emptyBody": "选择走廊和跳数上限，遍历 USD → FX → KRW、USD → USDC → KRW 或 USD → USDC → USDT → KRW。不可用、昂贵和低流动性边会被剪枝。",
+    "noValidPath": "无有效路径",
+    "groupsSummary": "{pathCount} 条遍历已合并为 {groupCount} 个不同资产序列。每个序列显示最便宜的一条。",
+    "recommended": "推荐",
+    "venueVariants": "{count} 个场所变体",
+    "pathTitle": "{rank}. {hops} 跳 · {route}",
+    "vizTitle": "路径选择",
+    "vizRecommended": "推荐",
+    "vizAria": "{route} 的动画路径图",
+    "vizCaption": "指示性资产遍历 — 边按成本与流动性评分；此处不执行任何操作。"
   }
 }

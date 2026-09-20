@@ -70,7 +70,7 @@ export function ApiKeyManager({
       </div>
 
       {issuedSecret !== null && (
-        <div className="border-border rounded-lg border bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
+        <div className="border-warning/40 bg-warning/10 rounded-lg border p-3 text-sm">
           <p className="font-medium">Copy this secret now. It will not be shown again.</p>
           <code className="mt-2 block break-all font-mono text-xs">{issuedSecret}</code>
         </div>

@@ -11,13 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { RouteDto } from '@/lib/api/types';
-import {
-  formatBps,
-  formatMoney,
-  formatPercent,
-  formatRate,
-  formatReliability,
-} from '@/lib/format';
+import { formatBps, formatMoney, formatPercent, formatRate, formatReliability } from '@/lib/format';
 import { formatSettlementMessage } from '@/lib/format-i18n';
 
 export function RouteCard({ route }: { route: RouteDto }) {
@@ -170,7 +164,7 @@ function ScoreBar({ score, label }: { score: string; label: string }) {
         aria-label={label}
       >
         <div
-          className="h-full rounded-full bg-emerald-600 transition-[width]"
+          className="bg-recommend h-full rounded-full transition-[width]"
           style={{ width: `${value}%` }}
         />
       </div>

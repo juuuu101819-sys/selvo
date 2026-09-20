@@ -17,6 +17,8 @@ export interface LiveBillingGateInput {
   readonly nowIso: string;
   readonly billingLiveEnabled: boolean;
   readonly billingRecord: LiveEnablementRecord | null;
+  /** Whether a processor adapter that can actually collect is registered. Absent means none is. */
+  readonly collectorImplemented?: boolean | undefined;
 }
 
 export interface CollectionAttemptResult extends LiveBillingEvaluation {

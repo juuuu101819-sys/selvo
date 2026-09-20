@@ -10,12 +10,7 @@ import { QuoteExpiryBadge } from '@/components/quote-expiry';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import type { MoneyJson, RouteDto } from '@/lib/api/types';
-import {
-  formatMoney,
-  formatPercent,
-  formatRate,
-  formatReliability,
-} from '@/lib/format';
+import { formatMoney, formatPercent, formatRate, formatReliability } from '@/lib/format';
 import { formatSettlementMessage } from '@/lib/format-i18n';
 
 /**
@@ -41,12 +36,12 @@ export function BestRoute({ route }: { route: RouteDto }) {
   return (
     <article
       aria-label={t('bestRouteLabel', { provider: route.provider.name })}
-      className="rounded-xl border border-emerald-600/60 bg-emerald-50/50 dark:bg-emerald-950/20"
+      className="border-recommend/60 bg-recommend/10 rounded-xl border"
     >
       <div className="p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+            <p className="text-recommend text-xs font-semibold tracking-wide uppercase">
               {t('bestRoute')}
             </p>
             <div className="flex flex-wrap items-center gap-2">
@@ -55,7 +50,7 @@ export function BestRoute({ route }: { route: RouteDto }) {
                 {route.provider.railLabel}
               </Badge>
               <ProviderLicensingBadge licensing={route.provider.licensing} />
-              <Badge className="bg-emerald-600 text-xs text-white hover:bg-emerald-600">
+              <Badge variant="recommend" className="text-xs">
                 <Sparkles className="size-3" aria-hidden />
                 {tCommon('recommended')}
               </Badge>

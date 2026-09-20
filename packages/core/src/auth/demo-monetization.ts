@@ -18,6 +18,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_fx_100k',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(2),
       transactionType: 'fiat_comparison',
       revenueSource: 'traditional_fx_routing_fee',
@@ -36,6 +37,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_payment',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(7),
       transactionType: 'fiat_comparison',
       revenueSource: 'payment_routing_fee',
@@ -53,6 +55,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_stablecoin',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(14),
       transactionType: 'multi_rail_quote',
       revenueSource: 'stablecoin_routing_fee',
@@ -70,6 +73,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_defi',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(14, 15),
       transactionType: 'multi_rail_quote',
       revenueSource: 'defi_routing_fee',
@@ -87,6 +91,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_liquidity',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(21),
       transactionType: 'multi_rail_quote',
       revenueSource: 'liquidity_routing_fee',
@@ -104,6 +109,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_volume',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(7, 16),
       transactionType: 'fiat_comparison',
       revenueSource: 'enterprise_volume_pricing',
@@ -121,6 +127,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_agent',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(2, 18),
       transactionType: 'agent_payment',
       revenueSource: 'ai_agent_payment_fee',
@@ -138,6 +145,7 @@ export function demoMonetizationEvents(nowMs: number): readonly MonetizationEven
     buildMonetizationEvent({
       id: 'mon_demo_subscription',
       organizationId: DEMO_ORGANIZATION_ID,
+      originEnv: 'DEMO',
       occurredAt: at(1),
       transactionType: 'enterprise_subscription',
       revenueSource: 'enterprise_api_subscription',

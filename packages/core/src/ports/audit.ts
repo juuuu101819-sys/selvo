@@ -81,13 +81,24 @@ export const AUDIT_EVENT_TYPES = [
   'execution.failed',
   'receipt.issued',
   'reconciliation.listed',
+  /** A signable instruction was composed, signed, and handed back. Nothing was transmitted. */
+  'settlement.instruction.generated',
+  /** The customer's counter-signature was stored. Storing it starts nothing. */
+  'settlement.instruction.customer_signed',
+  'settlement.instruction.verified',
+  'settlement.instruction.refused',
+  'settlement.signing_key.rotated',
   'audit.exported',
   'live_enablement.enabled',
   'live_enablement.disabled',
   'live_enablement.refused',
   'billing.collection.refused',
+  /** A RECORD_ONLY collection attempt: the intent and amount are recorded, no money requested. */
+  'billing.collection.recorded',
   'billing.subscription.refused',
+  'billing.subscription.assigned',
   'billing.partner_payout.refused',
+  'billing.usage.metered',
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AGENT_CREDENTIAL_SCOPES, DEFAULT_AGENT_SCOPES } from '@meridian/core';
 import { Prisma } from '@prisma/client';
 import { readMigrations } from '../migrations.js';
 import { toAuditEvent, toStoredComparison, type ComparisonRow } from './prisma-driver.js';
@@ -142,6 +143,9 @@ describe('migrations', () => {
           'orchestrated_executions',
           'execution_receipts',
           'live_enablements',
+          'usage_counters',
+          'organization_subscriptions',
+          'collection_attempts',
     ]) {
       expect(sql).toContain(`CREATE TABLE "${table}"`);
     }
@@ -202,6 +206,34 @@ describe('migrations', () => {
     expect(sql).toContain('"scopes" TEXT[]');
     expect(sql).toContain('"expires_at" TIMESTAMPTZ(3)');
     expect(sql).toContain('"api_keys_scopes_known"');
+  });
+
+  /**
+   * The constraint and the issued scope set are two halves of one decision, in two files that no
+   * tool keeps in sync. They were out of sync: the mandate phase added `mandate:verify` to
+   * `DEFAULT_AGENT_SCOPES` and left the constraint at the six scopes that predated it, so no agent
+   * credential could be stored in PostgreSQL at all — `prisma db seed` failed outright, and the
+   * in-memory driver has no constraint to notice.
+   */
+  it('admits exactly the agent-credential scopes the domain says are storable', () => {
+    const constraint = /"agent_credentials_scopes_known"\s+CHECK \(\s*"scopes" <@ ARRAY\[([^\]]*)\]/g;
+    const clauses = [...sql.matchAll(constraint)];
+    expect(clauses.length).toBeGreaterThan(0);
+
+    // The last definition wins: a later migration may drop and re-add the constraint.
+    const admitted = (clauses[clauses.length - 1]?.[1] ?? '')
+      .split(',')
+      .map((scope) => scope.trim().replace(/^'|'$/g, ''))
+      .filter((scope) => scope !== '');
+
+    expect([...admitted].sort()).toEqual([...AGENT_CREDENTIAL_SCOPES].sort());
+    for (const issued of DEFAULT_AGENT_SCOPES) {
+      expect(admitted, `issuance mints ${issued} but the database rejects it`).toContain(issued);
+    }
+    // A credential the agent could use to widen its own policy, or to cancel the mandate that
+    // authorizes it, must remain unstorable rather than merely un-issued.
+    expect(admitted).not.toContain('agent_policy:write');
+    expect(admitted).not.toContain('mandate:revoke');
   });
 
   it('records execution intents as non-executable recorded choices', () => {

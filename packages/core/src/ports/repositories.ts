@@ -6,7 +6,12 @@ import type { AgentPaymentsRepository } from './agent-payments.js';
 import type { IdentityStore } from './identity.js';
 import type { OnboardingStore } from './onboarding.js';
 import type { RateLimitStore } from './rate-limit.js';
-import type { BillingStore } from './billing.js';
+import type {
+  BillingStore,
+  CollectionStore,
+  SubscriptionStore,
+  UsageMeterStore,
+} from './billing.js';
 import type { RoutingEvaluationRepository } from './routing-evaluation.js';
 import type { RoutingOverrideStore } from './routing-overrides.js';
 import type { ProviderCredentialStore } from './provider-credentials.js';
@@ -14,6 +19,7 @@ import type { MandateStore } from './mandates.js';
 import type { PartnerInstructionStore } from './execution-partner.js';
 import type { OrchestratedExecutionStore } from './orchestrated-executions.js';
 import type { ExecutionReceiptStore } from './execution-receipts.js';
+import type { SettlementInstructionStore } from './settlement-instruction.js';
 import type { LiveEnablementStore } from './live-enablement.js';
 
 /**
@@ -75,6 +81,12 @@ export interface PersistenceDriver {
   readonly rateLimits: RateLimitStore;
   readonly onboarding: OnboardingStore;
   readonly billing: BillingStore;
+  /** API call counters backing metered usage (§18.1). */
+  readonly usageMeter: UsageMeterStore;
+  /** Subscription tier assignments. An organization with no row is on the free tier. */
+  readonly subscriptions: SubscriptionStore;
+  /** Collection attempts, keyed by idempotency key so a retry cannot double-charge (§18.5). */
+  readonly collections: CollectionStore;
   readonly routingEvaluations: RoutingEvaluationRepository;
   readonly routingOverrides: RoutingOverrideStore;
   readonly providerCredentials: ProviderCredentialStore;
@@ -82,6 +94,8 @@ export interface PersistenceDriver {
   readonly partnerInstructions: PartnerInstructionStore;
   readonly orchestratedExecutions: OrchestratedExecutionStore;
   readonly executionReceipts: ExecutionReceiptStore;
+  /** Signed, customer-facing settlement instructions (§15, Pattern A). Generated and returned. */
+  readonly settlementInstructions: SettlementInstructionStore;
   readonly liveEnablement: LiveEnablementStore;
   /**
    * Upserts ISO currencies and sandbox provider rows the demo dashboard seed needs as FK targets.

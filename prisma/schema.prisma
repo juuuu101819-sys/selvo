@@ -242,10 +242,13 @@ model Organization {
   comparisons         Comparison[]
   auditLogs           AuditLog[]
   executionIntents    ExecutionIntent[]
+  settlementInstructions SettlementInstruction[]
   agents              Agent[]
   agentCredentials    AgentCredential[]
   agentWalletReferences AgentWalletReference[]
   merchants           Merchant[]
+  usageCounters       UsageCounter[]
+  subscription        OrganizationSubscription?
   paymentPolicies     PaymentPolicy[]
   paymentIntents      PaymentIntent[]
   monetizationEvents  MonetizationEvent[]
@@ -459,6 +462,7 @@ model ExecutionIntent {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  settlementInstructions SettlementInstruction[]
 
   @@index([organizationId, createdAt])
   @@map("execution_intents")
@@ -637,6 +641,47 @@ model ExecutionReceipt {
 
   @@index([organizationId, createdAt])
   @@map("execution_receipts")
+}
+
+/// A signed settlement instruction Meridian generated and handed back to the customer (Pattern A).
+///
+/// Note the columns that do not exist: there is no status, no dispatched_at, no submitted flag and
+/// no partner reference. Meridian's involvement ends at `created_at`. Whatever the customer does
+/// with the artifact afterwards happens at their own provider and is not recorded here, because
+/// Meridian is not party to it and must not appear to be.
+model SettlementInstruction {
+  id                         String    @id
+  organizationId             String    @map("organization_id")
+  executionIntentId          String    @map("execution_intent_id")
+  routingId                  String    @map("routing_id")
+  routeId                    String    @map("route_id")
+  /// RETURN_TO_CUSTOMER | PARTNER_EXECUTES. A value meaning "Meridian sends it" is not admissible.
+  boundaryMode               String    @map("boundary_mode")
+  /// DEMO | SIMULATION | PARTNER_SANDBOX | PRODUCTION, stamped from the running platform mode.
+  originEnv                  String    @map("origin_env")
+  payloadCanonical           String    @map("payload_canonical")
+  payloadHash                String    @map("payload_hash")
+  signature                  String
+  /// Key id from the published JWKS. Retired keys stay verifiable, so this is not a foreign key.
+  signingKeyId               String    @map("signing_key_id")
+  /// The customer's counter-signature, if they returned one. Storing it starts nothing.
+  customerSignature          String?   @map("customer_signature")
+  customerSignatureAlgorithm String?   @map("customer_signature_algorithm")
+  customerKeyId              String?   @map("customer_key_id")
+  customerSignedAt           DateTime? @map("customer_signed_at") @db.Timestamptz(3)
+  expiresAt                  DateTime  @map("expires_at") @db.Timestamptz(3)
+  /// Always false. Present so the invariant is a stored fact a query can check, not a code comment.
+  meridianTransmitted        Boolean   @default(false) @map("meridian_transmitted")
+  fundsMoved                 Boolean   @default(false) @map("funds_moved")
+  custody                    Boolean   @default(false)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  executionIntent ExecutionIntent @relation(fields: [executionIntentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([executionIntentId])
+  @@map("settlement_instructions")
 }
 
 /// Autonomous AI agent acting *for* an organization. Never a custodian of funds.
@@ -820,6 +865,13 @@ model MonetizationEvent {
   economicStage                 String   @default("route_quote") @map("economic_stage")
   realizedRevenue               Boolean  @default(false) @map("realized_revenue")
   revenueRecognition            String   @default("unrealized") @map("revenue_recognition")
+  /// Environment that produced these economics. Only PRODUCTION may ever realize; a demo,
+  /// simulation, or partner-sandbox origin is capped at ATTRIBUTED_REVENUE by the resolver.
+  originEnv                     String   @default("SIMULATION") @map("origin_env")
+  /// Whether a provider confirmed settlement finality, or only a simulation reported it.
+  settlementFinality            String   @default("unsettled") @map("settlement_finality")
+  /// Collection processor reference proving payment. Required for realization.
+  collectionReference           String?  @map("collection_reference")
   invoiceId                     String?  @map("invoice_id")
   createdAt                     DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
@@ -831,6 +883,7 @@ model MonetizationEvent {
   @@index([organizationId, revenueSource])
   @@index([organizationId, rail])
   @@index([invoiceId])
+  @@index([organizationId, originEnv])
   @@map("monetization_events")
 }
 
@@ -844,6 +897,11 @@ model Invoice {
   currency             String   @db.VarChar(16)
   status               String   @default("issued")
   collectionStatus     String   @default("uncollected") @map("collection_status")
+  /// RECORD_ONLY | LIVE. The mode the invoice stands in now: RECORD_ONLY means no money has been
+  /// requested against it. A confirmed collection moves it to LIVE with the status.
+  collectionMode       String   @default("RECORD_ONLY") @map("collection_mode")
+  /// Processor reference proving payment, once collected. Never a payment credential.
+  collectionReference  String?  @map("collection_reference")
   issuerLegalEntity    String   @default("unconfirmed") @map("issuer_legal_entity")
   taxCalculation       String   @default("deferred") @map("tax_calculation")
   subtotalMinorUnits   Decimal  @map("subtotal_minor_units") @db.Decimal(38, 0)
@@ -856,6 +914,7 @@ model Invoice {
   organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   lines        InvoiceLine[]
   events       MonetizationEvent[]
+  collectionAttempts CollectionAttempt[]
 
   @@unique([organizationId, periodStart, currency])
   @@index([organizationId, issuedAt(sort: Desc)])
@@ -865,7 +924,14 @@ model Invoice {
 model InvoiceLine {
   id                        String   @id
   invoiceId                 String   @map("invoice_id")
-  monetizationEventId       String   @unique @map("monetization_event_id")
+  /// Null on subscription and metered lines: those bill a period, not one routed decision.
+  monetizationEventId       String?  @unique @map("monetization_event_id")
+  /// SUBSCRIPTION_PERIOD | METERED_CALL | FLAT_DECISION. One class per line, enforced by CHECK.
+  eventClass                String   @default("FLAT_DECISION") @map("event_class")
+  /// Customer-facing description of what this line charges for.
+  description               String   @default("")
+  /// Units billed: 1 for a subscription period, the overage call count for metered lines.
+  quantity                  Decimal  @default(1) @map("quantity") @db.Decimal(38, 0)
   platformRevenueMinorUnits Decimal  @map("platform_revenue_minor_units") @db.Decimal(38, 0)
   economicStage             String   @map("economic_stage")
   transactionType           String   @map("transaction_type")
@@ -873,10 +939,81 @@ model InvoiceLine {
   occurredAt                DateTime @map("occurred_at") @db.Timestamptz(3)
   createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
 
-  invoice           Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  monetizationEvent MonetizationEvent @relation(fields: [monetizationEventId], references: [id], onDelete: Restrict)
+  invoice           Invoice            @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  monetizationEvent MonetizationEvent? @relation(fields: [monetizationEventId], references: [id], onDelete: Restrict)
 
+  @@index([invoiceId, eventClass])
   @@map("invoice_lines")
+}
+
+/// Per-organization API call counter, one row per org, per metered surface, per month.
+/// Counts are Decimal(38,0) rather than Int because an enterprise month multiplied by a per-call
+/// price must stay exact; the application reads them as bigint.
+model UsageCounter {
+  id             String   @id
+  organizationId String   @map("organization_id")
+  periodStart    DateTime @map("period_start") @db.Timestamptz(3)
+  /// quote | route_search | compliance | liquidity | settlement_status | reconciliation
+  endpoint       String
+  callCount      Decimal  @default(0) @map("call_count") @db.Decimal(38, 0)
+  firstCallAt    DateTime @map("first_call_at") @db.Timestamptz(3)
+  lastCallAt     DateTime @map("last_call_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, periodStart, endpoint])
+  @@index([periodStart])
+  @@map("usage_counters")
+}
+
+/// Subscription tier assignment. An organization with no row is on the `free` tier.
+model OrganizationSubscription {
+  id                        String    @id
+  organizationId            String    @unique @map("organization_id")
+  /// free | starter | pro | enterprise
+  tier                      String
+  currency                  String    @db.VarChar(16)
+  startedAt                 DateTime  @map("started_at") @db.Timestamptz(3)
+  cancelledAt               DateTime? @map("cancelled_at") @db.Timestamptz(3)
+  /// Negotiated flat fee per decision in minor units. Always a constant, never a rate (§18.2).
+  flatDecisionFeeMinorUnits Decimal?  @map("flat_decision_fee_minor_units") @db.Decimal(38, 0)
+  createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organization_subscriptions")
+}
+
+/// One attempt to collect one invoice.
+/// `idempotencyKey` is unique, which is what makes a retry safe: a second attempt for the same
+/// invoice finds this row instead of charging again (§18.5). Never holds a payment credential —
+/// only the processor's own reference.
+model CollectionAttempt {
+  id                 String    @id
+  invoiceId          String    @map("invoice_id")
+  organizationId     String    @map("organization_id")
+  idempotencyKey     String    @unique @map("idempotency_key")
+  /// RECORD_ONLY | LIVE
+  mode               String
+  /// recorded | pending | succeeded | failed
+  status             String
+  currency           String    @db.VarChar(16)
+  amountMinorUnits   Decimal   @map("amount_minor_units") @db.Decimal(38, 0)
+  processorReference String?   @map("processor_reference")
+  processorKind      String?   @map("processor_kind")
+  /// processor_webhook | processor_sync_confirmed | operator_manual
+  confirmationSource String?   @map("confirmation_source")
+  failureReason      String?   @map("failure_reason")
+  createdAt          DateTime  @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime  @map("updated_at") @db.Timestamptz(3)
+  confirmedAt        DateTime? @map("confirmed_at") @db.Timestamptz(3)
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@index([organizationId, createdAt(sort: Desc)])
+  @@map("collection_attempts")
 }
 
 // ---------------------------------------------------------------------------

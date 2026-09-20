@@ -17,6 +17,9 @@ const ko = JSON.parse(readFileSync(join(messagesDir, 'ko.json'), 'utf8')) as typ
 
 function renderWithMessages(locale: AppLocale, messages: typeof enMessages, node: ReactElement): string {
   return renderToStaticMarkup(
+    // next-intl types the provider's children as required, so createElement's variadic children
+    // argument does not satisfy the props type; passing it in props is the typed form here.
+    // eslint-disable-next-line react/no-children-prop
     createElement(NextIntlClientProvider, { locale, messages, timeZone: 'UTC', children: node }),
   );
 }

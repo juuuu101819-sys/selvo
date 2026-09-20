@@ -1,7 +1,12 @@
 import type { ReactNode } from 'react';
 import { getLocale, getTranslations } from 'next-intl/server';
 import type { CostPointDto, DashboardProviderUsageDto, VolumePointDto } from '@/lib/api/types';
-import { displayBarPercent, displayBarPercentFromDecimal, maxDecimal, maxMinorUnits } from '@/lib/chart-display';
+import {
+  displayBarPercent,
+  displayBarPercentFromDecimal,
+  maxDecimal,
+  maxMinorUnits,
+} from '@/lib/chart-display';
 import { exponentFor } from '@/lib/currency';
 import { formatBps, formatQuotedAmount } from '@/lib/format';
 
@@ -55,7 +60,7 @@ export async function DashboardCharts({
                 </div>
                 <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
                   <div
-                    className="h-full rounded-full bg-emerald-600"
+                    className="bg-chart-1 h-full rounded-full"
                     // Display-only CSS width. Not used in further calculation.
                     style={{ width: `${displayBarPercent(point.minorUnits, maxVolumeMinor)}%` }}
                     role="presentation"
@@ -87,11 +92,11 @@ export async function DashboardCharts({
               </div>
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
                 <div
-                  className="h-full rounded-full bg-foreground/40"
-                    // Display-only CSS width. Not used in further calculation.
-                    style={{
-                      width: `${displayBarPercentFromDecimal(point.averageCostBps, maxCostBps)}%`,
-                    }}
+                  className="bg-chart-2 h-full rounded-full"
+                  // Display-only CSS width. Not used in further calculation.
+                  style={{
+                    width: `${displayBarPercentFromDecimal(point.averageCostBps, maxCostBps)}%`,
+                  }}
                   role="presentation"
                 />
               </div>
@@ -126,7 +131,7 @@ export async function DashboardCharts({
               </div>
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
                 <div
-                  className="h-full rounded-full bg-emerald-600"
+                  className="bg-chart-3 h-full rounded-full"
                   // Quote counts are not financial amounts; this width is display-only.
                   style={{ width: `${barWidth(provider.quoteCount, maxQuotes)}%` }}
                   role="presentation"

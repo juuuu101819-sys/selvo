@@ -5,7 +5,11 @@ import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils';
 
 const LINKS = [
-  { href: (id: string) => `/dashboard/agents/${id}`, labelKey: 'agentOverview' as const, suffix: '' },
+  {
+    href: (id: string) => `/dashboard/agents/${id}`,
+    labelKey: 'agentOverview' as const,
+    suffix: '',
+  },
   {
     href: (id: string) => `/dashboard/agents/${id}/payments`,
     labelKey: 'agentPayments' as const,
@@ -47,7 +51,7 @@ export function AgentSubnav({
                   className={cn(
                     'inline-flex h-8 items-center rounded-lg px-2.5 text-sm font-medium whitespace-nowrap',
                     current
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                   )}
                 >

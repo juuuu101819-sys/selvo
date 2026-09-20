@@ -85,7 +85,7 @@ export default async function DashboardQuotesPage() {
                 </TableCell>
                 <TableCell>
                   {quote.isRecommended ? (
-                    <Badge>{tCommon('recommended')}</Badge>
+                    <Badge variant="recommend">{tCommon('recommended')}</Badge>
                   ) : (
                     <Badge variant="outline">{quote.status}</Badge>
                   )}

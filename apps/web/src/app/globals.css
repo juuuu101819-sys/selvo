@@ -2,22 +2,23 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/*
+ * Meridian ships one theme: the deep-violet dark palette below, defined on `:root`.
+ *
+ * This variant is kept deliberately even though nothing sets `.dark`. Tailwind's built-in
+ * `dark:` falls back to `prefers-color-scheme`, so deleting this line would let any stray
+ * `dark:` class — including ones a future `shadcn add` generates — silently activate a second
+ * palette on machines set to dark mode. Bound to a class that is never applied, those classes
+ * stay inert instead.
+ */
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
+  --font-sans: var(--font-sans-stack);
+  --font-mono: var(--font-mono-stack);
+  --font-display: var(--font-display-stack);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -26,6 +27,11 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-recommend-foreground: var(--recommend-foreground);
+  --color-recommend: var(--recommend);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning: var(--warning);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -49,72 +55,64 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  /*
+   * Fraunces carries no CJK glyphs, so ko/ja/zh headings fall through to a system CJK *sans*
+   * stack rather than to a serif — a serif fallback would render Korean and Japanese in a
+   * mismatched Mincho/Batang face next to Latin Fraunces.
+   */
+  --font-display-stack:
+    var(--font-fraunces), 'Apple SD Gothic Neo', 'Pretendard', 'Malgun Gothic',
+    'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', 'Noto Sans KR', 'PingFang SC',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --font-sans-stack:
+    var(--font-inter), system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple SD Gothic Neo',
+    'Malgun Gothic', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  --font-mono-stack: var(--font-geist-mono), ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Deep-violet surfaces, darkest to lightest. */
+  --background: oklch(0.158 0.0508 286.594);
+  --foreground: oklch(0.9618 0.0202 295.191);
+  --card: oklch(0.225 0.0835 285.497);
+  --card-foreground: oklch(0.9618 0.0202 295.191);
+  --popover: oklch(0.225 0.0835 285.497);
+  --popover-foreground: oklch(0.9618 0.0202 295.191);
+  --secondary: oklch(0.1979 0.0699 285.496);
+  --secondary-foreground: oklch(0.9618 0.0202 295.191);
+  --muted: oklch(0.259 0.0963 285.873);
+  --muted-foreground: oklch(0.668 0.0824 290.532);
+  --border: oklch(0.3068 0.1038 286.884);
+  --input: oklch(0.3068 0.1038 286.884);
+
+  /* Brand violet. */
+  --primary: oklch(0.599 0.2299 286.205);
+  --primary-foreground: oklch(1 0 0);
+  --ring: oklch(0.599 0.2299 286.205);
+
+  /* Brand amber. Accent is brand-only — it never marks a caution state. */
+  --accent: oklch(0.8419 0.1684 90.43);
+  --accent-foreground: oklch(0.3006 0.0614 89.775);
+
+  /* Recommended route / best execution / positive delta. */
+  --recommend: oklch(0.7842 0.1457 168.708);
+  --recommend-foreground: oklch(0.2593 0.047 169.334);
+
+  /* Caution: unconfirmed issuer, expiring quote, one-time secret reveal. */
+  --warning: oklch(0.6938 0.1975 18.253);
+  --warning-foreground: oklch(1 0 0);
+
+  /* Hard failure. Deeper and more saturated than --warning so an error outweighs a caution. */
+  --destructive: oklch(0.6533 0.2345 18.556);
+  --destructive-foreground: oklch(1 0 0);
+
+  /* Chart series, drawn from the palette so revenue-lifecycle bars stay on-brand and legible. */
+  --chart-1: var(--recommend);
+  --chart-2: var(--primary);
+  --chart-3: var(--accent);
+  --chart-4: oklch(0.72 0.14 305);
+  --chart-5: var(--muted-foreground);
+
+  --radius: 0.625rem;
 }
 
 @layer base {
@@ -126,5 +124,52 @@
   }
   html {
     @apply font-sans;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display-stack);
+    font-optical-sizing: auto;
+  }
+}
+
+@layer utilities {
+  .marketing-surface {
+    background-color: color-mix(in oklch, var(--card) 82%, transparent);
+    backdrop-filter: blur(12px);
+    box-shadow:
+      0 1px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
+      0 24px 48px -24px color-mix(in oklch, var(--background) 80%, transparent);
+  }
+}
+
+@keyframes marketing-orb-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(12px, -18px) scale(1.04);
+  }
+  66% {
+    transform: translate(-10px, 14px) scale(0.96);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marketing-orb {
+    animation: marketing-orb-drift 22s ease-in-out infinite;
+  }
+  .marketing-orb-delay-1 {
+    animation-delay: -4s;
+  }
+  .marketing-orb-delay-2 {
+    animation-delay: -9s;
+  }
+  .marketing-orb-delay-3 {
+    animation-delay: -14s;
+  }
+  .marketing-orb-delay-4 {
+    animation-delay: -18s;
   }
 }

@@ -199,6 +199,9 @@ docs/
   ROADMAP.md      Phase plan. Phases 1–4b, dashboard (2b), catalog (8), routing (9), graph (10),
                   stablecoin routing (11), DeFi liquidity routing (12).
   COMPLIANCE.md   The boundaries, and how the code enforces them.
+  MONETIZATION.md The revenue lifecycle, the five pricing shapes and their gates, the billable
+                  event taxonomy, subscription tiers, and how collection works.
+  PHASE_8_REPORT.md  Revenue lifecycle reconciliation and launch billing, reported per §25.
   PRE_LAUNCH_READINESS.md  PHASE 39 referral-model MVP launch report.
   API.md          Endpoint reference.
 ```

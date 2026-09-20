@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { PAYMENT_INTENT_STATUSES } from './agent-payments.js';
+import { INVOICE_COLLECTION_STATUSES } from './billing.js';
 import { EXECUTION_INTENT_STATUS } from '../ports/execution-intent.js';
 import {
   API_FINANCIAL_STATUS_DOCS,
   DOCUMENTED_EXECUTION_INTENT_STATUS,
   EXECUTION_INTENT_STATUS_DOCS,
+  financialStatusDocFor,
   PAYMENT_INTENT_STATUS_DOCS,
   QUOTE_STATUS_DOCS,
   QUOTE_STATUSES,
@@ -31,6 +33,17 @@ describe('API financial status catalog', () => {
       [...TRANSACTION_REQUEST_STATUSES].sort(),
     );
     expect(Object.keys(QUOTE_STATUS_DOCS).sort()).toEqual([...QUOTE_STATUSES].sort());
+  });
+
+  it('documents every collection status the billing layer can return', () => {
+    // The catalog gained `collected` only when a collection layer existed to write it. Keying the
+    // record off INVOICE_COLLECTION_STATUSES makes a future status a compile error; this asserts
+    // the lookup path too, since `docs/API.md` coverage reads the catalog and not the type.
+    for (const status of INVOICE_COLLECTION_STATUSES) {
+      const entry = financialStatusDocFor('invoice', status);
+      expect(entry, `no financial-status entry for invoice:${status}`).not.toBeNull();
+      expect(entry?.value).toBe(status);
+    }
   });
 
   it('never implies funds movement, provider execution, settlement, or realized revenue', () => {

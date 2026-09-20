@@ -94,6 +94,7 @@ export {
 } from './execution-partner.js';
 export type { OrchestratedExecutionStore } from './orchestrated-executions.js';
 export type { ExecutionReceiptStore } from './execution-receipts.js';
+export type { SettlementInstructionStore } from './settlement-instruction.js';
 export type { FXProvider, FXQuote, FXQuoteRequest } from './fx-provider.js';
 export { SequentialIdGenerator, uuidIdGenerator, type IdGenerator } from './id-generator.js';
 export { FixedClock, systemClock, type Clock } from './clock.js';
@@ -161,9 +162,19 @@ export type {
   StoredRoutingEvaluation,
 } from './routing-evaluation.js';
 export { ROUTING_EVALUATION_SURFACES } from './routing-evaluation.js';
-export type { BillingStore, IssueInvoiceInput } from './billing.js';
+export type {
+  BillingStore,
+  CollectionStore,
+  ConfirmCollectionInput,
+  IssueInvoiceInput,
+  RecordCollectionAttemptInput,
+  SubscriptionStore,
+  UsageMeterStore,
+} from './billing.js';
 export {
   DeferredPlatformFeeCollector,
+  type CollectionOutcome,
+  type CollectionRequest,
   type PlatformFeeCollector,
 } from './payment-collector.js';
 export type {
@@ -245,6 +256,14 @@ export {
   encryptAtRest,
 } from '../crypto/encryption.js';
 export { ProviderCredentialVault } from '../crypto/provider-credential-vault.js';
+export {
+  fingerprintPublicKeyPem as fingerprintEd25519PublicKeyPem,
+  generateEd25519KeyPair,
+  publicKeyJwkX,
+  signEd25519,
+  verifyEd25519,
+  type Ed25519KeyPair,
+} from '../crypto/ed25519.js';
 export {
   SYNTHETIC_PLACEHOLDER_PROVIDER_ID,
   type ProviderCredentialStore,

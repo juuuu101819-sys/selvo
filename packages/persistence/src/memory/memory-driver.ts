@@ -5,6 +5,7 @@ import {
   type AuditEventType,
   type AuditLogRepository,
   type BillingStore,
+  type CollectionStore,
   type ComparisonRepository,
   type DashboardRepository,
   type ExecutionIntentRepository,
@@ -17,6 +18,11 @@ import {
 } from '@meridian/core';
 import { InMemoryAgentPaymentsRepository } from './memory-agent-payments.js';
 import { InMemoryBillingStore } from './memory-billing.js';
+import {
+  InMemoryCollectionStore,
+  InMemorySubscriptionStore,
+  InMemoryUsageMeterStore,
+} from './memory-launch-billing.js';
 import { InMemoryDashboardRepository } from './memory-dashboard.js';
 import { InMemoryExecutionIntentRepository } from './memory-execution-intents.js';
 import { InMemoryIdentityStore } from './memory-identity.js';
@@ -26,6 +32,7 @@ import { InMemoryMandateStore } from './memory-mandates.js';
 import { InMemoryPartnerInstructionStore } from './memory-partner-instructions.js';
 import { InMemoryOrchestratedExecutionStore } from './memory-orchestrated-executions.js';
 import { InMemoryExecutionReceiptStore } from './memory-execution-receipts.js';
+import { InMemorySettlementInstructionStore } from './memory-settlement-instructions.js';
 import { InMemoryLiveEnablementStore } from './memory-live-enablement.js';
 import { InMemoryRateLimitStore } from '../rate-limit/memory-store.js';
 import { InMemoryRoutingEvaluationRepository } from './memory-routing-evaluations.js';
@@ -172,6 +179,9 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly rateLimits = new InMemoryRateLimitStore();
   readonly onboarding = new InMemoryOnboardingStore(this.identity);
   readonly billing: BillingStore;
+  readonly usageMeter = new InMemoryUsageMeterStore();
+  readonly subscriptions = new InMemorySubscriptionStore();
+  readonly collections: CollectionStore;
   readonly routingEvaluations: RoutingEvaluationRepository;
   readonly routingOverrides = new InMemoryRoutingOverrideStore();
   readonly providerCredentials = new InMemoryProviderCredentialStore();
@@ -179,12 +189,18 @@ export class InMemoryPersistenceDriver implements PersistenceDriver {
   readonly partnerInstructions = new InMemoryPartnerInstructionStore();
   readonly orchestratedExecutions = new InMemoryOrchestratedExecutionStore();
   readonly executionReceipts = new InMemoryExecutionReceiptStore();
+  readonly settlementInstructions = new InMemorySettlementInstructionStore();
   readonly liveEnablement = new InMemoryLiveEnablementStore();
 
   constructor() {
     const monetization = new Map<string, MonetizationEvent>();
     this.dashboard = new InMemoryDashboardRepository(monetization);
-    this.billing = new InMemoryBillingStore(monetization);
+    const billing = new InMemoryBillingStore(monetization);
+    this.billing = billing;
+    // The collection store promotes snapshots through the billing store, so it needs the concrete
+    // instance rather than the port: confirming a payment and recognizing the revenue it pays for
+    // have to happen together.
+    this.collections = new InMemoryCollectionStore(billing);
     this.routingEvaluations = new InMemoryRoutingEvaluationRepository();
   }
 

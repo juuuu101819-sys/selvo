@@ -6,6 +6,7 @@ import {
   type Principal,
   type ReplayResultDto,
   type StoredComparison,
+  revenueOriginEnvForMode,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { applyOptionalMandateToRouting } from '../http/mandate-context.js';
@@ -92,6 +93,8 @@ export function registerComparisonRoutes(app: FastifyInstance, container: AppCon
           });
 
     await recordComparisonMonetization({
+      originEnv: revenueOriginEnvForMode(container.config.mode),
+      gainShareActive: container.pricingShapes.isActive('gain_share'),
       comparisonId: comparison.comparisonId,
       organizationId: comparison.organizationId,
       createdAt: comparison.createdAt,

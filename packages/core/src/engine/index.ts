@@ -81,9 +81,15 @@ export {
 export {
   MultiRailCostEngine,
   NO_ROUTING_PLATFORM_CHARGE,
+  flatDecisionFee,
+  gatePlatformChargeByShape,
   settlementConfidenceOf,
   hopsOf,
 } from './routing-cost.js';
+export {
+  PricingShapeRegistry,
+  type PricingShapeRegistryOptions,
+} from './pricing-shape-registry.js';
 export { admitNormalizedQuote } from './quote-admission.js';
 export { MultiRailScorer } from './routing-scorer.js';
 export { explainRecommendation, explainRoute } from './routing-explanation.js';
@@ -171,6 +177,8 @@ export {
   monetizationFromMultiRailRoute,
   priceRouteMonetization,
   priceMonetization,
+  lifecycleStateOf,
+  withResolvedLifecycle,
   type MonetizationComputation,
   type MonetizationPriceInput,
 } from './monetization-engine.js';
@@ -185,6 +193,29 @@ export {
   type BillingRunDependencies,
   type BillingRunInput,
 } from './billing-engine.js';
+export {
+  composeDraftInvoice,
+  flatDecisionLines,
+  meteredCallLine,
+  meteredOverage,
+  subscriptionPeriodLine,
+  type ComposeDraftInvoiceInput,
+  type MeteredLineInput,
+  type MeteredOverage,
+  type SubscriptionLineInput,
+} from './billing-lines.js';
+export {
+  CollectionService,
+  type CollectInvoiceCommand,
+  type CollectInvoiceResult,
+  type CollectionServiceDependencies,
+} from './collection-service.js';
+export {
+  UsageMeteringService,
+  billingPeriodStart,
+  type UsageMeteringDependencies,
+  type UsageSnapshot,
+} from './usage-metering-service.js';
 export {
   NlRoutingService,
   NL_INTERPRET_PIPELINE,
@@ -260,6 +291,32 @@ export {
   verifyExecutionReceipt,
   type ReceiptKeyPair,
 } from './receipt-signing.js';
+export {
+  INSTRUCTION_SIGNING_DOCS,
+  INSTRUCTION_VERIFICATION_FAILURES,
+  canonicalizeInstructionPayload,
+  hashCanonicalInstruction,
+  instructionJwks,
+  instructionKeyId,
+  loadInstructionKeyRing,
+  rotateInstructionSigningKey,
+  signInstructionPayload,
+  verifyInstructionSignature,
+  type InstructionJwk,
+  type InstructionJwks,
+  type InstructionKeyRing,
+  type InstructionSigningKey,
+  type InstructionVerificationFailure,
+  type InstructionVerificationKey,
+  type InstructionVerificationOutcome,
+  type SignedInstructionBytes,
+} from './settlement-instruction-signing.js';
+export {
+  SettlementInstructionService,
+  type GenerateInstructionCommand,
+  type RecordCustomerSignatureCommand,
+  type SettlementInstructionDeps,
+} from './settlement-instruction-service.js';
 export {
   RECONCILIATION_MISMATCH_KINDS,
   ReconciliationEngine,

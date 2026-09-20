@@ -72,7 +72,7 @@ export function VerifyReproducibility({
 
       <output aria-live="polite" className="text-xs">
         {state.kind === 'reproduced' && (
-          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+          <span className="text-recommend inline-flex items-center gap-1">
             <CheckCircle2 className="size-3.5" aria-hidden />
             {t('reproduced')}
           </span>

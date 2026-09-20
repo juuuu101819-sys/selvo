@@ -91,7 +91,8 @@ test('invoices page starts empty and never claims cash was collected', async ({ 
 
   await expect(page.getByRole('heading', { name: /^Invoices$/i })).toBeVisible();
   await expect(page.getByText('No invoices issued yet')).toBeVisible();
-  await expect(page.getByText(/payment collection is deferred/i)).toBeVisible();
+  await expect(page.getByText(/issued is not collected/i)).toBeVisible();
+  await expect(page.getByText(/collected against a processor reference is cash received/i)).toBeVisible();
   await expect(page.getByRole('button', { name: /^Execute/i })).toHaveCount(0);
 });
 

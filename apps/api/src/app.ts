@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import cors from '@fastify/cors';
-import { ValidationError, type Clock } from '@meridian/core';
+import { ValidationError, assertPricingShapeAdmissionSafe, type Clock } from '@meridian/core';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { provisionDemoTenants } from './auth/provision-demo.js';
 import type { OidcClient } from './auth/oidc-client.js';
@@ -89,6 +89,17 @@ export async function createApp(options: CreateAppOptions): Promise<BuiltApp> {
     // Kill switches stay empty until the store is available; they never auto-reset.
     app.log.warn('Routing kill-switch rows could not be loaded; starting with none engaged');
   }
+
+  try {
+    container.pricingShapes.hydrate(await container.persistence.liveEnablement.list());
+  } catch {
+    // Same read-only start as the kill switches. An unread table leaves the high-risk shapes
+    // closed, which under-charges rather than charging a shape with no recorded determination.
+    app.log.warn('Pricing-shape enablement rows could not be loaded; high-risk shapes stay closed');
+  }
+  // A high-risk flag that is on in production with no current determination is a boot failure, not
+  // a request-time surprise: the operator asked to charge ad valorem and the document is missing.
+  assertPricingShapeAdmissionSafe(container.pricingShapes.current());
 
   await app.register(cors, {
     origin: config.corsOrigins.length > 0 ? [...config.corsOrigins] : false,

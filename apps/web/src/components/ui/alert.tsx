@@ -11,6 +11,12 @@ const alertVariants = cva(
         default: 'bg-card text-card-foreground',
         destructive:
           'bg-card text-destructive *:data-[slot=alert-description]:text-destructive/90 *:[svg]:text-current',
+        /** Caution, not failure: the state is understood but needs the reader's attention. */
+        warning:
+          'border-warning/40 bg-warning/10 text-warning *:data-[slot=alert-description]:text-warning/90 *:[svg]:text-current',
+        /** Best-execution / recommended outcome. */
+        recommend:
+          'border-recommend/40 bg-recommend/10 text-recommend *:data-[slot=alert-description]:text-recommend/90 *:[svg]:text-current',
       },
     },
     defaultVariants: {

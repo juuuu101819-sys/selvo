@@ -358,12 +358,18 @@ The routing engine versions are unchanged.
 
 ## 12b. Multi-rail monetization engine
 
+See `docs/MONETIZATION.md` for the revenue lifecycle, the five pricing-shape flags, the
+billable-event taxonomy and the two collection modes. The engine itself:
+
 `priceMonetization` extends the existing provider/platform fee split. Amounts are integer minor
-units. Partner commission defaults to 25% of platform revenue (`Rounding.DOWN`, capped at platform
-revenue). Gross profit is platform revenue minus that payout. Take rate is platform revenue / TPV
-in basis points, or null when TPV is zero (subscriptions). Events are attributed by rail, provider,
-currency, asset, organization, AI agent, transaction type, revenue source and date. Quoted fees
-only: `fundsMoved` is always false. `GET /api/v1/dashboard/revenue` is org-scoped.
+units. Partner commission is 25% of platform revenue (`Rounding.DOWN`, capped at platform revenue)
+**when gain share is admitted**, and zero otherwise — the shape is gated end to end, so a closed
+gate means no commission is computed, attributed or reported, and gross profit equals platform
+revenue. Take rate is platform revenue / TPV in basis points, or null when TPV is zero
+(subscriptions). Events are attributed by rail, provider, currency, asset, organization, AI agent,
+transaction type, revenue source, origin environment, lifecycle state and date. Quoted fees only:
+`fundsMoved` is always false. `GET /api/v1/dashboard/revenue` is org-scoped and reports
+`realizedRevenue` only for records that cleared all four realization preconditions.
 
 ## 12c. AI agent financial dashboard
 

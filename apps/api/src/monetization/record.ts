@@ -6,6 +6,7 @@ import {
   type DashboardRepository,
   type MonetizationEvent,
   type PaymentIntent,
+  type RevenueOriginEnv,
   type ScoredMultiRailRoute,
 } from '@meridian/core';
 
@@ -14,7 +15,9 @@ import {
  * or execution intent. Failures surface: dropping a ledger event would make the dashboard lie.
  *
  * ROUTE_QUOTE ≠ ROUTE_SELECTED ≠ EXECUTION_INTENT ≠ SETTLEMENT ≠ REALIZED_REVENUE.
- * Nothing in this module writes realized revenue.
+ * Nothing in this module writes realized revenue: `originEnv` is stamped from the running
+ * platform mode and settlement finality stays `unsettled`, so the lifecycle resolver caps every
+ * event written here below REALIZED_REVENUE.
  */
 
 export async function recordComparisonMonetization(input: {
@@ -27,6 +30,8 @@ export async function recordComparisonMonetization(input: {
   readonly auditLogger: AuditLogger;
   readonly actor: string;
   readonly requestId: string;
+  readonly originEnv: RevenueOriginEnv;
+  readonly gainShareActive: boolean;
 }): Promise<void> {
   if (input.organizationId === null || input.route === null) {
     return;
@@ -39,6 +44,8 @@ export async function recordComparisonMonetization(input: {
     economicStage: 'route_quote',
     eventId: `mon_cmp_${input.comparisonId}`,
     quoteId: input.comparisonId,
+    originEnv: input.originEnv,
+    gainShareActive: input.gainShareActive,
   });
   await persistMonetization(input.dashboard, input.auditLogger, event, {
     actor: input.actor,
@@ -56,6 +63,8 @@ export async function recordRouteQuoteMonetization(input: {
   readonly auditLogger: AuditLogger;
   readonly actor: string;
   readonly requestId: string;
+  readonly originEnv: RevenueOriginEnv;
+  readonly gainShareActive: boolean;
 }): Promise<void> {
   if (input.organizationId === null || input.route === null) {
     return;
@@ -68,6 +77,8 @@ export async function recordRouteQuoteMonetization(input: {
     economicStage: 'route_quote',
     eventId: `mon_rte_${input.routingId}`,
     quoteId: input.routingId,
+    originEnv: input.originEnv,
+    gainShareActive: input.gainShareActive,
   });
   await persistMonetization(input.dashboard, input.auditLogger, event, {
     actor: input.actor,
@@ -89,6 +100,8 @@ export async function recordExecutionIntentMonetization(input: {
   readonly auditLogger: AuditLogger;
   readonly actor: string;
   readonly requestId: string;
+  readonly originEnv: RevenueOriginEnv;
+  readonly gainShareActive: boolean;
 }): Promise<void> {
   const event =
     input.route === null
@@ -108,6 +121,8 @@ export async function recordExecutionIntentMonetization(input: {
           routeId: input.routeId,
           quoteId: input.intentId,
           economicStage: 'execution_intent',
+          originEnv: input.originEnv,
+          gainShareActive: input.gainShareActive,
           tpvMinorUnits: input.amountMinorUnits,
           providerCostMinorUnits: '0',
           platformRevenueMinorUnits: '0',
@@ -120,6 +135,8 @@ export async function recordExecutionIntentMonetization(input: {
           economicStage: 'execution_intent',
           eventId: `mon_eit_${input.intentId}`,
           quoteId: input.intentId,
+          originEnv: input.originEnv,
+          gainShareActive: input.gainShareActive,
         });
   await persistMonetization(input.dashboard, input.auditLogger, event, {
     actor: input.actor,
@@ -134,6 +151,8 @@ export async function recordAgentQuoteMonetization(input: {
   readonly auditLogger: AuditLogger;
   readonly actor: string;
   readonly requestId: string;
+  readonly originEnv: RevenueOriginEnv;
+  readonly gainShareActive: boolean;
 }): Promise<void> {
   const route =
     input.intent.quotedRoutes.find((candidate) => candidate.recommended) ??
@@ -151,6 +170,8 @@ export async function recordAgentQuoteMonetization(input: {
     destinationAsset: input.intent.destinationAsset,
     amountMinorUnits: input.intent.amountMinorUnits,
     route,
+    originEnv: input.originEnv,
+    gainShareActive: input.gainShareActive,
   });
   await persistMonetization(input.dashboard, input.auditLogger, event, {
     actor: input.actor,
@@ -182,7 +203,10 @@ async function persistMonetization(
       eventId: event.id,
       eventType: event.economicStage === 'execution_intent' ? 'EXECUTION_INTENT' : 'ROUTE_QUOTE',
       economicStage: event.economicStage,
-      realizedRevenue: false,
+      lifecycleState: event.lifecycleState,
+      originEnv: event.originEnv,
+      settlementFinality: event.settlementFinality,
+      realizedRevenue: event.realizedRevenue,
       routeId: event.routeId,
       quoteId: event.quoteId,
       revenueSource: event.revenueSource,

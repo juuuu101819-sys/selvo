@@ -11,7 +11,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
-import type { ApiFailure, StablecoinCatalogDto, StablecoinRouteDto, StablecoinRoutingDto } from '@/lib/api/types';
+import type {
+  ApiFailure,
+  StablecoinCatalogDto,
+  StablecoinRouteDto,
+  StablecoinRoutingDto,
+} from '@/lib/api/types';
 import { formatAssetAmount, formatBps, formatRate, formatSettlement } from '@/lib/format';
 
 const PRESETS = [
@@ -24,7 +29,11 @@ const PRESETS = [
 
 type ViewState =
   | { readonly kind: 'idle' }
-  | { readonly kind: 'success'; readonly routing: StablecoinRoutingDto; readonly disclaimer: string }
+  | {
+      readonly kind: 'success';
+      readonly routing: StablecoinRoutingDto;
+      readonly disclaimer: string;
+    }
   | { readonly kind: 'error'; readonly failure: ApiFailure };
 
 export function StablecoinExplorer({ catalog }: { catalog: StablecoinCatalogDto | null }) {
@@ -188,11 +197,11 @@ function StablecoinResult({
   return (
     <div className="space-y-4">
       {recommended !== null && (
-        <Card className="border-emerald-600/40">
+        <Card className="border-recommend/40">
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg">{recommended.provider.name}</CardTitle>
-              <Badge>Recommended</Badge>
+              <Badge variant="recommend">Recommended</Badge>
               <ProviderLicensingBadge licensing={recommended.provider.licensing} />
               <Badge variant="secondary">{recommended.conversionKind.replaceAll('_', ' ')}</Badge>
             </div>
@@ -210,7 +219,7 @@ function StablecoinResult({
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-base">{route.provider.name}</CardTitle>
-                {route.recommended && <Badge>Recommended</Badge>}
+                {route.recommended && <Badge variant="recommend">Recommended</Badge>}
                 <ProviderLicensingBadge licensing={route.provider.licensing} />
                 <Badge variant="outline">{route.provider.railLabel}</Badge>
                 <span className="text-muted-foreground font-mono text-xs">
@@ -254,14 +263,18 @@ function QuoteFields({ route }: { route: StablecoinRouteDto }) {
       <Field label="Network fee">{formatAssetAmount(route.networkFee)}</Field>
       <Field label="Slippage">
         {formatBps(route.slippage.bps)}
-        <span className="text-muted-foreground mt-0.5 block text-xs">{route.slippage.model.kind}</span>
+        <span className="text-muted-foreground mt-0.5 block text-xs">
+          {route.slippage.model.kind}
+        </span>
       </Field>
       <Field label="Liquidity">
         {route.liquidity.availableDepthMinorUnits === null
           ? 'Not disclosed'
           : `${route.liquidity.availableDepthMinorUnits} minor units`}
         {route.liquidity.venue !== null && (
-          <span className="text-muted-foreground mt-0.5 block text-xs">{route.liquidity.venue}</span>
+          <span className="text-muted-foreground mt-0.5 block text-xs">
+            {route.liquidity.venue}
+          </span>
         )}
       </Field>
       <Field label="Estimated settlement">
@@ -271,7 +284,11 @@ function QuoteFields({ route }: { route: StablecoinRouteDto }) {
         )}
       </Field>
       <Field label="Expiration">
-        {route.expiration === null ? 'No window published' : <QuoteExpiryBadge expiresAt={route.expiration} />}
+        {route.expiration === null ? (
+          'No window published'
+        ) : (
+          <QuoteExpiryBadge expiresAt={route.expiration} />
+        )}
       </Field>
       <Field label="Receive">{formatAssetAmount(route.estimatedReceiveAmount)}</Field>
     </dl>

@@ -1,8 +1,10 @@
 'use client';
 
 import { GitBranch, Route } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 import { discoverGraphRoutes } from '@/app/actions';
+import { RouteSelectionGraph } from '@/components/route-selection-graph';
 import { ErrorState, ResultsSkeleton } from '@/components/states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,12 +15,14 @@ import type { ApiFailure, GraphPathDto, GraphSearchDto, RouteGraphDto } from '@/
 import { formatBps } from '@/lib/format';
 
 const PRESETS = [
-  { id: 'one', source: 'USD', dest: 'KRW', hops: 1, cost: '', liq: '', label: 'One hop · USD → KRW' },
-  { id: 'two', source: 'USD', dest: 'KRW', hops: 2, cost: '', liq: '', label: 'Two hops · via USDC' },
-  { id: 'three', source: 'USD', dest: 'KRW', hops: 3, cost: '', liq: '', label: 'Three hops · USDC → USDT' },
-  { id: 'usdc-usdt', source: 'USDC', dest: 'USDT', hops: 1, cost: '', liq: '', label: 'USDC → USDT' },
-  { id: 'tight-cost', source: 'USD', dest: 'KRW', hops: 1, cost: '1', liq: '', label: 'Cost cap 1 bps' },
+  { id: 'one', source: 'USD', dest: 'KRW', hops: 1, cost: '', liq: '' },
+  { id: 'two', source: 'USD', dest: 'KRW', hops: 2, cost: '', liq: '' },
+  { id: 'three', source: 'USD', dest: 'KRW', hops: 3, cost: '', liq: '' },
+  { id: 'usdcUsdt', source: 'USDC', dest: 'USDT', hops: 1, cost: '', liq: '' },
+  { id: 'tightCost', source: 'USD', dest: 'KRW', hops: 1, cost: '1', liq: '' },
 ] as const;
+
+type PresetId = (typeof PRESETS)[number]['id'];
 
 type ViewState =
   | { readonly kind: 'idle' }
@@ -26,6 +30,7 @@ type ViewState =
   | { readonly kind: 'error'; readonly failure: ApiFailure };
 
 export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
+  const t = useTranslations('graph');
   const [source, setSource] = useState('USD');
   const [dest, setDest] = useState('KRW');
   const [maxHops, setMaxHops] = useState('3');
@@ -56,18 +61,18 @@ export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
     <div className="space-y-6">
       {graph !== null && (
         <p className="text-muted-foreground text-sm">
-          {graph.nodeCount} nodes · {graph.edgeCount} conversion edges · graph engine{' '}
-          {graph.graphEngineVersion}. Edges are indicative and never executable.
+          {t('metaSummary', {
+            nodeCount: graph.nodeCount,
+            edgeCount: graph.edgeCount,
+            version: graph.graphEngineVersion,
+          })}
         </p>
       )}
 
       <Card>
         <CardHeader>
-          <CardTitle>Discover conversion paths</CardTitle>
-          <CardDescription>
-            Walk the asset–venue graph under hop, cost, liquidity, availability and compliance
-            constraints. This is path discovery, not a live quote.
-          </CardDescription>
+          <CardTitle>{t('cardTitle')}</CardTitle>
+          <CardDescription>{t('cardDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -92,7 +97,7 @@ export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
                   setMinLiquidity(preset.liq);
                 }}
               >
-                {preset.label}
+                {t(`presets.${preset.id as PresetId}`)}
               </Button>
             ))}
           </div>
@@ -104,7 +109,7 @@ export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
             }}
           >
             <div className="space-y-2">
-              <Label htmlFor="graph-source">Source</Label>
+              <Label htmlFor="graph-source">{t('source')}</Label>
               <Input
                 id="graph-source"
                 value={source}
@@ -113,7 +118,7 @@ export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="graph-dest">Destination</Label>
+              <Label htmlFor="graph-dest">{t('destination')}</Label>
               <Input
                 id="graph-dest"
                 value={dest}
@@ -122,7 +127,7 @@ export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="graph-hops">Max hops</Label>
+              <Label htmlFor="graph-hops">{t('maxHops')}</Label>
               <Input
                 id="graph-hops"
                 value={maxHops}
@@ -132,30 +137,30 @@ export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="graph-cost">Max cost (bps)</Label>
+              <Label htmlFor="graph-cost">{t('maxCost')}</Label>
               <Input
                 id="graph-cost"
                 value={maxCost}
                 onChange={(event) => setMaxCost(event.target.value)}
-                placeholder="unbounded"
+                placeholder={t('placeholderUnbounded')}
                 inputMode="decimal"
                 autoComplete="off"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="graph-liq">Min liquidity</Label>
+              <Label htmlFor="graph-liq">{t('minLiquidity')}</Label>
               <Input
                 id="graph-liq"
                 value={minLiquidity}
                 onChange={(event) => setMinLiquidity(event.target.value)}
-                placeholder="none"
+                placeholder={t('placeholderNone')}
                 inputMode="decimal"
                 autoComplete="off"
               />
             </div>
             <div className="flex items-end">
               <Button type="submit" disabled={isPending} className="w-full">
-                {isPending ? 'Searching…' : 'Find paths'}
+                {isPending ? t('searching') : t('findPaths')}
               </Button>
             </div>
           </form>
@@ -173,32 +178,29 @@ export function GraphExplorer({ graph }: { graph: RouteGraphDto | null }) {
 }
 
 function GraphEmptyState() {
+  const t = useTranslations('graph');
+
   return (
     <div className="border-border/60 rounded-xl border border-dashed p-8 text-center">
       <GitBranch className="text-muted-foreground mx-auto size-8" aria-hidden />
-      <h2 className="mt-3 text-base font-semibold">No path search yet</h2>
-      <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">
-        Choose a corridor and a hop limit to walk USD → FX → KRW, USD → USDC → KRW, or
-        USD → USDC → USDT → KRW. Unavailable, expensive and illiquid edges are pruned.
-      </p>
+      <h2 className="mt-3 text-base font-semibold">{t('emptyTitle')}</h2>
+      <p className="text-muted-foreground mx-auto mt-1 max-w-md text-sm">{t('emptyBody')}</p>
     </div>
   );
 }
 
-function GraphResult({
-  search,
-  disclaimer,
-}: {
-  search: GraphSearchDto;
-  disclaimer: string;
-}) {
+function GraphResult({ search, disclaimer }: { search: GraphSearchDto; disclaimer: string }) {
+  const t = useTranslations('graph');
+
   if (search.paths.length === 0) {
     return (
       <div className="space-y-3">
         <div className="border-border/60 rounded-xl border border-dashed p-8 text-center">
           <Route className="text-muted-foreground mx-auto size-8" aria-hidden />
-          <h2 className="mt-3 text-base font-semibold">No valid path</h2>
-          <p className="text-muted-foreground mx-auto mt-1 max-w-lg text-sm">{search.explanation}</p>
+          <h2 className="mt-3 text-base font-semibold">{t('noValidPath')}</h2>
+          <p className="text-muted-foreground mx-auto mt-1 max-w-lg text-sm">
+            {search.explanation}
+          </p>
         </div>
         {search.rejections.length > 0 && (
           <ul className="text-muted-foreground space-y-1 text-xs">
@@ -215,13 +217,17 @@ function GraphResult({
   }
 
   const groups = groupByAssetWalk(search.paths);
+  const featured = search.paths.find((path) => path.recommended) ?? groups[0]?.best;
 
   return (
     <div className="space-y-4">
+      {featured !== undefined && <RouteSelectionGraph path={featured} />}
       <p className="text-sm">{search.explanation}</p>
       <p className="text-muted-foreground text-xs">
-        {String(search.paths.length)} walks collapsed into {String(groups.length)} distinct asset
-        sequences. The cheapest walk in each sequence is shown.
+        {t('groupsSummary', {
+          pathCount: search.paths.length,
+          groupCount: groups.length,
+        })}
       </p>
       <ul className="space-y-3">
         {groups.map((group) => (
@@ -255,17 +261,20 @@ function groupByAssetWalk(
 }
 
 function PathCard({ path, variantCount }: { path: GraphPathDto; variantCount: number }) {
+  const t = useTranslations('graph');
+  const route = path.assets.join(' → ');
+
   return (
-    <Card className={path.recommended ? 'border-emerald-600/40' : undefined}>
+    <Card className={path.recommended ? 'border-recommend/40' : undefined}>
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-base">
-            {path.rank}. {path.hops}-hop · {path.assets.join(' → ')}
+            {t('pathTitle', { rank: path.rank, hops: path.hops, route })}
           </CardTitle>
           <div className="flex items-center gap-2">
-            {path.recommended && <Badge>Recommended</Badge>}
+            {path.recommended && <Badge variant="recommend">{t('recommended')}</Badge>}
             {variantCount > 1 && (
-              <Badge variant="secondary">{String(variantCount)} venue variants</Badge>
+              <Badge variant="secondary">{t('venueVariants', { count: variantCount })}</Badge>
             )}
             <span className="font-mono text-xs">{formatBps(path.totalCostBps)}</span>
           </div>

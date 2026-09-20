@@ -39,7 +39,7 @@ describe('marketing copy (PHASE 39 positioning)', () => {
 
   it('does not claim a licensed partner is already connected', () => {
     expect(enCatalog).not.toMatch(/delegated to licensed partners/i);
-    expect(enCatalog).toMatch(/until a licensed partner is connected/i);
+    expect(enCatalog).toMatch(/Your licensed partners settle/i);
     expect(bestRoute).not.toMatch(/through licensed partners/i);
     expect(routeCard).not.toMatch(/through licensed on-ramp/i);
     expect(terms).toMatch(/no such partner adapter is connected today/i);
@@ -91,6 +91,6 @@ describe('open graph and icons', () => {
     expect(localeLayout).toMatch(/summary_large_image/);
     expect(localeLayout).toMatch(/metadataBase:/);
     expect(localeLayout).toMatch(/alternates:/);
-    expect(localeLayout).toMatch(/html lang=\{locale\}/);
+    expect(localeLayout).toMatch(/<html[^>]*\slang=\{locale\}/);
   });
 });

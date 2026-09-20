@@ -1,9 +1,11 @@
 import {
+  NotFoundError,
   PolicyDeniedError,
   QuoteExpiredError,
   serializeExecutionIntent,
   uuidIdGenerator,
   type ExecutionIntentDto,
+  revenueOriginEnvForMode,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContainer } from '../container.js';
@@ -144,6 +146,8 @@ export function registerExecutionIntentRoutes(
       });
 
       await recordExecutionIntentMonetization({
+        originEnv: revenueOriginEnvForMode(container.config.mode),
+        gainShareActive: container.pricingShapes.isActive('gain_share'),
         organizationId: principal.organizationId,
         intentId: intent.id,
         routeId: intent.routeId,
@@ -161,6 +165,30 @@ export function registerExecutionIntentRoutes(
       return reply
         .status(201)
         .send(envelope<ExecutionIntentDto>(request, serializeExecutionIntent(intent)));
+    },
+  );
+
+  /**
+   * Read one intent.
+   *
+   * Added alongside settlement instructions: an instruction names the intent it was generated
+   * from, so a customer reconciling the two needs to be able to fetch it. Read-only, and still
+   * `executable: false` — reading an intent is not a step toward executing it.
+   */
+  app.get(
+    '/execution-intents/:id',
+    { preHandler: [capabilityPreHandler('transaction:create')] },
+    async (request) => {
+      const principal = requireCapability(request, 'transaction:create');
+      const { id } = request.params as { readonly id: string };
+      const intent = await container.persistence.executionIntents.findById(
+        id,
+        principal.organizationId,
+      );
+      if (intent === null) {
+        throw new NotFoundError('ExecutionIntent', id);
+      }
+      return envelope<ExecutionIntentDto>(request, serializeExecutionIntent(intent));
     },
   );
 

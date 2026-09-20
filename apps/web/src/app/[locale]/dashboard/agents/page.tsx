@@ -12,7 +12,12 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ErrorState } from '@/components/states';
-import { fetchAgents, fetchDashboardAgents, fetchMerchants, fetchPaymentPolicies } from '@/lib/api/client';
+import {
+  fetchAgents,
+  fetchDashboardAgents,
+  fetchMerchants,
+  fetchPaymentPolicies,
+} from '@/lib/api/client';
 import { loadDashboardSession } from '@/lib/dashboard-auth';
 import { formatBps, formatQuotedAmount } from '@/lib/format';
 
@@ -76,18 +81,25 @@ export default async function DashboardAgentsPage() {
                 <TableCell>
                   <Link
                     href={`/dashboard/agents/${row.agentId}`}
-                    className="font-medium text-emerald-700 hover:underline"
+                    className="text-primary font-medium hover:underline"
                   >
                     {row.name}
                   </Link>
                   <p className="text-muted-foreground font-mono text-xs">{row.agentId}</p>
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
-                  {formatQuotedAmount(row.paymentVolumeMinorUnits, row.currency, row.exponent, locale)}
+                  {formatQuotedAmount(
+                    row.paymentVolumeMinorUnits,
+                    row.currency,
+                    row.exponent,
+                    locale,
+                  )}
                 </TableCell>
                 <TableCell className="tabular-nums">{row.transactionCount}</TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
-                  {row.averageFeeBps === null ? tCommon('emDash') : formatBps(row.averageFeeBps, 2, locale)}
+                  {row.averageFeeBps === null
+                    ? tCommon('emDash')
+                    : formatBps(row.averageFeeBps, 2, locale)}
                 </TableCell>
                 <TableCell className="tabular-nums">
                   {row.routeSuccessRatePercent === null

@@ -1,4 +1,10 @@
-import { serializeMultiRailRouting, NoRoutesAvailableError, type MultiRailRoutingDto, type RoutingReplayResult } from '@meridian/core';
+import {
+  serializeMultiRailRouting,
+  NoRoutesAvailableError,
+  revenueOriginEnvForMode,
+  type MultiRailRoutingDto,
+  type RoutingReplayResult,
+} from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { applyOptionalMandateToRouting } from '../http/mandate-context.js';
 import { principalOf } from '../http/authentication.js';
@@ -60,6 +66,8 @@ export function registerRoutingRoutes(app: FastifyInstance, container: AppContai
     const persisted = await container.routingEvaluations.persist(routing, null, 'routes');
 
     await recordRouteQuoteMonetization({
+      originEnv: revenueOriginEnvForMode(container.config.mode),
+      gainShareActive: container.pricingShapes.isActive('gain_share'),
       organizationId: principal.organizationId,
       routingId: routing.routingId,
       createdAt: routing.createdAt,

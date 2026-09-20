@@ -14,8 +14,16 @@ import type {
 } from '@/lib/api/types';
 import { formatQuotedAmount, formatTakeRate, formatTimestamp, sharePercent } from '@/lib/format';
 
+/** Mirrors the API's `lifecycleState`; an unknown value is shown verbatim rather than guessed. */
+const LIFECYCLE_LABELS: Record<string, string> = {
+  QUOTED_REVENUE: 'Quoted',
+  EXPECTED_REVENUE: 'Expected',
+  ATTRIBUTED_REVENUE: 'Attributed',
+  REALIZED_REVENUE: 'Realized',
+};
+
 export function RevenueReport({ report }: { report: MonetizationReportDto }) {
-  const { summary, workedExample } = report;
+  const { summary, workedExample, gainShareActive } = report;
   const money = (minorUnits: string): string =>
     formatQuotedAmount(minorUnits, summary.currency, summary.exponent);
 
@@ -40,15 +48,24 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
       value: money(summary.platformRevenueMinorUnits),
       hint: 'What Meridian quotes as its routing fee before partner payout.',
     },
-    {
-      title: 'Partner commission',
-      value: money(summary.partnerCommissionMinorUnits),
-      hint: 'Share of platform revenue paid to a referring partner. Default 25%.',
-    },
+    // Gain share is the highest-risk pricing shape. While its flag is off it is not charged at
+    // all, so the card is absent rather than showing a zero a reader could mistake for an
+    // arithmetic result.
+    ...(gainShareActive
+      ? [
+          {
+            title: 'Partner commission',
+            value: money(summary.partnerCommissionMinorUnits),
+            hint: 'Share of platform revenue paid to a referring partner. Default 25%.',
+          },
+        ]
+      : []),
     {
       title: 'Gross profit',
       value: money(summary.grossProfitMinorUnits),
-      hint: 'Platform revenue minus partner commission. Net platform contribution.',
+      hint: gainShareActive
+        ? 'Platform revenue minus partner commission. Net platform contribution.'
+        : 'Equal to platform revenue: gain share is off, so no partner payout is deducted.',
     },
     {
       title: 'Take rate',
@@ -56,24 +73,45 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
       hint: 'Platform revenue as basis points of TPV. Null when TPV is zero.',
     },
     {
-      title: 'Realized revenue',
-      value: money(summary.realizedRevenueMinorUnits),
-      hint: 'Only a verified external settlement can realize revenue. Route quotes, selections, and execution intents stay at zero.',
-    },
-    {
       title: 'Invoiced',
       value: money(summary.invoicedRevenueMinorUnits),
-      hint: 'Platform fees copied onto issued invoices. Not cash received. Collection is deferred.',
+      hint: 'Platform fees copied onto issued invoices. Not cash received until one is collected.',
     },
     {
       title: 'Collected',
       value: money(summary.collectedRevenueMinorUnits),
-      hint: 'Confirmed payment against an invoice. Always zero until a payment collector is wired.',
+      hint: 'Confirmed payment against an invoice, evidenced by a processor reference.',
     },
     {
       title: 'Events',
       value: String(summary.eventCount),
-      hint: 'Quoted and simulated activity only. Funds never moved. None of these events are realized revenue.',
+      hint: 'Quoted and simulated activity only. Funds never moved.',
+    },
+  ];
+
+  // The lifecycle cards are kept apart from the totals above because only the last of them is
+  // cash. Presenting them in one undifferentiated grid is how a quoted figure gets read as
+  // revenue.
+  const lifecycleCards = [
+    {
+      title: 'Quoted',
+      value: money(summary.quotedRevenueMinorUnits),
+      hint: 'Attributed to a priced quote. No commitment from anyone, and not cash.',
+    },
+    {
+      title: 'Expected',
+      value: money(summary.expectedRevenueMinorUnits),
+      hint: 'A route was selected or an execution intent was recorded. Still not cash.',
+    },
+    {
+      title: 'Attributed',
+      value: money(summary.attributedRevenueMinorUnits),
+      hint: 'Backed by a settlement or an issued invoice. Billed at most, not collected.',
+    },
+    {
+      title: 'Realized',
+      value: money(summary.realizedRevenueMinorUnits),
+      hint: 'Collected against a provider-confirmed settlement in production. The only figure here that is cash.',
     },
   ];
 
@@ -92,6 +130,39 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
           </Card>
         ))}
       </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Revenue lifecycle</CardTitle>
+          <CardDescription>
+            Every figure above sits in one of these four states. Revenue is only cash in the last
+            one, which requires a production origin, a provider-confirmed settlement, and a
+            collection reference. A simulated or sandbox settlement can never reach it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <section
+            aria-label="Revenue lifecycle states"
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+          >
+            {lifecycleCards.map((card) => (
+              <div key={card.title} className="space-y-1">
+                <p className="text-muted-foreground text-xs">{card.title}</p>
+                <p className="font-mono text-lg tabular-nums">{card.value}</p>
+                <p className="text-muted-foreground text-xs">{card.hint}</p>
+              </div>
+            ))}
+          </section>
+          {BigInt(summary.simulatedOriginRevenueMinorUnits) > 0n ? (
+            <p className="text-muted-foreground border-t pt-3 text-xs">
+              {money(summary.simulatedOriginRevenueMinorUnits)} of the above came from a demo,
+              simulation, or partner-sandbox origin and can never be realized.{' '}
+              {money(summary.settledStageRevenueMinorUnits)} is attributed to a settlement,
+              simulated settlements included.
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -123,14 +194,16 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
                 2,
               )}
             />
-            <ExampleStat
-              label="Partner commission"
-              value={formatQuotedAmount(
-                workedExample.partnerCommissionMinorUnits,
-                workedExample.currency,
-                2,
-              )}
-            />
+            {gainShareActive ? (
+              <ExampleStat
+                label="Partner commission"
+                value={formatQuotedAmount(
+                  workedExample.partnerCommissionMinorUnits,
+                  workedExample.currency,
+                  2,
+                )}
+              />
+            ) : null}
             <ExampleStat
               label="Net platform contribution"
               value={formatQuotedAmount(
@@ -146,7 +219,11 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
 
       <BreakdownTable
         title="By revenue source"
-        description="Closed set of nine sources. Partner commission is also shown as a payout row."
+        description={
+          gainShareActive
+            ? 'Closed set of nine sources. Partner commission is also shown as a payout row.'
+            : 'Closed set of nine sources. Gain share is disabled, so there is no partner payout row.'
+        }
         rows={report.byRevenueSource}
         currency={summary.currency}
         exponent={summary.exponent}
@@ -209,9 +286,28 @@ export function RevenueReport({ report }: { report: MonetizationReportDto }) {
           currency={summary.currency}
           exponent={summary.exponent}
         />
+        <BreakdownTable
+          title="By lifecycle state"
+          description="Quoted, expected, attributed, realized. Only realized is cash."
+          rows={report.byLifecycleState}
+          currency={summary.currency}
+          exponent={summary.exponent}
+        />
+        <BreakdownTable
+          title="By origin environment"
+          description="Demo, simulation and partner-sandbox rows are incapable of realizing."
+          rows={report.byOriginEnv}
+          currency={summary.currency}
+          exponent={summary.exponent}
+        />
       </div>
 
-      <EventsTable events={report.events} currency={summary.currency} exponent={summary.exponent} />
+      <EventsTable
+        events={report.events}
+        currency={summary.currency}
+        exponent={summary.exponent}
+        gainShareActive={gainShareActive}
+      />
     </div>
   );
 }
@@ -261,6 +357,7 @@ function BreakdownTable({
               <TableHead className="text-right">TPV</TableHead>
               <TableHead className="text-right">Platform</TableHead>
               <TableHead className="text-right">Profit</TableHead>
+              <TableHead className="text-right">Realized</TableHead>
               <TableHead className="text-right">Take rate</TableHead>
             </TableRow>
           </TableHeader>
@@ -271,7 +368,7 @@ function BreakdownTable({
                   <div className="flex flex-col gap-1">
                     <span>{row.label}</span>
                     <span
-                      className="bg-emerald-600/80 h-1.5 rounded-full"
+                      className="bg-chart-1/80 h-1.5 rounded-full"
                       style={{
                         width: `${sharePercent(row.platformRevenueMinorUnits, maxRevenue.toString())}%`,
                       }}
@@ -286,6 +383,9 @@ function BreakdownTable({
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
                   {formatQuotedAmount(row.grossProfitMinorUnits, currency, exponent)}
+                </TableCell>
+                <TableCell className="font-mono text-xs tabular-nums">
+                  {formatQuotedAmount(row.realizedRevenueMinorUnits, currency, exponent)}
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
                   {formatTakeRate(row.takeRateBps)}
@@ -303,17 +403,20 @@ function EventsTable({
   events,
   currency,
   exponent,
+  gainShareActive,
 }: {
   events: readonly MonetizationEventDto[];
   currency: string;
   exponent: number;
+  gainShareActive: boolean;
 }) {
   return (
     <section className="space-y-2">
       <div>
         <h2 className="text-base font-semibold">Ledger</h2>
         <p className="text-muted-foreground text-xs">
-          Each row is a quoted or simulated event. <code>fundsMoved</code> is always false.
+          Each row is a quoted or simulated event. <code>fundsMoved</code> is always false. The
+          state column says what the amounts mean; only <code>Realized</code> is cash.
         </p>
       </div>
       <div className="overflow-x-auto">
@@ -323,9 +426,10 @@ function EventsTable({
               <TableHead>When</TableHead>
               <TableHead>Source</TableHead>
               <TableHead>Corridor</TableHead>
+              <TableHead>State</TableHead>
               <TableHead className="text-right">TPV</TableHead>
               <TableHead className="text-right">Platform</TableHead>
-              <TableHead className="text-right">Partner</TableHead>
+              {gainShareActive ? <TableHead className="text-right">Partner</TableHead> : null}
               <TableHead className="text-right">Profit</TableHead>
             </TableRow>
           </TableHeader>
@@ -348,15 +452,27 @@ function EventsTable({
                   {event.destinationAsset === null ? '' : `→${event.destinationAsset}`}
                   {event.agentId === null ? '' : ` · ${event.agentId}`}
                 </TableCell>
+                <TableCell>
+                  <div className="flex flex-col">
+                    <span className="text-xs">
+                      {LIFECYCLE_LABELS[event.lifecycleState] ?? event.lifecycleState}
+                    </span>
+                    <span className="text-muted-foreground font-mono text-xs">
+                      {event.originEnv}
+                    </span>
+                  </div>
+                </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
                   {formatQuotedAmount(event.tpvMinorUnits, currency, exponent)}
                 </TableCell>
                 <TableCell className="font-mono text-xs tabular-nums">
                   {formatQuotedAmount(event.platformRevenueMinorUnits, currency, exponent)}
                 </TableCell>
-                <TableCell className="font-mono text-xs tabular-nums">
-                  {formatQuotedAmount(event.partnerCommissionMinorUnits, currency, exponent)}
-                </TableCell>
+                {gainShareActive ? (
+                  <TableCell className="font-mono text-xs tabular-nums">
+                    {formatQuotedAmount(event.partnerCommissionMinorUnits, currency, exponent)}
+                  </TableCell>
+                ) : null}
                 <TableCell className="font-mono text-xs tabular-nums">
                   {formatQuotedAmount(event.grossProfitMinorUnits, currency, exponent)}
                 </TableCell>

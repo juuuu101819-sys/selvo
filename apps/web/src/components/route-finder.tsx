@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { compareRoutes } from '@/app/actions';
 import { ComparisonForm, type FormValue } from '@/components/comparison-form';
@@ -23,20 +23,21 @@ const INITIAL_FORM: FormValue = {
   priority: 'balanced',
 };
 
-export function RouteFinder({ meta }: { meta: MetaDto }) {
+export function RouteFinder({ meta, embedded = false }: { meta: MetaDto; embedded?: boolean }) {
   const t = useTranslations('comparison');
   const [form, setForm] = useState<FormValue>(INITIAL_FORM);
   const [state, setState] = useState<ViewState>({ kind: 'idle' });
   const [isPending, startTransition] = useTransition();
+  const prefillDone = useRef(false);
 
-  const submit = (): void => {
+  const runComparison = (values: FormValue): void => {
     startTransition(async () => {
       const result = await compareRoutes({
-        sourceCurrency: form.sourceCurrency,
-        targetCurrency: form.targetCurrency,
-        amount: form.amount,
-        rails: form.rails,
-        weights: weightsFor(form.priority),
+        sourceCurrency: values.sourceCurrency,
+        targetCurrency: values.targetCurrency,
+        amount: values.amount,
+        rails: values.rails,
+        weights: weightsFor(values.priority),
       });
 
       setState(
@@ -47,9 +48,21 @@ export function RouteFinder({ meta }: { meta: MetaDto }) {
     });
   };
 
+  const submit = (): void => {
+    runComparison(form);
+  };
+
+  useEffect(() => {
+    if (!embedded || prefillDone.current) {
+      return;
+    }
+    prefillDone.current = true;
+    runComparison(INITIAL_FORM);
+  }, [embedded]);
+
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className={embedded ? 'marketing-surface border-border/60 shadow-none' : undefined}>
         <CardHeader>
           <CardTitle>{t('cardTitle')}</CardTitle>
           <CardDescription>{t('cardDescription')}</CardDescription>
@@ -66,9 +79,11 @@ export function RouteFinder({ meta }: { meta: MetaDto }) {
         </CardContent>
       </Card>
 
-      {isPending && state.kind !== 'success' && <ResultsSkeleton />}
+      {(isPending || (embedded && state.kind === 'idle')) && state.kind !== 'success' && (
+        <ResultsSkeleton />
+      )}
 
-      {!isPending && state.kind === 'idle' && <EmptyState />}
+      {!embedded && !isPending && state.kind === 'idle' && <EmptyState />}
       {!isPending && state.kind === 'error' && <ErrorState failure={state.failure} />}
       {state.kind === 'success' && (
         <ComparisonResult

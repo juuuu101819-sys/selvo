@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { defaultProfileForRail } from '../domain/provider-catalog.js';
 import type { PlatformPricingRule } from '../domain/platform-pricing.js';
+import { simulationPricingShapeAdmission } from '../domain/pricing-shape.js';
 import { AssetAmount } from '../money/asset-amount.js';
 import { Dec } from '../money/index.js';
 import {
@@ -128,8 +129,14 @@ function router(providers: readonly FinancialProvider[]): MultiRailRouter {
     logger: noopLogger,
     providerTimeoutMs: 1_000,
     pricingResolver: new StaticPlatformPricingResolver([pricingRule()]),
+    // This suite is about take-rate arithmetic, so it runs with the ad-valorem shape admitted.
+    // Whether the shape may be charged at all is decided by §18.3 and covered in
+    // routing-pricing-shapes.test.ts.
+    pricingShapes: () => ALL_SHAPES_ADMITTED,
   });
 }
+
+const ALL_SHAPES_ADMITTED = simulationPricingShapeAdmission();
 
 const USD_NOTIONAL = '10000000';
 

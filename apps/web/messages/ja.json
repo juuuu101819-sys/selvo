@@ -19,9 +19,147 @@
     "sandbox": "Sandbox"
   },
   "landing": {
-    "title": "企業とAIエージェントのための決済経路ランキング",
-    "lede": "Meridianは企業とAIエージェントのための非カストディアルな比較レイヤーです。伝統的金融、ステーブルコイン、ホールセール流動性の経路を比較し、オールイン・コスト、手数料、決済時間、スリッページ、経路スコアを報告します — 資金を保管したり移動したりすることはありません。ライセンスを持つパートナーが接続されるまで、見積もりはSandboxとして表示されます。実行機能は本製品には含まれていません。Meridianは決済を実行または委任しません。",
-    "pricingLine": "価格 {dataset} · レート {rates} · プロバイダー {count}社"
+    "title": "資金が動く前に、取り得るすべての経路をランク付け。",
+    "lede": "Meridianは金融インテントを解釈し、銀行・FX・ステーブルコイン・流動性の経路を比較し、コンプライアンスを確認したうえで最適実行の判断を返します。決済はライセンスパートナーが行います。",
+    "pricingLine": "価格 {dataset} · レート {rates} · プロバイダー {count}社",
+    "eyebrow": "AI金融オーケストレーション基盤",
+    "ctaPrimary": "Sandboxで開始",
+    "ctaSecondary": "ドキュメントを読む",
+    "noncustodialNote": "非カストディアル設計 — 資金・鍵を保持せず、代わりに資金を動かしません。",
+    "trustLine": "国境を越えるフィンテック、プラットフォーム、トレジャリー向け",
+    "model": {
+      "heading": "1レイヤー、3つの役割",
+      "sub": "Meridianはすべてのレールの上にあり、3つのことを行います — 4つ目（実行・保有）は意図的に行いません。",
+      "discover": {
+        "title": "Discover",
+        "body": "すべてのレールで実行可能な経路を見つけ、見積もりを1つの比較可能なモデルに正規化します。",
+        "bullet1": "プロバイダー探索",
+        "bullet2": "見積正規化",
+        "bullet3": "経路グラフ検索"
+      },
+      "decide": {
+        "title": "Decide",
+        "body": "コスト、速度、流動性、信頼性、コンプライアンスで経路をスコアし、最良の1つを返します。",
+        "bullet1": "最適実行",
+        "bullet2": "コンプライアンス・インテリジェンス",
+        "bullet3": "流動性インテリジェンス"
+      },
+      "coordinate": {
+        "title": "Coordinate",
+        "body": "システムとライセンスパートナーが検証・活用できる署名付き実行インテントを返します。",
+        "bullet1": "署名付き実行インテント",
+        "bullet2": "決済オーケストレーション",
+        "bullet3": "照合と監査"
+      }
+    },
+    "features": {
+      "heading": "プラットフォーム機能",
+      "item1": {
+        "title": "汎用経路グラフ",
+        "body": "法定通貨、銀行、FX、ステーブルコイン、チェーン、流動性を1つの正規化グラフに。"
+      },
+      "item2": {
+        "title": "説明可能な最適実行",
+        "body": "総コスト、速度、流動性、信頼性、コンプライアンスでランク — 根拠を表示。"
+      },
+      "item3": {
+        "title": "コンプライアンス・インテリジェンス",
+        "body": "経路返却前に管轄、プロバイダー適格性、スクリーニングを事前確認。"
+      },
+      "item4": {
+        "title": "署名付き実行インテント",
+        "body": "検証可能な推奨 — 資金移動の指示ではありません。"
+      },
+      "item5": {
+        "title": "流動性インテリジェンス",
+        "body": "会場ごとの深度・品質スコア、マルチホップ探索に活用。"
+      },
+      "item6": {
+        "title": "照合と監査",
+        "body": "すべての判断をエンドツーエンドで追跡、完全な監査証跡。"
+      }
+    },
+    "stats": {
+      "stat1": "1グラフに14+レール種別",
+      "stat2": "6軸最適実行スコア",
+      "stat3": "1 API: インテント → 経路 → 判断",
+      "stat4": "保持する顧客資金 0"
+    },
+    "rails": {
+      "heading": "すべてのレール、同じ軸",
+      "tagSandbox": "SANDBOX",
+      "tagPartnerRequired": "パートナー必須",
+      "tagPlanned": "予定",
+      "tradfi": {
+        "title": "伝統的金融",
+        "body": "銀行振込、FXプロバイダー、PSP、コルレス銀行。"
+      },
+      "stablecoin": {
+        "title": "ステーブルコイン",
+        "body": "法定通貨 ↔ ステーブル、オン/オフランプ、ステーブル間。"
+      },
+      "defi": {
+        "title": "DeFi流動性",
+        "body": "DEX、AMM、アグリゲーター会場 — 深度スコア。"
+      },
+      "liquidity": {
+        "title": "流動性プロバイダー",
+        "body": "マルチホップ探索のための卸売流動性。"
+      },
+      "tokenized": {
+        "title": "トークン化資産",
+        "body": "レジストリ・ルーティングのみ。発行はパートナー。"
+      },
+      "treasury": {
+        "title": "トレジャリー商品",
+        "body": "MMF・トレジャリー商品をルーティング先に。"
+      }
+    },
+    "how": {
+      "heading": "経路が解決される流れ",
+      "step1": {
+        "title": "インテントを理解",
+        "body": "自然言語または構造化リクエストが正規化された金融イン�テントになります。"
+      },
+      "step2": {
+        "title": "グラフを検索",
+        "body": "単一・マルチホップ経路をレール種別ごとに列挙 — 単一プロバイダーでは見積もれない経路。"
+      },
+      "step3": {
+        "title": "各ホップを確認",
+        "body": "管轄、適格性、流動性を検証。不適格ホップはスコア前に除外。"
+      },
+      "step4": {
+        "title": "判断を返す",
+        "body": "最適実行経路が署名付きインテントとして返る — パートナーが決済。"
+      }
+    },
+    "customers": {
+      "heading": "Meridian上に構築する主体",
+      "fintechs": {
+        "title": "フィンテック",
+        "body": "すべてのレールを自前統合せず、ユーザーに最良経路を提供する決定レイヤーを組み込み。"
+      },
+      "platforms": {
+        "title": "プラットフォーム・マーケットプレイス",
+        "body": "回廊ごとにコンプライアンス事前確認し、ユーザーに代わって国境越えルーティング。"
+      },
+      "enterprises": {
+        "title": "企業・トレジャリー",
+        "body": "総コストと決済時間で国境越え・トレジャリーフローを最適化。"
+      }
+    },
+    "dev": {
+      "heading": "1 API、すべてのレール",
+      "body": "インテントを送るとスコア付き署名経路が返ります。Sandboxに資金・ライセンスは不要。",
+      "cta": "APIエクスプローラーを開く",
+      "codeSample": "POST /api/v1/quote\n{\n  \"sourceAsset\": \"USD\",\n  \"destinationAsset\": \"KRW\",\n  \"amount\": \"100000.00\"\n}\n→ スコア付き経路 + 署名インテント"
+    },
+    "finalCta": {
+      "title": "今日最初のインテントをルーティング",
+      "body": "Sandboxを起動しインテントを送り、経路グラフの解決を確認。資金は動きません — 実行はライセンスパートナー。",
+      "button": "Sandboxで開始"
+    }
   },
   "footer": {
     "legalNav": "法的事項",
@@ -37,7 +175,14 @@
     "defiNotice": "参考用のSandbox見積もりです。Ethereum、Base、Arbitrum、Solanaの追加はレジストリ行とアダプターにすぎません — ルーティングエンジンはオンチェーンに切り替わりません。RPCなし、鍵なし、保管なし、送信されたスワップなし。",
     "stablecoinsNotice": "参考用のSandbox見積もりです。別のステーブルコインの追加はレジストリ行とアダプターレートにすぎません — ルーティングエンジンはティッカーで切り替わりません。RPCなし、鍵なし、保管なし。",
     "developersNotice": "組織idは検証済みのプリンシパルから取得されます。APIキーは平文で保存されません。レート制限が適用されます。リクエストログは秘密情報をマスクします。",
-    "legalNotice": "Meridianは非カストディアルです。顧客資金・秘密鍵・ウォレットを保有せず、決済を実行または委任しません。見積もりは参考です。"
+    "legalNotice": "Meridianは非カストディアルです。顧客資金・秘密鍵・ウォレットを保有せず、決済を実行または委任しません。見積もりは参考です。",
+    "tagline": "グローバル金融レール上の非カストディアル決定レイヤー。",
+    "disclosure": "Meridianは非カストディアルです。経路の比較のみ — 顧客資金・秘密鍵・ウォレットを保持せず、本人(principal)として行為せず、決済を実行・委任しません。見積もりは参考値で拘束力なし。選択したプロバイダーと直接取引してください。",
+    "marketingNotice": "Meridianは非カストディアルです。経路を比較し判断を返します — 顧客資金、秘密鍵、ウォレットを保持せず、本人(principal)として行為せず、決済を実行・委任しません。料金・会社ページは使用量・サブスクリプションを説明し、取引価値ベースの料金は該当する法的要件を満たすまで提供されません。",
+    "trustNotice": "Meridianは非カストディアルです。信頼ページは経路比較とデータ保護を説明します — 顧客資金、秘密鍵、ウォレットを保持せず、本人として行為せず、決済を実行・委任しません。見積もりは参考値で拘束力がありません。",
+    "resourcesNotice": "Meridianは非カストディアルです。リソースは教育目的です — 顧客資金、秘密鍵、ウォレットを保持せず、本人として行為せず、決済を実行・委任しません。",
+    "devDocsNotice": "Meridianは非カストディアルです。開発者ドキュメントは経路探索・判断のAPI利用を説明します — Meridian経由のカストディ、ウォレット生成、決済は有効になりません。",
+    "howItWorksNotice": "Meridianは非カストディアルです。このページは経路解決の流れを説明します — Meridianは署名付き判断を返し、ライセンスパートナーが決済します。顧客資金・鍵・ウォレットは保持しません。"
   },
   "common": {
     "emDash": "—",
@@ -267,9 +412,9 @@
     "overviewLede": "Figures below are computed from quotes and transaction requests stored for {name}. Another organization's rows never enter these queries.",
     "noQuotesStored": "No quotes stored yet",
     "noQuotesStoredBody": "Compare a route while signed in, or load the sandbox demo tenant, and the metrics and charts will fill from that stored data.",
-    "revenueLinkLead": "Quoted platform fees, partner commission and take rate live on",
+    "revenueLinkLead": "Quoted platform fees, take rate and the revenue lifecycle live on",
     "revenueLink": "Revenue",
-    "revenueLinkTrail": ". Those figures are attributed, not collected.",
+    "revenueLinkTrail": ". Those figures are quoted or attributed, not collected.",
     "metricsAria": "Dashboard metrics",
     "metricVolume": "Total quoted volume",
     "metricVolumeHint": "Sum of transaction requests, counted once per payment rather than once per quote.",
@@ -311,11 +456,11 @@
     "colAvgCost": "Avg cost",
     "colAvgSettlement": "Avg settlement",
     "revenueTitle": "Revenue",
-    "revenueLede": "Multi-rail monetization for {name}. Figures are quoted platform fees, not settlements. Provider cost, partner commission, gross profit and take rate use Decimal arithmetic. Another organization's events never enter these totals.",
+    "revenueLede": "Multi-rail monetization for {name}. Figures are quoted platform fees, not settlements. Every amount is computed with Decimal arithmetic over integer minor units. A pricing shape that is switched off is absent from these totals rather than shown as zero. Another organization's events never enter them.",
     "noRevenue": "No quoted revenue yet",
     "noRevenueBody": "Compare a route while signed in, quote an agent payment, or load the sandbox demo tenant. The ledger records attributed fees only — funds never move.",
     "invoicesTitle": "Invoices",
-    "invoicesLede": "Monthly platform-fee invoices copied from recorded monetization snapshots. Issued is not collected: payment collection is deferred until a legal entity, tax handling, and payment mechanism are confirmed. Realized revenue stays false.",
+    "invoicesLede": "Monthly platform-fee invoices copied from recorded monetization snapshots. Issued is not collected: each invoice carries its own collection status, and only one collected against a processor reference is cash received.",
     "noInvoices": "No invoices issued yet",
     "noInvoicesBody": "Invoices are generated at month-end from execution-intent and subscription snapshots. Route quotes are never billed. Nothing here means cash was received.",
     "colIssued": "Issued",
@@ -354,7 +499,7 @@
     "agentPayments": "Payments",
     "agentPolicies": "Policies",
     "agentDashAria": "{name} dashboard",
-    "invoiceDetailLede": "Line items copy platform revenue from named monetization snapshots. Totals use integer minor units. Tax is deferred (always zero). Collection is deferred — this invoice is not cash received and is not realized revenue.",
+    "invoiceDetailLede": "Line items copy platform revenue from named monetization snapshots. Totals use integer minor units and tax is always zero. This invoice is cash received, and counts toward realized revenue, only if its collection status reads collected and a processor reference stands behind it.",
     "subtotal": "Subtotal",
     "tax": "Tax",
     "taxHint": "{method} — no jurisdiction rates in this phase.",
@@ -493,12 +638,472 @@
     "stablecoinsTitle": "ステーブルコイン・ルーティング",
     "stablecoinsLede": "USDCとUSDTを法定通貨に対して、また相互に対して見積もります。Meridianはトークンを保有せず、メインネットに接続せず、ウォレットを作成しません。経路はここで発見・価格提示・比較され、実行は外部プロバイダーに委ねられます。",
     "developersTitle": "金融ルーティングAPI",
-    "developersLede": "<code>{path}</code> 配下のバージョン管理された見積もり、経路検索、カタログ。セッションまたは組織APIキーで認証します。キーはハッシュ化、スコープ設定、有効期限設定、失効が可能です。<code>{intent}</code> は実行インテントを記録するだけで、資金を移動しません。"
+    "developersLede": "<code>{path}</code> 配下のバージョン管理された見積もり、経路検索、カタログ。セッションまたは組織APIキーで認証します。キーはハッシュ化、スコープ設定、有効期限設定、失効が可能です。<code>{intent}</code> は実行インテントを記録するだけで、資金を移動しません。",
+    "pricing": {
+      "heroTitle": "取引ではなく使用量に連動する料金。",
+      "heroLede": "Meridianは判断レイヤーに対しAPI使用量、サブスクリプション、エンタープライズ契約で課金します。取引価値ベースの料金は該当する法的・パートナー要件を満たすまで提供されません。",
+      "note": "表示価格は参考値で変更される場合があります。Meridianは取引価値の一定割合を取りません。",
+      "sandboxName": "Sandbox",
+      "sandboxDesc": "無料。経路比較、グラフ探索、APIテスト。資金・ライセンス不要。",
+      "starterName": "Starter",
+      "starterDesc": "使用量ベース。見積、経路、コンプライアンスチェックの呼び出し課金。",
+      "growthName": "Growth",
+      "growthDesc": "サブスクリプション + 使用量。より高いクォータ、優先ルーティングインテリジェンス。",
+      "enterpriseName": "Enterprise",
+      "enterpriseDesc": "カスタム。ボリューム契約、専任サポート、カスタムコリドー。",
+      "indicative": "参考",
+      "disclaimerTitle": "参考価格のみ",
+      "disclaimerBody": "表示プラン・料率は例示であり変更される場合があります。Meridianは判断レイヤーに課金 — 取引価値の割合ではありません。取引価値ベースの料金は該当要件を満たすまで制限されます。",
+      "ctaTitle": "経路比較を始める",
+      "ctaBody": "SandboxでグラフとAPIを無料で探索。エンタープライズボリュームやカスタムコリドーは営業へ。",
+      "ctaPrimary": "Sandboxで開始",
+      "ctaSecondary": "営業に連絡"
+    },
+    "about": {
+      "heroTitle": "グローバルな資金移動のための判断レイヤーを構築しています。",
+      "heroLede": "銀行、FX、ステーブルコイン、DeFi、トークン化資産はそれぞれ資金移動の一片を独自のサイロで解決します。Meridianはこれらを1つの経路グラフにつなぎ最良経路を返し、いずれにもなりません。",
+      "missionTitle": "ミッション",
+      "missionBody": "意図的に非カストディアル：判断はMeridian、実行はライセンスパートナー。実行可能なすべての経路を比較し、単一モデルでスコアし、システムが検証できる署名付き推奨を返します。",
+      "principlesTitle": "原則",
+      "principle1Title": "非カストディアル",
+      "principle1Body": "Meridianは顧客資金、秘密鍵、ウォレットを保持しません。判断を返し、規制パートナーが自らの承認で決済します。",
+      "principle2Title": "決定論的",
+      "principle2Body": "ルーティングエンジンが真実の源。見積、スコア、署名インテントは再現可能 — プロバイダーデータから逸脱しません。",
+      "principle3Title": "中立",
+      "principle3Body": "Meridianは本人として行為せず、特定レールを優遇せず、取引価値の割合を取りません。最適実行は全プロバイダーで同じ軸でスコアされます。",
+      "teamTitle": "チーム",
+      "teamBody": "チームプロフィールとリーダーシップ紹介は公開時にここに表示されます。"
+    },
+    "careers": {
+      "heroTitle": "金融の相互運用性を可能にするレイヤーを構築する。",
+      "heroLede": "金融オーケストレーション基盤を構築する小さなチームです。正確性、規制を意識した設計、きれいな抽象化を重視する方、ぜひご連絡ください。",
+      "whyTitle": "Meridianを選ぶ理由",
+      "whyBody": "経路探索、コンプライアンスインテリジェンス、署名付き実行インテント — 銀行、FX、ステーブルコイン、流動性の上の判断レイヤー。Meridianは比較・推奨し、パートナーが決済する規制の明確さで出荷します。",
+      "rolesTitle": "募集職種",
+      "rolesBody": "採用時にここに掲載します。該当がなければお問い合わせください。",
+      "workTitle": "働き方",
+      "workBody": "リモートフレンドリー、基本非同期、文書設計と決定論的システムを優先。大規模一括リリースより小さく正確な増分。"
+    },
+    "partners": {
+      "heroTitle": "実行はライセンスパートナーに。それが要点です。",
+      "heroLede": "Meridianは判断を返します。規制銀行、決済機関、FXプロバイダー、決済インフラが自らのライセンスで実行。ライセンス金融インフラを運営するなら、Meridian実行パートナーとして統合するとすべてのルーティングインテントの前にレールが現れます。",
+      "typesTitle": "パートナータイプ",
+      "type1Title": "銀行",
+      "type1Body": "法定通貨コリドーのコルレス・現地清算。見積は経路グラフに供給、決済は貴社ライセンス下。",
+      "type2Title": "決済サービスプロバイダー",
+      "type2Body": "組み込みルーティング向けに支払・回収レールを価格付けできるPSP・決済機関。",
+      "type3Title": "FXプロバイダー",
+      "type3Body": "卸・小売FXデスクのレートが比較可能コストモデルに正規化。",
+      "type4Title": "ステーブルコインインフラ",
+      "type4Body": "法定通貨↔ステーブル、ステーブル間レッグを見積するオン/オフランプとベニュー。",
+      "type5Title": "決済インフラ",
+      "type5Body": "Meridianが返す署名インテントを実行するライセンス決済・トレジャリーレール。",
+      "integrationTitle": "統合の仕組み",
+      "integrationBody": "パートナーは見積・適格性メタデータをMeridianに公開。探索、スコア、署名実行インテントを返します。貴社システム/APIが承認下で実行。Meridianは資金・鍵を保持しません。",
+      "ctaTitle": "パートナーになる",
+      "ctaBody": "ライセンスレールとコリドーについてお知らせください。技術統合と商用条件でフォローします。",
+      "ctaPrimary": "パートナーシップに連絡"
+    },
+    "brand": {
+      "heroTitle": "Meridianブランドとロゴ。",
+      "heroLede": "プレス、パートナー、製品組み込み向けのロゴ、カラートークン、タイポグラフィ。Meridianが提供しないカストディ、決済、ライセンスを暗示しないでください。",
+      "logosTitle": "ロゴ",
+      "logosBody": "主要ワードマークとアイコンはリクエストで提供。「M」アイコン高さ分のクリアスペース。歪み、パレット外色、 busy 背景上の配置禁止。",
+      "primaryColor": "Primary — バイオレット",
+      "accentColor": "Accent — アンバー（ブランド強調のみ）",
+      "recommendColor": "Recommend — ランク経路用成功グリーン",
+      "typeTitle": "タイポグラフィ",
+      "typeBody": "見出し：Fraunces（ラテン）。本文・UI：Inter。CJKロケールはディスプレイ見出しにsans CJKスタック。",
+      "usageTitle": "使用法",
+      "usageBody": "製品説明に「Meridianは判断を返し — パートナーが決済」を使用。Meridianが資金移動・ウォレット保持・取引実行を暗示しないこと。"
+    },
+    "contact": {
+      "heroTitle": "お問い合わせ。",
+      "heroLede": "営業、パートナーシップ、一般問い合わせ。技術支援はSandboxと開発者ドキュメントをご利用ください。",
+      "formName": "名前",
+      "formCompany": "会社",
+      "formMessage": "メッセージ",
+      "formHint": "API・ルーティングの質問はSandboxとOpenAPI参照 — 経路比較にアカウント不要。",
+      "formSubmit": "メッセージを送信",
+      "formSuccess": "ありがとうございます — メッセージを受け取りました。このフォームはアカウント作成や資金移動を行いません。"
+    },
+    "solCrossBorder": {
+      "heroTitle": "すべてのクロスボーダーインテントに最良コリドーを。",
+      "heroLede": "同一コリドーで銀行FX、ステーブルコイン、流動性経路を1つの比較モデルで — 総コスト、決済時間、コンプライアンス適格性を並べて比較。Meridianは最良経路を返し、ライセンスパートナーが決済。",
+      "section1Title": "課題",
+      "section1Body": "クロスボーダー支払は断片化：銀行FX、ステーブルランプ、卸流動性がそれぞれ異なる形式で見積。チームはスプレッドシート手動比較かプロバイダー個別統合。",
+      "section2Title": "Meridianのルーティング",
+      "section2Body": "1つのインテントを送信。Meridianが経路グラフを検索、見積正規化、管轄・適格性確認、コスト・速度・流動性・信頼性・コンプライアンスで全実行可能経路をスコア。",
+      "section3Title": "得られるもの",
+      "section3Body": "システムとライセンスパートナーが検証できるランク付き判断と署名実行インテント。Meridianは資金保持・支払実行をしません。",
+      "ctaTitle": "クロスボーダーインテントを試す",
+      "ctaBody": "Sandboxで資金・ライセンス不要でコリドー比較。",
+      "ctaPrimary": "Sandboxで開始",
+      "ctaSecondary": "APIドキュメントを読む"
+    },
+    "solTreasury": {
+      "heroTitle": "トレジャリーフローの最適実行。",
+      "heroLede": "管轄別コンプライアンス事前確認とともに最低総コストと予測可能な決済時間でトレジャリー移動をレール横断ルーティング。非カストディアル — Meridianはトレジャリー資金を保持しません。",
+      "section1Title": "ユースケース",
+      "section1Body": "子会社資金供給、流動性プール再調整、法定通貨・ステーブルトレジャリー間移動 — すべての経路が同じ軸でスコア。",
+      "section2Title": "スコアリング",
+      "section2Body": "ミッドマーケット対総コスト、決済p50/p95、流動性深度、プロバイダー信頼性、コリドーコンプライアンスが単一最適実行ランキングに。",
+      "section3Title": "統制と監査",
+      "section3Body": "すべての判断が署名インテントと監査証跡で追跡可能。実行はライセンス銀行・決済パートナー。",
+      "ctaTitle": "トレジャリールーティング最適化",
+      "ctaBody": "本番パートナー接続前にSandboxでトレジャリーコリドー比較。",
+      "ctaPrimary": "Sandboxで開始",
+      "ctaSecondary": "営業に連絡"
+    },
+    "solFintechs": {
+      "heroTitle": "判断レイヤーを組み込み。全レール統合は省略。",
+      "heroLede": "1 APIで銀行、FX、ステーブルコイン、流動性にわたる最適実行ルーティング — 各プロバイダー統合や顧客資金接触なし。Meridianは判断を返し、ユーザーのライセンスプロバイダーが決済。",
+      "section1Title": "組み込むもの",
+      "section1Body": "1 APIで見積、経路検索、コンプライアンスチェック。製品UIやエージェントワークフローにランク経路と署名インテントを表示。",
+      "section2Title": "非カストディアルモデル",
+      "section2Body": "Meridianは顧客資金、鍵、ウォレットを保持しません。ユーザーは選択プロバイダーと取引、貴社はカストディ・決済から外れます。",
+      "section3Title": "開発者クイックスタート",
+      "section3Body": "Sandboxテナント作成、/api/v1/quoteにインテント送信、スコア経路確認。資金は動きません — ライセンス実行接続時にパートナーが決済。",
+      "ctaTitle": "Meridian上に構築",
+      "ctaBody": "APIキーを取得し開発者ハブを探索。",
+      "ctaPrimary": "APIキーを取得",
+      "ctaSecondary": "APIエクスプローラーを開く"
+    },
+    "solPlatforms": {
+      "heroTitle": "ユーザーに代わり国境を越えてルーティング。",
+      "heroLede": "マーケットプレイス出品者、クリエイター、加盟店にコリドー別コンプライアンス事前確認付きで各支払インテントの最良経路。Meridianが判断、ライセンスパートナーが決済。",
+      "section1Title": "マーケットプレイス事例",
+      "section1Body": "出品者支払、クリエイター送金、加盟店決済 — 各インテントを目的地コリドーの銀行、FX、ステーブルコインレールで比較。",
+      "section2Title": "コリドー別コンプライアンス",
+      "section2Body": "管轄、プロバイダー適格性、スクリーニングは経路返却前に検証。不適格ホップは一般見積の裏に隠さず除去。",
+      "section3Title": "ユーザーに見えるもの",
+      "section3Body": "理由表示付き透明ランク経路。署名インテントは推奨 — 実行は貴社またはユーザーが選ぶライセンスプロバイダー。",
+      "ctaTitle": "マーケットプレイス支払ルーティング",
+      "ctaBody": "Sandboxでコリドーカバレッジをテスト後、プラットフォーム統合についてご相談。",
+      "ctaPrimary": "Sandboxで開始",
+      "ctaSecondary": "お問い合わせ"
+    },
+    "solEnterprises": {
+      "heroTitle": "グローバルコリドーカバレッジ、1つの判断レイヤー。",
+      "heroLede": "組織全体の金融経路選択を標準化 — 全レールにわたる1比較モデル、監査・照合内蔵。",
+      "section1Title": "カバレッジ",
+      "section1Body": "銀行、FX、ステーブルコイン、DeFi流動性、トークン化レジストリを1正規化グラフ — トレジャリー・運用チームが同じ基準で比較。",
+      "section2Title": "監査と統制",
+      "section2Body": "署名実行インテント、再現可能スコア、組織スコープ監査ログ。すべての判断追跡可能 —  silent モデル上書きなし。",
+      "section3Title": "運用一貫性",
+      "section3Body": "子会社・事業部向け1 APIとポリシーレイヤー。ライセンスパートナーが実行、Meridianはエンタープライズ資金を保持しません。",
+      "ctaTitle": "経路選択を標準化",
+      "ctaBody": "Sandboxでチームとコリドーカバレッジ評価、またはエンタープライズ条件は営業へ。",
+      "ctaPrimary": "営業に連絡",
+      "ctaSecondary": "Sandboxで開始"
+    },
+    "trustNonCustodial": {
+      "heroTitle": "Meridianが資金を保持しない理由。",
+      "heroLede": "Meridianは判断レイヤーであり、資金移動者ではありません。経路を比較し署名付き実行インテント — 推奨 — を返します。顧客資金、秘密鍵、ウォレットを保持せず、本人(principal)として行為せず、決済を実行・委任しません。規制・ライセンスパートナーが自らの承認の下で実際の資金移動を行います。",
+      "doesTitle": "Meridianがすること",
+      "does1Title": "Discover",
+      "does1Body": "すべてのレールで実行可能な経路を見つけ、見積を1つの比較可能モデルに正規化。",
+      "does2Title": "Decide",
+      "does2Body": "コスト、速度、流動性、信頼性、コンプライアンスで経路をスコアし最良を返す。",
+      "does3Title": "Coordinate",
+      "does3Body": "システムとライセンスパートナーが検証・活用できる署名付き実行インテントを返す。",
+      "neverTitle": "Meridianがしないこと",
+      "never1": "顧客資金の保持",
+      "never2": "秘密鍵・ウォレットの管理",
+      "never3": "代わりに取引を実行",
+      "never4": "決済または決済の委任",
+      "never5": "トークン発行またはカストディ提供",
+      "boundaryTitle": "実行境界",
+      "boundaryBody": "Meridianは署名付き実行インテント — 推奨 — を返します。顧客またはライセンスパートナーが自らの承認で実際の資金移動を開始。Meridianは代わりに資金を送信しません。",
+      "signatureTitle": "署名の意味",
+      "signatureBody": "署名は推奨が真正で改ざんされていないことを証明。資金移動の承認、取引承認、パートナー決済プロセスの代替にはなりません。",
+      "ctaTitle": "経路解決の流れを見る",
+      "ctaBody": "インテントから署名判断まで4ステップを確認後、Sandboxで経路グラフを探索。",
+      "ctaPrimary": "経路解決の流れを見る",
+      "ctaSecondary": "経路グラフを探索"
+    },
+    "trustSecurity": {
+      "heroTitle": "セキュリティとデータ保護。",
+      "heroLede": "Meridianは組織データ、認証情報、監査証跡を保護。顧客資金、秘密鍵、ウォレットは保持せず、取得していない認証を主張しません。",
+      "section1Title": "暗号化と転送",
+      "section1Body": "APIトラフィックはTLS。認証情報は保存前にsalted scryptでハッシュ。平文シークレットは発行時1回のみ。",
+      "section2Title": "組織分離",
+      "section2Body": "見積、取引、エージェント、監査イベントは認証組織スコープ。クロステナント識別子はダッシュボードクエリに現れません。",
+      "section3Title": "監査と決定論",
+      "section3Body": "リクエストログはシークレットをマスク。ルーティング判断は保存入力から再現可能 — 生成モデルではなく決定論エンジンが真実の源。"
+    },
+    "resourcesBlog": {
+      "heroTitle": "ブログ",
+      "heroLede": "Meridianチームの製品更新、オーケストレーションパターン、業界ノート。",
+      "placeholderDate": "近日公開",
+      "placeholderTitle": "最初の投稿準備中",
+      "placeholderBody": "ここに公開 — 遡及記事は捏造しません。最初の投稿通知はお問い合わせから。"
+    },
+    "resourcesPlaybook": {
+      "heroTitle": "金融オーケストレーションプレイブック。",
+      "heroLede": "資金移動者にならず断片化レールをルーティングするチーム向けガイド。",
+      "placeholderTitle": "プレイブック — 近日公開",
+      "placeholderBody": "インテント設計、コリドー選択、パートナーハンドオフの構造化ガイド。レビュー後公開 — 未完成を完成のように表示しません。"
+    },
+    "resourcesWebinars": {
+      "heroTitle": "ウェビナー",
+      "heroLede": "マルチレールルーティング、コンプライアンス、統合のライブ・録画セッション。",
+      "placeholderDate": "日程未定",
+      "placeholderTitle": "最初のセッション近日告知",
+      "placeholderBody": "実日付と登録リンクをここに掲載。捏造録画や参加者数はありません。"
+    },
+    "devReference": {
+      "heroTitle": "APIリファレンス。",
+      "heroLede": "見積、経路検索、カタログ、エージェントエンドポイント。Meridianは判断を返す — 資金は動かしません。",
+      "sectionTitle": "OpenAPI駆動ドキュメント",
+      "sectionBody": "リファレンスはライブOpenAPIスキーマから生成。APIエクスプローラーと併用しSandboxでインテント送信・スコア経路確認。",
+      "openapiLink": "OpenAPI JSONを開く"
+    },
+    "devSdks": {
+      "heroTitle": "クライアントライブラリ。",
+      "heroLede": "見積・経路探索統合用公式SDK。決済はライセンスパートナー。",
+      "listTitle": "利用可能・予定ライブラリ",
+      "sdk1Title": "TypeScript / JavaScript",
+      "sdk1Body": "見積・経路API用ブラウザ・Nodeクライアント — 予定；公開までOpenAPIにfetch。",
+      "sdk2Title": "Python",
+      "sdk2Body": "バッチ見積・トレジャリー自動化用サーバークライアント — 予定。",
+      "sdk3Title": "Go",
+      "sdk3Body": "プラットフォームルーティングサービス用低遅延クライアント — 予定。"
+    },
+    "devChangelog": {
+      "heroTitle": "新着情報。",
+      "heroLede": "ルーティングAPIとWebアプリのリリースノート。出荷時にエントリ表示 — 捏造なし。",
+      "emptyBody": "まだ公開リリースなし。次のタグリリース後に確認。"
+    },
+    "devStatus": {
+      "heroTitle": "システムステータス。",
+      "heroLede": "公開ルーティングAPIの運用状態。参考Sandbox見積；Meridian経由の決済なし。",
+      "apiLabel": "ルーティングAPI",
+      "statusOperational": "正常",
+      "statusUnavailable": "利用不可",
+      "modeLabel": "モード",
+      "engineLabel": "エンジンバージョン",
+      "unavailableBody": "この環境からルーティングAPIに到達できません。ステータスはライブヘルスチェックのみ — 過去SLAではありません。"
+    },
+    "howItWorks": {
+      "heroTitle": "経路が解決される流れ",
+      "heroLede": "自然言語または構造化インテントから署名付き最適実行判断まで — 4ステップ。Meridianは比較・推奨、ライセンスパートナーが決済。",
+      "ctaTitle": "Sandboxで試す",
+      "ctaBody": "インテントを送り経路グラフ解決を確認。資金は動きません — 実行はライセンスパートナー。",
+      "ctaPrimary": "Sandboxで開始",
+      "ctaSecondary": "経路グラフを探索"
+    }
   },
   "legal": {
     "termsTitle": "利用規約",
     "privacyTitle": "プライバシー",
     "draftBanner": "ドラフト · 未発効 · {date}更新",
     "aside": "このページはMeridianが現在どのように機能するかを説明します。法律顧問のレビューを控えた製品開示であり、拘束力のある契約、発効中のプライバシー通知、ライセンスではありません。同意した規約として扱わないでください。発効として表示される前に、必ず法律顧問がこのドラフトを差し替える必要があります。"
+  },
+  "nav": {
+    "ariaLabel": "メインナビゲーション",
+    "signIn": "サインイン",
+    "getKeys": "APIキーを取得",
+    "tagLive": "Live",
+    "tagSoon": "Soon",
+    "platform": {
+      "label": "プラットフォーム",
+      "visualTitle": "オーケストレーション層",
+      "visualBody": "1つのインテントをすべてのレールで比較し、最適実行の判断として返します。Meridianは資金を動かしません。",
+      "visualLink": "Sandboxで開始",
+      "exploreHeading": "探索",
+      "railsHeading": "レール",
+      "ctaText": "非カストディアル：Meridianは判断を返し — パートナーが決済します。",
+      "ctaButton": "仕組み",
+      "items": {
+        "compare": {
+          "label": "経路比較",
+          "desc": "1つのインテントですべての経路をランク付け"
+        },
+        "multirail": {
+          "label": "マルチレール",
+          "desc": "銀行 · FX · ステーブルコイン · 流動性"
+        },
+        "graph": {
+          "label": "経路グラフ",
+          "desc": "マルチホップ経路探索"
+        },
+        "stablecoins": {
+          "label": "ステーブルコイン",
+          "desc": "法定通貨 ↔ ステーブルコインルーティング"
+        },
+        "defi": {
+          "label": "DeFi流動性",
+          "desc": "DEX / AMM ベニュー見積"
+        },
+        "agents": {
+          "label": "AIエージェント",
+          "desc": "エージェント決済インテント"
+        }
+      }
+    },
+    "solutions": {
+      "label": "ソリューション",
+      "usecaseHeading": "ユースケース別",
+      "customerHeading": "顧客別",
+      "ctaText": "どれが合うか不明？お問い合わせください。",
+      "ctaButton": "お問い合わせ",
+      "items": {
+        "crossborder": {
+          "label": "クロスボーダー支払",
+          "desc": "国際コリドールのルーティング"
+        },
+        "treasury": {
+          "label": "トレジャリー最適化",
+          "desc": "トレジャリーフローの最適実行"
+        },
+        "agentpay": {
+          "label": "AIエージェント決済",
+          "desc": "自律的な金融ルーティング"
+        },
+        "fintechs": {
+          "label": "フィンテック",
+          "desc": "判断レイヤーを組み込む"
+        },
+        "platforms": {
+          "label": "プラットフォーム",
+          "desc": "ユーザーに代わってルーティング"
+        },
+        "enterprises": {
+          "label": "エンタープライズ",
+          "desc": "グローバルコリドールカバレッジ"
+        }
+      }
+    },
+    "developers": {
+      "label": "開発者",
+      "visualTitle": "開発者ハブ",
+      "visualBody": "1つのAPIで統合。インテントを送るとスコア付き署名経路が返ります。",
+      "visualLink": "APIエクスプローラー",
+      "buildHeading": "ビルド",
+      "toolkitHeading": "ツールキット",
+      "ctaText": "Sandboxには資金もライセンスも不要です。",
+      "ctaButton": "APIキーを取得",
+      "items": {
+        "explorer": {
+          "label": "APIエクスプローラー",
+          "desc": "ライブ見積・経路フォーム"
+        },
+        "openapi": {
+          "label": "OpenAPI仕様",
+          "desc": "機械可読スキーマ"
+        },
+        "reference": {
+          "label": "APIリファレンス",
+          "desc": "レンダリングされたドキュメント"
+        },
+        "sdks": {
+          "label": "SDK",
+          "desc": "クライアントライブラリ"
+        },
+        "changelog": {
+          "label": "変更履歴",
+          "desc": "リリースノート"
+        },
+        "status": {
+          "label": "ステータス",
+          "desc": "システムステータス"
+        }
+      }
+    },
+    "resources": {
+      "label": "リソース",
+      "learnHeading": "学ぶ",
+      "trustHeading": "信頼",
+      "ctaText": "非カストディアル開示が規制の基盤です。",
+      "ctaButton": "モデルを読む",
+      "items": {
+        "blog": {
+          "label": "ブログ",
+          "desc": "製品・業界の記事"
+        },
+        "playbook": {
+          "label": "プレイブック",
+          "desc": "金融オーケストレーションガイド"
+        },
+        "webinars": {
+          "label": "ウェビナー",
+          "desc": "ライブ・録画セッション"
+        },
+        "noncustodial": {
+          "label": "非カストディアルモデル",
+          "desc": "Meridianが資金を保持しない理由"
+        },
+        "security": {
+          "label": "信頼とセキュリティ",
+          "desc": "データ保護の方法"
+        },
+        "legal": {
+          "label": "法務",
+          "desc": "利用規約・プライバシー"
+        }
+      }
+    },
+    "company": {
+      "label": "会社",
+      "companyHeading": "会社",
+      "moreHeading": "その他",
+      "ctaText": "料金は使用量・サブスクリプション — 取引料金はゲートされます。",
+      "ctaButton": "料金を見る",
+      "items": {
+        "about": {
+          "label": "About",
+          "desc": "ミッション"
+        },
+        "careers": {
+          "label": "採用",
+          "desc": "募集職種"
+        },
+        "partners": {
+          "label": "パートナー",
+          "desc": "ライセンス実行パートナー"
+        },
+        "pricing": {
+          "label": "料金",
+          "desc": "使用量・サブスクリプション"
+        },
+        "brand": {
+          "label": "ブランド",
+          "desc": "ロゴ・ガイドライン"
+        }
+      }
+    }
+  },
+  "graph": {
+    "metaSummary": "{nodeCount}ノード · {edgeCount}変換エッジ · グラフエンジン {version}。エッジは参考値で実行不可です。",
+    "cardTitle": "変換経路の探索",
+    "cardDescription": "ホップ、コスト、流動性、可用性、コンプライアンスの制約下で資産–会場グラフを探索します。ライブ見積もりではなく経路探索です。",
+    "presets": {
+      "one": "1ホップ · USD → KRW",
+      "two": "2ホップ · USDC経由",
+      "three": "3ホップ · USDC → USDT",
+      "usdcUsdt": "USDC → USDT",
+      "tightCost": "コスト上限 1 bps"
+    },
+    "source": "ソース",
+    "destination": "宛先",
+    "maxHops": "最大ホップ",
+    "maxCost": "最大コスト (bps)",
+    "minLiquidity": "最小流動性",
+    "placeholderUnbounded": "無制限",
+    "placeholderNone": "なし",
+    "findPaths": "経路を検索",
+    "searching": "検索中…",
+    "emptyTitle": "まだ経路検索がありません",
+    "emptyBody": "回廊とホップ上限を選び、USD → FX → KRW、USD → USDC → KRW、USD → USDC → USDT → KRW を探索します。利用不可・高コスト・低流動性のエッジは除外されます。",
+    "noValidPath": "有効な経路なし",
+    "groupsSummary": "{pathCount}ウォークを {groupCount} 個の異なる資産シーケンスに集約しました。各シーケンスで最安ウォークを表示します。",
+    "recommended": "推奨",
+    "venueVariants": "会場バリアント {count}件",
+    "pathTitle": "{rank}. {hops}ホップ · {route}",
+    "vizTitle": "経路選択",
+    "vizRecommended": "推奨",
+    "vizAria": "{route} のアニメーション経路図",
+    "vizCaption": "参考用の資産ウォーク — エッジはコストと流動性でスコア化。ここでは実行されません。"
   }
 }

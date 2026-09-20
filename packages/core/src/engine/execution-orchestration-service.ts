@@ -365,6 +365,8 @@ export class ExecutionOrchestrationService {
     route: ScoredMultiRailRoute,
   ): Promise<OrchestratedExecution> {
     const eventId = this.deps.ids.generate('mon');
+    // A mock partner reported settlement. Stamping PARTNER_SANDBOX and `simulated` finality is
+    // what stops this attribution from being counted as realized cash downstream.
     const event = monetizationFromMultiRailRoute({
       organizationId: row.organizationId,
       occurredAt: this.deps.clock.nowIso(),
@@ -373,6 +375,8 @@ export class ExecutionOrchestrationService {
       economicStage: 'settled',
       eventId,
       quoteId: row.routeId,
+      originEnv: 'PARTNER_SANDBOX',
+      settlementFinality: 'simulated',
     });
     const attributed = { ...event, agentId: row.agentId };
     await this.deps.dashboard.recordMonetizationEvent(attributed);

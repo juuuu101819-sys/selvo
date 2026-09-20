@@ -10,6 +10,10 @@ import type {
 } from '../domain/index.js';
 import type { MonetizationEvent, MonetizationReport } from '../domain/monetization.js';
 import type { BillingRunResult, Invoice, ReconciliationReport } from '../domain/billing.js';
+import type {
+  InstructionFreshness,
+  SignedSettlementInstruction,
+} from '../domain/settlement-instruction.js';
 import {
   ASSET_REGISTRY,
   CHAIN_REGISTRY,
@@ -66,6 +70,7 @@ import type {
   DefiRouteDto,
   DefiRoutingDto,
   ExecutionIntentDto,
+  SettlementInstructionDto,
   IssuedAgentDto,
   MerchantDto,
   PaymentIntentDto,
@@ -909,6 +914,47 @@ export function serializeExecutionIntent(intent: ExecutionIntent): ExecutionInte
   };
 }
 
+/**
+ * Serialize a signed instruction for return to the customer.
+ *
+ * `freshness` is passed in rather than computed here so the same clock that authorized the read
+ * decides usability. A serializer reaching for its own notion of "now" is how a read path and its
+ * guard end up disagreeing about whether an artifact has expired.
+ */
+export function serializeSettlementInstruction(
+  instruction: SignedSettlementInstruction,
+  freshness: InstructionFreshness,
+): SettlementInstructionDto {
+  return {
+    id: instruction.id,
+    organizationId: instruction.organizationId,
+    executionIntentId: instruction.executionIntentId,
+    boundaryMode: instruction.payload.boundaryMode,
+    payload: instruction.payload,
+    payloadCanonical: instruction.payloadCanonical,
+    payloadHash: instruction.payloadHash,
+    signature: instruction.signature,
+    verification: {
+      algorithm: instruction.verification.algorithm,
+      canonicalization: instruction.verification.canonicalization,
+      keyId: instruction.verification.keyId,
+      publicKeyPem: instruction.verification.publicKeyPem,
+      jwksUri: instruction.verification.jwksUri,
+      privateKeyExported: false,
+    },
+    customerSignature: instruction.customerSignature,
+    eligibleVenues: instruction.eligibleVenues,
+    nextSteps: instruction.nextSteps,
+    expiresAt: instruction.expiresAt,
+    createdAt: instruction.createdAt,
+    usable: freshness.usable,
+    unusableReason: freshness.reason,
+    meridianTransmitted: false,
+    fundsMoved: false,
+    custody: false,
+  };
+}
+
 export function serializeAssetCatalog(): readonly AssetCatalogEntryDto[] {
   return Object.values(ASSET_REGISTRY)
     .map((asset) => ({
@@ -1080,8 +1126,11 @@ export function serializeMonetizationReport(report: MonetizationReport): Monetiz
     byTransactionType: report.byTransactionType.map((row) => ({ ...row })),
     byRevenueSource: report.byRevenueSource.map((row) => ({ ...row })),
     byDate: report.byDate.map((row) => ({ ...row })),
+    byLifecycleState: report.byLifecycleState.map((row) => ({ ...row })),
+    byOriginEnv: report.byOriginEnv.map((row) => ({ ...row })),
     events: report.events.map(serializeMonetizationEvent),
     workedExample: { ...report.workedExample },
+    gainShareActive: report.gainShareActive,
     fundsMoved: false,
   };
 }
@@ -1112,8 +1161,11 @@ function serializeMonetizationEvent(event: MonetizationEvent): MonetizationEvent
     routeId: event.routeId,
     quoteId: event.quoteId,
     economicStage: event.economicStage,
-    realizedRevenue: false,
+    realizedRevenue: event.realizedRevenue,
     revenueRecognition: event.revenueRecognition,
+    originEnv: event.originEnv,
+    settlementFinality: event.settlementFinality,
+    lifecycleState: event.lifecycleState,
     invoiceId: event.invoiceId,
   };
 }
@@ -1127,7 +1179,9 @@ export function serializeInvoice(invoice: Invoice): InvoiceDto {
     periodEnd: invoice.periodEnd,
     currency: invoice.currency,
     status: 'issued',
-    collectionStatus: 'uncollected',
+    collectionStatus: invoice.collectionStatus,
+    collectionMode: invoice.collectionMode,
+    collectionReference: invoice.collectionReference,
     issuerLegalEntity: 'unconfirmed',
     taxCalculation: 'deferred',
     subtotalMinorUnits: invoice.subtotalMinorUnits,
@@ -1135,8 +1189,9 @@ export function serializeInvoice(invoice: Invoice): InvoiceDto {
     totalMinorUnits: invoice.totalMinorUnits,
     issuedAt: invoice.issuedAt,
     issuedByActor: invoice.issuedByActor,
-    realizedRevenue: false,
-    collected: false,
+    // Cash only when a processor confirmed it. An issued invoice is a claim, not a receipt.
+    realizedRevenue: invoice.collectionStatus === 'collected',
+    collected: invoice.collectionStatus === 'collected',
     lines: invoice.lines.map((line) => ({ ...line })),
   };
 }
@@ -1160,13 +1215,12 @@ export function serializeReconciliationReport(
     periodStart: report.periodStart,
     periodEnd: report.periodEnd,
     cadence: 'utc_calendar_month',
-    collectionStatus: 'deferred',
+    collectionStatus: report.collectionStatus,
     taxCalculation: 'deferred',
     issuerLegalEntity: 'unconfirmed',
     billedSnapshotIds: [...report.billedSnapshotIds],
     byCurrency: report.byCurrency.map((row) => ({
       ...row,
-      collectedPlatformRevenueMinorUnits: '0',
       duplicateBilledSnapshotIds: [...row.duplicateBilledSnapshotIds],
     })),
   };

@@ -125,5 +125,15 @@ export interface DashboardRepository {
     organizationId: string,
     options?: { readonly limit?: number },
   ): Promise<readonly MonetizationEvent[]>;
-  revenue(organizationId: string): Promise<MonetizationReport>;
+  /**
+   * Revenue report for one organization.
+   *
+   * `gainShareActive` comes from the caller's pricing-shape admission rather than from the store,
+   * because whether a shape may be reported is a configuration question the persistence layer
+   * cannot answer. Omitting it fails closed: the gain-share shape is excluded.
+   */
+  revenue(
+    organizationId: string,
+    options?: { readonly gainShareActive?: boolean },
+  ): Promise<MonetizationReport>;
 }

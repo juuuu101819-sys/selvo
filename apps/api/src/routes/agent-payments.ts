@@ -19,6 +19,7 @@ import {
   type PaymentPolicyDto,
   type PublicAgentDto,
   type AgentWalletReferenceDto,
+  revenueOriginEnvForMode,
 } from '@meridian/core';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { API_KEY_PREFIX_LENGTH } from '../auth/identity-authenticator.js';
@@ -345,6 +346,8 @@ export function registerAgentPaymentRoutes(
       requestId: request.id,
     });
     await recordAgentQuoteMonetization({
+      originEnv: revenueOriginEnvForMode(container.config.mode),
+      gainShareActive: container.pricingShapes.isActive('gain_share'),
       intent,
       dashboard: container.persistence.dashboard,
       auditLogger: container.auditLogger,

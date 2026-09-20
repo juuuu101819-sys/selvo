@@ -33,7 +33,15 @@ import type { FinancialProviderRegistry } from './financial-registry.js';
 import { admitNormalizedQuote } from './quote-admission.js';
 import { freshnessPolicyForRail } from '../quotes/rail-freshness.js';
 import { quoteFreshnessView } from '../quotes/quote-freshness.js';
-import { NO_ROUTING_PLATFORM_CHARGE, type RoutingPlatformCharge } from './routing-cost.js';
+import {
+  NO_ROUTING_PLATFORM_CHARGE,
+  gatePlatformChargeByShape,
+  type RoutingPlatformCharge,
+} from './routing-cost.js';
+import {
+  NO_PRICING_SHAPES_ACTIVE,
+  type PricingShapeAdmission,
+} from '../domain/pricing-shape.js';
 import type { MultiRailCostEngine } from './routing-cost.js';
 import {
   DEFAULT_OBJECTIVE_WEIGHT_BOUNDS,
@@ -79,6 +87,17 @@ export interface MultiRailRouterDependencies {
   readonly logger: Logger;
   readonly providerTimeoutMs: number;
   readonly pricingResolver?: PlatformPricingResolver | undefined;
+  /**
+   * Which pricing shapes may contribute to a customer charge (§18.3).
+   *
+   * Read on every evaluation rather than captured once, so that a legal determination which
+   * expires mid-process closes the gate at its expiry instant instead of at the next restart.
+   *
+   * Defaults to fail-closed: a router built without a source produces a zero platform charge
+   * rather than an ungated one, so forgetting to wire this under-charges instead of charging a
+   * shape that has not been cleared.
+   */
+  readonly pricingShapes?: (() => PricingShapeAdmission) | undefined;
   /**
    * When set, financial providers that have a linked execution partner are admitted only if that
    * partner's corridor/currency/limit/hours cover the request. Quote-only providers are unchanged.
@@ -475,6 +494,8 @@ export class MultiRailRouter {
     pricingRules: readonly PlatformPricingRule[],
     requestedAt: string,
   ): RoutingPlatformCharge {
+    // No pricing rule means no platform charge at all: there is deliberately no silent default
+    // take rate, and §18.3 requires that property be preserved.
     if (input.organizationId === null || pricingRules.length === 0) {
       return NO_ROUTING_PLATFORM_CHARGE;
     }
@@ -503,13 +524,19 @@ export class MultiRailRouter {
             rateBps: surchargeBps,
           };
 
-    return {
-      ruleId: rule.id,
-      markupBps: parseDecimal(rule.markupBps),
-      discountBps: parseDecimal(rule.discountBps),
-      flatFee: flatFeeInSource(rule, input.sourceAsset),
-      surcharge,
-    };
+    // The configured rule is what the customer negotiated; the admission decides which of its
+    // shapes may actually be charged. Gating here means a disabled shape never reaches the cost
+    // engine, the quote, or revenue attribution.
+    return gatePlatformChargeByShape(
+      {
+        ruleId: rule.id,
+        markupBps: parseDecimal(rule.markupBps),
+        discountBps: parseDecimal(rule.discountBps),
+        flatFee: flatFeeInSource(rule, input.sourceAsset),
+        surcharge,
+      },
+      this.deps.pricingShapes?.() ?? NO_PRICING_SHAPES_ACTIVE,
+    );
   }
 
   private async probeProviders(

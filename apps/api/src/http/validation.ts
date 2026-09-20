@@ -1,4 +1,6 @@
 import {
+  BOUNDARY_MODES,
+  CUSTOMER_SIGNATURE_ALGORITHMS,
   DASHBOARD_LIST_LIMIT_DEFAULT,
   LIST_LIMIT_DEFAULT,
   LIST_LIMIT_MAX,
@@ -588,6 +590,57 @@ export const createExecutionIntentSchema = z
   });
 
 export type CreateExecutionIntentBody = z.infer<typeof createExecutionIntentSchema>;
+
+/**
+ * Body of `POST /settlement/instructions`.
+ *
+ * The caller names a routing evaluation, a route inside it, and the execution intent it belongs
+ * to. It cannot supply amounts, rates, or provider facts: those are recomputed from the stored
+ * routing snapshot so the signature covers the engine's numbers and not the caller's.
+ */
+export const generateSettlementInstructionSchema = z
+  .object({
+    executionIntentId: z.string().trim().min(1).max(128),
+    routingId: z.string().trim().min(1).max(128),
+    routeId: z.string().trim().min(1).max(128),
+    paymentIntentId: z.string().trim().min(1).max(128),
+    boundaryMode: z.enum(BOUNDARY_MODES).default('RETURN_TO_CUSTOMER'),
+  })
+  .strict();
+
+export type GenerateSettlementInstructionBody = z.infer<
+  typeof generateSettlementInstructionSchema
+>;
+
+/** Body of `POST /settlement/instructions/:id/customer-signature`. */
+export const customerSignatureSchema = z
+  .object({
+    algorithm: z.enum(CUSTOMER_SIGNATURE_ALGORITHMS),
+    signature: z.string().trim().min(1).max(4096),
+    keyId: z.string().trim().min(1).max(256),
+    signedAt: isoTimestamp,
+  })
+  .strict();
+
+export type CustomerSignatureBody = z.infer<typeof customerSignatureSchema>;
+
+/**
+ * Body of `POST /settlement/instructions/verify`.
+ *
+ * `payload` is passed through unvalidated in shape because the verifier re-canonicalizes it and
+ * checks the signature: a payload that has been tampered with fails on the signature, which is a
+ * more precise answer than a schema rejection.
+ */
+export const verifySettlementInstructionSchema = z
+  .object({
+    payload: z.record(z.string(), z.unknown()),
+    signature: z.string().trim().min(1).max(4096),
+    keyId: z.string().trim().min(1).max(256),
+    payloadCanonical: z.string().min(1).max(200_000).optional(),
+  })
+  .strict();
+
+export type VerifySettlementInstructionBody = z.infer<typeof verifySettlementInstructionSchema>;
 
 export const createAgentSchema = z
   .object({

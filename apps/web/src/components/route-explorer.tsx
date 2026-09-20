@@ -64,7 +64,9 @@ export function RouteExplorer() {
                 key={corridor.id}
                 type="button"
                 size="sm"
-                variant={source === corridor.source && dest === corridor.dest ? 'default' : 'outline'}
+                variant={
+                  source === corridor.source && dest === corridor.dest ? 'default' : 'outline'
+                }
                 onClick={() => {
                   setSource(corridor.source);
                   setDest(corridor.dest);
@@ -141,11 +143,11 @@ function RoutingResult({
   return (
     <div className="space-y-4">
       {recommended !== null && (
-        <Card className="border-emerald-600/40">
+        <Card className="border-recommend/40">
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg">{recommended.provider.name}</CardTitle>
-              <Badge>Recommended</Badge>
+              <Badge variant="recommend">Recommended</Badge>
               <ProviderLicensingBadge licensing={recommended.provider.licensing} />
               <Badge variant="secondary">{recommended.provider.railFamily}</Badge>
               <span className="font-mono text-sm">score {recommended.routeScore}</span>

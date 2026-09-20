@@ -1,5 +1,6 @@
 import {
   ConfigurationError,
+  SETTLEMENT_JWKS_PATH,
   IdempotencyConflictError,
   PersistenceError,
   type AuditEvent,
@@ -27,11 +28,17 @@ import { PrismaExecutionIntentRepository } from './prisma-execution-intents.js';
 import { PrismaIdentityStore } from './prisma-identity.js';
 import { PrismaOnboardingStore } from './prisma-onboarding.js';
 import { PrismaBillingStore } from './prisma-billing.js';
+import {
+  PrismaCollectionStore,
+  PrismaSubscriptionStore,
+  PrismaUsageMeterStore,
+} from './prisma-launch-billing.js';
 import { PrismaProviderCredentialStore } from './prisma-provider-credentials.js';
 import { PrismaMandateStore } from './prisma-mandates.js';
 import { PrismaPartnerInstructionStore } from './prisma-partner-instructions.js';
 import { PrismaOrchestratedExecutionStore } from './prisma-orchestrated-executions.js';
 import { PrismaExecutionReceiptStore } from './prisma-execution-receipts.js';
+import { PrismaSettlementInstructionStore } from './prisma-settlement-instructions.js';
 import { PrismaLiveEnablementStore } from './prisma-live-enablement.js';
 import { PrismaRoutingEvaluationRepository } from './prisma-routing-evaluations.js';
 import { PrismaRoutingOverrideStore } from './prisma-routing-overrides.js';
@@ -47,6 +54,8 @@ export interface PrismaDriverOptions {
   readonly connectionString: string;
   readonly maxConnections?: number;
   readonly ssl?: boolean;
+  /** Absolute JWKS URL advertised on returned instructions. Defaults to the canonical path. */
+  readonly settlementJwksUri?: string;
 }
 
 /**
@@ -75,6 +84,9 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly rateLimits: RateLimitStore;
   readonly onboarding: OnboardingStore;
   readonly billing: BillingStore;
+  readonly usageMeter: PrismaUsageMeterStore;
+  readonly subscriptions: PrismaSubscriptionStore;
+  readonly collections: PrismaCollectionStore;
   readonly routingEvaluations: RoutingEvaluationRepository;
   readonly routingOverrides: PrismaRoutingOverrideStore;
   readonly providerCredentials: PrismaProviderCredentialStore;
@@ -82,6 +94,7 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
   readonly partnerInstructions: PrismaPartnerInstructionStore;
   readonly orchestratedExecutions: PrismaOrchestratedExecutionStore;
   readonly executionReceipts: PrismaExecutionReceiptStore;
+  readonly settlementInstructions: PrismaSettlementInstructionStore;
   readonly liveEnablement: PrismaLiveEnablementStore;
   /** Negotiated commercial terms, read from `customer_pricing`. */
   readonly pricing: PlatformPricingResolver;
@@ -111,6 +124,9 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.pricing = new PrismaPlatformPricingResolver(this.client);
     this.onboarding = new PrismaOnboardingStore(this.client);
     this.billing = new PrismaBillingStore(this.client);
+    this.usageMeter = new PrismaUsageMeterStore(this.client);
+    this.subscriptions = new PrismaSubscriptionStore(this.client);
+    this.collections = new PrismaCollectionStore(this.client);
     this.routingEvaluations = new PrismaRoutingEvaluationRepository(this.client);
     this.routingOverrides = new PrismaRoutingOverrideStore(this.client);
     this.providerCredentials = new PrismaProviderCredentialStore(this.client);
@@ -118,6 +134,10 @@ export class PrismaPersistenceDriver implements PersistenceDriver {
     this.partnerInstructions = new PrismaPartnerInstructionStore(this.client);
     this.orchestratedExecutions = new PrismaOrchestratedExecutionStore(this.client);
     this.executionReceipts = new PrismaExecutionReceiptStore(this.client);
+    this.settlementInstructions = new PrismaSettlementInstructionStore(
+      this.client,
+      options.settlementJwksUri ?? SETTLEMENT_JWKS_PATH,
+    );
     this.liveEnablement = new PrismaLiveEnablementStore(this.client);
   }
 

@@ -102,9 +102,14 @@ describe('InMemoryDashboardRepository tenancy', () => {
       invoiceId: null,
     });
 
-    const report = await store.revenue('org_a');
+    const report = await store.revenue('org_a', { gainShareActive: true });
     expect(report.summary.platformRevenueMinorUnits).toBe('20000');
     expect(report.summary.grossProfitMinorUnits).toBe('15000');
+
+    // Omitting the flag fails closed: the store cannot know whether gain share is admitted.
+    const gated = await store.revenue('org_a');
+    expect(gated.summary.partnerCommissionMinorUnits).toBe('0');
+    expect(gated.summary.grossProfitMinorUnits).toBe('20000');
     expect(report.events.map((event) => event.id)).toEqual(['mon_a']);
     expect((await store.listMonetizationEvents('org_a')).map((event) => event.id)).toEqual([
       'mon_a',

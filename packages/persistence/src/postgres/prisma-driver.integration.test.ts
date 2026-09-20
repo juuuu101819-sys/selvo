@@ -1,9 +1,15 @@
 import { randomUUID } from 'node:crypto';
-import { CURRENCY_REGISTRY, isCurrencyCode, type CurrencyCode } from '@meridian/core';
+import {
+  CURRENCY_REGISTRY,
+  DEMO_USER_PASSWORD,
+  isCurrencyCode,
+  type CurrencyCode,
+} from '@meridian/core';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { selectPricingRule } from '@meridian/core';
+import { DASHBOARD_CATALOG_PRICING_VERSION } from './ensure-sandbox-catalog.js';
 import { PrismaPersistenceDriver } from './prisma-driver.js';
 import { PrismaPlatformPricingResolver } from './prisma-pricing-resolver.js';
 
@@ -96,6 +102,10 @@ describeIntegration('PostgreSQL schema', () => {
           'orchestrated_executions',
           'execution_receipts',
           'live_enablements',
+          'monetization_events',
+          'usage_counters',
+          'organization_subscriptions',
+          'collection_attempts',
         ]),
       );
     });
@@ -516,8 +526,23 @@ describeIntegration('PostgreSQL schema', () => {
       }
     });
 
+    /**
+     * Two kinds of provider row live in this table, and they are asserted separately.
+     *
+     * `prisma db seed` writes one adapter-backed row per sandbox adapter. Booting the API against
+     * a sandbox database additionally writes the demo-dashboard catalog rows, which exist only as
+     * FK targets for the demo dashboard's quotes and are not adapter-backed. Asserting over the
+     * whole table would make these tests report a different answer depending on whether the API
+     * had ever started against the same database.
+     */
+    const adapterBacked = () =>
+      prisma.provider.findMany({
+        where: { pricingVersion: { not: DASHBOARD_CATALOG_PRICING_VERSION } },
+        orderBy: { slug: 'asc' },
+      });
+
     it('seeds the demo providers named in the brief', async () => {
-      const providers = await prisma.provider.findMany({ orderBy: { slug: 'asc' } });
+      const providers = await adapterBacked();
 
       expect(providers.map((provider) => provider.name)).toEqual([
         'Demo Bank FX',
@@ -548,8 +573,9 @@ describeIntegration('PostgreSQL schema', () => {
     });
 
     it('links every provider to the adapter that prices it', async () => {
-      const providers = await prisma.provider.findMany();
+      const providers = await adapterBacked();
 
+      expect(providers).not.toHaveLength(0);
       for (const provider of providers) {
         expect(provider.adapterId).toMatch(/^sandbox-/);
       }
@@ -557,12 +583,29 @@ describeIntegration('PostgreSQL schema', () => {
 
     it('seeds capabilities and routes for every provider', async () => {
       const providers = await prisma.provider.findMany({
+        where: { pricingVersion: { not: DASHBOARD_CATALOG_PRICING_VERSION } },
         include: { _count: { select: { capabilities: true, routes: true } } },
       });
 
+      expect(providers).not.toHaveLength(0);
       for (const provider of providers) {
         expect(provider._count.capabilities).toBeGreaterThan(0);
         expect(provider._count.routes).toBeGreaterThan(0);
+      }
+    });
+
+    it('claims no adapter on a demo-dashboard catalog row', async () => {
+      // adapter_id is unique, so a catalog row claiming the adapter its seeded twin already holds
+      // is unstorable — which is precisely how it used to fail: every API start against a seeded
+      // database aborted on the unique index rather than on anything a reader would recognise.
+      const catalog = await prisma.provider.findMany({
+        where: { pricingVersion: DASHBOARD_CATALOG_PRICING_VERSION },
+      });
+
+      for (const provider of catalog) {
+        expect(provider.adapterId).toBeNull();
+        expect(provider.licensing).toBe('unlicensed_sandbox');
+        expect(provider.modes).toEqual(['sandbox']);
       }
     });
 
@@ -630,7 +673,7 @@ describeIntegration('PostgreSQL schema', () => {
       expect(pricing.at(-1)?.sourceCurrency).toBeNull();
     });
 
-    it('seeds an organization with an owner and no stored credential', async () => {
+    it('seeds an organization with an owner whose password is stored only as a hash', async () => {
       const organization = await prisma.organization.findFirst({
         where: { slug: 'demo-trading-co' },
         include: { members: { include: { user: true } } },
@@ -638,7 +681,12 @@ describeIntegration('PostgreSQL schema', () => {
 
       expect(organization?.members).toHaveLength(1);
       expect(organization?.members[0]?.role).toBe('owner');
-      expect(organization?.members[0]?.user.passwordHash).toBeNull();
+      // The seed provisions a sandbox demo login, so a hash is expected here. What must never
+      // appear is the password itself, in this column or any other.
+      const stored = organization?.members[0]?.user.passwordHash;
+      expect(stored).not.toBeNull();
+      expect(stored).not.toContain(DEMO_USER_PASSWORD);
+      expect(stored).toMatch(/^(scrypt|argon2|\$2[aby])\$/);
     });
   });
 
@@ -747,6 +795,288 @@ describeIntegration('PostgreSQL schema', () => {
     });
   });
 
+  /**
+   * The 8-A and 8-B constraints, exercised against the real engine.
+   *
+   * These rules are the reason the resolver can be trusted: the application refuses to promote a
+   * simulated origin, and the database refuses to hold the row even if some future write path
+   * forgets to ask. A unit test can only prove the first half.
+   */
+  describe('revenue lifecycle and launch billing constraints', () => {
+    const snapshotIds: string[] = [];
+    const invoiceIds: string[] = [];
+
+    afterAll(async () => {
+      if (snapshotIds.length > 0) {
+        await prisma.monetizationEvent.deleteMany({ where: { id: { in: snapshotIds } } });
+      }
+      if (invoiceIds.length > 0) {
+        // Lines and collection attempts cascade from the invoice.
+        await prisma.invoice.deleteMany({ where: { id: { in: invoiceIds } } });
+      }
+      await prisma.usageCounter.deleteMany({ where: { organizationId: 'org_demo_meridian' } });
+    });
+
+    /** A snapshot that is realized in every respect except the fields a test overrides. */
+    function realizedSnapshot(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+      const id = `mon_it_${randomUUID().replaceAll('-', '')}`;
+      snapshotIds.push(id);
+      return {
+        id,
+        organizationId: 'org_demo_meridian',
+        occurredAt: new Date('2026-04-02T09:00:00.000Z'),
+        transactionType: 'multi_rail_quote',
+        revenueSource: 'traditional_fx_routing_fee',
+        currency: 'USD',
+        asset: 'USD',
+        tpvMinorUnits: new Prisma.Decimal('10000000'),
+        providerCostMinorUnits: new Prisma.Decimal('30000'),
+        platformRevenueMinorUnits: new Prisma.Decimal('20000'),
+        partnerCommissionMinorUnits: new Prisma.Decimal('0'),
+        grossProfitMinorUnits: new Prisma.Decimal('20000'),
+        economicStage: 'settled',
+        realizedRevenue: true,
+        revenueRecognition: 'collected',
+        originEnv: 'PRODUCTION',
+        settlementFinality: 'provider_confirmed',
+        collectionReference: 'ch_it_1',
+        ...overrides,
+      };
+    }
+
+    it('accepts a snapshot where all three realization facts hold', async () => {
+      const created = await prisma.monetizationEvent.create({ data: realizedSnapshot() as never });
+      expect(created.realizedRevenue).toBe(true);
+      expect(created.originEnv).toBe('PRODUCTION');
+    });
+
+    it('rejects realized revenue on a non-production origin', async () => {
+      // The 8-A regression, at the storage layer: a mock partner reporting `settled` cannot put a
+      // realized row in the table, whatever the caller passes.
+      for (const originEnv of ['DEMO', 'SIMULATION', 'PARTNER_SANDBOX']) {
+        await expect(
+          prisma.monetizationEvent.create({ data: realizedSnapshot({ originEnv }) as never }),
+        ).rejects.toThrow(/monetization_events_realized_requires_production/);
+      }
+    });
+
+    it('rejects realized revenue whose finality was only simulated', async () => {
+      await expect(
+        prisma.monetizationEvent.create({
+          data: realizedSnapshot({ settlementFinality: 'simulated' }) as never,
+        }),
+      ).rejects.toThrow(/monetization_events_realized_requires_finality/);
+    });
+
+    it('rejects realized revenue with no collection reference behind it', async () => {
+      await expect(
+        prisma.monetizationEvent.create({
+          data: realizedSnapshot({ collectionReference: null }) as never,
+        }),
+      ).rejects.toThrow(/monetization_events_realized_requires_collection_ref/);
+    });
+
+    it('keeps the recognition constraint live, not merely declared', async () => {
+      // The gap analysis called this constraint inert because nothing ever wrote `collected`. It
+      // is not inert: an invoiced row claiming realization is rejected. Which of the realization
+      // constraints Postgres reports first is not the point — several of them cover this row, and
+      // that redundancy is deliberate.
+      await expect(
+        prisma.monetizationEvent.create({
+          data: realizedSnapshot({ revenueRecognition: 'invoiced' }) as never,
+        }),
+      ).rejects.toThrow(/monetization_events_(realized|collection_ref)/);
+      await expect(
+        prisma.monetizationEvent.create({
+          data: realizedSnapshot({
+            revenueRecognition: 'invoiced',
+            collectionReference: null,
+          }) as never,
+        }),
+      ).rejects.toThrow(/monetization_events_realized_requires_collection_ref/);
+    });
+
+    it('rejects a collection reference on a snapshot that was never collected', async () => {
+      await expect(
+        prisma.monetizationEvent.create({
+          data: realizedSnapshot({
+            realizedRevenue: false,
+            revenueRecognition: 'invoiced',
+          }) as never,
+        }),
+      ).rejects.toThrow(/monetization_events_collection_ref_requires_collected/);
+    });
+
+    it('rejects an unknown origin or finality value', async () => {
+      // Checked on an unrealized row so the realization constraints cannot mask the value check:
+      // an unrecognised environment must be refused even where nothing is being claimed as cash.
+      const unrealized = {
+        realizedRevenue: false,
+        revenueRecognition: 'unrealized',
+        collectionReference: null,
+      };
+      await expect(
+        prisma.monetizationEvent.create({
+          data: realizedSnapshot({ ...unrealized, originEnv: 'STAGING' }) as never,
+        }),
+      ).rejects.toThrow(/monetization_events_origin_env_known/);
+      await expect(
+        prisma.monetizationEvent.create({
+          data: realizedSnapshot({ ...unrealized, settlementFinality: 'probably' }) as never,
+        }),
+      ).rejects.toThrow(/monetization_events_settlement_finality_known/);
+    });
+
+    /** An issued invoice, with the collection columns left at whatever a test needs. */
+    async function createInvoice(
+      overrides: Record<string, unknown> = {},
+    ): Promise<{ readonly id: string }> {
+      const id = `inv_it_${randomUUID().replaceAll('-', '')}`;
+      invoiceIds.push(id);
+      return prisma.invoice.create({
+        data: {
+          id,
+          invoiceNumber: `INV-IT-${id}`,
+          organizationId: 'org_demo_meridian',
+          // The unique key is (org, periodStart, currency), so each invoice needs its own month.
+          periodStart: new Date(Date.UTC(2020, invoiceIds.length % 12, 1)),
+          periodEnd: new Date(Date.UTC(2020, (invoiceIds.length % 12) + 1, 1)),
+          currency: 'USD',
+          subtotalMinorUnits: new Prisma.Decimal('20000'),
+          taxMinorUnits: new Prisma.Decimal('0'),
+          totalMinorUnits: new Prisma.Decimal('20000'),
+          issuedAt: new Date('2026-05-01T00:00:00.000Z'),
+          issuedByActor: 'integration-test',
+          ...overrides,
+        } as never,
+      });
+    }
+
+    it('refuses to let a record-only invoice claim it was collected', async () => {
+      // RECORD_ONLY is the launch mode and means no money was requested. Collecting an invoice
+      // moves it to LIVE alongside the status, so this pairing can only be a mislabelled row.
+      await expect(
+        createInvoice({
+          collectionMode: 'RECORD_ONLY',
+          collectionStatus: 'collected',
+          collectionReference: 'ch_it_2',
+        }),
+      ).rejects.toThrow(/invoices_record_only_stays_uncollected/);
+    });
+
+    it('refuses a collected invoice with no processor reference', async () => {
+      await expect(
+        createInvoice({ collectionMode: 'LIVE', collectionStatus: 'collected' }),
+      ).rejects.toThrow(/invoices_collected_requires_reference/);
+    });
+
+    it('accepts an invoice collected in live mode with its reference', async () => {
+      const invoice = await createInvoice({
+        collectionMode: 'LIVE',
+        collectionStatus: 'collected',
+        collectionReference: 'ch_it_3',
+      });
+      expect(invoice.id).toMatch(/^inv_it_/);
+    });
+
+    it('charges one class per invoice line, and only names a decision on a decision line', async () => {
+      const invoice = await createInvoice();
+      await expect(
+        prisma.invoiceLine.create({
+          data: {
+            id: `inl_it_${randomUUID().replaceAll('-', '')}`,
+            invoiceId: invoice.id,
+            monetizationEventId: null,
+            eventClass: 'FLAT_DECISION',
+            description: 'decision fee naming no decision',
+            quantity: new Prisma.Decimal('1'),
+            platformRevenueMinorUnits: new Prisma.Decimal('100'),
+            economicStage: 'execution_intent',
+            transactionType: 'multi_rail_quote',
+            revenueSource: 'traditional_fx_routing_fee',
+            occurredAt: new Date('2026-04-02T09:00:00.000Z'),
+          } as never,
+        }),
+      ).rejects.toThrow(/invoice_lines_snapshot_matches_class/);
+
+      await expect(
+        prisma.invoiceLine.create({
+          data: {
+            id: `inl_it_${randomUUID().replaceAll('-', '')}`,
+            invoiceId: invoice.id,
+            eventClass: 'RETAINER',
+            description: 'a class nobody defined',
+            quantity: new Prisma.Decimal('1'),
+            platformRevenueMinorUnits: new Prisma.Decimal('100'),
+            economicStage: 'subscription',
+            transactionType: 'enterprise_subscription',
+            revenueSource: 'enterprise_subscription',
+            occurredAt: new Date('2026-04-02T09:00:00.000Z'),
+          } as never,
+        }),
+      ).rejects.toThrow(/invoice_lines_event_class_known/);
+    });
+
+    it('lets only one collection attempt hold a given idempotency key', async () => {
+      // The property the whole no-double-charge argument rests on. Without the unique index, a
+      // concurrent retry would open a second attempt and charge twice.
+      const invoice = await createInvoice();
+      const idempotencyKey = `collect:${invoice.id}`;
+      const attempt = {
+        invoiceId: invoice.id,
+        organizationId: 'org_demo_meridian',
+        idempotencyKey,
+        mode: 'RECORD_ONLY',
+        status: 'recorded',
+        currency: 'USD',
+        amountMinorUnits: new Prisma.Decimal('20000'),
+        createdAt: new Date('2026-05-02T00:00:00.000Z'),
+        updatedAt: new Date('2026-05-02T00:00:00.000Z'),
+      };
+
+      await prisma.collectionAttempt.create({
+        data: { id: `col_it_${randomUUID().replaceAll('-', '')}`, ...attempt } as never,
+      });
+      await expect(
+        prisma.collectionAttempt.create({
+          data: { id: `col_it_${randomUUID().replaceAll('-', '')}`, ...attempt } as never,
+        }),
+      ).rejects.toThrow(/idempotency_key|Unique constraint/i);
+    });
+
+    it('counts calls exactly past the safe integer range, one counter per endpoint', async () => {
+      // PA-H07 applies to usage as much as to revenue: a call count near 2^53 multiplied by a
+      // per-call price is exactly where a float would round the invoice.
+      const beyondSafeInteger = '9007199254740993';
+      const counter = {
+        organizationId: 'org_demo_meridian',
+        periodStart: new Date('2020-01-01T00:00:00.000Z'),
+        endpoint: 'quote',
+        firstCallAt: new Date('2020-01-01T00:00:00.000Z'),
+        lastCallAt: new Date('2020-01-31T00:00:00.000Z'),
+      };
+
+      const created = await prisma.usageCounter.create({
+        data: {
+          id: `usg_it_${randomUUID().replaceAll('-', '')}`,
+          ...counter,
+          callCount: new Prisma.Decimal(beyondSafeInteger),
+        } as never,
+      });
+      expect(created.callCount.toFixed(0)).toBe(beyondSafeInteger);
+
+      await expect(
+        prisma.usageCounter.create({
+          data: {
+            id: `usg_it_${randomUUID().replaceAll('-', '')}`,
+            ...counter,
+            callCount: new Prisma.Decimal('1'),
+          } as never,
+        }),
+      ).rejects.toThrow(/organization_id|Unique constraint/i);
+    });
+  });
+
   async function createRequest(): Promise<string> {
     const id = `txr_it_${randomUUID().replaceAll('-', '')}`;
     createdRequestIds.push(id);
@@ -795,4 +1125,207 @@ describeIntegration('PostgreSQL schema', () => {
     });
     return id;
   }
+
+  describe('settlement instruction constraints', () => {
+    const instructionIds: string[] = [];
+    const intentIds: string[] = [];
+
+    afterAll(async () => {
+      await prisma.settlementInstruction.deleteMany({ where: { id: { in: instructionIds } } });
+      await prisma.executionIntent.deleteMany({ where: { id: { in: intentIds } } });
+    });
+
+    async function createIntent(): Promise<string> {
+      const id = `eit_it_${randomUUID().replaceAll('-', '')}`;
+      intentIds.push(id);
+      await prisma.executionIntent.create({
+        data: {
+          id,
+          organizationId: 'org_demo_meridian',
+          requestId: `req_${id}`,
+          routeId: 'route_it_1',
+          sourceAsset: 'USD',
+          destinationAsset: 'KRW',
+          amountMinorUnits: new Prisma.Decimal('50000'),
+          actor: 'integration-test',
+        } as never,
+      });
+      return id;
+    }
+
+    /** A returned instruction, with whichever column a test wants to bend. */
+    async function createInstruction(
+      overrides: Record<string, unknown> = {},
+    ): Promise<{ readonly id: string }> {
+      const id = `msi_it_${randomUUID().replaceAll('-', '')}`;
+      instructionIds.push(id);
+      const executionIntentId = await createIntent();
+      return prisma.settlementInstruction.create({
+        data: {
+          id,
+          organizationId: 'org_demo_meridian',
+          executionIntentId,
+          routingId: 'rte_it_1',
+          routeId: 'route_it_1',
+          boundaryMode: 'RETURN_TO_CUSTOMER',
+          originEnv: 'PRODUCTION',
+          payloadCanonical: '{"instructionVersion":"1"}',
+          payloadHash: 'a'.repeat(64),
+          signature: 'c2lnbmF0dXJl',
+          signingKeyId: 'msi-1-abc',
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          expiresAt: new Date('2026-05-01T00:15:00.000Z'),
+          ...overrides,
+        } as never,
+      });
+    }
+
+    it('stores a generated instruction', async () => {
+      const created = await createInstruction();
+      const row = await prisma.settlementInstruction.findUniqueOrThrow({
+        where: { id: created.id },
+      });
+      expect(row.meridianTransmitted).toBe(false);
+      expect(row.fundsMoved).toBe(false);
+      expect(row.custody).toBe(false);
+      expect(row.customerSignature).toBeNull();
+    });
+
+    it('refuses to record that Meridian transmitted an instruction', async () => {
+      // The invariant the phase exists to keep, at the storage layer. Recording a transmission
+      // requires dropping a named constraint first, which is a reviewable act rather than a
+      // silent one.
+      await expect(createInstruction({ meridianTransmitted: true })).rejects.toThrow(
+        /settlement_instructions_never_transmitted/,
+      );
+    });
+
+    it('refuses a boundary mode in which Meridian is the sender', async () => {
+      for (const boundaryMode of ['MERIDIAN_DISPATCHES', 'DISPATCH', 'PARTNER_EXECUTES_LIVE']) {
+        await expect(createInstruction({ boundaryMode })).rejects.toThrow(
+          /settlement_instructions_boundary_mode_known/,
+        );
+      }
+    });
+
+    it('accepts both real boundary modes', async () => {
+      for (const boundaryMode of ['RETURN_TO_CUSTOMER', 'PARTNER_EXECUTES']) {
+        const created = await createInstruction({ boundaryMode });
+        expect(created.id).toMatch(/^msi_it_/);
+      }
+    });
+
+    it('refuses a custodial claim', async () => {
+      await expect(createInstruction({ fundsMoved: true })).rejects.toThrow(
+        /settlement_instructions_non_custodial/,
+      );
+      await expect(createInstruction({ custody: true })).rejects.toThrow(
+        /settlement_instructions_non_custodial/,
+      );
+    });
+
+    it('refuses an unknown origin environment', async () => {
+      await expect(createInstruction({ originEnv: 'STAGING' })).rejects.toThrow(
+        /settlement_instructions_origin_env_known/,
+      );
+    });
+
+    it('refuses a half-written customer signature', async () => {
+      // A signature with no algorithm cannot be verified by anyone, and a timestamp with no
+      // signature claims the customer approved something with nothing behind it.
+      await expect(createInstruction({ customerSignature: 'sig' })).rejects.toThrow(
+        /settlement_instructions_customer_signature_complete/,
+      );
+      await expect(
+        createInstruction({ customerSignedAt: new Date('2026-05-01T00:05:00.000Z') }),
+      ).rejects.toThrow(/settlement_instructions_customer_signature_complete/);
+    });
+
+    it('accepts a complete customer signature and still records no transmission', async () => {
+      const created = await createInstruction({
+        customerSignature: 'Y3VzdG9tZXI',
+        customerSignatureAlgorithm: 'Ed25519',
+        customerKeyId: 'customer-key-1',
+        customerSignedAt: new Date('2026-05-01T00:05:00.000Z'),
+      });
+      const row = await prisma.settlementInstruction.findUniqueOrThrow({
+        where: { id: created.id },
+      });
+      expect(row.customerSignature).toBe('Y3VzdG9tZXI');
+      // Counter-signed and still not transmitted: the row cannot say otherwise.
+      expect(row.meridianTransmitted).toBe(false);
+    });
+
+    it('refuses an unknown customer signature algorithm', async () => {
+      await expect(
+        createInstruction({
+          customerSignature: 'sig',
+          customerSignatureAlgorithm: 'RSA_PKCS1_MD5',
+          customerKeyId: 'k',
+          customerSignedAt: new Date('2026-05-01T00:05:00.000Z'),
+        }),
+      ).rejects.toThrow(/settlement_instructions_customer_signature_algorithm_known/);
+    });
+
+    it('refuses an instruction that expires before it exists', async () => {
+      await expect(
+        createInstruction({ expiresAt: new Date('2026-04-30T23:00:00.000Z') }),
+      ).rejects.toThrow(/settlement_instructions_expiry_after_creation/);
+    });
+
+    it('refuses signed material that cannot be verified', async () => {
+      // Canonical bytes and their hash travel together; a row with one and not the other is
+      // unusable by the party it was generated for.
+      await expect(createInstruction({ payloadCanonical: '' })).rejects.toThrow(
+        /settlement_instructions_signed_material_present/,
+      );
+      await expect(createInstruction({ payloadHash: 'short' })).rejects.toThrow(
+        /settlement_instructions_signed_material_present/,
+      );
+      await expect(createInstruction({ signature: '' })).rejects.toThrow(
+        /settlement_instructions_signed_material_present/,
+      );
+    });
+
+    it('has no column that could advance an instruction toward being sent', async () => {
+      const columns = await prisma.$queryRaw<{ readonly column_name: string }[]>`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'settlement_instructions'
+      `;
+      const names = columns.map((column) => column.column_name);
+      // Checked against the live schema rather than the migration text: this is what the database
+      // actually has after every migration in the folder has been applied.
+      for (const forbidden of ['status', 'dispatched_at', 'submitted_at', 'sent_at', 'partner_id']) {
+        expect(names, `settlement_instructions has ${forbidden}`).not.toContain(forbidden);
+      }
+      expect(names).toContain('meridian_transmitted');
+    });
+
+    it('drops instructions with the intent they were generated from', async () => {
+      const executionIntentId = await createIntent();
+      const id = `msi_it_${randomUUID().replaceAll('-', '')}`;
+      await prisma.settlementInstruction.create({
+        data: {
+          id,
+          organizationId: 'org_demo_meridian',
+          executionIntentId,
+          routingId: 'rte_it_cascade',
+          routeId: 'route_it_1',
+          boundaryMode: 'RETURN_TO_CUSTOMER',
+          originEnv: 'PRODUCTION',
+          payloadCanonical: '{"instructionVersion":"1"}',
+          payloadHash: 'b'.repeat(64),
+          signature: 'c2ln',
+          signingKeyId: 'msi-1-abc',
+          createdAt: new Date('2026-05-01T00:00:00.000Z'),
+          expiresAt: new Date('2026-05-01T00:15:00.000Z'),
+        } as never,
+      });
+
+      await prisma.executionIntent.delete({ where: { id: executionIntentId } });
+      expect(
+        await prisma.settlementInstruction.findUnique({ where: { id } }),
+      ).toBeNull();
+    });
+  });
 });

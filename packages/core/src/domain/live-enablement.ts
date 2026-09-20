@@ -11,7 +11,22 @@ import { ValidationError } from '../errors/index.js';
 /** Repo-root checklist every live flag comments must link. */
 export const GO_LIVE_CHECKLIST_PATH = 'GO_LIVE_CHECKLIST.md';
 
-export const LIVE_ENABLEMENT_SCOPES = ['corridor', 'partner', 'billing'] as const;
+/**
+ * One scope per gated activity.
+ *
+ * Deliberately not a single "we got legal sign-off" switch: live execution, ad-valorem pricing,
+ * gain-share pricing, TPV pricing, and live collection are distinct activities with distinct
+ * determinations. A record authorizing one must never authorize another, so each carries its own
+ * row, its own checklist anchor, and its own expiry.
+ */
+export const LIVE_ENABLEMENT_SCOPES = [
+  'corridor',
+  'partner',
+  'billing',
+  'pricing_ad_valorem',
+  'pricing_gain_share',
+  'pricing_tpv',
+] as const;
 export type LiveEnablementScope = (typeof LIVE_ENABLEMENT_SCOPES)[number];
 
 /**
@@ -34,6 +49,19 @@ export const GO_LIVE_CHECKLIST_CORRIDORS = [
 export type GoLiveCorridor = (typeof GO_LIVE_CHECKLIST_CORRIDORS)[number];
 
 export const BILLING_LIVE_SCOPE_KEY = 'platform' as const;
+
+/**
+ * Scopes that describe the platform as a whole rather than one corridor or partner.
+ *
+ * Their only valid `scopeKey` is {@link BILLING_LIVE_SCOPE_KEY}, so a determination cannot be
+ * filed under an invented key and then go unmatched by the code that looks it up.
+ */
+export const PLATFORM_WIDE_SCOPES: readonly LiveEnablementScope[] = [
+  'billing',
+  'pricing_ad_valorem',
+  'pricing_gain_share',
+  'pricing_tpv',
+];
 
 /**
  * ISO 4217 asset → licensing region used by the region kill switch.
@@ -117,15 +145,24 @@ export interface LiveFundsEvaluation {
 }
 
 export interface LiveBillingEvaluation {
-  /** Always false: no processor adapter writes `collected`. */
+  /** Whether a processor may be asked to collect. False in RECORD_ONLY and on any missing fact. */
   readonly collectionActive: boolean;
+  /** This evaluation is a gate check; it never itself collects or moves funds. */
   readonly collected: false;
   readonly fundsMoved: false;
   readonly realizedRevenue: false;
   readonly billingLiveEnabled: boolean;
   readonly billingSignedOffAndCurrent: boolean;
-  readonly legalEntityConfirmed: false;
-  readonly adapterImplemented: false;
+  /**
+   * Whether the issuing entity, tax handling, and processor agreement are attested.
+   *
+   * Carried by the `billing` LiveEnablement record: that record's whole purpose is to say those
+   * three things were confirmed by a named approver against the checklist (§18.5). There is no
+   * separate flag, because a second switch would be a second thing that can disagree.
+   */
+  readonly legalEntityConfirmed: boolean;
+  /** Whether a processor adapter capable of collecting is registered. */
+  readonly adapterImplemented: boolean;
   readonly blockingReasons: readonly string[];
 }
 
@@ -148,13 +185,20 @@ export function corridorSlug(corridor: string): string {
  * A mismatch is a refused live conversion — not a warning.
  */
 export function requiredChecklistRef(scope: LiveEnablementScope, scopeKey: string): string {
-  if (scope === 'corridor') {
-    return `${GO_LIVE_CHECKLIST_PATH}#${corridorSlug(scopeKey)}`;
+  switch (scope) {
+    case 'corridor':
+      return `${GO_LIVE_CHECKLIST_PATH}#${corridorSlug(scopeKey)}`;
+    case 'partner':
+      return `${GO_LIVE_CHECKLIST_PATH}#partners`;
+    case 'pricing_ad_valorem':
+      return `${GO_LIVE_CHECKLIST_PATH}#pricing-ad-valorem`;
+    case 'pricing_gain_share':
+      return `${GO_LIVE_CHECKLIST_PATH}#pricing-gain-share`;
+    case 'pricing_tpv':
+      return `${GO_LIVE_CHECKLIST_PATH}#pricing-tpv`;
+    case 'billing':
+      return `${GO_LIVE_CHECKLIST_PATH}#billing-collection`;
   }
-  if (scope === 'partner') {
-    return `${GO_LIVE_CHECKLIST_PATH}#partners`;
-  }
-  return `${GO_LIVE_CHECKLIST_PATH}#billing-collection`;
 }
 
 export function parseCorridorKey(corridor: string): { readonly source: string; readonly destination: string } {
@@ -365,17 +409,22 @@ export function evaluateLiveFundsMovement(input: {
 }
 
 /**
- * Live billing collection admission.
+ * Live billing collection admission (§18.5).
  *
- * `BILLING_LIVE_ENABLED` defaults false (invoice recording only). Even when the flag is true,
- * collection stays refused without current billing sign-off, a confirmed legal entity, and a
- * real processor adapter — none of which this repository invents.
- * See `GO_LIVE_CHECKLIST.md#billing-collection`.
+ * `BILLING_LIVE_ENABLED` defaults false, which leaves the process in `RECORD_ONLY`: invoices are
+ * computed and recorded and no processor is contacted. Flipping the flag is necessary but not
+ * sufficient — collection additionally needs a current `billing` sign-off (which is what attests
+ * the legal entity, tax handling, and processor agreement) and a registered processor adapter.
+ *
+ * Each fact is reported separately rather than collapsed into one boolean, so an operator can see
+ * which one is missing. See `GO_LIVE_CHECKLIST.md#billing-collection`.
  */
 export function evaluateLiveBilling(input: {
   readonly nowIso: string;
   readonly billingLiveEnabled: boolean;
   readonly billingRecord: LiveEnablementRecord | null;
+  /** Whether a processor adapter that can actually collect is registered. Absent means none is. */
+  readonly collectorImplemented?: boolean | undefined;
 }): LiveBillingEvaluation {
   const blockingReasons: string[] = [];
   if (!input.billingLiveEnabled) {
@@ -385,18 +434,26 @@ export function evaluateLiveBilling(input: {
   if (!signOff.current) {
     blockingReasons.push(`billing:${signOff.reason ?? 'not_enabled'}`);
   }
-  blockingReasons.push('legal_entity_unconfirmed');
-  blockingReasons.push('collection_adapter_not_implemented');
+  // The sign-off record is the entity/tax/processor attestation. Without a current one there is
+  // nobody who has said, on the record, that SELVO may invoice and be paid.
+  const legalEntityConfirmed = signOff.current;
+  if (!legalEntityConfirmed) {
+    blockingReasons.push('legal_entity_unconfirmed');
+  }
+  const adapterImplemented = input.collectorImplemented === true;
+  if (!adapterImplemented) {
+    blockingReasons.push('collection_adapter_not_implemented');
+  }
 
   return {
-    collectionActive: false,
+    collectionActive: blockingReasons.length === 0,
     collected: false,
     fundsMoved: false,
     realizedRevenue: false,
     billingLiveEnabled: input.billingLiveEnabled,
     billingSignedOffAndCurrent: signOff.current,
-    legalEntityConfirmed: false,
-    adapterImplemented: false,
+    legalEntityConfirmed,
+    adapterImplemented,
     blockingReasons,
   };
 }

@@ -279,6 +279,11 @@ describe('BILLING_LIVE_ENABLED=true still does not collect without a legal entit
     harness = await createTestHarness({
       ONBOARDING_OPERATOR_SECRET: OPERATOR,
       BILLING_LIVE_ENABLED: 'true',
+      // The flag can no longer be flipped without a referenced determination (§18.4). Supplying
+      // one is what makes this test interesting: the config gate is satisfied and collection is
+      // still refused, because the LiveEnablement row and the processor contract are missing.
+      BILLING_LEGAL_OPINION_ID: 'OPN-BILLING-TEST',
+      BILLING_JURISDICTION: 'US',
     });
   });
 

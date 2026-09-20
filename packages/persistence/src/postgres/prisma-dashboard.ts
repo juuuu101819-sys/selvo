@@ -18,9 +18,8 @@ import {
   aggregateMonetization,
   isMonetizationTransactionType,
   isRevenueSource,
-  isEconomicStage,
-  isRevenueRecognitionStatus,
 } from '@meridian/core';
+import { monetizationLifecycleFields } from './monetization-lifecycle.js';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { descKeysetWhere } from './keyset.js';
 import {
@@ -210,8 +209,11 @@ export class PrismaDashboardRepository implements DashboardRepository {
           routeId: event.routeId,
           quoteId: event.quoteId,
           economicStage: event.economicStage,
-          realizedRevenue: false,
+          realizedRevenue: event.realizedRevenue,
           revenueRecognition: event.revenueRecognition,
+          originEnv: event.originEnv,
+          settlementFinality: event.settlementFinality,
+          collectionReference: event.collectionReference,
           invoiceId: event.invoiceId,
         },
         update: {
@@ -237,7 +239,10 @@ export class PrismaDashboardRepository implements DashboardRepository {
           routeId: event.routeId,
           quoteId: event.quoteId,
           economicStage: event.economicStage,
-          realizedRevenue: false,
+          realizedRevenue: event.realizedRevenue,
+          originEnv: event.originEnv,
+          settlementFinality: event.settlementFinality,
+          collectionReference: event.collectionReference,
         },
       });
     } catch (error) {
@@ -266,14 +271,20 @@ export class PrismaDashboardRepository implements DashboardRepository {
     return rows.map(toMonetizationEvent);
   }
 
-  async revenue(organizationId: string): Promise<MonetizationReport> {
+  async revenue(
+    organizationId: string,
+    options: { readonly gainShareActive?: boolean } = {},
+  ): Promise<MonetizationReport> {
     const rows = await this.query(() =>
       this.client.monetizationEvent.findMany({
         where: { organizationId },
         orderBy: { occurredAt: 'desc' },
       }),
     );
-    return aggregateMonetization(rows.map(toMonetizationEvent), { organizationId });
+    return aggregateMonetization(rows.map(toMonetizationEvent), {
+      organizationId,
+      gainShareActive: options.gainShareActive ?? false,
+    });
   }
 
   private async loadOrg(
@@ -409,6 +420,10 @@ function toMonetizationEvent(row: {
   readonly quoteId: string | null;
   readonly economicStage: string;
   readonly revenueRecognition?: string;
+  readonly originEnv?: string;
+  readonly settlementFinality?: string;
+  readonly collectionReference?: string | null;
+  readonly realizedRevenue?: boolean;
   readonly invoiceId?: string | null;
 }): MonetizationEvent {
   const transactionType: MonetizationTransactionType = isMonetizationTransactionType(
@@ -443,11 +458,7 @@ function toMonetizationEvent(row: {
     realExecution: false,
     routeId: row.routeId,
     quoteId: row.quoteId,
-    economicStage: isEconomicStage(row.economicStage) ? row.economicStage : 'route_quote',
-    realizedRevenue: false,
-    revenueRecognition: isRevenueRecognitionStatus(row.revenueRecognition)
-      ? row.revenueRecognition
-      : 'unrealized',
+    ...monetizationLifecycleFields(row),
     invoiceId: row.invoiceId ?? null,
   };
 }

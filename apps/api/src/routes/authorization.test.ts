@@ -239,12 +239,22 @@ describe('organization authorization', () => {
           organizationId: string;
         }[];
         byRevenueSource: readonly { key: string }[];
-        workedExample: { tpvMinorUnits: string; grossProfitMinorUnits: string };
+        gainShareActive: boolean;
+        workedExample: {
+          tpvMinorUnits: string;
+          partnerCommissionMinorUnits: string;
+          grossProfitMinorUnits: string;
+        };
       };
     }>().data;
     expect(body.fundsMoved).toBe(false);
     expect(body.workedExample.tpvMinorUnits).toBe('10000000');
-    expect(body.workedExample.grossProfitMinorUnits).toBe('15000');
+    // Gain share is off at launch, so the identity is served without its partner-commission leg:
+    // the full $200 platform fee is the net contribution (§18.3).
+    expect(body.gainShareActive).toBe(false);
+    expect(body.workedExample.partnerCommissionMinorUnits).toBe('0');
+    expect(body.workedExample.grossProfitMinorUnits).toBe('20000');
+    expect(body.summary.partnerCommissionMinorUnits).toBe('0');
     const example = body.events.find((event) => event.id === 'mon_demo_fx_100k');
     expect(example?.platformRevenueMinorUnits).toBe('20000');
     expect(body.events.some((event) => event.id === 'mon_other_secret')).toBe(false);
@@ -256,7 +266,9 @@ describe('organization authorization', () => {
     expect(sources.has('stablecoin_routing_fee')).toBe(true);
     expect(sources.has('defi_routing_fee')).toBe(true);
     expect(sources.has('liquidity_routing_fee')).toBe(true);
-    expect(sources.has('partner_referral_commission')).toBe(true);
+    // The partner payout row is the gain-share shape's only presence in this breakdown, so with
+    // the shape disabled it must be absent rather than present with a zero.
+    expect(sources.has('partner_referral_commission')).toBe(false);
     expect(sources.has('enterprise_api_subscription')).toBe(true);
     expect(sources.has('ai_agent_payment_fee')).toBe(true);
     expect(sources.has('enterprise_volume_pricing')).toBe(true);

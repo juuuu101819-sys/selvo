@@ -30,6 +30,16 @@ const DASHBOARD_PROVIDERS = [
   },
 ] as const;
 
+/**
+ * Marks a provider row as a demo-dashboard FK target rather than an adapter-backed provider.
+ *
+ * The two kinds of row coexist: `prisma db seed` writes one `prv_demo_*` row per sandbox adapter
+ * and links it through `adapterId`, while these rows exist only so the demo dashboard's quotes
+ * have something to point at. Anything asserting a property of "a provider" needs to know which
+ * kind it is looking at, so the discriminator is named here instead of spelled out at each site.
+ */
+export const DASHBOARD_CATALOG_PRICING_VERSION = 'dashboard-e2e';
+
 const NUMERIC_CODES: Record<(typeof DASHBOARD_CURRENCIES)[number], string> = {
   USD: '840',
   KRW: '410',
@@ -43,6 +53,11 @@ const NUMERIC_CODES: Record<(typeof DASHBOARD_CURRENCIES)[number], string> = {
  *
  * Memory dashboard stores DTOs without FKs. PA-L06 e2e against a migrated-from-scratch database
  * still uses `SEED_DEMO_TENANTS`; this upsert is that catalog, not leftover state from a prior run.
+ *
+ * These rows are keyed by the sandbox adapter's name because that is the `providerId` the demo
+ * dashboard quotes carry. They deliberately claim no `adapterId`: `prisma db seed` already links
+ * each sandbox adapter to its own `prv_demo_*` row, and `adapter_id` is unique, so claiming the
+ * link here made every startup against a seeded database fail on the unique index.
  */
 export async function ensureSandboxDashboardCatalog(client: PrismaClient): Promise<void> {
   try {
@@ -74,8 +89,8 @@ export async function ensureSandboxDashboardCatalog(client: PrismaClient): Promi
           modes: ['sandbox'],
           jurisdictions: ['*'],
           description: `${provider.name} sandbox catalog row for demo dashboard quotes. Unlicensed.`,
-          adapterId: provider.id,
-          pricingVersion: 'dashboard-e2e',
+          adapterId: null,
+          pricingVersion: DASHBOARD_CATALOG_PRICING_VERSION,
           reliabilityScore: new Prisma.Decimal('0.9900'),
           quoteTtlSeconds: 900,
           metadata: { demoOnly: true },
@@ -84,6 +99,12 @@ export async function ensureSandboxDashboardCatalog(client: PrismaClient): Promi
       });
     }
   } catch (error) {
-    throw new PersistenceError('Failed to ensure the sandbox dashboard catalog.', {}, { cause: error });
+    // The reason is worth carrying: this runs at startup, and an empty detail bag turns a
+    // one-line constraint violation into an opaque boot failure.
+    throw new PersistenceError(
+      'Failed to ensure the sandbox dashboard catalog.',
+      { reason: error instanceof Error ? error.message : String(error) },
+      { cause: error },
+    );
   }
 }

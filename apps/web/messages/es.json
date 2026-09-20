@@ -19,9 +19,147 @@
     "sandbox": "Sandbox"
   },
   "landing": {
-    "title": "Clasifica rutas de pago para empresas y agentes de IA",
-    "lede": "Meridian es una capa de comparación sin custodia para empresas y agentes de IA. Compara rutas de finanzas tradicionales, stablecoins y liquidez mayorista, y luego informa el costo total, las comisiones, el tiempo de liquidación, el slippage y una puntuación de ruta, sin custodiar ni mover fondos. Las cotizaciones permanecen etiquetadas como Sandbox hasta que se conecte un socio con licencia. La ejecución no forma parte de este producto. Meridian no ejecuta ni delega la liquidación.",
-    "pricingLine": "precios {dataset} · tasas {rates} · {count} proveedores"
+    "title": "Clasifique cada ruta que su dinero podría tomar, antes de que se mueva.",
+    "lede": "Meridian interpreta una intención financiera, compara rutas bancarias, FX, stablecoins y liquidez, verifica cumplimiento y devuelve la decisión de mejor ejecución. Sus socios con licencia liquidan.",
+    "pricingLine": "precios {dataset} · tasas {rates} · {count} proveedores",
+    "eyebrow": "Infraestructura de orquestación financiera con IA",
+    "ctaPrimary": "Empezar en el sandbox",
+    "ctaSecondary": "Leer la documentación",
+    "noncustodialNote": "No custodial por diseño — nunca retiene fondos ni claves, ni mueve dinero en su nombre.",
+    "trustLine": "Para fintechs, plataformas y tesorerías que operan entre fronteras",
+    "model": {
+      "heading": "Una capa, tres funciones",
+      "sub": "Meridian está sobre cada rail y hace tres cosas — deliberadamente no la cuarta: nunca ejecuta ni retiene.",
+      "discover": {
+        "title": "Discover",
+        "body": "Encuentre cada ruta viable entre rails y normalice sus cotizaciones en un modelo comparable.",
+        "bullet1": "Descubrimiento de proveedores",
+        "bullet2": "Normalización de cotizaciones",
+        "bullet3": "Búsqueda en el grafo de rutas"
+      },
+      "decide": {
+        "title": "Decide",
+        "body": "Puntúe rutas por coste, velocidad, liquidez, fiabilidad y cumplimiento, y devuelva la mejor.",
+        "bullet1": "Mejor ejecución",
+        "bullet2": "Inteligencia de cumplimiento",
+        "bullet3": "Inteligencia de liquidez"
+      },
+      "coordinate": {
+        "title": "Coordinate",
+        "body": "Devuelva una intención de ejecución firmada que sus sistemas y socios con licencia puedan verificar.",
+        "bullet1": "Intención de ejecución firmada",
+        "bullet2": "Orquestación de liquidación",
+        "bullet3": "Conciliación y auditoría"
+      }
+    },
+    "features": {
+      "heading": "Capacidades de la plataforma",
+      "item1": {
+        "title": "Grafo de rutas universal",
+        "body": "Fiat, bancos, FX, stablecoins, cadenas y liquidez en un grafo normalizado."
+      },
+      "item2": {
+        "title": "Mejor ejecución explicada",
+        "body": "Clasificado por coste total, velocidad, liquidez, fiabilidad y cumplimiento — con razonamiento."
+      },
+      "item3": {
+        "title": "Inteligencia de cumplimiento",
+        "body": "Jurisdicción, elegibilidad y screening verificados antes de devolver una ruta."
+      },
+      "item4": {
+        "title": "Intención de ejecución firmada",
+        "body": "Una recomendación verificable — no una instrucción de mover fondos."
+      },
+      "item5": {
+        "title": "Inteligencia de liquidez",
+        "body": "Profundidad y calidad puntuadas en venues, alimentando descubrimiento multi-salto."
+      },
+      "item6": {
+        "title": "Conciliación y auditoría",
+        "body": "Cada decisión trazable de extremo a extremo, con auditoría completa."
+      }
+    },
+    "stats": {
+      "stat1": "14+ tipos de rail en un grafo",
+      "stat2": "Puntuación de mejor ejecución en 6 ejes",
+      "stat3": "1 API: intención → ruta → decisión",
+      "stat4": "0 fondos de clientes retenidos"
+    },
+    "rails": {
+      "heading": "Cada rail, en los mismos ejes",
+      "tagSandbox": "EN SANDBOX",
+      "tagPartnerRequired": "SOCIO REQUERIDO",
+      "tagPlanned": "PLANIFICADO",
+      "tradfi": {
+        "title": "Finanzas tradicionales",
+        "body": "Transferencia bancaria, FX, PSPs, banca corresponsal."
+      },
+      "stablecoin": {
+        "title": "Stablecoin",
+        "body": "Fiat ↔ stablecoin, on/off-ramp, stable a stable."
+      },
+      "defi": {
+        "title": "Liquidez DeFi",
+        "body": "DEX, AMM y agregadores, puntuados por profundidad."
+      },
+      "liquidity": {
+        "title": "Proveedores de liquidez",
+        "body": "Liquidez mayorista para descubrimiento multi-salto."
+      },
+      "tokenized": {
+        "title": "Activos tokenizados",
+        "body": "Solo registro y routing. Emisión con socios."
+      },
+      "treasury": {
+        "title": "Productos de tesorería",
+        "body": "MMF e instrumentos de tesorería como destinos enrutables."
+      }
+    },
+    "how": {
+      "heading": "Cómo se resuelve una ruta",
+      "step1": {
+        "title": "Entender la intención",
+        "body": "Lenguaje natural o solicitud estructurada se convierte en intención financiera normalizada."
+      },
+      "step2": {
+        "title": "Buscar en el grafo",
+        "body": "Rutas mono- y multi-salto entre tipos de rail — rutas que un solo proveedor no cotizaría."
+      },
+      "step3": {
+        "title": "Comprobar cada salto",
+        "body": "Jurisdicción, elegibilidad y liquidez validadas; saltos inelegibles eliminados antes de puntuar."
+      },
+      "step4": {
+        "title": "Devolver la decisión",
+        "body": "La ruta de mejor ejecución vuelve como intención firmada — su socio liquida."
+      }
+    },
+    "customers": {
+      "heading": "Quién construye sobre Meridian",
+      "fintechs": {
+        "title": "Fintechs",
+        "body": "Incruste la capa de decisión para ofrecer la mejor ruta sin integrar cada rail."
+      },
+      "platforms": {
+        "title": "Plataformas y marketplaces",
+        "body": "Enrute en nombre de sus usuarios entre fronteras, con cumplimiento prechequeado por corredor."
+      },
+      "enterprises": {
+        "title": "Empresas y tesorerías",
+        "body": "Optimice flujos transfronterizos y de tesorería por coste total y tiempo de liquidación."
+      }
+    },
+    "dev": {
+      "heading": "Una API, cada rail",
+      "body": "Envíe una intención, reciba una ruta puntuada y firmada. El sandbox no requiere fondos ni licencia.",
+      "cta": "Abrir explorador API",
+      "codeSample": "POST /api/v1/quote\n{\n  \"sourceAsset\": \"USD\",\n  \"destinationAsset\": \"KRW\",\n  \"amount\": \"100000.00\"\n}\n→ rutas puntuadas + intención firmada"
+    },
+    "finalCta": {
+      "title": "Enrute su primera intención hoy",
+      "body": "Active un sandbox, envíe una intención y vea resolver el grafo. No se mueven fondos — la ejecución queda con socios con licencia.",
+      "button": "Empezar en el sandbox"
+    }
   },
   "footer": {
     "legalNav": "Legal",
@@ -37,7 +175,14 @@
     "defiNotice": "Cotizaciones indicativas de Sandbox. Añadir Ethereum, Base, Arbitrum o Solana es una fila de registro más un adaptador: el motor de enrutamiento no se conecta a la cadena. Sin RPC, sin claves, sin custodia, sin swap enviado.",
     "stablecoinsNotice": "Cotizaciones indicativas de Sandbox. Añadir otra stablecoin es una fila de registro más tasas de adaptador: el motor de enrutamiento no cambia por ticker. Sin RPC, sin claves, sin custodia.",
     "developersNotice": "El id de organización se toma del principal verificado. Las claves de API nunca se almacenan en texto plano. Se aplican límites de tasa. Los registros de solicitudes ocultan los secretos.",
-    "legalNotice": "Meridian es sin custodia. Nunca retiene fondos de clientes, claves privadas ni monederos, y no ejecuta ni delega la liquidación. Las cotizaciones son indicativas."
+    "legalNotice": "Meridian es sin custodia. Nunca retiene fondos de clientes, claves privadas ni monederos, y no ejecuta ni delega la liquidación. Las cotizaciones son indicativas.",
+    "tagline": "La capa de decisión no custodial sobre los rails financieros globales.",
+    "disclosure": "Meridian es no custodial. Solo compara rutas — no retiene fondos, claves ni wallets de clientes, no actúa como principal ni ejecuta o delega liquidación. Las cotizaciones son indicativas y no vinculantes; opere directamente con su proveedor elegido.",
+    "marketingNotice": "Meridian es no custodial. Compara rutas y devuelve decisiones — no retiene fondos, claves ni wallets de clientes, no actúa como principal ni ejecuta o delega liquidación. Las páginas de precios y empresa describen uso y suscripción; el precio por valor de transacción no se ofrece hasta cumplir requisitos legales aplicables.",
+    "trustNotice": "Meridian es no custodial. Las páginas de confianza describen cómo comparamos rutas y protegemos datos — no retenemos fondos, claves ni wallets, no actuamos como principal ni ejecutamos o delegamos liquidación. Las cotizaciones son indicativas y no vinculantes.",
+    "resourcesNotice": "Meridian es no custodial. Los recursos son solo educativos — no retiene fondos, claves ni wallets, no actúa como principal ni ejecuta o delega liquidación.",
+    "devDocsNotice": "Meridian es no custodial. La documentación para desarrolladores describe el uso de la API para descubrimiento y decisiones — no habilita custodia, generación de wallets ni liquidación a través de Meridian.",
+    "howItWorksNotice": "Meridian es no custodial. Esta página explica cómo se resuelven las rutas — Meridian devuelve una decisión firmada; los socios con licencia liquidan. No se retienen fondos, claves ni wallets."
   },
   "common": {
     "emDash": "—",
@@ -267,9 +412,9 @@
     "overviewLede": "Figures below are computed from quotes and transaction requests stored for {name}. Another organization's rows never enter these queries.",
     "noQuotesStored": "No quotes stored yet",
     "noQuotesStoredBody": "Compare a route while signed in, or load the sandbox demo tenant, and the metrics and charts will fill from that stored data.",
-    "revenueLinkLead": "Quoted platform fees, partner commission and take rate live on",
+    "revenueLinkLead": "Quoted platform fees, take rate and the revenue lifecycle live on",
     "revenueLink": "Revenue",
-    "revenueLinkTrail": ". Those figures are attributed, not collected.",
+    "revenueLinkTrail": ". Those figures are quoted or attributed, not collected.",
     "metricsAria": "Dashboard metrics",
     "metricVolume": "Total quoted volume",
     "metricVolumeHint": "Sum of transaction requests, counted once per payment rather than once per quote.",
@@ -311,11 +456,11 @@
     "colAvgCost": "Avg cost",
     "colAvgSettlement": "Avg settlement",
     "revenueTitle": "Revenue",
-    "revenueLede": "Multi-rail monetization for {name}. Figures are quoted platform fees, not settlements. Provider cost, partner commission, gross profit and take rate use Decimal arithmetic. Another organization's events never enter these totals.",
+    "revenueLede": "Multi-rail monetization for {name}. Figures are quoted platform fees, not settlements. Every amount is computed with Decimal arithmetic over integer minor units. A pricing shape that is switched off is absent from these totals rather than shown as zero. Another organization's events never enter them.",
     "noRevenue": "No quoted revenue yet",
     "noRevenueBody": "Compare a route while signed in, quote an agent payment, or load the sandbox demo tenant. The ledger records attributed fees only — funds never move.",
     "invoicesTitle": "Invoices",
-    "invoicesLede": "Monthly platform-fee invoices copied from recorded monetization snapshots. Issued is not collected: payment collection is deferred until a legal entity, tax handling, and payment mechanism are confirmed. Realized revenue stays false.",
+    "invoicesLede": "Monthly platform-fee invoices copied from recorded monetization snapshots. Issued is not collected: each invoice carries its own collection status, and only one collected against a processor reference is cash received.",
     "noInvoices": "No invoices issued yet",
     "noInvoicesBody": "Invoices are generated at month-end from execution-intent and subscription snapshots. Route quotes are never billed. Nothing here means cash was received.",
     "colIssued": "Issued",
@@ -354,7 +499,7 @@
     "agentPayments": "Payments",
     "agentPolicies": "Policies",
     "agentDashAria": "{name} dashboard",
-    "invoiceDetailLede": "Line items copy platform revenue from named monetization snapshots. Totals use integer minor units. Tax is deferred (always zero). Collection is deferred — this invoice is not cash received and is not realized revenue.",
+    "invoiceDetailLede": "Line items copy platform revenue from named monetization snapshots. Totals use integer minor units and tax is always zero. This invoice is cash received, and counts toward realized revenue, only if its collection status reads collected and a processor reference stands behind it.",
     "subtotal": "Subtotal",
     "tax": "Tax",
     "taxHint": "{method} — no jurisdiction rates in this phase.",
@@ -493,12 +638,472 @@
     "stablecoinsTitle": "Enrutamiento de stablecoins",
     "stablecoinsLede": "Cotice USDC y USDT frente a monedas fiat y entre sí. Meridian nunca retiene el token, nunca se conecta a la mainnet y nunca crea un monedero. Las rutas se descubren, cotizan y comparan aquí; la ejecución queda con un proveedor externo.",
     "developersTitle": "API de enrutamiento financiero",
-    "developersLede": "Cotización versionada, búsqueda de rutas y catálogos bajo <code>{path}</code>. Autentíquese con una sesión o una clave de API de la organización. Las claves están hasheadas, tienen alcance, caducan y son revocables. <code>{intent}</code> registra una intención de ejecución: nunca mueve dinero."
+    "developersLede": "Cotización versionada, búsqueda de rutas y catálogos bajo <code>{path}</code>. Autentíquese con una sesión o una clave de API de la organización. Las claves están hasheadas, tienen alcance, caducan y son revocables. <code>{intent}</code> registra una intención de ejecución: nunca mueve dinero.",
+    "pricing": {
+      "heroTitle": "Precios según el uso, no sus transacciones.",
+      "heroLede": "Meridian cobra por la capa de decisión — uso de API, suscripciones y acuerdos enterprise. El precio por valor de transacción no se ofrece hasta cumplir requisitos legales y de socios aplicables.",
+      "note": "Los precios mostrados son indicativos y pueden cambiar. Meridian no toma un porcentaje del valor de la transacción.",
+      "sandboxName": "Sandbox",
+      "sandboxDesc": "Gratis. Compare rutas, explore el gráfico, pruebe la API. Sin fondos ni licencia.",
+      "starterName": "Starter",
+      "starterDesc": "Por uso. Medición por llamada para cotizaciones, rutas y comprobaciones de cumplimiento.",
+      "growthName": "Growth",
+      "growthDesc": "Suscripción + uso. Cuotas más altas, inteligencia de enrutamiento prioritaria.",
+      "enterpriseName": "Enterprise",
+      "enterpriseDesc": "Personalizado. Acuerdos de volumen, soporte dedicado, corredores a medida.",
+      "indicative": "Indicativo",
+      "disclaimerTitle": "Precios indicativos únicamente",
+      "disclaimerBody": "Planes y tarifas mostrados son ilustrativos y pueden cambiar. Meridian cobra por la capa de decisión — no un porcentaje del valor de transacción. El precio por valor de transacción permanece restringido hasta cumplir requisitos aplicables.",
+      "ctaTitle": "Empiece a comparar rutas",
+      "ctaBody": "Active un sandbox para explorar el gráfico y la API sin coste. Para volumen enterprise o corredores a medida, hable con ventas.",
+      "ctaPrimary": "Empezar en el sandbox",
+      "ctaSecondary": "Hablar con ventas"
+    },
+    "about": {
+      "heroTitle": "Construimos la capa de decisión para el movimiento global de dinero.",
+      "heroLede": "Bancos, FX, stablecoins, DeFi y activos tokenizados resuelven un fragmento del movimiento de dinero — en su propio silo. Meridian los conecta como un grafo de rutas y devuelve el mejor camino, sin convertirse en ninguno de ellos.",
+      "missionTitle": "Misión",
+      "missionBody": "Permanecemos no custodiales a propósito: la decisión es nuestra, la ejecución queda con socios con licencia. Meridian compara cada ruta viable, las puntúa en un modelo único y devuelve una recomendación firmada que sus sistemas pueden verificar.",
+      "principlesTitle": "Principios",
+      "principle1Title": "No custodial",
+      "principle1Body": "Meridian nunca retiene fondos, claves privadas ni wallets de clientes. Devuelve decisiones; los socios regulados liquidan bajo sus propias autorizaciones.",
+      "principle2Title": "Determinista",
+      "principle2Body": "El motor de enrutamiento es la fuente de verdad. Cotizaciones, puntuaciones e intenciones firmadas son reproducibles — nunca fabricadas fuera de los datos del proveedor.",
+      "principle3Title": "Neutral",
+      "principle3Body": "Meridian no actúa como principal, no favorece un rail ni toma un porcentaje del valor de transacción. La mejor ejecución se puntúa en ejes comparables para cada proveedor.",
+      "teamTitle": "Equipo",
+      "teamBody": "Los perfiles del equipo y biografías de liderazgo aparecerán aquí cuando los publiquemos."
+    },
+    "careers": {
+      "heroTitle": "Construya la capa que hace interoperable la finanza.",
+      "heroLede": "Somos un equipo pequeño que construye infraestructura de orquestación financiera. Si le importan la corrección, el diseño consciente de la regulación y abstracciones limpias, hablemos.",
+      "whyTitle": "Por qué Meridian",
+      "whyBody": "Trabajará en descubrimiento de rutas, inteligencia de cumplimiento e intenciones de ejecución firmadas — la capa de decisión sobre bancos, FX, stablecoins y liquidez. Enviamos con claridad regulatoria: Meridian compara y recomienda; los socios liquidan.",
+      "rolesTitle": "Vacantes abiertas",
+      "rolesBody": "Las posiciones abiertas se listarán aquí cuando contratemos. Contáctenos si aún no ve un encaje.",
+      "workTitle": "Cómo trabajamos",
+      "workBody": "Remoto-friendly, async por defecto, con preferencia por diseño escrito y sistemas deterministas. Incrementos pequeños y correctos sobre lanzamientos masivos."
+    },
+    "partners": {
+      "heroTitle": "La ejecución queda con socios con licencia. Ese es el punto.",
+      "heroLede": "Meridian devuelve decisiones; bancos regulados, instituciones de pago, proveedores FX e infraestructura de liquidación las ejecutan bajo sus propias licencias. Si opera infraestructura financiera con licencia, integrarse como socio de ejecución de Meridian expone sus rails ante cada intento enrutado.",
+      "typesTitle": "Tipos de socio",
+      "type1Title": "Bancos",
+      "type1Body": "Compensación corresponsal y local para corredores fiat. Las cotizaciones alimentan el grafo; la liquidación permanece bajo su licencia.",
+      "type2Title": "Proveedores de servicios de pago",
+      "type2Body": "PSP e instituciones de pago que pueden cotizar rails de pago y cobro para enrutamiento embebido.",
+      "type3Title": "Proveedores FX",
+      "type3Body": "Mesas mayoristas y minoristas cuyas tasas se normalizan en el modelo de coste comparable.",
+      "type4Title": "Infraestructura stablecoin",
+      "type4Body": "Rampas on/off y venues que cotizan legs fiat ↔ stablecoin y stable ↔ stable.",
+      "type5Title": "Infraestructura de liquidación",
+      "type5Body": "Rails de liquidación y tesorería con licencia que ejecutan la intención firmada que Meridian devuelve.",
+      "integrationTitle": "Cómo funciona la integración",
+      "integrationBody": "Los socios exponen metadatos de cotización y elegibilidad a Meridian. Descubrimos, puntúamos y devolvemos una intención de ejecución firmada; sus sistemas o APIs ejecutan bajo sus autorizaciones. Meridian nunca retiene fondos ni claves.",
+      "ctaTitle": "Convertirse en socio",
+      "ctaBody": "Cuéntenos sobre sus rails y corredores con licencia. Haremos seguimiento sobre integración técnica y términos comerciales.",
+      "ctaPrimary": "Contactar partnerships"
+    },
+    "brand": {
+      "heroTitle": "Marca y logos de Meridian.",
+      "heroLede": "Descargue logos, tokens de color y guía tipográfica para prensa, socios e incrustaciones. No implique custodia, liquidación o licencias más allá de lo que Meridian proporciona.",
+      "logosTitle": "Logos",
+      "logosBody": "Wordmark e iconos principales disponibles bajo solicitud. Mantenga espacio libre igual a la altura del icono «M». No distorsione, recoloque fuera de la paleta ni coloque sobre fondos recargados.",
+      "primaryColor": "Primary — violeta",
+      "accentColor": "Accent — ámbar (solo acento de marca)",
+      "recommendColor": "Recommend — verde de éxito para rutas clasificadas",
+      "typeTitle": "Tipografía",
+      "typeBody": "Titulares: Fraunces (latín). Cuerpo y UI: Inter. Locales CJK usan la pila sans CJK para titulares de display.",
+      "usageTitle": "Uso",
+      "usageBody": "Use «Meridian devuelve decisiones — los socios liquidan» al describir el producto. Nunca implique que Meridian mueve dinero, retiene wallets o ejecuta transacciones."
+    },
+    "contact": {
+      "heroTitle": "Hable con nosotros.",
+      "heroLede": "Ventas, partnerships y consultas generales. Para ayuda técnica, use el sandbox y la documentación para desarrolladores.",
+      "formName": "Nombre",
+      "formCompany": "Empresa",
+      "formMessage": "Mensaje",
+      "formHint": "Para preguntas de API y enrutamiento, use el sandbox y la referencia OpenAPI — no se requiere cuenta para comparar rutas.",
+      "formSubmit": "Enviar mensaje",
+      "formSuccess": "Gracias — recibimos su mensaje. Este formulario no crea una cuenta ni mueve fondos."
+    },
+    "solCrossBorder": {
+      "heroTitle": "Encuentre el mejor corredor para cada intento transfronterizo.",
+      "heroLede": "Compare rutas bancarias FX, stablecoin y liquidez para el mismo corredor en un modelo comparable — coste total, tiempo de liquidación y elegibilidad de cumplimiento lado a lado. Meridian devuelve la mejor ruta; su socio con licencia liquida.",
+      "section1Title": "El problema",
+      "section1Body": "Los pagos transfronterizos están fragmentados: FX bancario, rampas stablecoin y liquidez mayorista cotizan en formatos propios. Los equipos comparan hojas de cálculo manualmente o integran proveedores uno a uno.",
+      "section2Title": "Cómo Meridian enruta",
+      "section2Body": "Envíe un intento. Meridian busca en el grafo, normaliza cotizaciones, comprueba jurisdicción y elegibilidad, y puntúa cada ruta viable por coste, velocidad, liquidez, fiabilidad y cumplimiento.",
+      "section3Title": "Lo que obtiene",
+      "section3Body": "Una decisión clasificada y una intención de ejecución firmada que sus sistemas y socios con licencia pueden verificar. Meridian nunca retiene fondos ni ejecuta el pago.",
+      "ctaTitle": "Pruebe un intento transfronterizo",
+      "ctaBody": "Use el sandbox para comparar corredores sin fondos ni licencia.",
+      "ctaPrimary": "Empezar en el sandbox",
+      "ctaSecondary": "Leer la documentación API"
+    },
+    "solTreasury": {
+      "heroTitle": "Mejor ejecución para flujos de tesorería.",
+      "heroLede": "Enrute movimientos de tesorería entre rails para el menor coste total y tiempo de liquidación predecible, con cumplimiento prechequeado por jurisdicción. No custodial — Meridian nunca retiene fondos de tesorería.",
+      "section1Title": "Casos de uso",
+      "section1Body": "Financie filiales, reequilibre pools de liquidez y mueva entre tesorerías fiat y stablecoin — cada ruta puntuada en los mismos ejes.",
+      "section2Title": "Cómo puntúa",
+      "section2Body": "Coste total vs mid-market, liquidación p50/p95, profundidad de liquidez, fiabilidad del proveedor y cumplimiento del corredor alimentan un único ranking de mejor ejecución.",
+      "section3Title": "Control y auditoría",
+      "section3Body": "Cada decisión es trazable con intención firmada y auditoría. La ejecución queda con sus socios bancarios y de liquidación con licencia.",
+      "ctaTitle": "Optimice el enrutamiento de tesorería",
+      "ctaBody": "Compare corredores de tesorería en el sandbox antes de conectar socios de producción.",
+      "ctaPrimary": "Empezar en el sandbox",
+      "ctaSecondary": "Hablar con ventas"
+    },
+    "solFintechs": {
+      "heroTitle": "Integre la capa de decisión. Omita integrar cada rail.",
+      "heroLede": "Una API ofrece enrutamiento de mejor ejecución en bancos, FX, stablecoins y liquidez — sin integrar cada proveedor ni tocar fondos de clientes. Meridian devuelve la decisión; los proveedores con licencia de sus usuarios liquidan.",
+      "section1Title": "Lo que integra",
+      "section1Body": "Cotización, búsqueda de rutas y comprobaciones de cumplimiento vía una API. Muestre rutas clasificadas e intenciones firmadas en su UI o flujos de agentes.",
+      "section2Title": "Modelo no custodial",
+      "section2Body": "Meridian nunca retiene fondos, claves ni wallets de clientes. Sus usuarios operan con el proveedor elegido; usted queda fuera de custodia y liquidación.",
+      "section3Title": "Inicio rápido para desarrolladores",
+      "section3Body": "Cree un tenant sandbox, envíe un intento a /api/v1/quote e inspeccione rutas puntuadas. No se mueven fondos — los socios liquidan al conectar ejecución con licencia.",
+      "ctaTitle": "Construya sobre Meridian",
+      "ctaBody": "Obtenga claves API y explore el hub de desarrolladores.",
+      "ctaPrimary": "Obtener claves API",
+      "ctaSecondary": "Abrir explorador API"
+    },
+    "solPlatforms": {
+      "heroTitle": "Enrute en nombre de sus usuarios, entre fronteras.",
+      "heroLede": "Ofrezca a vendedores, creadores o comerciantes de marketplace la mejor ruta para cada intento de pago, con cumplimiento prechequeado por corredor. Meridian decide; socios con licencia liquidan.",
+      "section1Title": "Casos de marketplace",
+      "section1Body": "Pagos a vendedores, remesas a creadores y liquidaciones a comerciantes — cada intento comparado en rails bancarios, FX y stablecoin para el corredor destino.",
+      "section2Title": "Cumplimiento por corredor",
+      "section2Body": "Jurisdicción, elegibilidad del proveedor y screening se validan antes de devolver una ruta. Los saltos inelegibles se eliminan, no se ocultan tras una cotización genérica.",
+      "section3Title": "Lo que ven sus usuarios",
+      "section3Body": "Una ruta clasificada transparente con razonamiento mostrado. La intención firmada es una recomendación — la ejecución queda con el proveedor con licencia que usted o su usuario elige.",
+      "ctaTitle": "Enrute pagos de marketplace",
+      "ctaBody": "Pruebe cobertura de corredores en el sandbox y hable con nosotros sobre integración de plataforma.",
+      "ctaPrimary": "Empezar en el sandbox",
+      "ctaSecondary": "Hable con nosotros"
+    },
+    "solEnterprises": {
+      "heroTitle": "Cobertura global de corredores, una capa de decisión.",
+      "heroLede": "Estandarice cómo su organización elige rutas financieras en todo el mundo — un modelo comparable en cada rail, con auditoría y conciliación integradas.",
+      "section1Title": "Cobertura",
+      "section1Body": "Bancos, FX, stablecoins, liquidez DeFi y registros tokenizados en un grafo normalizado — equipos de tesorería y operaciones comparan manzanas con manzanas.",
+      "section2Title": "Auditoría y control",
+      "section2Body": "Intenciones de ejecución firmadas, puntuación reproducible y registros de auditoría por organización. Cada decisión trazable; sin overrides silenciosos del modelo.",
+      "section3Title": "Consistencia operativa",
+      "section3Body": "Una API y capa de política para filiales y unidades de negocio. Los socios con licencia ejecutan; Meridian nunca retiene fondos enterprise.",
+      "ctaTitle": "Estandarice la selección de rutas",
+      "ctaBody": "Evalúe cobertura de corredores con su equipo en el sandbox o hable con ventas sobre términos enterprise.",
+      "ctaPrimary": "Hablar con ventas",
+      "ctaSecondary": "Empezar en el sandbox"
+    },
+    "trustNonCustodial": {
+      "heroTitle": "Por qué Meridian nunca retiene sus fondos.",
+      "heroLede": "Meridian es una capa de decisión, no un movedor de dinero. Compara rutas y devuelve una intención de ejecución firmada — una recomendación. No retiene fondos, claves privadas ni wallets de clientes; no actúa como principal; y no ejecuta ni delega liquidación. Socios regulados y con licencia realizan cualquier movimiento real de dinero bajo sus propias autorizaciones.",
+      "doesTitle": "Lo que Meridian hace",
+      "does1Title": "Discover",
+      "does1Body": "Encuentre cada ruta viable entre rails y normalice sus cotizaciones en un modelo comparable.",
+      "does2Title": "Decide",
+      "does2Body": "Puntúe rutas por coste, velocidad, liquidez, fiabilidad y cumplimiento, y devuelva la mejor.",
+      "does3Title": "Coordinate",
+      "does3Body": "Devuelva una intención de ejecución firmada que sus sistemas y socios con licencia puedan verificar y usar.",
+      "neverTitle": "Lo que Meridian nunca hace",
+      "never1": "Retener fondos de clientes",
+      "never2": "Controlar claves privadas o wallets",
+      "never3": "Ejecutar transacciones en su nombre",
+      "never4": "Liquidar o delegar liquidación",
+      "never5": "Emitir tokens o proporcionar custodia",
+      "boundaryTitle": "El límite de ejecución",
+      "boundaryBody": "Meridian devuelve una intención de ejecución firmada — una recomendación. El cliente o un socio con licencia inicia cualquier movimiento real de dinero bajo su propia autorización. Meridian nunca transmite fondos en su nombre.",
+      "signatureTitle": "Semántica de la firma",
+      "signatureBody": "La firma atestigua que la recomendación es auténtica e inalterada. No autoriza un movimiento de fondos, aprueba una transacción ni sustituye el proceso de liquidación de su socio.",
+      "ctaTitle": "Vea cómo se resuelve una ruta",
+      "ctaBody": "Recorra los cuatro pasos del intento a la decisión firmada — luego explore el grafo de rutas en el sandbox.",
+      "ctaPrimary": "Vea cómo se resuelve una ruta",
+      "ctaSecondary": "Explore el grafo de rutas"
+    },
+    "trustSecurity": {
+      "heroTitle": "Seguridad y protección de datos.",
+      "heroLede": "Meridian protege datos de organización, credenciales y auditoría. No retiene fondos, claves ni wallets de clientes, ni reclama certificaciones no obtenidas.",
+      "section1Title": "Cifrado y transporte",
+      "section1Body": "El tráfico API usa TLS. Las credenciales se hashean con scrypt salado antes del almacenamiento; los secretos en texto plano se muestran una sola vez al emitirse.",
+      "section2Title": "Aislamiento por organización",
+      "section2Body": "Cotizaciones, transacciones, agentes y eventos de auditoría están acotados a la organización autenticada. Los identificadores cross-tenant no aparecen en consultas del panel.",
+      "section3Title": "Auditoría y determinismo",
+      "section3Body": "Los registros de solicitud redactan secretos. Las decisiones de enrutamiento son reproducibles desde entradas almacenadas — el motor determinista es la fuente de verdad, no un modelo generativo."
+    },
+    "resourcesBlog": {
+      "heroTitle": "Blog",
+      "heroLede": "Actualizaciones de producto, patrones de orquestación y notas del sector del equipo Meridian.",
+      "placeholderDate": "Próximamente",
+      "placeholderTitle": "Primeras publicaciones en camino",
+      "placeholderBody": "Publicaremos aquí — sin artículos retroactivos fabricados. Suscríbase vía contacto para aviso del primer post."
+    },
+    "resourcesPlaybook": {
+      "heroTitle": "El playbook de orquestación financiera.",
+      "heroLede": "Cómo los equipos enrutan entre rails fragmentados sin convertirse en movedores de dinero.",
+      "placeholderTitle": "Playbook — próximamente",
+      "placeholderBody": "Guía estructurada sobre diseño de intentos, selección de corredores y hand-off a socios. Contenido tras revisión — sin capítulos placeholder presentados como terminados."
+    },
+    "resourcesWebinars": {
+      "heroTitle": "Webinars",
+      "heroLede": "Sesiones en vivo y grabadas sobre enrutamiento multi-rail, cumplimiento e integración.",
+      "placeholderDate": "Calendario por definir",
+      "placeholderTitle": "Primera sesión anunciada pronto",
+      "placeholderBody": "Listaremos fechas reales y enlaces de registro aquí. Sin grabaciones o asistentes fabricados."
+    },
+    "devReference": {
+      "heroTitle": "Referencia API.",
+      "heroLede": "Documentación renderizada para cotización, búsqueda de rutas, catálogos y endpoints de agentes. Meridian devuelve decisiones — no mueve fondos.",
+      "sectionTitle": "Documentación impulsada por OpenAPI",
+      "sectionBody": "La referencia se genera del esquema OpenAPI en vivo. Úsela con el explorador API para enviar intentos e inspeccionar rutas puntuadas en el sandbox.",
+      "openapiLink": "Abrir JSON OpenAPI"
+    },
+    "devSdks": {
+      "heroTitle": "Bibliotecas cliente.",
+      "heroLede": "SDKs oficiales para integrar cotización y descubrimiento de rutas. La liquidación queda con sus socios con licencia.",
+      "listTitle": "Bibliotecas disponibles y planificadas",
+      "sdk1Title": "TypeScript / JavaScript",
+      "sdk1Body": "Cliente browser y Node para APIs de cotización y rutas — planificado; use fetch contra OpenAPI hasta publicación.",
+      "sdk2Title": "Python",
+      "sdk2Body": "Cliente servidor para cotización por lotes y automatización de tesorería — planificado.",
+      "sdk3Title": "Go",
+      "sdk3Body": "Cliente de baja latencia para servicios de enrutamiento de plataforma — planificado."
+    },
+    "devChangelog": {
+      "heroTitle": "Novedades.",
+      "heroLede": "Notas de versión de la API de enrutamiento y la web app. Entradas al publicar — nunca fabricadas.",
+      "emptyBody": "Aún no hay releases publicados. Vuelva tras el próximo release etiquetado."
+    },
+    "devStatus": {
+      "heroTitle": "Estado del sistema.",
+      "heroLede": "Estado operativo de la API pública de enrutamiento. Cotizaciones sandbox indicativas; sin liquidación a través de Meridian.",
+      "apiLabel": "API de enrutamiento",
+      "statusOperational": "Operativo",
+      "statusUnavailable": "No disponible",
+      "modeLabel": "Modo",
+      "engineLabel": "Versión del motor",
+      "unavailableBody": "La API de enrutamiento no es alcanzable desde este entorno. El estado refleja solo comprobaciones de salud en vivo — no un SLA histórico."
+    },
+    "howItWorks": {
+      "heroTitle": "Cómo se resuelve una ruta",
+      "heroLede": "Del intento en lenguaje natural o estructurado a la decisión de mejor ejecución firmada — cuatro pasos. Meridian compara y recomienda; socios con licencia liquidan.",
+      "ctaTitle": "Pruébelo en el sandbox",
+      "ctaBody": "Envíe un intento y vea resolver el grafo de rutas. No se mueven fondos — la ejecución queda con socios con licencia.",
+      "ctaPrimary": "Empezar en el sandbox",
+      "ctaSecondary": "Explore el grafo de rutas"
+    }
   },
   "legal": {
     "termsTitle": "Términos de uso",
     "privacyTitle": "Privacidad",
     "draftBanner": "Borrador · sin vigor · actualizado {date}",
     "aside": "Esta página describe cómo funciona Meridian hoy. Es una divulgación de producto pendiente de revisión por asesoría legal, no un contrato vinculante, un aviso de privacidad en vigor ni una licencia. No lo trate como términos que haya aceptado. La asesoría legal debe reemplazar este borrador antes de que se presente como vigente."
+  },
+  "nav": {
+    "ariaLabel": "Navegación principal",
+    "signIn": "Iniciar sesión",
+    "getKeys": "Obtener claves API",
+    "tagLive": "Live",
+    "tagSoon": "Soon",
+    "platform": {
+      "label": "Plataforma",
+      "visualTitle": "La capa de orquestación",
+      "visualBody": "Un intento, comparado en cada rail, devuelto como decisión de mejor ejecución. Meridian nunca mueve dinero.",
+      "visualLink": "Empezar en el sandbox",
+      "exploreHeading": "Explorar",
+      "railsHeading": "Rails",
+      "ctaText": "No custodial: Meridian devuelve decisiones — los socios liquidan.",
+      "ctaButton": "Cómo funciona",
+      "items": {
+        "compare": {
+          "label": "Comparar rutas",
+          "desc": "Clasifica cada ruta para un intento"
+        },
+        "multirail": {
+          "label": "Multi-rail",
+          "desc": "Banco · FX · stablecoin · liquidez"
+        },
+        "graph": {
+          "label": "Grafo de rutas",
+          "desc": "Descubrimiento multi-salto"
+        },
+        "stablecoins": {
+          "label": "Stablecoins",
+          "desc": "Enrutamiento fiat ↔ stablecoin"
+        },
+        "defi": {
+          "label": "Liquidez DeFi",
+          "desc": "Cotización DEX / AMM"
+        },
+        "agents": {
+          "label": "Agentes IA",
+          "desc": "Intentos de pago de agentes"
+        }
+      }
+    },
+    "solutions": {
+      "label": "Soluciones",
+      "usecaseHeading": "Por caso de uso",
+      "customerHeading": "Por cliente",
+      "ctaText": "¿No sabe cuál encaja? Hable con nosotros.",
+      "ctaButton": "Contáctenos",
+      "items": {
+        "crossborder": {
+          "label": "Pagos transfronterizos",
+          "desc": "Enruta corredores internacionales"
+        },
+        "treasury": {
+          "label": "Optimización de tesorería",
+          "desc": "Mejor ejecución para flujos de tesorería"
+        },
+        "agentpay": {
+          "label": "Pagos con agentes IA",
+          "desc": "Enrutamiento financiero autónomo"
+        },
+        "fintechs": {
+          "label": "Fintechs",
+          "desc": "Integra la capa de decisión"
+        },
+        "platforms": {
+          "label": "Plataformas",
+          "desc": "Enruta en nombre de sus usuarios"
+        },
+        "enterprises": {
+          "label": "Empresas",
+          "desc": "Cobertura global de corredores"
+        }
+      }
+    },
+    "developers": {
+      "label": "Desarrolladores",
+      "visualTitle": "Hub de desarrolladores",
+      "visualBody": "Integre con una API. Envíe un intento, reciba una ruta firmada y puntuada.",
+      "visualLink": "Explorador API",
+      "buildHeading": "Construir",
+      "toolkitHeading": "Kit de herramientas",
+      "ctaText": "El sandbox no requiere fondos ni licencia.",
+      "ctaButton": "Obtener claves API",
+      "items": {
+        "explorer": {
+          "label": "Explorador API",
+          "desc": "Formularios de cotización y rutas en vivo"
+        },
+        "openapi": {
+          "label": "Especificación OpenAPI",
+          "desc": "Esquema legible por máquina"
+        },
+        "reference": {
+          "label": "Referencia API",
+          "desc": "Documentación renderizada"
+        },
+        "sdks": {
+          "label": "SDKs",
+          "desc": "Bibliotecas cliente"
+        },
+        "changelog": {
+          "label": "Registro de cambios",
+          "desc": "Notas de versión"
+        },
+        "status": {
+          "label": "Estado",
+          "desc": "Estado del sistema"
+        }
+      }
+    },
+    "resources": {
+      "label": "Recursos",
+      "learnHeading": "Aprender",
+      "trustHeading": "Confianza",
+      "ctaText": "La divulgación no custodial es nuestro ancla regulatoria.",
+      "ctaButton": "Leer el modelo",
+      "items": {
+        "blog": {
+          "label": "Blog",
+          "desc": "Artículos de producto e industria"
+        },
+        "playbook": {
+          "label": "Playbook",
+          "desc": "Guía de orquestación financiera"
+        },
+        "webinars": {
+          "label": "Webinars",
+          "desc": "Sesiones en vivo y grabadas"
+        },
+        "noncustodial": {
+          "label": "Modelo no custodial",
+          "desc": "Por qué Meridian nunca retiene fondos"
+        },
+        "security": {
+          "label": "Confianza y seguridad",
+          "desc": "Cómo protegemos los datos"
+        },
+        "legal": {
+          "label": "Legal",
+          "desc": "Términos y privacidad"
+        }
+      }
+    },
+    "company": {
+      "label": "Empresa",
+      "companyHeading": "Empresa",
+      "moreHeading": "Más",
+      "ctaText": "Precios por uso y suscripción — el precio por transacción permanece restringido.",
+      "ctaButton": "Ver precios",
+      "items": {
+        "about": {
+          "label": "Acerca de",
+          "desc": "Nuestra misión"
+        },
+        "careers": {
+          "label": "Carreras",
+          "desc": "Vacantes abiertas"
+        },
+        "partners": {
+          "label": "Socios",
+          "desc": "Socios de ejecución con licencia"
+        },
+        "pricing": {
+          "label": "Precios",
+          "desc": "Uso y suscripción"
+        },
+        "brand": {
+          "label": "Marca",
+          "desc": "Logos y directrices"
+        }
+      }
+    }
+  },
+  "graph": {
+    "metaSummary": "{nodeCount} nodos · {edgeCount} aristas de conversión · motor de grafo {version}. Las aristas son indicativas y nunca ejecutables.",
+    "cardTitle": "Descubrir rutas de conversión",
+    "cardDescription": "Recorra el grafo activo–venue bajo restricciones de saltos, coste, liquidez, disponibilidad y cumplimiento. Es descubrimiento de rutas, no una cotización en vivo.",
+    "presets": {
+      "one": "Un salto · USD → KRW",
+      "two": "Dos saltos · vía USDC",
+      "three": "Tres saltos · USDC → USDT",
+      "usdcUsdt": "USDC → USDT",
+      "tightCost": "Tope de coste 1 bps"
+    },
+    "source": "Origen",
+    "destination": "Destino",
+    "maxHops": "Saltos máx.",
+    "maxCost": "Coste máx. (bps)",
+    "minLiquidity": "Liquidez mín.",
+    "placeholderUnbounded": "sin límite",
+    "placeholderNone": "ninguna",
+    "findPaths": "Buscar rutas",
+    "searching": "Buscando…",
+    "emptyTitle": "Aún no hay búsqueda de rutas",
+    "emptyBody": "Elija un corredor y un límite de saltos para recorrer USD → FX → KRW, USD → USDC → KRW o USD → USDC → USDT → KRW. Se eliminan aristas no disponibles, caras o ilíquidas.",
+    "noValidPath": "Sin ruta válida",
+    "groupsSummary": "{pathCount} recorridos reducidos a {groupCount} secuencias de activos distintas. Se muestra el recorrido más barato de cada secuencia.",
+    "recommended": "Recomendada",
+    "venueVariants": "{count} variantes de venue",
+    "pathTitle": "{rank}. {hops} salto(s) · {route}",
+    "vizTitle": "Selección de ruta",
+    "vizRecommended": "Recomendada",
+    "vizAria": "Diagrama animado de ruta para {route}",
+    "vizCaption": "Recorrido de activos indicativo — las aristas se puntúan por coste y liquidez; aquí no se ejecuta nada."
   }
 }

@@ -2,6 +2,7 @@ import {
   assertCorridorMayGoLive,
   assertRegionAllowedForScope,
   BILLING_LIVE_SCOPE_KEY,
+  PLATFORM_WIDE_SCOPES,
   parseLegalSignOff,
   type LiveEnablementRecord,
   type LiveEnablementScope,
@@ -44,11 +45,12 @@ export class LiveEnablementService {
     let scopeKey = command.scopeKey.trim();
     if (scope === 'corridor') {
       scopeKey = assertCorridorMayGoLive(scopeKey);
-    } else if (scope === 'billing') {
+    } else if (PLATFORM_WIDE_SCOPES.includes(scope)) {
       if (scopeKey !== BILLING_LIVE_SCOPE_KEY) {
-        throw new ValidationError('Billing live enablement scopeKey must be "platform".', {
-          scopeKey,
-        });
+        throw new ValidationError(
+          `Live enablement scopeKey for "${scope}" must be "${BILLING_LIVE_SCOPE_KEY}".`,
+          { scope, scopeKey },
+        );
       }
     } else if (scopeKey === '') {
       throw new ValidationError('Partner id is required.', { field: 'scopeKey' });

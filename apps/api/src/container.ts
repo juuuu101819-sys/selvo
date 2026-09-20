@@ -11,14 +11,19 @@ import {
 import {
   AgentPaymentService,
   MandateService,
+  CollectionService,
   ConfigurationError,
   ComparisonRoutingService,
+  DeferredPlatformFeeCollector,
   DEFI_ROUTING_ENGINE_VERSION,
   DefiRouter,
   ENGINE_VERSION,
   ExecutionPartnerRegistry,
   ExecutionOrchestrationService,
   ExecutionReceiptService,
+  revenueOriginEnvForMode,
+  SETTLEMENT_JWKS_PATH,
+  SettlementInstructionService,
   ReconciliationEngine,
   FinancialProviderRegistry,
   GRAPH_ENGINE_VERSION,
@@ -27,6 +32,7 @@ import {
   MultiRailRouter,
   NlRoutingService,
   PartnerInstructionService,
+  PricingShapeRegistry,
   ProviderRegistry,
   ROUTING_ENGINE_VERSION,
   RepositoryAuditLogger,
@@ -34,6 +40,7 @@ import {
   RoutingEvaluationService,
   STABLECOIN_ROUTING_ENGINE_VERSION,
   StablecoinRouter,
+  UsageMeteringService,
   buildFinancialRouteGraph,
   defaultRoutingWeights,
   noPlatformPricingResolver,
@@ -77,8 +84,14 @@ export interface AppContainer {
   readonly executionPartners: ExecutionPartnerRegistry;
   readonly executions: ExecutionOrchestrationService;
   readonly receipts: ExecutionReceiptService;
+  /** Generate-and-return settlement instructions. Deliberately has no dispatch capability. */
+  readonly settlementInstructions: SettlementInstructionService;
   readonly reconciliation: ReconciliationEngine;
   readonly nlRouting: NlRoutingService;
+  /** Per-organization API call counters, read at month end to price metered usage (§18.1). */
+  readonly usageMetering: UsageMeteringService;
+  /** Invoice collection in both modes. Live collection stays behind its own gate (§18.5). */
+  readonly collections: CollectionService;
   readonly disclaimer: string;
   readonly pricing: {
     readonly datasetVersion: string;
@@ -96,6 +109,11 @@ export interface AppContainer {
   readonly pricingResolverKind: string;
   readonly circuitBreakers: CircuitBreakerRegistry;
   readonly manualOverrides: ManualOverrideRegistry;
+  /**
+   * Which pricing shapes may currently be charged (§18.3). Hydrated from the LiveEnablement rows
+   * at boot and whenever an operator records one.
+   */
+  readonly pricingShapes: PricingShapeRegistry;
   readonly providerCredentialVault: ProviderCredentialVault;
   close(): Promise<void>;
 }
@@ -183,6 +201,17 @@ export function createContainer(options: ContainerOptions): AppContainer {
 
   const costEngine = new MultiRailCostEngine();
 
+  // Which of the five pricing shapes may reach a customer charge. High-risk shapes additionally
+  // need a current LiveEnablement row, which is hydrated in createApp; until then they stay
+  // closed, so the process never charges ad valorem on a request that arrives before the row is
+  // read. The environment schema has already rejected a high-risk flag with no referenced opinion.
+  const pricingShapes = new PricingShapeRegistry({
+    mode: config.mode,
+    flags: config.pricingShapeFlags,
+    legalOpinions: config.pricingLegalOpinions,
+    clock,
+  });
+
   const executionPartners = ExecutionPartnerRegistry.create(
     config.mode === 'sandbox' ? createSandboxExecutionPartners() : [],
     { liveEnabled: config.partnerLiveEnabled },
@@ -204,6 +233,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
     providerTimeoutMs: config.providerTimeoutMs,
     pricingResolver,
+    pricingShapes: () => pricingShapes.current(),
     executionPartners,
     railHealth,
   });
@@ -313,6 +343,23 @@ export function createContainer(options: ContainerOptions): AppContainer {
     auditLogger,
   });
 
+  // Generate-and-return only. It is given a routing store, a vault, and an audit logger -- and
+  // notably not the partner registry or PartnerInstructionService, so there is no object graph
+  // along which it could reach a dispatch call even if someone added one.
+  const settlementInstructions = new SettlementInstructionService({
+    store: persistence.settlementInstructions,
+    executionIntents: persistence.executionIntents,
+    evaluations: persistence.routingEvaluations,
+    routing,
+    vault: providerCredentialVault,
+    audit: auditLogger,
+    clock,
+    ids: uuidIdGenerator,
+    originEnv: () => revenueOriginEnvForMode(config.mode),
+    jwksUri: SETTLEMENT_JWKS_PATH,
+    ttlSeconds: config.settlementInstructionTtlSeconds,
+  });
+
   const reconciliation = new ReconciliationEngine({
     enabled: config.executionEnabled,
     sandboxMode: config.mode === 'sandbox',
@@ -342,6 +389,28 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
   });
 
+  const usageMetering = new UsageMeteringService({
+    usage: persistence.usageMeter,
+    subscriptions: persistence.subscriptions,
+    clock,
+    logger,
+  });
+
+  // No processor is contracted, so the deferred collector is the only implementation registered.
+  // It reports `collectionEnabled: false`, which keeps the live-billing gate closed regardless of
+  // how BILLING_LIVE_ENABLED is set: a flag cannot conjure a payments relationship.
+  const collections = new CollectionService({
+    mode: config.billingCollectionMode,
+    billingLiveEnabled: config.billingLiveEnabled,
+    billing: persistence.billing,
+    collections: persistence.collections,
+    liveEnablement: persistence.liveEnablement,
+    collector: new DeferredPlatformFeeCollector(),
+    clock,
+    ids: uuidIdGenerator,
+    auditLogger,
+  });
+
   const nlRouting = new NlRoutingService({
     agentPayments,
     agentPaymentStore: persistence.agentPayments,
@@ -367,6 +436,8 @@ export function createContainer(options: ContainerOptions): AppContainer {
     financialProviderCount: financialProviders.all().length,
     pricingDataset: sandbox?.pricingVersion ?? null,
     authenticationScheme: authenticator.scheme,
+    activePricingShapes: pricingShapes.current().activeShapes,
+    billingLiveEnabled: config.billingLiveEnabled,
   });
 
   return {
@@ -391,8 +462,11 @@ export function createContainer(options: ContainerOptions): AppContainer {
     executionPartners,
     executions,
     receipts,
+    settlementInstructions,
     reconciliation,
     nlRouting,
+    usageMetering,
+    collections,
     disclaimer: disclaimerFor(config.mode),
     pricing:
       sandbox === null
@@ -412,6 +486,7 @@ export function createContainer(options: ContainerOptions): AppContainer {
     pricingResolverKind: pricingResolver === noPlatformPricingResolver ? 'none' : persistence.kind,
     circuitBreakers,
     manualOverrides,
+    pricingShapes,
     providerCredentialVault,
     close: () => persistence.close(),
   };

@@ -9,6 +9,10 @@ import {
   evaluateLiveFundsMovement,
   formatCorridorKey,
   isLiveEnablementScope,
+  LIVE_ENABLEMENT_SCOPES,
+  PRICING_SHAPES,
+  PRICING_SHAPE_LABELS,
+  PRICING_SHAPE_RISK,
   parseCorridorKey,
   uuidIdGenerator,
   type LiveEnablementRecord,
@@ -29,7 +33,7 @@ const ASSET = z
 
 const enableSchema = z
   .object({
-    scope: z.enum(['corridor', 'partner', 'billing']),
+    scope: z.enum(LIVE_ENABLEMENT_SCOPES),
     scopeKey: z.string().trim().min(1).max(128),
     region: z.string().trim().min(2).max(8),
     signOff: z.unknown(),
@@ -38,7 +42,7 @@ const enableSchema = z
 
 const disableSchema = z
   .object({
-    scope: z.enum(['corridor', 'partner', 'billing']),
+    scope: z.enum(LIVE_ENABLEMENT_SCOPES),
     scopeKey: z.string().trim().min(1).max(128),
     reason: z.string().trim().min(1).max(2000),
   })
@@ -108,9 +112,25 @@ export function registerLiveEnablementRoutes(app: FastifyInstance, container: Ap
   app.get('/ops/live-enablement', async (request) => {
     requireOnboardingOperator(presentedOperatorKey(request), operatorSecret());
     const records = await service.list();
+    container.pricingShapes.hydrate(records);
+    const admission = container.pricingShapes.current();
     return envelope(request, {
       partnerLiveEnabled: container.config.partnerLiveEnabled,
       billingLiveEnabled: container.config.billingLiveEnabled,
+      billingCollectionMode: container.config.billingCollectionMode,
+      pricingShapes: {
+        activeShapes: admission.activeShapes,
+        // Every shape with the reasons it is closed, so an operator can tell a flag that is off
+        // from a flag that is on but missing its determination.
+        decisions: PRICING_SHAPES.map((shape) => ({
+          shape,
+          label: PRICING_SHAPE_LABELS[shape],
+          riskTier: PRICING_SHAPE_RISK[shape],
+          flagEnabled: admission.decisions[shape].flagEnabled,
+          active: admission.decisions[shape].active,
+          blockingReasons: admission.decisions[shape].blockingReasons,
+        })),
+      },
       records: records.map(publicRecord),
     });
   });
@@ -130,6 +150,9 @@ export function registerLiveEnablementRoutes(app: FastifyInstance, container: Ap
         nowIso: container.clock.nowIso(),
         id: uuidIdGenerator.generate('lve'),
       });
+      // A recorded pricing determination is what opens a high-risk shape, so the in-process view
+      // has to see it immediately rather than at the next restart.
+      container.pricingShapes.hydrate(await service.list());
       await container.auditLogger.record({
         type: 'live_enablement.enabled',
         actor: 'onboarding_operator',
@@ -180,6 +203,8 @@ export function registerLiveEnablementRoutes(app: FastifyInstance, container: Ap
       reason: body.reason,
       nowIso: container.clock.nowIso(),
     });
+    // Withdrawing a determination must close its shape on the next request, not eventually.
+    container.pricingShapes.hydrate(await service.list());
     await container.auditLogger.record({
       type: 'live_enablement.disabled',
       actor: 'onboarding_operator',
@@ -239,12 +264,18 @@ export function registerLiveBillingGateRoutes(app: FastifyInstance, container: A
     return container.persistence.liveEnablement.find('billing', BILLING_LIVE_SCOPE_KEY);
   }
 
+  // Bulk collection across every outstanding invoice. Per-invoice collection — the path that can
+  // actually record or charge — lives at POST /ops/billing/invoices/:id/collect; this endpoint is
+  // the gate probe for the whole-ledger run, and the gate is evaluated by the same service so the
+  // two cannot disagree about whether collection is active.
   app.post('/ops/billing/collect', async (request) => {
     requireOnboardingOperator(presentedOperatorKey(request), operatorSecret());
+    const gate = await container.collections.gate();
     const result = attemptPlatformFeeCollection({
       nowIso: container.clock.nowIso(),
       billingLiveEnabled: container.config.billingLiveEnabled,
       billingRecord: await billingRecord(),
+      collectorImplemented: gate.adapterImplemented,
     });
     await container.auditLogger.record({
       type: 'billing.collection.refused',

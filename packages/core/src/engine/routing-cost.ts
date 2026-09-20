@@ -1,3 +1,4 @@
+import type { PricingShapeAdmission } from '../domain/pricing-shape.js';
 import type { ProviderCapabilityProfile } from '../domain/provider-catalog.js';
 import type { ProviderDescriptor } from '../domain/provider.js';
 import type { SettlementEstimate, SlippageModel } from '../domain/quote.js';
@@ -30,6 +31,34 @@ import type {
 const USD_PEGGED = new Set(['USD', 'USDC', 'USDT']);
 
 export type { RoutingConfiguredSurcharge, RoutingPlatformCharge } from './routing-types.js';
+
+/**
+ * Strip every pricing shape that is not currently admitted (§18.3).
+ *
+ * Applied where the charge is built, so a disabled shape contributes exactly zero to the customer
+ * charge rather than being computed and then netted out somewhere downstream. Ad valorem covers
+ * both the platform markup and the configured infrastructure surcharge: both are a percentage of
+ * notional, which is the characteristic that makes the shape high risk.
+ *
+ * `discountBps` is left alone. It reduces the provider spread in the customer's favour and is not
+ * platform revenue, so gating it off would raise the price rather than lower it.
+ */
+export function gatePlatformChargeByShape(
+  charge: RoutingPlatformCharge,
+  admission: PricingShapeAdmission,
+): RoutingPlatformCharge {
+  const adValorem = admission.isActive('ad_valorem');
+  const flat = admission.isActive('flat_txn');
+  if (adValorem && flat) {
+    return charge;
+  }
+  return {
+    ...charge,
+    markupBps: adValorem ? charge.markupBps : new Dec(0),
+    surcharge: adValorem ? charge.surcharge : null,
+    flatFee: flat ? charge.flatFee : null,
+  };
+}
 
 export const NO_ROUTING_PLATFORM_CHARGE: RoutingPlatformCharge = {
   ruleId: null,
@@ -324,6 +353,27 @@ function applyFees(input: {
   };
 }
 
+/**
+ * Convert a configured flat platform fee into the asset it will be charged in.
+ *
+ * The signature is the enforcement mechanism for §18.2's size-independence requirement: it takes
+ * the configured fee and the target *asset*, never an amount, so no implementation of FLAT pricing
+ * can scale by `sourceAmount`, `destinationAmount`, or any other value-derived field. A
+ * $10 decision and a $10,000,000 decision must produce the identical fee; see the
+ * size-independence test beside this module.
+ */
+export function flatDecisionFee(
+  flatFee: AssetAmount | null,
+  targetAsset: string,
+): AssetAmount | null {
+  if (flatFee === null || flatFee.isZero()) {
+    return null;
+  }
+  return flatFee.asset === targetAsset
+    ? flatFee
+    : AssetAmount.fromDecimal(targetAsset, flatFee.toDecimal(), Rounding.HALF_UP);
+}
+
 function applyPlatformFees(
   platform: RoutingPlatformCharge,
   sendAmount: AssetAmount,
@@ -344,11 +394,8 @@ function applyPlatformFees(
     });
   }
 
-  if (platform.flatFee !== null && !platform.flatFee.isZero()) {
-    const flat =
-      platform.flatFee.asset === sendAmount.asset
-        ? platform.flatFee
-        : AssetAmount.fromDecimal(sendAmount.asset, platform.flatFee.toDecimal(), Rounding.HALF_UP);
+  const flat = flatDecisionFee(platform.flatFee, sendAmount.asset);
+  if (flat !== null) {
     applied.push({
       code: 'platform_flat',
       label: 'Meridian platform flat fee',

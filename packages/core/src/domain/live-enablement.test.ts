@@ -176,7 +176,7 @@ describe('live billing evaluation', () => {
     expect(evaluation.blockingReasons).toContain('BILLING_LIVE_ENABLED=false');
   });
 
-  it('still does not collect when the flag is on without a confirmed legal entity or adapter', () => {
+  it('still does not collect with a signed-off entity but no processor adapter', () => {
     const evaluation = evaluateLiveBilling({
       nowIso: NOW,
       billingLiveEnabled: true,
@@ -192,11 +192,51 @@ describe('live billing evaluation', () => {
         ),
       }),
     });
+    // The sign-off record is what attests the entity, tax handling, and processor agreement, so
+    // with a current record that fact is satisfied. The adapter is a separate, missing fact.
     expect(evaluation.billingSignedOffAndCurrent).toBe(true);
+    expect(evaluation.legalEntityConfirmed).toBe(true);
     expect(evaluation.collectionActive).toBe(false);
     expect(evaluation.collected).toBe(false);
+    expect(evaluation.adapterImplemented).toBe(false);
+    expect(evaluation.blockingReasons).toContain('collection_adapter_not_implemented');
+  });
+
+  it('treats a missing sign-off as an unconfirmed legal entity even with an adapter', () => {
+    const evaluation = evaluateLiveBilling({
+      nowIso: NOW,
+      billingLiveEnabled: true,
+      billingRecord: null,
+      collectorImplemented: true,
+    });
+    expect(evaluation.collectionActive).toBe(false);
     expect(evaluation.legalEntityConfirmed).toBe(false);
     expect(evaluation.blockingReasons).toContain('legal_entity_unconfirmed');
-    expect(evaluation.blockingReasons).toContain('collection_adapter_not_implemented');
+    expect(evaluation.blockingReasons).toContain('billing:not_enabled');
+  });
+
+  it('opens the gate only when the flag, the sign-off, and the adapter all hold', () => {
+    const evaluation = evaluateLiveBilling({
+      nowIso: NOW,
+      billingLiveEnabled: true,
+      billingRecord: record({
+        scope: 'billing',
+        scopeKey: BILLING_LIVE_SCOPE_KEY,
+        signOff: parseLegalSignOff(
+          {
+            ...signOffBody(),
+            checklistRef: requiredChecklistRef('billing', BILLING_LIVE_SCOPE_KEY),
+          },
+          { scope: 'billing', scopeKey: BILLING_LIVE_SCOPE_KEY, nowIso: NOW },
+        ),
+      }),
+      collectorImplemented: true,
+    });
+    expect(evaluation.collectionActive).toBe(true);
+    expect(evaluation.blockingReasons).toEqual([]);
+    // Even an open gate does not itself collect or move funds; it only permits an attempt.
+    expect(evaluation.collected).toBe(false);
+    expect(evaluation.fundsMoved).toBe(false);
+    expect(evaluation.realizedRevenue).toBe(false);
   });
 });

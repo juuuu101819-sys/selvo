@@ -6,6 +6,7 @@ import {
   type IssueInvoiceInput,
   type ListCursor,
   type MonetizationEvent,
+  withResolvedLifecycle,
 } from '@meridian/core';
 
 const DEFAULT_LIMIT = 50;
@@ -102,27 +103,33 @@ export class InMemoryBillingStore implements BillingStore {
         );
       }
     }
+    // Subscription and metered lines bill a period and reference no snapshot, so only the
+    // decision lines are checked for double billing.
     for (const line of input.lines) {
-      const snapshot = this.events.get(line.monetizationEventId);
+      const monetizationEventId = line.monetizationEventId;
+      if (monetizationEventId === null) {
+        continue;
+      }
+      const snapshot = this.events.get(monetizationEventId);
       if (snapshot === undefined) {
         return Promise.reject(
           new PersistenceError('Invoice line references an unknown monetization snapshot.', {
-            monetizationEventId: line.monetizationEventId,
+            monetizationEventId,
           }),
         );
       }
       if (snapshot.revenueRecognition !== 'unrealized' || snapshot.invoiceId !== null) {
         return Promise.reject(
           new PersistenceError('Monetization snapshot is already billed.', {
-            monetizationEventId: line.monetizationEventId,
+            monetizationEventId,
           }),
         );
       }
       for (const invoice of this.invoices.values()) {
-        if (invoice.lines.some((existing) => existing.monetizationEventId === line.monetizationEventId)) {
+        if (invoice.lines.some((existing) => existing.monetizationEventId === monetizationEventId)) {
           return Promise.reject(
             new PersistenceError('Monetization snapshot is already billed.', {
-              monetizationEventId: line.monetizationEventId,
+              monetizationEventId,
             }),
           );
         }
@@ -138,6 +145,8 @@ export class InMemoryBillingStore implements BillingStore {
       currency: input.currency,
       status: 'issued',
       collectionStatus: 'uncollected',
+      collectionMode: input.collectionMode,
+      collectionReference: null,
       issuerLegalEntity: 'unconfirmed',
       taxCalculation: 'deferred',
       subtotalMinorUnits: input.subtotalMinorUnits,
@@ -152,16 +161,71 @@ export class InMemoryBillingStore implements BillingStore {
     };
     this.invoices.set(invoice.id, invoice);
     for (const line of invoice.lines) {
-      const snapshot = this.events.get(line.monetizationEventId);
+      const monetizationEventId = line.monetizationEventId;
+      if (monetizationEventId === null) {
+        continue;
+      }
+      const snapshot = this.events.get(monetizationEventId);
       if (snapshot !== undefined) {
-        this.events.set(line.monetizationEventId, {
-          ...snapshot,
-          revenueRecognition: 'invoiced',
-          invoiceId: invoice.id,
-          realizedRevenue: false,
-        });
+        this.events.set(
+          monetizationEventId,
+          withResolvedLifecycle({
+            ...snapshot,
+            revenueRecognition: 'invoiced',
+            invoiceId: invoice.id,
+            realizedRevenue: false,
+          }),
+        );
       }
     }
     return Promise.resolve(structuredClone(invoice));
+  }
+
+  /**
+   * Mark an invoice collected and promote the snapshots it billed.
+   *
+   * Called only by {@link InMemoryCollectionStore} after a processor confirmation. The collection
+   * reference is written onto every snapshot on the invoice, which is what lets the revenue
+   * lifecycle resolver reach `REALIZED_REVENUE` — and, for a non-production origin, what it will
+   * still refuse to do.
+   */
+  markCollected(input: {
+    readonly invoiceId: string;
+    readonly collectionReference: string;
+  }): Invoice | null {
+    const invoice = this.invoices.get(input.invoiceId);
+    if (invoice === undefined) {
+      return null;
+    }
+    const collected: Invoice = {
+      ...invoice,
+      collectionStatus: 'collected',
+      // See {@link Invoice.collectionMode}: the field records the mode the invoice currently
+      // stands in, so an invoice issued under RECORD_ONLY that is later collected reads as LIVE.
+      collectionMode: 'LIVE',
+      collectionReference: input.collectionReference,
+    };
+    this.invoices.set(collected.id, collected);
+    for (const line of collected.lines) {
+      const monetizationEventId = line.monetizationEventId;
+      if (monetizationEventId === null) {
+        continue;
+      }
+      const snapshot = this.events.get(monetizationEventId);
+      if (snapshot === undefined) {
+        continue;
+      }
+      this.events.set(
+        monetizationEventId,
+        withResolvedLifecycle({
+          ...snapshot,
+          revenueRecognition: 'collected',
+          collectionReference: input.collectionReference,
+          invoiceId: collected.id,
+          realizedRevenue: true,
+        }),
+      );
+    }
+    return structuredClone(collected);
   }
 }

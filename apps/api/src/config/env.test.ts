@@ -261,12 +261,25 @@ describe('PA-C01 production routing and execution flags', () => {
   it('defaults BILLING_LIVE_ENABLED to false and does not collect by flag alone', () => {
     const config = loadConfig({ NODE_ENV: 'development', PLATFORM_MODE: 'sandbox' });
     expect(config.billingLiveEnabled).toBe(false);
+    expect(config.billingLegalOpinion).toBeNull();
     const enabled = loadConfig({
       NODE_ENV: 'development',
       PLATFORM_MODE: 'sandbox',
       BILLING_LIVE_ENABLED: 'true',
+      BILLING_LEGAL_OPINION_ID: 'OPN-BILLING-2026-01',
+      BILLING_JURISDICTION: 'US',
     });
     expect(enabled.billingLiveEnabled).toBe(true);
+  });
+
+  it('rejects BILLING_LIVE_ENABLED=true without a referenced legal determination', () => {
+    const issues = issuesOf({
+      NODE_ENV: 'development',
+      PLATFORM_MODE: 'sandbox',
+      BILLING_LIVE_ENABLED: 'true',
+    });
+    expect(issues).toMatch(/BILLING_LEGAL_OPINION_ID/);
+    expect(issues).toMatch(/BILLING_JURISDICTION/);
   });
 
   it('rejects PRODUCTION_ROUTING_AVAILABLE outside production mode', () => {

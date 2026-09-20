@@ -1,4 +1,12 @@
-import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify } from 'node:crypto';
+import { createHash } from 'node:crypto';
+import {
+  fingerprintPublicKeyPem,
+  generateEd25519KeyPair,
+  publicKeyPemFromPrivate,
+  signEd25519,
+  verifyEd25519,
+  type Ed25519KeyPair,
+} from '../crypto/ed25519.js';
 import { canonicalJson } from '../reproducibility/canonical-json.js';
 import {
   RECEIPT_CANONICALIZATION,
@@ -11,37 +19,16 @@ import {
 } from '../domain/execution-receipt.js';
 import type { ProviderCredentialVault } from '../crypto/provider-credential-vault.js';
 
-export interface ReceiptKeyPair {
-  readonly privateKeyPem: string;
-  readonly publicKeyPem: string;
-  readonly publicKeyFingerprint: string;
-}
+export type ReceiptKeyPair = Ed25519KeyPair;
 
-export function fingerprintPublicKeyPem(publicKeyPem: string): string {
-  return createHash('sha256').update(publicKeyPem, 'utf8').digest('hex');
-}
+export { fingerprintPublicKeyPem, publicKeyPemFromPrivate };
 
 export function generateReceiptKeyPair(): ReceiptKeyPair {
-  const pair = generateKeyPairSync('ed25519');
-  const privateKeyPem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
-  const publicKeyPem = pair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
-  return {
-    privateKeyPem,
-    publicKeyPem,
-    publicKeyFingerprint: fingerprintPublicKeyPem(publicKeyPem),
-  };
-}
-
-export function publicKeyPemFromPrivate(privateKeyPem: string): string {
-  return createPublicKey(privateKeyPem)
-    .export({ type: 'spki', format: 'pem' })
-    .toString();
+  return generateEd25519KeyPair();
 }
 
 export function signCanonicalReceipt(payloadCanonical: string, privateKeyPem: string): string {
-  return sign(null, Buffer.from(payloadCanonical, 'utf8'), createPrivateKey(privateKeyPem)).toString(
-    'base64url',
-  );
+  return signEd25519(payloadCanonical, privateKeyPem);
 }
 
 export function verifyCanonicalReceipt(
@@ -49,16 +36,7 @@ export function verifyCanonicalReceipt(
   signature: string,
   publicKeyPem: string,
 ): boolean {
-  try {
-    return verify(
-      null,
-      Buffer.from(payloadCanonical, 'utf8'),
-      createPublicKey(publicKeyPem),
-      Buffer.from(signature, 'base64url'),
-    );
-  } catch {
-    return false;
-  }
+  return verifyEd25519(payloadCanonical, signature, publicKeyPem);
 }
 
 export function canonicalizeReceiptPayload(payload: ExecutionReceiptPayload): string {

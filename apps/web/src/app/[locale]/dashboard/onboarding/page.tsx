@@ -51,7 +51,7 @@ export default async function DashboardOnboardingPage() {
 
   const stepBadge = (step: OnboardingStepDto) => {
     if (step.complete) {
-      return <Badge>{t('complete')}</Badge>;
+      return <Badge variant="recommend">{t('complete')}</Badge>;
     }
     if (step.id === 'kyb' && step.status === 'rejected') {
       return <Badge variant="destructive">{t('rejected')}</Badge>;

@@ -1,10 +1,10 @@
 import {
   PersistenceError,
-  isEconomicStage,
+  isBillableEventClass,
+  isBillingCollectionMode,
   isInvoiceCollectionStatus,
   isInvoiceStatus,
   isMonetizationTransactionType,
-  isRevenueRecognitionStatus,
   isRevenueSource,
   type BillingStore,
   type Invoice,
@@ -17,6 +17,7 @@ import {
 } from '@meridian/core';
 import { Prisma, type PrismaClient } from '@prisma/client';
 import { descKeysetWhere } from './keyset.js';
+import { monetizationLifecycleFields } from './monetization-lifecycle.js';
 
 const DEFAULT_LIMIT = 50;
 
@@ -128,6 +129,8 @@ export class PrismaBillingStore implements BillingStore {
             currency: input.currency,
             status: 'issued',
             collectionStatus: 'uncollected',
+            collectionMode: input.collectionMode,
+            collectionReference: null,
             issuerLegalEntity: 'unconfirmed',
             taxCalculation: 'deferred',
             subtotalMinorUnits: new Prisma.Decimal(input.subtotalMinorUnits),
@@ -139,6 +142,9 @@ export class PrismaBillingStore implements BillingStore {
               create: input.lines.map((line) => ({
                 id: line.id,
                 monetizationEventId: line.monetizationEventId,
+                eventClass: line.eventClass,
+                description: line.description,
+                quantity: new Prisma.Decimal(line.quantity),
                 platformRevenueMinorUnits: new Prisma.Decimal(line.platformRevenueMinorUnits),
                 economicStage: line.economicStage,
                 transactionType: line.transactionType,
@@ -149,24 +155,31 @@ export class PrismaBillingStore implements BillingStore {
           },
           include: { lines: { orderBy: { occurredAt: 'asc' } } },
         });
-        const updated = await tx.monetizationEvent.updateMany({
-          where: {
-            id: { in: input.lines.map((line) => line.monetizationEventId) },
-            revenueRecognition: 'unrealized',
-            invoiceId: null,
-          },
-          data: {
-            revenueRecognition: 'invoiced',
-            invoiceId: input.id,
-            realizedRevenue: false,
-          },
-        });
-        if (updated.count !== input.lines.length) {
-          throw new PersistenceError('Could not mark every billed snapshot as invoiced.', {
-            expected: input.lines.length,
-            updated: updated.count,
-            invoiceId: input.id,
+        // Only the decision lines reference a snapshot; subscription and metered lines bill a
+        // period, so there is nothing for them to move from `unrealized` to `invoiced`.
+        const snapshotIds = input.lines
+          .map((line) => line.monetizationEventId)
+          .filter((id): id is string => id !== null);
+        if (snapshotIds.length > 0) {
+          const updated = await tx.monetizationEvent.updateMany({
+            where: {
+              id: { in: snapshotIds },
+              revenueRecognition: 'unrealized',
+              invoiceId: null,
+            },
+            data: {
+              revenueRecognition: 'invoiced',
+              invoiceId: input.id,
+              realizedRevenue: false,
+            },
           });
+          if (updated.count !== snapshotIds.length) {
+            throw new PersistenceError('Could not mark every billed snapshot as invoiced.', {
+              expected: snapshotIds.length,
+              updated: updated.count,
+              invoiceId: input.id,
+            });
+          }
         }
         return invoice;
       });
@@ -197,6 +210,8 @@ function toInvoice(row: {
   readonly currency: string;
   readonly status: string;
   readonly collectionStatus: string;
+  readonly collectionMode?: string;
+  readonly collectionReference?: string | null;
   readonly issuerLegalEntity: string;
   readonly taxCalculation: string;
   readonly subtotalMinorUnits: { toFixed(decimalPlaces?: number): string };
@@ -207,7 +222,10 @@ function toInvoice(row: {
   readonly lines: readonly {
     readonly id: string;
     readonly invoiceId: string;
-    readonly monetizationEventId: string;
+    readonly monetizationEventId: string | null;
+    readonly eventClass?: string;
+    readonly description?: string;
+    readonly quantity?: { toFixed(decimalPlaces?: number): string };
     readonly platformRevenueMinorUnits: { toFixed(decimalPlaces?: number): string };
     readonly economicStage: string;
     readonly transactionType: string;
@@ -219,12 +237,21 @@ function toInvoice(row: {
     id: line.id,
     invoiceId: line.invoiceId,
     monetizationEventId: line.monetizationEventId,
+    // A row written before the charge classes existed was copied from a routed decision, which is
+    // exactly FLAT_DECISION.
+    eventClass: isBillableEventClass(line.eventClass) ? line.eventClass : 'FLAT_DECISION',
+    description: line.description ?? '',
+    quantity: line.quantity?.toFixed(0) ?? '1',
     platformRevenueMinorUnits: line.platformRevenueMinorUnits.toFixed(0),
     economicStage: line.economicStage,
     transactionType: line.transactionType,
     revenueSource: line.revenueSource,
     occurredAt: line.occurredAt.toISOString(),
   }));
+  const collectionStatus = isInvoiceCollectionStatus(row.collectionStatus)
+    ? row.collectionStatus
+    : 'uncollected';
+  const collectionReference = row.collectionReference ?? null;
   return {
     id: row.id,
     invoiceNumber: row.invoiceNumber,
@@ -233,9 +260,11 @@ function toInvoice(row: {
     periodEnd: row.periodEnd.toISOString(),
     currency: row.currency,
     status: isInvoiceStatus(row.status) ? row.status : 'issued',
-    collectionStatus: isInvoiceCollectionStatus(row.collectionStatus)
-      ? row.collectionStatus
-      : 'uncollected',
+    // Collection is only claimed when the reference that proves it is present. An unreadable or
+    // half-written row reads as uncollected rather than as money received.
+    collectionStatus: collectionReference === null ? 'uncollected' : collectionStatus,
+    collectionMode: isBillingCollectionMode(row.collectionMode) ? row.collectionMode : 'RECORD_ONLY',
+    collectionReference,
     issuerLegalEntity: 'unconfirmed',
     taxCalculation: 'deferred',
     subtotalMinorUnits: row.subtotalMinorUnits.toFixed(0),
@@ -270,6 +299,10 @@ function toMonetizationEvent(row: {
   readonly quoteId: string | null;
   readonly economicStage: string;
   readonly revenueRecognition: string;
+  readonly originEnv?: string;
+  readonly settlementFinality?: string;
+  readonly collectionReference?: string | null;
+  readonly realizedRevenue?: boolean;
   readonly invoiceId: string | null;
 }): MonetizationEvent {
   const transactionType: MonetizationTransactionType = isMonetizationTransactionType(
@@ -304,11 +337,7 @@ function toMonetizationEvent(row: {
     realExecution: false,
     routeId: row.routeId,
     quoteId: row.quoteId,
-    economicStage: isEconomicStage(row.economicStage) ? row.economicStage : 'route_quote',
-    realizedRevenue: false,
-    revenueRecognition: isRevenueRecognitionStatus(row.revenueRecognition)
-      ? row.revenueRecognition
-      : 'unrealized',
+    ...monetizationLifecycleFields(row),
     invoiceId: row.invoiceId,
   };
 }

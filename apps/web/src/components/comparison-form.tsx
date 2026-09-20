@@ -159,7 +159,9 @@ export function ComparisonForm({
         <legend className="text-sm font-medium">
           {t('rails')}{' '}
           <span className="text-muted-foreground font-normal">
-            {value.rails.length === 0 ? t('railsAll') : t('railsSelected', { count: value.rails.length })}
+            {value.rails.length === 0
+              ? t('railsAll')
+              : t('railsSelected', { count: value.rails.length })}
           </span>
         </legend>
         <div className="flex flex-wrap gap-2">
@@ -173,7 +175,7 @@ export function ComparisonForm({
                 onClick={() => toggleRail(rail.type)}
                 className={`rounded-full border px-3 py-1 text-xs transition-colors ${
                   selected
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
+                    ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'
                 }`}
               >

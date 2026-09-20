@@ -12,6 +12,7 @@ import {
   type MonetizationReport,
   type RecordTransactionInput,
   type VolumePoint,
+  withResolvedLifecycle,
 } from '@meridian/core';
 import {
   aggregateCostByDay,
@@ -120,15 +121,23 @@ export class InMemoryDashboardRepository implements DashboardRepository {
 
   recordMonetizationEvent(event: MonetizationEvent): Promise<void> {
     const existing = this.monetization.get(event.id);
-    this.monetization.set(event.id, {
-      ...event,
-      fundsMoved: false,
-      custody: false,
-      realExecution: false,
-      realizedRevenue: false,
-      revenueRecognition: existing?.revenueRecognition ?? event.revenueRecognition ?? 'unrealized',
-      invoiceId: existing?.invoiceId ?? event.invoiceId ?? null,
-    });
+    const recognition =
+      existing?.revenueRecognition ?? event.revenueRecognition ?? 'unrealized';
+    this.monetization.set(
+      event.id,
+      withResolvedLifecycle({
+        ...event,
+        fundsMoved: false,
+        custody: false,
+        realExecution: false,
+        revenueRecognition: recognition,
+        // Realization survives a re-record only while its preconditions still hold; the resolver
+        // below is what decides whether the claim stands.
+        realizedRevenue: existing?.realizedRevenue ?? event.realizedRevenue,
+        collectionReference: existing?.collectionReference ?? event.collectionReference,
+        invoiceId: existing?.invoiceId ?? event.invoiceId ?? null,
+      }),
+    );
     return Promise.resolve();
   }
 
@@ -153,11 +162,19 @@ export class InMemoryDashboardRepository implements DashboardRepository {
     return Promise.resolve(ordered);
   }
 
-  revenue(organizationId: string): Promise<MonetizationReport> {
+  revenue(
+    organizationId: string,
+    options: { readonly gainShareActive?: boolean } = {},
+  ): Promise<MonetizationReport> {
     const events = [...this.monetization.values()].filter(
       (event) => event.organizationId === organizationId,
     );
-    return Promise.resolve(aggregateMonetization(events, { organizationId }));
+    return Promise.resolve(
+      aggregateMonetization(events, {
+        organizationId,
+        gainShareActive: options.gainShareActive ?? false,
+      }),
+    );
   }
 
   private quotesFor(organizationId: string): DashboardQuote[] {

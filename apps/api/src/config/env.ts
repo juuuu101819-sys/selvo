@@ -9,6 +9,10 @@ import {
   isForbiddenProductionSecret,
   parseRoutingWeights,
   parseScoringWeights,
+  type BillingCollectionMode,
+  type PricingLegalOpinionRef,
+  type PricingLegalOpinionRefs,
+  type PricingShapeFlags,
   type SerializedRoutingWeights,
   type SerializedScoringWeights,
 } from '@meridian/core';
@@ -20,6 +24,18 @@ const booleanFlag = z
   .enum(['true', 'false'])
   .default('false')
   .transform((value) => value === 'true');
+/** For flags that are on at launch. Still explicitly overridable to `false`. */
+const booleanFlagOn = z
+  .enum(['true', 'false'])
+  .default('true')
+  .transform((value) => value === 'true');
+/** Reference to a written legal determination. Never a placeholder — see §18.4. */
+const legalOpinionId = z.string().min(3).max(128).optional();
+const jurisdictionCode = z
+  .string()
+  .regex(/^[A-Z]{2}$/, 'must be an ISO 3166-1 alpha-2 code or EU')
+  .or(z.literal('EU'))
+  .optional();
 
 /**
  * Configuration schema.
@@ -87,12 +103,74 @@ const envSchema = z
     EXECUTION_ENABLED: booleanFlag,
 
     /**
+     * How long a generated settlement instruction stays usable, in seconds.
+     *
+     * Capped further at generation by the quote's own expiry, so this is a ceiling and not a
+     * promise. Short by default: an instruction carries a signature, which makes a stale price
+     * look current to anyone who does not check the dates.
+     */
+    SETTLEMENT_INSTRUCTION_TTL_SECONDS: z.coerce.number().int().min(60).max(86_400).default(900),
+
+    /**
      * Real invoice collection, live subscription charging, and partner payouts.
      * Default false — invoice recording only. See GO_LIVE_CHECKLIST.md#billing-collection.
      * Even when true, collection still requires recorded legal sign-off, a confirmed legal
      * entity, and a processor adapter (none of which this repository invents).
      */
     BILLING_LIVE_ENABLED: booleanFlag,
+
+    // -----------------------------------------------------------------------
+    // Pricing-shape flags (§18.3). One flag per shape, split by regulatory risk:
+    // enabling the shape that is cheap to justify must not enable the expensive one.
+    // A `false` flag fails closed — the shape contributes zero to any customer charge and is
+    // excluded from customer-facing revenue reporting. Outside production all five follow their
+    // flags so revenue models can be simulated freely.
+    // -----------------------------------------------------------------------
+
+    /**
+     * Fixed amount per billable routing decision, independent of transaction value.
+     * Low risk (software usage pricing) and on at launch. Size-independence is enforced by
+     * {@link flatDecisionFee} and its regression test, not by convention.
+     */
+    FLAT_TXN_PRICING_ENABLED: booleanFlagOn,
+
+    /** Fixed amount per size band. Built, off at launch. Low–medium risk. */
+    TIERED_TXN_PRICING_ENABLED: booleanFlag,
+
+    /**
+     * Percentage of transaction notional (platform markup, infrastructure surcharge).
+     * HIGH risk: it looks like intermediation economics. Requires AD_VALOREM_LEGAL_OPINION_ID
+     * plus a current `pricing_ad_valorem` LiveEnablement record in production (§18.4).
+     */
+    AD_VALOREM_PRICING_ENABLED: booleanFlag,
+
+    /**
+     * Share of platform revenue or of customer savings (partner commission).
+     * HIGHEST risk: economic participation in the customer's outcome. Requires
+     * GAIN_SHARE_LEGAL_OPINION_ID plus a current `pricing_gain_share` record in production.
+     */
+    GAIN_SHARE_ENABLED: booleanFlag,
+
+    /**
+     * Pricing driven by total payment volume. HIGH risk: volume-of-money economics.
+     * Requires TPV_LEGAL_OPINION_ID plus a current `pricing_tpv` record in production.
+     */
+    TPV_PRICING_ENABLED: booleanFlag,
+
+    /**
+     * Written legal determinations backing the high-risk shapes, and the jurisdiction each was
+     * written for. An opinion is only meaningful for its own market, so both halves are required
+     * and both must match the recorded LiveEnablement row.
+     */
+    AD_VALOREM_LEGAL_OPINION_ID: legalOpinionId,
+    AD_VALOREM_JURISDICTION: jurisdictionCode,
+    GAIN_SHARE_LEGAL_OPINION_ID: legalOpinionId,
+    GAIN_SHARE_JURISDICTION: jurisdictionCode,
+    TPV_LEGAL_OPINION_ID: legalOpinionId,
+    TPV_JURISDICTION: jurisdictionCode,
+    /** Same discipline for live cash collection: entity, tax handling, processor contract. */
+    BILLING_LEGAL_OPINION_ID: legalOpinionId,
+    BILLING_JURISDICTION: jurisdictionCode,
 
     /**
      * Deployment label. Safety rules come from production-lock (PA-C01–C03), not from this value.
@@ -191,6 +269,70 @@ const envSchema = z
           'EXECUTION_ENABLED cannot be true in a production-locked process. Sandbox orchestration ' +
           'is sandbox-mode only; live partners and custody are out of scope.',
       });
+    }
+
+    // §18.4 — a high-risk pricing shape may only be flipped on against a referenced written legal
+    // determination for a named jurisdiction. Rejected at config load, not silently ignored. The
+    // matching LiveEnablement row is checked at container construction, which is the half of the
+    // gate that needs a database read.
+    const gatedShapes = [
+      {
+        flag: 'AD_VALOREM_PRICING_ENABLED',
+        enabled: env.AD_VALOREM_PRICING_ENABLED,
+        opinionKey: 'AD_VALOREM_LEGAL_OPINION_ID',
+        opinion: env.AD_VALOREM_LEGAL_OPINION_ID,
+        jurisdictionKey: 'AD_VALOREM_JURISDICTION',
+        jurisdiction: env.AD_VALOREM_JURISDICTION,
+      },
+      {
+        flag: 'GAIN_SHARE_ENABLED',
+        enabled: env.GAIN_SHARE_ENABLED,
+        opinionKey: 'GAIN_SHARE_LEGAL_OPINION_ID',
+        opinion: env.GAIN_SHARE_LEGAL_OPINION_ID,
+        jurisdictionKey: 'GAIN_SHARE_JURISDICTION',
+        jurisdiction: env.GAIN_SHARE_JURISDICTION,
+      },
+      {
+        flag: 'TPV_PRICING_ENABLED',
+        enabled: env.TPV_PRICING_ENABLED,
+        opinionKey: 'TPV_LEGAL_OPINION_ID',
+        opinion: env.TPV_LEGAL_OPINION_ID,
+        jurisdictionKey: 'TPV_JURISDICTION',
+        jurisdiction: env.TPV_JURISDICTION,
+      },
+      {
+        flag: 'BILLING_LIVE_ENABLED',
+        enabled: env.BILLING_LIVE_ENABLED,
+        opinionKey: 'BILLING_LEGAL_OPINION_ID',
+        opinion: env.BILLING_LEGAL_OPINION_ID,
+        jurisdictionKey: 'BILLING_JURISDICTION',
+        jurisdiction: env.BILLING_JURISDICTION,
+      },
+    ] as const;
+
+    for (const gate of gatedShapes) {
+      if (!gate.enabled) {
+        continue;
+      }
+      if (gate.opinion === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [gate.opinionKey],
+          message:
+            `${gate.flag}=true requires ${gate.opinionKey}: a written legal determination for ` +
+            'this specific activity. The gate is a document, not a code default. Set the flag ' +
+            'to false or reference the opinion.',
+        });
+      }
+      if (gate.jurisdiction === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [gate.jurisdictionKey],
+          message:
+            `${gate.flag}=true requires ${gate.jurisdictionKey}. A legal determination is only ` +
+            'valid for the jurisdiction it was written for and must not authorize another.',
+        });
+      }
     }
 
     if (env.PRODUCTION_ROUTING_AVAILABLE && env.PLATFORM_MODE !== 'production') {
@@ -312,11 +454,33 @@ export interface AppConfig {
    * Sandbox orchestration of POST /executions. Default false. When false the route stays 501.
    */
   readonly executionEnabled: boolean;
+  /** Ceiling on settlement-instruction usability. Quote expiry may shorten it further. */
+  readonly settlementInstructionTtlSeconds: number;
   /**
    * Live billing collection / subscriptions / partner payouts. Default false.
    * See GO_LIVE_CHECKLIST.md#billing-collection.
    */
   readonly billingLiveEnabled: boolean;
+  /**
+   * Which collection mode the process runs in (§18.5).
+   *
+   * `RECORD_ONLY` computes and records invoices and never contacts a processor; `LIVE` permits a
+   * contracted processor adapter to collect. Derived from {@link billingLiveEnabled} so there is
+   * one switch rather than two that can disagree.
+   */
+  readonly billingCollectionMode: BillingCollectionMode;
+  /**
+   * Per-shape pricing flags (§18.3). A `false` shape contributes zero to any customer charge and
+   * is excluded from customer-facing revenue reporting.
+   */
+  readonly pricingShapeFlags: PricingShapeFlags;
+  /**
+   * Written legal determinations referenced by the high-risk shapes. Present only when both the
+   * opinion id and its jurisdiction were supplied; a half-configured gate stays closed.
+   */
+  readonly pricingLegalOpinions: PricingLegalOpinionRefs;
+  /** Legal determination referenced by BILLING_LIVE_ENABLED, if any. */
+  readonly billingLegalOpinion: PricingLegalOpinionRef | null;
   /** Whether AUTH_SECRET was supplied. The secret value is never retained. */
   readonly authSecretConfigured: boolean;
   /**
@@ -398,6 +562,21 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   // Surfaces a bad weight set as a startup failure rather than a per-request 400.
   parseScoringWeights(weights);
 
+  const legalOpinionRefs = (source: typeof env): PricingLegalOpinionRefs => {
+    const refs: Record<string, PricingLegalOpinionRef> = {};
+    const pairs = [
+      ['ad_valorem', source.AD_VALOREM_LEGAL_OPINION_ID, source.AD_VALOREM_JURISDICTION],
+      ['gain_share', source.GAIN_SHARE_LEGAL_OPINION_ID, source.GAIN_SHARE_JURISDICTION],
+      ['tpv', source.TPV_LEGAL_OPINION_ID, source.TPV_JURISDICTION],
+    ] as const;
+    for (const [shape, opinionId, jurisdiction] of pairs) {
+      if (opinionId !== undefined && jurisdiction !== undefined) {
+        refs[shape] = { legalOpinionId: opinionId, jurisdiction };
+      }
+    }
+    return refs;
+  };
+
   const routingWeights = {
     cost: env.ROUTING_WEIGHT_COST,
     speed: env.ROUTING_WEIGHT_SPEED,
@@ -422,9 +601,26 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       executionAvailable: false,
     },
     mandateIngestionEnabled: env.MANDATE_INGESTION_ENABLED,
+    settlementInstructionTtlSeconds: env.SETTLEMENT_INSTRUCTION_TTL_SECONDS,
     partnerLiveEnabled: env.PARTNER_LIVE_ENABLED,
     executionEnabled: env.EXECUTION_ENABLED,
     billingLiveEnabled: env.BILLING_LIVE_ENABLED,
+    billingCollectionMode: env.BILLING_LIVE_ENABLED ? 'LIVE' : 'RECORD_ONLY',
+    pricingShapeFlags: {
+      flat_txn: env.FLAT_TXN_PRICING_ENABLED,
+      tiered_txn: env.TIERED_TXN_PRICING_ENABLED,
+      ad_valorem: env.AD_VALOREM_PRICING_ENABLED,
+      gain_share: env.GAIN_SHARE_ENABLED,
+      tpv: env.TPV_PRICING_ENABLED,
+    },
+    pricingLegalOpinions: legalOpinionRefs(env),
+    billingLegalOpinion:
+      env.BILLING_LEGAL_OPINION_ID === undefined || env.BILLING_JURISDICTION === undefined
+        ? null
+        : {
+            legalOpinionId: env.BILLING_LEGAL_OPINION_ID,
+            jurisdiction: env.BILLING_JURISDICTION,
+          },
     authSecretConfigured: env.AUTH_SECRET !== undefined && env.AUTH_SECRET.length > 0,
     sessionTokenPepper: deriveSessionTokenPepper(env.AUTH_SECRET, { productionLocked }),
     dataEncryptionKey: deriveDataEncryptionKeyHex(env.AUTH_SECRET, { productionLocked }),

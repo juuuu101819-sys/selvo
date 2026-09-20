@@ -5,6 +5,7 @@ import { useTransition } from 'react';
 import { usePathname, useRouter } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 import type { AppLocale } from '@/i18n/locales';
+import { cn } from '@/lib/utils';
 
 const NATIVE_LABELS: Record<AppLocale, string> = {
   en: 'English',
@@ -17,7 +18,7 @@ const NATIVE_LABELS: Record<AppLocale, string> = {
   'pt-BR': 'Português (Brasil)',
 };
 
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ compact = false }: { compact?: boolean }) {
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -25,11 +26,16 @@ export function LocaleSwitcher() {
   const [pending, startTransition] = useTransition();
 
   return (
-    <label className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-      <span className="sr-only sm:not-sr-only sm:inline">{t('language')}</span>
+    <label className="text-muted-foreground flex items-center gap-1 text-[11px]">
+      <span className={compact ? 'sr-only' : 'sr-only sm:not-sr-only sm:inline'}>
+        {t('language')}
+      </span>
       <select
         aria-label={t('language')}
-        className="border-border bg-background h-7 max-w-[9.5rem] rounded-md border px-1.5 text-[11px] text-foreground"
+        className={cn(
+          'border-border bg-background h-7 rounded-md border px-1 text-[11px] text-foreground',
+          compact ? 'max-w-[6.75rem]' : 'max-w-[9.5rem] px-1.5',
+        )}
         disabled={pending}
         value={locale}
         onChange={(event) => {

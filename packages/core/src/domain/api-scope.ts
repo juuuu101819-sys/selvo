@@ -108,6 +108,25 @@ export const ORGANIZATION_API_KEY_SCOPES: readonly ApiScope[] = [
   'transaction:create',
 ];
 
+/**
+ * Every scope a `mag_` agent credential may ever hold.
+ *
+ * Issuance stores exactly {@link DEFAULT_AGENT_SCOPES}; this is the wider set the storage-layer
+ * CHECK constraint admits, so an operator-narrowed credential is still storable. It deliberately
+ * excludes `agent_policy:write` and `mandate:revoke`: an agent must not be able to widen its own
+ * policy or cancel the mandate authorizing it. Keep this in lockstep with
+ * `agent_credentials_scopes_known` — `api-scope.test.ts` fails if they diverge.
+ */
+export const AGENT_CREDENTIAL_SCOPES: readonly ApiScope[] = [
+  'quote:read',
+  'route:read',
+  'transaction:create',
+  'payment:create',
+  'payment:quote',
+  'payment:authorize',
+  'mandate:verify',
+];
+
 export function isApiScope(value: unknown): value is ApiScope {
   return typeof value === 'string' && (API_SCOPES as readonly string[]).includes(value);
 }

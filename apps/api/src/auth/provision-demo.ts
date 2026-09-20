@@ -279,6 +279,10 @@ async function seedDashboardActivity(dashboard: DashboardRepository): Promise<vo
     economicStage: 'route_quote',
     realizedRevenue: false,
     revenueRecognition: 'unrealized',
+    originEnv: 'DEMO',
+    settlementFinality: 'unsettled',
+    collectionReference: null,
+    lifecycleState: 'QUOTED_REVENUE',
     invoiceId: null,
   });
 }

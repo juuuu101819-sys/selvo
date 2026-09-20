@@ -592,9 +592,17 @@ export interface MonetizationTotalsDto {
   readonly takeRateBps: string | null;
   readonly currency: string;
   readonly exponent: number;
+  /** §18.2 lifecycle totals. Only `realizedRevenueMinorUnits` may be presented as cash. */
+  readonly quotedRevenueMinorUnits: string;
+  readonly expectedRevenueMinorUnits: string;
+  readonly attributedRevenueMinorUnits: string;
   readonly realizedRevenueMinorUnits: string;
   readonly invoicedRevenueMinorUnits: string;
   readonly collectedRevenueMinorUnits: string;
+  /** Revenue on `settled`-stage events, simulated settlements included. Not cash. */
+  readonly settledStageRevenueMinorUnits: string;
+  /** Revenue from a non-production origin, which can never realize. */
+  readonly simulatedOriginRevenueMinorUnits: string;
 }
 
 export interface MonetizationBreakdownRowDto {
@@ -608,6 +616,8 @@ export interface MonetizationBreakdownRowDto {
   readonly partnerCommissionMinorUnits: string;
   readonly grossProfitMinorUnits: string;
   readonly takeRateBps: string | null;
+  /** How much of this row is realized cash, so no breakdown figure stands on its own. */
+  readonly realizedRevenueMinorUnits: string;
 }
 
 export interface MonetizationEventDto {
@@ -635,8 +645,14 @@ export interface MonetizationEventDto {
   readonly routeId: string | null;
   readonly quoteId: string | null;
   readonly economicStage: string;
-  readonly realizedRevenue: false;
+  readonly realizedRevenue: boolean;
   readonly revenueRecognition: string;
+  /** DEMO | SIMULATION | PARTNER_SANDBOX | PRODUCTION. Only PRODUCTION may realize. */
+  readonly originEnv: string;
+  /** unsettled | simulated | provider_confirmed. */
+  readonly settlementFinality: string;
+  /** Derived §18.2 state. The field to trust for "is this cash". */
+  readonly lifecycleState: string;
   readonly invoiceId: string | null;
 }
 
@@ -662,15 +678,29 @@ export interface MonetizationReportDto {
   readonly byTransactionType: readonly MonetizationBreakdownRowDto[];
   readonly byRevenueSource: readonly MonetizationBreakdownRowDto[];
   readonly byDate: readonly MonetizationBreakdownRowDto[];
+  readonly byLifecycleState: readonly MonetizationBreakdownRowDto[];
+  readonly byOriginEnv: readonly MonetizationBreakdownRowDto[];
   readonly events: readonly MonetizationEventDto[];
   readonly workedExample: MonetizationWorkedExampleDto;
+  /** False means partner commission is zeroed by the gain-share gate and must not be shown. */
+  readonly gainShareActive: boolean;
   readonly fundsMoved: false;
 }
+
+/** The one charge class an invoice line belongs to. One action, one class (§18.6). */
+export type BillableEventClass = 'SUBSCRIPTION_PERIOD' | 'METERED_CALL' | 'FLAT_DECISION';
+
+/** `RECORD_ONLY` invoices were computed and recorded; no processor was contacted. */
+export type BillingCollectionMode = 'RECORD_ONLY' | 'LIVE';
 
 export interface InvoiceLineDto {
   readonly id: string;
   readonly invoiceId: string;
-  readonly monetizationEventId: string;
+  /** Null for subscription and metered lines, which bill a period rather than one decision. */
+  readonly monetizationEventId: string | null;
+  readonly eventClass: BillableEventClass;
+  readonly description: string;
+  readonly quantity: string;
   readonly platformRevenueMinorUnits: string;
   readonly economicStage: string;
   readonly transactionType: string;
@@ -686,7 +716,9 @@ export interface InvoiceDto {
   readonly periodEnd: string;
   readonly currency: string;
   readonly status: 'issued';
-  readonly collectionStatus: 'uncollected';
+  readonly collectionStatus: 'uncollected' | 'collected';
+  readonly collectionMode: BillingCollectionMode;
+  readonly collectionReference: string | null;
   readonly issuerLegalEntity: 'unconfirmed';
   readonly taxCalculation: 'deferred';
   readonly subtotalMinorUnits: string;
@@ -694,14 +726,15 @@ export interface InvoiceDto {
   readonly totalMinorUnits: string;
   readonly issuedAt: string;
   readonly issuedByActor: string;
-  readonly realizedRevenue: false;
-  readonly collected: false;
+  /** True only for a processor-confirmed invoice, so the field means what its name says. */
+  readonly realizedRevenue: boolean;
+  readonly collected: boolean;
   readonly lines: readonly InvoiceLineDto[];
 }
 
 export interface DashboardInvoicesPayload {
   readonly invoices: readonly InvoiceDto[];
-  readonly collectionStatus: 'deferred';
+  readonly collectionStatus: 'deferred' | 'partially_collected' | 'collected';
 }
 
 export interface AssetAmountJson {

@@ -194,6 +194,67 @@ never write `collected` or create a partner balance in this tree.
 
 ---
 
+## Ad-valorem pricing {#pricing-ad-valorem}
+
+Checklist ref: `GO_LIVE_CHECKLIST.md#pricing-ad-valorem`
+
+`AD_VALOREM_PRICING_ENABLED` (default **false**) gates every charge expressed as a percentage of
+transaction notional — `markupBps` and the infrastructure surcharge. The risk is
+characterisation: a fee that scales with the amount of money routed can be read as
+intermediation economics rather than software licensing, which is a different regulatory
+question than the one SELVO has answered.
+
+- [ ] Written legal determination that a percentage-of-notional software fee is not
+      money-transmission or intermediation revenue in the named jurisdiction
+- [ ] Jurisdiction the determination was written for (`AD_VALOREM_JURISDICTION`)
+- [ ] `AD_VALOREM_LEGAL_OPINION_ID` set, and the same id named in this row’s `licenseBasis`
+- [ ] Customer contract language covering a percentage fee
+- [ ] Sign-off row `scope=pricing_ad_valorem` `scopeKey=platform` with current `expiresAt`
+
+Config load rejects `AD_VALOREM_PRICING_ENABLED=true` without the opinion id and jurisdiction.
+Container start additionally rejects it in production without this row. While it is closed,
+`markupBps` and the surcharge are stripped before pricing, so the shape contributes zero.
+
+---
+
+## Gain-share pricing {#pricing-gain-share}
+
+Checklist ref: `GO_LIVE_CHECKLIST.md#pricing-gain-share`
+
+`GAIN_SHARE_ENABLED` (default **false**) gates `partnerCommissionMinorUnits` — a share of SELVO
+platform revenue or of the savings a route produced. This is the **highest-risk** shape in §18.3:
+sharing in the customer’s economic outcome is the hardest thing to characterise as software.
+
+- [ ] Written legal determination on revenue/savings sharing in the named jurisdiction
+- [ ] Jurisdiction the determination was written for (`GAIN_SHARE_JURISDICTION`)
+- [ ] `GAIN_SHARE_LEGAL_OPINION_ID` set, and the same id named in this row’s `licenseBasis`
+- [ ] Referral/partner agreement that actually obliges the payout, with the payer named
+- [ ] Confirmation that the payout is an accounts-payable obligation, **not** a custodial
+      balance held on behalf of the partner
+- [ ] Sign-off row `scope=pricing_gain_share` `scopeKey=platform` with current `expiresAt`
+
+While the shape is closed, commission is zeroed on read as well as on write, and no partner
+payout line appears in revenue reporting. Rows written before the gate existed are reported as
+zero rather than as revenue, because the commission they carry was never contractually owed.
+
+---
+
+## TPV pricing {#pricing-tpv}
+
+Checklist ref: `GO_LIVE_CHECKLIST.md#pricing-tpv`
+
+`TPV_PRICING_ENABLED` (default **false**) gates pricing driven by total payment volume rather
+than by decisions served. Volume-of-money pricing carries the same characterisation risk as
+ad valorem, on a monthly aggregate instead of a single transaction.
+
+- [ ] Written legal determination on volume-based pricing in the named jurisdiction
+- [ ] Jurisdiction the determination was written for (`TPV_JURISDICTION`)
+- [ ] `TPV_LEGAL_OPINION_ID` set, and the same id named in this row’s `licenseBasis`
+- [ ] Definition of “volume” that does not imply SELVO handled the funds
+- [ ] Sign-off row `scope=pricing_tpv` `scopeKey=platform` with current `expiresAt`
+
+---
+
 ## Region kill switch {#region-kill-switch}
 
 Operator `kind: region` overrides (`region:KR`, `region:US`, `region:EU`, …) fail-close:

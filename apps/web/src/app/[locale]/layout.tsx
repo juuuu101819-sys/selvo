@@ -2,19 +2,29 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { hasLocale, NextIntlClientProvider } from 'next-intl';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Fraunces, Geist_Mono, Inter } from 'next/font/google';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { getPathname } from '@/i18n/navigation';
 import { routing } from '@/i18n/routing';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
+const inter = Inter({
+  variable: '--font-inter',
   subsets: ['latin'],
+  display: 'swap',
+});
+
+/** Display face for headings. Latin-only; `--font-display-stack` supplies the CJK fallback. */
+const fraunces = Fraunces({
+  variable: '--font-fraunces',
+  subsets: ['latin'],
+  style: ['normal', 'italic'],
+  display: 'swap',
 });
 
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+  display: 'swap',
 });
 
 type Props = {
@@ -72,7 +82,10 @@ export default async function LocaleLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html
+      lang={locale}
+      className={`${inter.variable} ${fraunces.variable} ${geistMono.variable} h-full antialiased`}
+    >
       <body className="bg-background text-foreground flex min-h-full flex-col">
         <NextIntlClientProvider>
           <TooltipProvider delay={200}>{children}</TooltipProvider>

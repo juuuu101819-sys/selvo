@@ -192,7 +192,9 @@ export function registerDashboardRoutes(app: FastifyInstance, container: AppCont
 
   app.get('/dashboard/revenue', async (request) => {
     const principal = requireOrganization(request);
-    const report = await container.persistence.dashboard.revenue(principal.organizationId);
+    const report = await container.persistence.dashboard.revenue(principal.organizationId, {
+      gainShareActive: container.pricingShapes.isActive('gain_share'),
+    });
     return envelope(request, serializeMonetizationReport(report));
   });
 

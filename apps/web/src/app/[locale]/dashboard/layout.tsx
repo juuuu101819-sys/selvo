@@ -19,6 +19,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         engineVersion={meta.ok ? meta.data.engineVersion : null}
         organizationName={organizationName}
         authLinks="none"
+        showMegaMenu={false}
       />
       {session.ok ? <DashboardNav organizationName={session.me.organization.name} /> : null}
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">

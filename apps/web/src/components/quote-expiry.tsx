@@ -31,9 +31,9 @@ export function useQuoteExpiry(expiresAt: string | null): QuoteExpiryState {
 /**
  * The expiration state of one quote, as a live badge.
  *
- * Three visual states on purpose: a healthy countdown, an amber warning while the price is about to
- * go, and an unmissable expired marker. A static timestamp would make the customer do the
- * arithmetic themselves, at exactly the moment it matters.
+ * Three visual states on purpose: a healthy countdown, a warning while the price is about to go,
+ * and an unmissable expired marker. A static timestamp would make the customer do the arithmetic
+ * themselves, at exactly the moment it matters.
  */
 export function QuoteExpiryBadge({ expiresAt }: { expiresAt: string | null }) {
   const t = useTranslations('comparison');
@@ -51,7 +51,7 @@ export function QuoteExpiryBadge({ expiresAt }: { expiresAt: string | null }) {
       );
     case 'expiring':
       return (
-        <Badge className="gap-1 bg-amber-500 font-mono text-xs tabular-nums text-white hover:bg-amber-500">
+        <Badge variant="warning" className="gap-1 font-mono text-xs tabular-nums">
           <Clock3 className="size-3" aria-hidden />
           {t('expiresIn', { remaining: formatRemaining(expiry.remainingMs) })}
         </Badge>

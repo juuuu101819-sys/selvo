@@ -3,6 +3,7 @@ import { assetExponent } from '../domain/asset.js';
 import {
   DEFAULT_PARTNER_COMMISSION_BPS,
   MONETIZATION_WORKED_EXAMPLE,
+  MONETIZATION_WORKED_EXAMPLE_WITHOUT_GAIN_SHARE,
   REVENUE_SOURCE_LABELS,
   revenueSourceForRail,
   type MonetizationBreakdownRow,
@@ -13,6 +14,16 @@ import {
   type RevenueSource,
   type EconomicStage,
 } from '../domain/monetization.js';
+import {
+  REVENUE_LIFECYCLE_LABELS,
+  REVENUE_LIFECYCLE_STATES,
+  assertRealizationClaimSupported,
+  isSimulatedOrigin,
+  resolveRevenueLifecycle,
+  type RevenueLifecycleState,
+  type RevenueOriginEnv,
+  type SettlementFinalityState,
+} from '../domain/revenue-lifecycle.js';
 import { isRailType } from '../domain/rail.js';
 import type { ScoredRoute } from '../domain/route.js';
 import type { ScoredMultiRailRoute } from './routing-types.js';
@@ -35,6 +46,15 @@ export interface MonetizationPriceInput {
   readonly partnerCommissionBps?: string | undefined;
   /** Explicit partner payout. When set, overrides the bps share. */
   readonly partnerCommissionMinorUnits?: string | undefined;
+  /**
+   * Whether the gain-share shape is admitted (§18.3).
+   *
+   * Defaults to `false`, which zeroes partner commission entirely rather than computing it and
+   * withholding the payout. Gain share is the highest-risk shape — a share of the customer's
+   * outcome — so while it is off it must contribute nothing to attribution or reporting, not
+   * merely go unpaid.
+   */
+  readonly gainShareActive?: boolean | undefined;
 }
 
 export interface MonetizationComputation {
@@ -113,10 +133,24 @@ export function buildMonetizationEvent(
     readonly quoteId?: string | null | undefined;
     readonly economicStage?: EconomicStage | undefined;
     readonly revenueRecognition?: MonetizationEvent['revenueRecognition'] | undefined;
+    readonly originEnv: RevenueOriginEnv;
+    readonly settlementFinality?: SettlementFinalityState | undefined;
+    readonly collectionReference?: string | null | undefined;
+    readonly realizedRevenue?: boolean | undefined;
     readonly invoiceId?: string | null | undefined;
   },
 ): MonetizationEvent {
   const priced = priceMonetization(input);
+  const lifecycleInput = {
+    economicStage: input.economicStage ?? 'route_quote',
+    revenueRecognition: input.revenueRecognition ?? 'unrealized',
+    realizedRevenue: input.realizedRevenue ?? false,
+    originEnv: input.originEnv,
+    settlementFinality: input.settlementFinality ?? 'unsettled',
+    collectionReference: input.collectionReference ?? null,
+  };
+  assertRealizationClaimSupported(lifecycleInput);
+  const lifecycle = resolveRevenueLifecycle(lifecycleInput);
   return {
     id: input.id,
     organizationId: input.organizationId,
@@ -141,9 +175,13 @@ export function buildMonetizationEvent(
     realExecution: false,
     routeId: input.routeId ?? null,
     quoteId: input.quoteId ?? null,
-    economicStage: input.economicStage ?? 'route_quote',
-    realizedRevenue: false,
-    revenueRecognition: input.revenueRecognition ?? 'unrealized',
+    economicStage: lifecycleInput.economicStage,
+    realizedRevenue: lifecycleInput.realizedRevenue,
+    revenueRecognition: lifecycleInput.revenueRecognition,
+    originEnv: lifecycleInput.originEnv,
+    settlementFinality: lifecycleInput.settlementFinality,
+    collectionReference: lifecycleInput.collectionReference,
+    lifecycleState: lifecycle.state,
     invoiceId: input.invoiceId ?? null,
   };
 }
@@ -165,14 +203,29 @@ export function convertDestMinorToSource(input: {
   return sourceMinor.toDecimalPlaces(0, Rounding.HALF_UP).toFixed(0);
 }
 
+/**
+ * Build the revenue report for a set of events.
+ *
+ * `gainShareActive` defaults to `false` and gates the whole gain-share shape, not just its payout
+ * (§18.3). While off, partner commission is zeroed on every row — summary, breakdowns, and the
+ * event ledger alike — and the partner payout line disappears from `byRevenueSource`. Zeroing at
+ * read time rather than trusting the stored column is what makes the gate retroactive: rows
+ * written before the flag existed carry a 25% commission that was never contractually owed, and
+ * reporting it would present an unauthorized shape as revenue.
+ */
 export function aggregateMonetization(
   events: readonly MonetizationEvent[],
-  options: { readonly organizationId?: string | undefined } = {},
+  options: {
+    readonly organizationId?: string | undefined;
+    readonly gainShareActive?: boolean | undefined;
+  } = {},
 ): MonetizationReport {
-  const scoped =
+  const gainShareActive = options.gainShareActive === true;
+  const inScope =
     options.organizationId === undefined
       ? events
       : events.filter((event) => event.organizationId === options.organizationId);
+  const scoped = gainShareActive ? inScope : inScope.map(withoutGainShare);
   const reporting = reportingCurrency(scoped);
   const comparable = scoped.filter((event) => event.currency === reporting.currency);
 
@@ -207,20 +260,56 @@ export function aggregateMonetization(
         (event) => event.revenueSource,
         (event) => REVENUE_SOURCE_LABELS[event.revenueSource],
       ),
-      partnerPayoutRow(comparable),
+      ...(gainShareActive ? [partnerPayoutRow(comparable)] : []),
     ].filter((row) => row.eventCount > 0 || row.key === 'partner_referral_commission'),
     byDate: breakdown(
       comparable,
       (event) => event.occurredAt.slice(0, 10),
       (event) => event.occurredAt.slice(0, 10),
     ),
+    byLifecycleState: orderedByLifecycleState(
+      breakdown(
+        comparable,
+        (event) => lifecycleStateOf(event),
+        (event) => REVENUE_LIFECYCLE_LABELS[lifecycleStateOf(event)],
+      ),
+    ),
+    byOriginEnv: breakdown(
+      comparable,
+      (event) => event.originEnv,
+      (event) => event.originEnv,
+    ),
     events: scoped,
-    workedExample: MONETIZATION_WORKED_EXAMPLE,
+    workedExample: gainShareActive
+      ? MONETIZATION_WORKED_EXAMPLE
+      : MONETIZATION_WORKED_EXAMPLE_WITHOUT_GAIN_SHARE,
+    gainShareActive,
     fundsMoved: false,
   };
 }
 
+/**
+ * Strip the gain-share shape from one event.
+ *
+ * Gross profit rises to the full platform revenue because an uncharged commission is not a cost:
+ * leaving profit net of a payout that will not happen would understate the platform's position
+ * just as badly as reporting the commission itself overstates the partner's.
+ */
+function withoutGainShare(event: MonetizationEvent): MonetizationEvent {
+  if (event.partnerCommissionMinorUnits === '0') {
+    return event;
+  }
+  return {
+    ...event,
+    partnerCommissionMinorUnits: '0',
+    grossProfitMinorUnits: event.platformRevenueMinorUnits,
+  };
+}
+
 function resolveCommission(platformRevenue: bigint, input: MonetizationPriceInput): bigint {
+  if (input.gainShareActive !== true) {
+    return 0n;
+  }
   if (input.partnerCommissionMinorUnits !== undefined) {
     const explicit = parseMinor(
       input.partnerCommissionMinorUnits,
@@ -299,23 +388,31 @@ function totalsOf(
   let platform = 0n;
   let partner = 0n;
   let profit = 0n;
-  let realized = 0n;
   let invoiced = 0n;
   let collected = 0n;
+  let settledStage = 0n;
+  let simulatedOrigin = 0n;
+  const byState = new Map<RevenueLifecycleState, bigint>();
   for (const event of events) {
+    const revenue = BigInt(event.platformRevenueMinorUnits);
     tpv += BigInt(event.tpvMinorUnits);
     provider += BigInt(event.providerCostMinorUnits);
-    platform += BigInt(event.platformRevenueMinorUnits);
+    platform += revenue;
     partner += BigInt(event.partnerCommissionMinorUnits);
     profit += BigInt(event.grossProfitMinorUnits);
-    if (event.economicStage === 'settled') {
-      realized += BigInt(event.platformRevenueMinorUnits);
-    }
+    const state = lifecycleStateOf(event);
+    byState.set(state, (byState.get(state) ?? 0n) + revenue);
     if (event.revenueRecognition === 'invoiced' || event.revenueRecognition === 'collected') {
-      invoiced += BigInt(event.platformRevenueMinorUnits);
+      invoiced += revenue;
     }
     if (event.revenueRecognition === 'collected') {
-      collected += BigInt(event.platformRevenueMinorUnits);
+      collected += revenue;
+    }
+    if (event.economicStage === 'settled') {
+      settledStage += revenue;
+    }
+    if (isSimulatedOrigin(event.originEnv)) {
+      simulatedOrigin += revenue;
     }
   }
   return {
@@ -329,9 +426,62 @@ function totalsOf(
     takeRateBps: takeRate(platform, tpv),
     currency,
     exponent,
-    realizedRevenueMinorUnits: realized.toString(),
+    quotedRevenueMinorUnits: (byState.get('QUOTED_REVENUE') ?? 0n).toString(),
+    expectedRevenueMinorUnits: (byState.get('EXPECTED_REVENUE') ?? 0n).toString(),
+    attributedRevenueMinorUnits: (byState.get('ATTRIBUTED_REVENUE') ?? 0n).toString(),
+    realizedRevenueMinorUnits: (byState.get('REALIZED_REVENUE') ?? 0n).toString(),
     invoicedRevenueMinorUnits: invoiced.toString(),
     collectedRevenueMinorUnits: collected.toString(),
+    settledStageRevenueMinorUnits: settledStage.toString(),
+    simulatedOriginRevenueMinorUnits: simulatedOrigin.toString(),
+  };
+}
+
+/**
+ * Lifecycle state of a persisted event.
+ *
+ * Re-derives rather than trusting the stored `lifecycleState`, so a row written by an older
+ * revision or edited out of band cannot report itself as cash.
+ */
+export function lifecycleStateOf(event: MonetizationEvent): RevenueLifecycleState {
+  return resolveRevenueLifecycle({
+    economicStage: event.economicStage,
+    revenueRecognition: event.revenueRecognition,
+    realizedRevenue: event.realizedRevenue,
+    originEnv: event.originEnv,
+    settlementFinality: event.settlementFinality,
+    collectionReference: event.collectionReference,
+  }).state;
+}
+
+/**
+ * Return the event with `lifecycleState` and `realizedRevenue` recomputed from its other fields.
+ *
+ * Any store that mutates recognition, finality, or the collection reference must pass the result
+ * through here, otherwise the stored state would describe the row as it used to be. Coercing
+ * `realizedRevenue` to the resolver's verdict is what stops a row from carrying a realization
+ * claim its own fields do not support — the §18.2 rule that no field may read as cash while
+ * holding quoted, expected, or attributed revenue.
+ */
+export function withResolvedLifecycle(event: MonetizationEvent): MonetizationEvent {
+  const resolution = resolveRevenueLifecycle({
+    economicStage: event.economicStage,
+    revenueRecognition: event.revenueRecognition,
+    realizedRevenue: event.realizedRevenue,
+    originEnv: event.originEnv,
+    settlementFinality: event.settlementFinality,
+    collectionReference: event.collectionReference,
+  });
+  if (
+    resolution.state === event.lifecycleState &&
+    resolution.cashRecognizable === event.realizedRevenue
+  ) {
+    return event;
+  }
+  return {
+    ...event,
+    lifecycleState: resolution.state,
+    realizedRevenue: resolution.cashRecognizable,
   };
 }
 
@@ -365,6 +515,7 @@ function breakdown(
         partnerCommissionMinorUnits: summed.partnerCommissionMinorUnits,
         grossProfitMinorUnits: summed.grossProfitMinorUnits,
         takeRateBps: summed.takeRateBps,
+        realizedRevenueMinorUnits: summed.realizedRevenueMinorUnits,
       };
     })
     .sort((left, right) => {
@@ -374,6 +525,17 @@ function breakdown(
       }
       return left.key.localeCompare(right.key);
     });
+}
+
+/** Funnel order, not revenue order: a lifecycle breakdown reads as a progression. */
+function orderedByLifecycleState(
+  rows: readonly MonetizationBreakdownRow[],
+): readonly MonetizationBreakdownRow[] {
+  return [...rows].sort(
+    (left, right) =>
+      REVENUE_LIFECYCLE_STATES.indexOf(left.key as RevenueLifecycleState) -
+      REVENUE_LIFECYCLE_STATES.indexOf(right.key as RevenueLifecycleState),
+  );
 }
 
 function partnerPayoutRow(events: readonly MonetizationEvent[]): MonetizationBreakdownRow {
@@ -392,6 +554,7 @@ function partnerPayoutRow(events: readonly MonetizationEvent[]): MonetizationBre
     partnerCommissionMinorUnits: payout.toString(),
     grossProfitMinorUnits: payout === 0n ? '0' : `-${payout.toString()}`,
     takeRateBps: null,
+    realizedRevenueMinorUnits: '0',
   };
 }
 
@@ -410,6 +573,8 @@ export function monetizationFromRecommendedFiatRoute(input: {
     'provider' | 'rail' | 'sendAmount' | 'midMarketRate' | 'breakdown'
   >;
   readonly destinationAsset: string;
+  readonly originEnv: RevenueOriginEnv;
+  readonly gainShareActive?: boolean | undefined;
 }): MonetizationEvent {
   const sourceAsset = input.route.sendAmount.currency;
   const midMarketRate = input.route.midMarketRate.value.toFixed();
@@ -432,6 +597,8 @@ export function monetizationFromRecommendedFiatRoute(input: {
     routeId: input.route.provider.id,
     quoteId: input.comparisonId,
     economicStage: 'route_quote',
+    originEnv: input.originEnv,
+    gainShareActive: input.gainShareActive ?? false,
     tpvMinorUnits: input.route.sendAmount.minorUnits.toString(),
     providerCostMinorUnits: convertDestMinorToSource({
       destMinorUnits: providerDest.minorUnits.toString(),
@@ -462,6 +629,9 @@ export function monetizationFromMultiRailRoute(input: {
   readonly economicStage: EconomicStage;
   readonly eventId: string;
   readonly quoteId: string | null;
+  readonly originEnv: RevenueOriginEnv;
+  readonly settlementFinality?: SettlementFinalityState | undefined;
+  readonly gainShareActive?: boolean | undefined;
 }): MonetizationEvent {
   const priced = priceRouteMonetization(input.route);
   return buildMonetizationEvent({
@@ -480,6 +650,9 @@ export function monetizationFromMultiRailRoute(input: {
     routeId: input.route.routeId,
     quoteId: input.quoteId,
     economicStage: input.economicStage,
+    originEnv: input.originEnv,
+    settlementFinality: input.settlementFinality ?? 'unsettled',
+    gainShareActive: input.gainShareActive ?? false,
     tpvMinorUnits: priced.tpvMinorUnits,
     providerCostMinorUnits: priced.providerCostMinorUnits,
     platformRevenueMinorUnits: priced.platformRevenueMinorUnits,
@@ -517,6 +690,8 @@ export function monetizationFromQuotedAgentRoute(input: {
   readonly destinationAsset: string;
   readonly amountMinorUnits: string;
   readonly route: QuotedRouteOption;
+  readonly originEnv: RevenueOriginEnv;
+  readonly gainShareActive?: boolean | undefined;
 }): MonetizationEvent {
   return buildMonetizationEvent({
     id: `mon_${input.paymentIntentId}`,
@@ -534,6 +709,8 @@ export function monetizationFromQuotedAgentRoute(input: {
     routeId: input.route.routeId ?? input.route.providerId,
     quoteId: input.paymentIntentId,
     economicStage: 'route_quote',
+    originEnv: input.originEnv,
+    gainShareActive: input.gainShareActive ?? false,
     tpvMinorUnits: input.amountMinorUnits,
     providerCostMinorUnits: input.route.providerFeeMinorUnits ?? '0',
     platformRevenueMinorUnits: input.route.platformFeeMinorUnits ?? '0',

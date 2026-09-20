@@ -1,4 +1,5 @@
 import { PAYMENT_INTENT_STATUSES, type PaymentIntentStatus } from './agent-payments.js';
+import { INVOICE_COLLECTION_STATUSES, type InvoiceCollectionStatus } from './billing.js';
 
 /** Must stay identical to `EXECUTION_INTENT_STATUS` in `ports/execution-intent.ts`. */
 export const DOCUMENTED_EXECUTION_INTENT_STATUS = 'recorded' as const;
@@ -165,7 +166,7 @@ export const EXECUTION_INTENT_STATUS_DOCS: Record<
   ),
 };
 
-export const INVOICE_STATUS_DOCS: Record<'issued' | 'uncollected', FinancialStatusDoc> = {
+export const INVOICE_STATUS_DOCS: Record<'issued' | InvoiceCollectionStatus, FinancialStatusDoc> = {
   issued: doc(
     'invoice',
     'issued',
@@ -174,7 +175,18 @@ export const INVOICE_STATUS_DOCS: Record<'issued' | 'uncollected', FinancialStat
   uncollected: doc(
     'invoice',
     'uncollected',
-    'Collection is deferred. An issued invoice is not confirmed payment or realized revenue.',
+    'No money has been requested against this invoice. Issuing one is not confirmed payment or realized revenue.',
+  ),
+  // `collected` is the one status that is a *precondition* of realized revenue, which is why it
+  // still declares `impliesRealizedRevenue: false` rather than being an exception to the rule.
+  // Realization needs three facts (see `resolveRevenueLifecycle`): a production origin, a
+  // provider-confirmed settlement, and this collection. A collected invoice supplies the third
+  // only. It also moves no customer settlement funds — the fee paid here is SELVO's own, which is
+  // why `impliesFundsMoved` stays false in the non-custodial sense the field carries everywhere.
+  collected: doc(
+    'invoice',
+    'collected',
+    'Platform fee confirmed paid to the platform against a processor reference. Customer settlement funds did not move, and realization still requires a production origin and provider-confirmed finality.',
   ),
 };
 
@@ -184,7 +196,7 @@ export const API_FINANCIAL_STATUS_DOCS: readonly FinancialStatusDoc[] = [
   ...TRANSACTION_REQUEST_STATUSES.map((status) => TRANSACTION_REQUEST_STATUS_DOCS[status]),
   ...QUOTE_STATUSES.map((status) => QUOTE_STATUS_DOCS[status]),
   INVOICE_STATUS_DOCS.issued,
-  INVOICE_STATUS_DOCS.uncollected,
+  ...INVOICE_COLLECTION_STATUSES.map((status) => INVOICE_STATUS_DOCS[status]),
 ];
 
 export function financialStatusDocFor(

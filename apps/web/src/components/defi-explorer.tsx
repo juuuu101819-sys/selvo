@@ -94,8 +94,8 @@ export function DefiExplorer({ catalog }: { catalog: DefiCatalogDto | null }) {
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Reserved chains</CardTitle>
               <CardDescription>
-                Adding Ethereum, Base, Arbitrum or Solana to a later adapter is a registry row —
-                the routing engine does not switch on chain name.
+                Adding Ethereum, Base, Arbitrum or Solana to a later adapter is a registry row — the
+                routing engine does not switch on chain name.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -188,7 +188,9 @@ export function DefiExplorer({ catalog }: { catalog: DefiCatalogDto | null }) {
       {isPending && state.kind !== 'success' && <ResultsSkeleton />}
       {!isPending && state.kind === 'idle' && <DefiIdle />}
       {!isPending && state.kind === 'error' && <ErrorState failure={state.failure} />}
-      {state.kind === 'success' && <DefiResult routing={state.routing} disclaimer={state.disclaimer} />}
+      {state.kind === 'success' && (
+        <DefiResult routing={state.routing} disclaimer={state.disclaimer} />
+      )}
     </div>
   );
 }
@@ -207,13 +209,7 @@ function DefiIdle() {
   );
 }
 
-function DefiResult({
-  routing,
-  disclaimer,
-}: {
-  routing: DefiRoutingDto;
-  disclaimer: string;
-}) {
+function DefiResult({ routing, disclaimer }: { routing: DefiRoutingDto; disclaimer: string }) {
   const recommended = routing.recommendedExecutionRoute ?? routing.recommendedRoute;
 
   return (
@@ -227,11 +223,11 @@ function DefiResult({
       </p>
 
       {recommended !== null && (
-        <Card className="border-emerald-600/40">
+        <Card className="border-recommend/40">
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
               <CardTitle className="text-lg">{recommended.provider.name}</CardTitle>
-              <Badge>Recommended execution route</Badge>
+              <Badge variant="recommend">Recommended execution route</Badge>
               <ProviderLicensingBadge licensing={recommended.provider.licensing} />
               <Badge variant="secondary">{recommended.routeKind}</Badge>
             </div>
@@ -249,12 +245,10 @@ function DefiResult({
             <CardHeader className="pb-3">
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-base">{route.provider.name}</CardTitle>
-                {route.recommended && <Badge>Recommended</Badge>}
+                {route.recommended && <Badge variant="recommend">Recommended</Badge>}
                 <ProviderLicensingBadge licensing={route.provider.licensing} />
                 <Badge variant="outline">{route.routeKind}</Badge>
-                {route.venueKind !== null && (
-                  <Badge variant="secondary">{route.venueKind}</Badge>
-                )}
+                {route.venueKind !== null && <Badge variant="secondary">{route.venueKind}</Badge>}
                 <span className="text-muted-foreground font-mono text-xs">
                   {formatBps(route.totalCostBps)}
                 </span>
@@ -305,7 +299,9 @@ function QuoteFields({ route }: { route: DefiRouteDto }) {
           ? 'Not disclosed'
           : `${route.liquidity.availableDepthMinorUnits} minor units`}
         {route.liquidity.venue !== null && (
-          <span className="text-muted-foreground mt-0.5 block text-xs">{route.liquidity.venue}</span>
+          <span className="text-muted-foreground mt-0.5 block text-xs">
+            {route.liquidity.venue}
+          </span>
         )}
       </Field>
       <Field label="Estimated settlement">

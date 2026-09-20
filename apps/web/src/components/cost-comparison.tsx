@@ -28,7 +28,10 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
   const insights = comparison.insights;
 
   return (
-    <section aria-label={t('costComparison')} className="border-border rounded-xl border p-4 sm:p-5">
+    <section
+      aria-label={t('costComparison')}
+      className="border-border rounded-xl border p-4 sm:p-5"
+    >
       <h2 className="text-sm font-semibold">{t('costComparison')}</h2>
       <p className="text-muted-foreground mt-0.5 text-xs">{t('costComparisonHint')}</p>
 
@@ -44,20 +47,21 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
                   {route.provider.name}
                   <ProviderLicensingBadge licensing={route.provider.licensing} />
                   {route.recommended && (
-                    <span className="ml-2 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <span className="text-recommend ml-2 text-xs font-medium">
                       {' '}
                       {tCommon('best')}
                     </span>
                   )}
                 </span>
                 <span className="shrink-0 font-mono text-xs tabular-nums">
-                  {formatPercent(route.totalCostPercent, 2, locale)} · {formatMoney(route.totalCost, locale)}
+                  {formatPercent(route.totalCostPercent, 2, locale)} ·{' '}
+                  {formatMoney(route.totalCost, locale)}
                 </span>
               </div>
               <div className="bg-muted mt-1 h-2 overflow-hidden rounded-full">
                 <div
                   className={`h-full rounded-full ${
-                    route.recommended ? 'bg-emerald-600' : 'bg-foreground/30'
+                    route.recommended ? 'bg-recommend' : 'bg-foreground/30'
                   }`}
                   style={{ width: `${width}%` }}
                   role="presentation"
@@ -71,7 +75,7 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
       {insights !== null && (
         <div className="text-muted-foreground mt-4 space-y-1 text-xs">
           <p className="flex items-center gap-1.5">
-            <TrendingDown className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+            <TrendingDown className="text-recommend size-3.5 shrink-0" aria-hidden />
             {t('savesVsMostExpensive', {
               amount: formatMoney(insights.savingsVsMostExpensive, locale),
             })}

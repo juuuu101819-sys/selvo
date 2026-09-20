@@ -141,7 +141,8 @@ Route View ≠ Route Selection ≠ Execution Intent ≠ External Provider Execut
 | quote | `superseded` | Replaced by a newer quote from the same provider for the same request. | no |
 | quote | `withdrawn` | Provider withdrew or declined the price. Not a chargeback. | no |
 | invoice | `issued` | Platform-fee invoice generated from monetization snapshots. Not cash received and not realized revenue. | no |
-| invoice | `uncollected` | Collection is deferred. An issued invoice is not confirmed payment or realized revenue. | no |
+| invoice | `uncollected` | No money has been requested against this invoice. Issuing one is not confirmed payment or realized revenue. | no |
+| invoice | `collected` | Platform fee confirmed paid to the platform against a processor reference. Customer settlement funds did not move, and realization still requires a production origin and provider-confirmed finality. | no |
 
 Retired payment-intent names (`AUTHORIZED`, `EXECUTION_PENDING`, `COMPLETED`) are not valid and are
 not aliased. A future `SETTLEMENT_CONFIRMED` status does not exist in this tree.
@@ -734,12 +735,16 @@ Anonymous callers are `401`. Another tenant's events never appear.
 ## `GET /api/v1/dashboard/invoices`
 
 Organization-scoped issued platform-fee invoices. Amounts are integer minor units copied from
-monetization snapshots — billing never recomputes take-rate. `collectionStatus` is `uncollected`.
-`realizedRevenue` and `collected` are always false. Payment collection is deferred.
+monetization snapshots — billing never recomputes take-rate. `collectionStatus` reports what the
+invoice actually is: `uncollected` until a processor confirms payment, `collected` once one has,
+with the processor reference that proves it. It is no longer pinned to a constant.
 
-PHASE 35 did **not** change this. Legal entity, tax treatment, and a named processor (or an
-explicit bank-transfer-only decision) were not confirmed outside Cursor, so
-`DeferredPlatformFeeCollector` was left in place. `issuerLegalEntity` remains `"unconfirmed"`.
+At launch every invoice reads `uncollected`, because `BILLING_LIVE_ENABLED` defaults to `false` and
+`DeferredPlatformFeeCollector` never confirms. That is the platform's configuration, not a property
+of the field. Turning collection on requires a `billing`-scoped `LiveEnablement` record naming the
+legal entity, tax treatment, and contracted processor; `issuerLegalEntity` stays `"unconfirmed"`
+until then. A `collected` invoice is one of the three facts realized revenue requires, alongside a
+production origin and provider-confirmed settlement finality — not realized revenue by itself.
 Tax remains `"0"` as a documented gap, not a calculated rate.
 
 PHASE 36 did **not** add recurring subscription line items, a plan catalog, or partner-payout
@@ -920,7 +925,11 @@ prefixes, never secrets or hashes.
 
 ## `GET /api/v1/execution-intents`
 
-Cursor-paginated list for the caller's organization (`limit`, `cursor`, `meta.nextCursor`).
+## `GET /api/v1/execution-intents/:id`
+
+Cursor-paginated list for the caller's organization (`limit`, `cursor`, `meta.nextCursor`). Reading
+one by id returns the same DTO; a settlement instruction names the intent it was generated from, so
+reconciling the two needs it. Reading an intent is not a step toward executing it.
 
 Requires `transaction:create` (organization API keys minted with that scope — never human sessions).
 Records a route choice with `status: "recorded"`, `executable: false`, `submitted: false`. This is
@@ -930,6 +939,49 @@ intent id that has already passed the Policy Engine (`ROUTED`, `POLICY_APPROVED`
 `SIMULATION_COMPLETED`) is required; omitting it is `403 POLICY_DENIED` (`policy_required`). The gate
 re-evaluates policy fail-closed immediately before persist. `POST /api/v1/executions` remains the
 audited `501`.
+
+## Settlement instructions (Pattern A — generate and return)
+
+Meridian composes the chosen route into a canonical, versioned payload, signs it with Ed25519, and
+**returns it to the customer**. Meridian does not transmit it to any provider. The customer takes it
+to a licensed provider they already have a relationship with.
+
+| Method | Path | Scope |
+| ------ | ---- | ----- |
+| POST | `/api/v1/settlement/instructions` | `transaction:create` |
+| GET | `/api/v1/settlement/instructions/:id` | `transaction:create` |
+| POST | `/api/v1/settlement/instructions/:id/customer-signature` | `transaction:create` |
+| POST | `/api/v1/settlement/instructions/verify` | public |
+| GET | `/api/v1/settlement/keys` | public |
+| GET | `/api/v1/settlement/verification` | public |
+
+**What the signature means.** It attests that Meridian produced the recommendation unaltered. It is
+not a payment authorization, and does not mean Meridian authorizes, initiates, or is able to move
+funds. Both statements are carried inside the signed bytes (`payload.signatureAttests` and
+`payload.signatureDoesNotAttest`) so they cannot be separated from the artifact.
+
+Create takes `executionIntentId`, `routingId`, `routeId`, `paymentIntentId`, and `boundaryMode`
+(`RETURN_TO_CUSTOMER` or `PARTNER_EXECUTES`; there is no value meaning Meridian dispatches). Route
+legs, amounts, and costs are recomputed from the stored routing snapshot rather than read from the
+request, so the signed numbers are the deterministic engine's — a caller chooses which route, not
+what it costs. Beneficiary and account identifiers are refused before signing.
+
+`expiresAt` is capped by the underlying quote's expiry, and reads report `usable` plus
+`unusableReason` (`expired` or `quote_stale`) evaluated at read time rather than serving a stale
+artifact as current.
+
+`/settlement/keys` is a JWKS of Ed25519 public keys, public because an artifact a customer's
+provider cannot verify without a Meridian credential would be unusable by the party it is for.
+Retired keys stay published until the instructions they signed expire. The published JWK type has no
+`d` parameter.
+
+Posting a customer counter-signature stores it for audit and starts nothing: no dispatch, no
+notification, no change to the instruction's usability. Generating, signing, returning, or
+counter-signing an instruction does **not** advance revenue past `ATTRIBUTED_REVENUE` — returning an
+artifact is neither a settlement nor a collection.
+
+Full verification procedure, worked example, key rotation, and the Pattern A/B handoff:
+[SETTLEMENT_BOUNDARY.md](./SETTLEMENT_BOUNDARY.md).
 
 ## AI agent payments
 

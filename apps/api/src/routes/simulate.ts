@@ -88,6 +88,9 @@ export function registerSimulateRoute(app: FastifyInstance, container: AppContai
     if (body.routingId === undefined) {
       await container.routingEvaluations.persist(routing, null, 'routes');
       await recordRouteQuoteMonetization({
+        // A simulation endpoint attributes simulated economics regardless of platform mode.
+        originEnv: 'SIMULATION',
+        gainShareActive: container.pricingShapes.isActive('gain_share'),
         organizationId: principal.organizationId,
         routingId: routing.routingId,
         createdAt: routing.createdAt,
