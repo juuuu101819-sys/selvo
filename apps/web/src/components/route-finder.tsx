@@ -62,7 +62,7 @@ export function RouteFinder({ meta, embedded = false }: { meta: MetaDto; embedde
 
   return (
     <div className="space-y-6">
-      <Card className={embedded ? 'marketing-surface border-border/60 shadow-none' : undefined}>
+      <Card className={embedded ? 'marketing-surface ring-0' : undefined}>
         <CardHeader>
           <CardTitle>{t('cardTitle')}</CardTitle>
           <CardDescription>{t('cardDescription')}</CardDescription>

@@ -8,7 +8,7 @@ export async function GradientCta() {
 
   return (
     <div
-      className="marketing-surface relative overflow-hidden rounded-2xl border border-border/60 p-8 sm:p-10"
+      className="marketing-surface relative overflow-hidden rounded-2xl p-8 sm:p-10"
       style={{
         backgroundImage:
           'linear-gradient(135deg, color-mix(in oklch, var(--primary) 22%, transparent), color-mix(in oklch, var(--accent) 12%, transparent) 50%, color-mix(in oklch, var(--recommend) 10%, transparent))',

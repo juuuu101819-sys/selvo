@@ -19,7 +19,7 @@ export function PageCta({
 }) {
   return (
     <div
-      className="marketing-surface rounded-2xl border border-border/60 p-8 sm:p-10"
+      className="marketing-surface rounded-2xl p-8 sm:p-10"
       style={{
         backgroundImage:
           'linear-gradient(135deg, color-mix(in oklch, var(--primary) 18%, transparent), color-mix(in oklch, var(--accent) 10%, transparent))',

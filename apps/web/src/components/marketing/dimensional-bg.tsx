@@ -1,91 +1,123 @@
 /**
- * Fixed marketing backdrop: gradient base, radial glows, grid, drifting orbs, grain, vignette.
- * Sits at z-0; page content wraps at z-10+.
+ * Fixed marketing backdrop: gradient base, four radial glows, perspective grid, drifting orbs,
+ * film grain, top vignette. Sits at z-0; page content wraps above it.
+ *
+ * The layer values are the literal approved design tokens rather than theme `var()` references —
+ * the backdrop is a single fixed composition tuned against these exact rgba stops, and resolving
+ * them through the oklch palette shifts the glow falloff.
  */
+
+const GRAIN_URL =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
+
+const ORBS = [
+  { size: 14, top: '18%', left: '12%', delay: '0s' },
+  { size: 9, top: '34%', left: '72%', delay: '-3.5s' },
+  { size: 6, top: '58%', left: '28%', delay: '-7s' },
+  { size: 11, top: '71%', left: '61%', delay: '-10.5s' },
+  { size: 5, top: '86%', left: '41%', delay: '-14s' },
+] as const;
+
 export function DimensionalBg() {
   return (
     <div
       aria-hidden
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       style={{
-        background:
-          'linear-gradient(180deg, color-mix(in oklch, var(--background) 92%, var(--primary) 8%) 0%, var(--background) 45%, color-mix(in oklch, var(--background) 88%, var(--secondary) 12%) 100%)',
+        background: 'linear-gradient(180deg, #0E0A24 0%, #0A0620 40%, #080418 100%)',
       }}
     >
       {/* Radial glows */}
       <div
-        className="absolute -top-[20%] left-[10%] h-[55vh] w-[55vw] rounded-full opacity-40 blur-3xl"
+        className="absolute"
         style={{
-          background: 'radial-gradient(circle, color-mix(in oklch, var(--primary) 55%, transparent), transparent 70%)',
+          width: 900,
+          height: 640,
+          top: -260,
+          right: -160,
+          background: 'radial-gradient(circle, rgba(124,92,255,.55), transparent 68%)',
+          filter: 'blur(60px)',
+          opacity: 0.55,
         }}
       />
       <div
-        className="absolute top-[30%] -right-[10%] h-[45vh] w-[45vw] rounded-full opacity-25 blur-3xl"
+        className="absolute"
         style={{
-          background: 'radial-gradient(circle, color-mix(in oklch, var(--accent) 45%, transparent), transparent 70%)',
+          width: 620,
+          height: 620,
+          top: '32%',
+          left: -220,
+          background: 'radial-gradient(circle, rgba(245,197,24,.14), transparent 66%)',
+          filter: 'blur(80px)',
         }}
       />
       <div
-        className="absolute bottom-[5%] left-[25%] h-[40vh] w-[40vw] rounded-full opacity-30 blur-3xl"
+        className="absolute"
         style={{
-          background:
-            'radial-gradient(circle, color-mix(in oklch, var(--secondary) 70%, var(--primary) 30%), transparent 70%)',
+          width: 760,
+          height: 560,
+          bottom: -220,
+          left: '34%',
+          background: 'radial-gradient(circle, rgba(91,61,245,.4), transparent 66%)',
+          filter: 'blur(90px)',
         }}
       />
       <div
-        className="absolute top-[55%] left-[55%] h-[30vh] w-[30vw] rounded-full opacity-20 blur-3xl"
+        className="absolute"
         style={{
-          background: 'radial-gradient(circle, color-mix(in oklch, var(--recommend) 35%, transparent), transparent 70%)',
+          width: 520,
+          height: 520,
+          top: '64%',
+          right: -160,
+          background: 'radial-gradient(circle, rgba(52,214,168,.10), transparent 66%)',
+          filter: 'blur(80px)',
         }}
       />
 
-      {/* Faint grid */}
+      {/* Perspective grid */}
       <div
-        className="absolute inset-0 opacity-[0.07]"
+        className="absolute inset-0"
         style={{
           backgroundImage:
-            'linear-gradient(color-mix(in oklch, var(--primary) 40%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in oklch, var(--primary) 40%, transparent) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
-          maskImage: 'radial-gradient(ellipse 80% 70% at 50% 30%, black 20%, transparent 75%)',
+            'linear-gradient(rgba(124,92,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(124,92,255,.045) 1px, transparent 1px)',
+          backgroundSize: '54px 54px',
+          opacity: 0.5,
+          maskImage: 'radial-gradient(120% 90% at 50% 0%, #000 0%, transparent 72%)',
+          WebkitMaskImage: 'radial-gradient(120% 90% at 50% 0%, #000 0%, transparent 72%)',
         }}
       />
 
       {/* Drifting orbs */}
-      <div
-        className="marketing-orb absolute top-[18%] left-[8%] size-32 rounded-full opacity-20 blur-2xl"
-        style={{ background: 'var(--primary)' }}
-      />
-      <div
-        className="marketing-orb marketing-orb-delay-1 absolute top-[42%] right-[12%] size-24 rounded-full opacity-15 blur-2xl"
-        style={{ background: 'var(--accent)' }}
-      />
-      <div
-        className="marketing-orb marketing-orb-delay-2 absolute bottom-[28%] left-[38%] size-20 rounded-full opacity-15 blur-2xl"
-        style={{ background: 'var(--recommend)' }}
-      />
-      <div
-        className="marketing-orb marketing-orb-delay-3 absolute top-[62%] right-[30%] size-28 rounded-full opacity-10 blur-2xl"
-        style={{ background: 'var(--primary)' }}
-      />
-      <div
-        className="marketing-orb marketing-orb-delay-4 absolute bottom-[12%] right-[8%] size-16 rounded-full opacity-20 blur-xl"
-        style={{ background: 'var(--accent)' }}
-      />
+      {ORBS.map((orb) => (
+        <div
+          key={`${orb.top}-${orb.left}`}
+          className="marketing-orb absolute"
+          style={{
+            width: orb.size,
+            height: orb.size,
+            top: orb.top,
+            left: orb.left,
+            animationDelay: orb.delay,
+          }}
+        />
+      ))}
 
-      {/* SVG noise grain */}
-      <svg className="absolute inset-0 h-full w-full opacity-[0.035] mix-blend-overlay" xmlns="http://www.w3.org/2000/svg">
-        <filter id="marketing-grain">
-          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#marketing-grain)" />
-      </svg>
+      {/* Film grain */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: GRAIN_URL,
+          opacity: 0.035,
+          mixBlendMode: 'overlay',
+        }}
+      />
 
       {/* Top vignette */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 120% 80% at 50% -20%, transparent 40%, color-mix(in oklch, var(--background) 65%, transparent) 100%)',
+            'radial-gradient(140% 100% at 50% 0%, transparent 55%, rgba(8,5,26,.6) 100%)',
         }}
       />
     </div>

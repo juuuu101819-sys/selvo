@@ -60,7 +60,7 @@ export function RouteSelectionGraph({
   return (
     <div
       className={cn(
-        'border-border/60 marketing-surface overflow-hidden rounded-xl border',
+        'marketing-surface overflow-hidden rounded-xl',
         className,
       )}
     >

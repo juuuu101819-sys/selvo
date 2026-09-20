@@ -9,7 +9,7 @@ export function MarketingCard({
   className?: string;
 }) {
   return (
-    <div className={cn('border-border/60 marketing-surface rounded-2xl border p-5 sm:p-6', className)}>
+    <div className={cn('marketing-surface rounded-2xl p-5 sm:p-6', className)}>
       {children}
     </div>
   );

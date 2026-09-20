@@ -11,7 +11,7 @@ export function ContactForm() {
 
   if (submitted) {
     return (
-      <p className="text-muted-foreground border-border/60 marketing-surface rounded-xl border p-6 text-sm">
+      <p className="text-muted-foreground marketing-surface rounded-xl p-6 text-sm">
         {t('formSuccess')}
       </p>
     );
@@ -19,7 +19,7 @@ export function ContactForm() {
 
   return (
     <form
-      className="border-border/60 marketing-surface space-y-4 rounded-xl border p-6"
+      className="marketing-surface space-y-4 rounded-xl p-6"
       onSubmit={(event) => {
         event.preventDefault();
         setSubmitted(true);

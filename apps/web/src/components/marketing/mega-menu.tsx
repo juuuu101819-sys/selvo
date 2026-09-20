@@ -123,7 +123,7 @@ function MegaMenuDropdown({ panel }: { panel: MegaMenuPanel }) {
         >
           <Popover.Popup
             className={cn(
-              'border-border/60 marketing-surface z-50 w-[min(calc(100vw-2rem),42rem)] rounded-2xl border p-0 shadow-xl',
+              'marketing-surface z-50 w-[min(calc(100vw-2rem),42rem)] rounded-2xl p-0',
               'data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
             )}
           >

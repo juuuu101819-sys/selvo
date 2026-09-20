@@ -84,6 +84,14 @@
   --border: oklch(0.3068 0.1038 286.884);
   --input: oklch(0.3068 0.1038 286.884);
 
+  /*
+   * Lifted-panel tokens. Every marketing card mixes `--surface` down to 82% so the fixed
+   * dimensional backdrop reads through it, and `--line` is the hairline that keeps the panel
+   * edge visible once the fill is translucent.
+   */
+  --surface: var(--card);
+  --line: color-mix(in oklch, var(--border) 65%, transparent);
+
   /* Brand violet. */
   --primary: oklch(0.599 0.2299 286.205);
   --primary-foreground: oklch(1 0 0);
@@ -135,41 +143,49 @@
 
 @layer utilities {
   .marketing-surface {
-    background-color: color-mix(in oklch, var(--card) 82%, transparent);
-    backdrop-filter: blur(12px);
-    box-shadow:
-      0 1px 0 color-mix(in oklch, var(--foreground) 6%, transparent),
-      0 24px 48px -24px color-mix(in oklch, var(--background) 80%, transparent);
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--line);
+    box-shadow: 0 24px 50px -30px rgba(0, 0, 0, 0.7);
   }
+
+  /* Feature and rail cells sit in dense grids, so they cast a shallower shadow. */
+  .marketing-surface-feature {
+    box-shadow: 0 20px 44px -30px rgba(0, 0, 0, 0.7);
+  }
+  .marketing-surface-rail {
+    box-shadow: 0 18px 40px -30px rgba(0, 0, 0, 0.7);
+  }
+}
+
+.marketing-orb {
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 35% 30%,
+    rgba(180, 160, 255, 0.9),
+    rgba(124, 92, 255, 0.15) 60%,
+    transparent 72%
+  );
+  filter: blur(2px);
+  opacity: 0.5;
+  animation: marketing-orb-drift 18s ease-in-out infinite;
 }
 
 @keyframes marketing-orb-drift {
   0%,
   100% {
-    transform: translate(0, 0) scale(1);
+    transform: translate(0, 0);
   }
   33% {
-    transform: translate(12px, -18px) scale(1.04);
+    transform: translate(14px, -20px);
   }
   66% {
-    transform: translate(-10px, 14px) scale(0.96);
+    transform: translate(-10px, -8px);
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: reduce) {
   .marketing-orb {
-    animation: marketing-orb-drift 22s ease-in-out infinite;
-  }
-  .marketing-orb-delay-1 {
-    animation-delay: -4s;
-  }
-  .marketing-orb-delay-2 {
-    animation-delay: -9s;
-  }
-  .marketing-orb-delay-3 {
-    animation-delay: -14s;
-  }
-  .marketing-orb-delay-4 {
-    animation-delay: -18s;
+    animation: none;
   }
 }
