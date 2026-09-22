@@ -4,6 +4,7 @@ import { Popover } from '@base-ui/react/popover';
 import { ChevronDownIcon, ExternalLinkIcon } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
@@ -14,6 +15,7 @@ import {
   itemLabelKey,
   type MegaMenuLink,
   type MegaMenuPanel,
+  type MegaMenuPanelId,
 } from './mega-menu-config';
 
 type NavKey = Parameters<ReturnType<typeof useTranslations<'nav'>>>[0];
@@ -76,26 +78,32 @@ function NavItem({
   );
 }
 
-function MegaMenuDropdown({ panel }: { panel: MegaMenuPanel }) {
+function MegaMenuScrim({ onClose }: { onClose: () => void }) {
+  return createPortal(
+    <button
+      type="button"
+      aria-hidden
+      tabIndex={-1}
+      className="fixed inset-0 z-[40] bg-[rgba(8,5,26,0.55)] backdrop-blur-[2px] motion-safe:animate-in motion-safe:fade-in-0"
+      onClick={onClose}
+    />,
+    document.body,
+  );
+}
+
+function MegaMenuDropdown({
+  panel,
+  open,
+  onOpenChange,
+}: {
+  panel: MegaMenuPanel;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const t = useTranslations('nav');
-  const [open, setOpen] = useState(false);
-
-  const onKeyDown = useCallback((event: KeyboardEvent) => {
-    if (event.key === 'Escape') {
-      setOpen(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open, onKeyDown]);
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen} modal={false}>
+    <Popover.Root open={open} onOpenChange={onOpenChange} modal={false}>
       <Popover.Trigger
         openOnHover
         delay={100}
@@ -120,10 +128,11 @@ function MegaMenuDropdown({ panel }: { panel: MegaMenuPanel }) {
           positionMethod="fixed"
           collisionPadding={16}
           collisionAvoidance={{ side: 'flip', align: 'shift', fallbackAxisSide: 'none' }}
+          className="z-[60]"
         >
           <Popover.Popup
             className={cn(
-              'marketing-surface z-50 w-[min(calc(100vw-2rem),42rem)] rounded-2xl p-0',
+              'marketing-surface-menu z-[60] w-[min(calc(100vw-2rem),42rem)] rounded-2xl p-0',
               'data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
             )}
           >
@@ -187,12 +196,42 @@ function MegaMenuDropdown({ panel }: { panel: MegaMenuPanel }) {
 export function MegaMenu({ openapiHref, className }: { openapiHref: string; className?: string }) {
   const t = useTranslations('nav');
   const panels = buildMegaMenuPanels(openapiHref);
+  const [openPanelId, setOpenPanelId] = useState<MegaMenuPanelId | null>(null);
+
+  const closeMenu = useCallback(() => {
+    setOpenPanelId(null);
+  }, []);
+
+  useEffect(() => {
+    if (openPanelId === null) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeMenu();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [closeMenu, openPanelId]);
 
   return (
-    <nav aria-label={t('ariaLabel')} className={cn('items-center gap-0', className)}>
-      {panels.map((panel) => (
-        <MegaMenuDropdown key={panel.id} panel={panel} />
-      ))}
-    </nav>
+    <>
+      {openPanelId !== null ? <MegaMenuScrim onClose={closeMenu} /> : null}
+      <nav aria-label={t('ariaLabel')} className={cn('items-center gap-0', className)}>
+        {panels.map((panel) => (
+          <MegaMenuDropdown
+            key={panel.id}
+            panel={panel}
+            open={openPanelId === panel.id}
+            onOpenChange={(isOpen) => {
+              setOpenPanelId(isOpen ? panel.id : null);
+            }}
+          />
+        ))}
+      </nav>
+    </>
   );
 }

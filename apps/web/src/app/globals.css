@@ -156,6 +156,15 @@
   .marketing-surface-rail {
     box-shadow: 0 18px 40px -30px rgba(0, 0, 0, 0.7);
   }
+
+  /* Mega-menu panels need a near-opaque fill so hero copy does not bleed through. */
+  .marketing-surface-menu {
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--line);
+    box-shadow: 0 24px 50px -30px rgba(0, 0, 0, 0.7);
+  }
 }
 
 .marketing-orb {

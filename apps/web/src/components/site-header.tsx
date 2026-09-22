@@ -27,10 +27,10 @@ export async function SiteHeader({
   const openapiHref = resolveOpenapiHref();
 
   return (
-    <header className="border-border/60 bg-background/80 sticky top-0 z-30 border-b backdrop-blur">
+    <header className="border-border/60 bg-background/95 sticky top-0 isolate z-[50] border-b backdrop-blur-md">
       <div
         className={cn(
-          'mx-auto flex w-full max-w-7xl items-center gap-x-2 px-4 py-3 sm:gap-x-3 sm:px-6',
+          'relative z-[51] mx-auto flex w-full max-w-7xl items-center gap-x-2 px-4 py-3 sm:gap-x-3 sm:px-6',
           showMegaMenu ? 'lg:gap-x-2' : 'justify-between',
         )}
       >
