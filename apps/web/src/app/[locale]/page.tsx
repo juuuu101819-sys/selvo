@@ -4,7 +4,10 @@ import { DeveloperSection } from '@/components/marketing/developer-section';
 import { FeaturesSection } from '@/components/marketing/features-section';
 import { GradientCta } from '@/components/marketing/gradient-cta';
 import { Hero } from '@/components/marketing/hero';
+import { HowItWorksFlow } from '@/components/marketing/how-it-works-flow';
 import { HowItWorks } from '@/components/marketing/how-it-works';
+import { TrustStrip } from '@/components/marketing/trust-strip';
+import { WhyNeverTouchMoney } from '@/components/marketing/why-never-touch-money';
 import { MarketingFooter } from '@/components/marketing/marketing-footer';
 import { MarketingShell } from '@/components/marketing/marketing-shell';
 import { ModelSection } from '@/components/marketing/model-section';
@@ -36,7 +39,11 @@ export default async function HomePage() {
           {meta.ok ? <RoutingViz meta={meta.data} /> : <ErrorState failure={meta.failure} />}
         </div>
 
-        <p className="text-muted-foreground text-center text-sm">{t('landing.trustLine')}</p>
+        <TrustStrip />
+
+        <HowItWorksFlow />
+
+        <WhyNeverTouchMoney />
 
         <ModelSection />
         <FeaturesSection />

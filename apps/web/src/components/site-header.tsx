@@ -35,19 +35,11 @@ export async function SiteHeader({
         )}
       >
         <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <Link href="/" className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <span
-              aria-hidden
-              className="bg-primary text-primary-foreground font-display flex size-8 shrink-0 items-center justify-center rounded-md text-sm font-semibold"
-            >
-              M
-            </span>
-            <div className="hidden min-w-0 leading-tight sm:block xl:max-w-[11rem]">
-              <p className="text-sm font-semibold tracking-tight">Meridian</p>
-              <p className="text-muted-foreground truncate text-xs">
-                {organizationName ?? t('tagline')}
-              </p>
-            </div>
+          <Link href="/" className="min-w-0 max-w-[11rem] leading-tight xl:max-w-[13rem]">
+            <p className="text-sm font-semibold tracking-tight">Meridian</p>
+            <p className="text-muted-foreground truncate text-xs">
+              {organizationName ?? t('tagline')}
+            </p>
           </Link>
         </div>
 
