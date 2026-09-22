@@ -6,15 +6,18 @@ import { GradientCta } from '@/components/marketing/gradient-cta';
 import { Hero } from '@/components/marketing/hero';
 import { HowItWorksFlow } from '@/components/marketing/how-it-works-flow';
 import { HowItWorks } from '@/components/marketing/how-it-works';
+import { LandingRailsWall } from '@/components/marketing/landing-rails-wall';
+import { LandingStatsBand } from '@/components/marketing/landing-stats-band';
+import { ProductDashboardMockup } from '@/components/marketing/product-dashboard-mockup';
+import { SavingsHighlight } from '@/components/marketing/savings-highlight';
 import { TrustStrip } from '@/components/marketing/trust-strip';
+import { UseCasesSection } from '@/components/marketing/use-cases-section';
 import { WhyNeverTouchMoney } from '@/components/marketing/why-never-touch-money';
 import { MarketingFooter } from '@/components/marketing/marketing-footer';
 import { MarketingShell } from '@/components/marketing/marketing-shell';
 import { ModelSection } from '@/components/marketing/model-section';
-import { RailGrid } from '@/components/marketing/rail-grid';
 import { RoutingViz } from '@/components/marketing/routing-viz';
 import { SectionShell } from '@/components/marketing/section-shell';
-import { StatBand } from '@/components/marketing/stat-band';
 import { SiteHeader } from '@/components/site-header';
 import { ErrorState } from '@/components/states';
 import { fetchMeta } from '@/lib/api/client';
@@ -22,7 +25,6 @@ import { fetchMeta } from '@/lib/api/client';
 export default async function HomePage() {
   const meta = await fetchMeta();
   const t = await getTranslations();
-  const tRails = await getTranslations('landing.rails');
   const tHow = await getTranslations('landing.how');
   const tCustomers = await getTranslations('landing.customers');
 
@@ -45,13 +47,18 @@ export default async function HomePage() {
 
         <WhyNeverTouchMoney />
 
+        <SavingsHighlight />
+
+        <ProductDashboardMockup />
+
+        <UseCasesSection />
+
+        <LandingStatsBand />
+
+        <LandingRailsWall />
+
         <ModelSection />
         <FeaturesSection />
-        <StatBand />
-
-        <SectionShell heading={tRails('heading')}>
-          <RailGrid />
-        </SectionShell>
 
         <SectionShell heading={tHow('heading')}>
           <HowItWorks />
