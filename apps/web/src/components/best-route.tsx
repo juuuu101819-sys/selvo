@@ -2,25 +2,95 @@
 
 import { ChevronDown, Clock, ShieldCheck, Sparkles } from 'lucide-react';
 import { useLocale, useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
 import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import { QuoteExpiryBadge } from '@/components/quote-expiry';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 import type { MoneyJson, RouteDto } from '@/lib/api/types';
 import { formatMoney, formatPercent, formatRate, formatReliability } from '@/lib/format';
 import { formatSettlementMessage } from '@/lib/format-i18n';
 
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(media.matches);
+    const onChange = (): void => setReduced(media.matches);
+    media.addEventListener('change', onChange);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  return reduced;
+}
+
+function lerpMinorUnits(from: string, to: string, progress: number): string {
+  const start = BigInt(from);
+  const end = BigInt(to);
+  const delta = end - start;
+  const scaled = BigInt(Math.round(Number(delta) * progress));
+  return (start + scaled).toString();
+}
+
+function AnimatedDeliveredAmount({ money, locale }: { money: MoneyJson; locale: string }) {
+  const reducedMotion = usePrefersReducedMotion();
+  const previousMinorRef = useRef(money.minorUnits);
+  const [displayMinor, setDisplayMinor] = useState(money.minorUnits);
+
+  useEffect(() => {
+    if (reducedMotion) {
+      setDisplayMinor(money.minorUnits);
+      previousMinorRef.current = money.minorUnits;
+      return;
+    }
+
+    const from = previousMinorRef.current;
+    const to = money.minorUnits;
+    if (from === to) {
+      return;
+    }
+
+    const started = performance.now();
+    const durationMs = 650;
+    let frame = 0;
+
+    const tick = (now: number): void => {
+      const progress = Math.min(1, (now - started) / durationMs);
+      const eased = 1 - (1 - progress) ** 3;
+      setDisplayMinor(lerpMinorUnits(from, to, eased));
+      if (progress < 1) {
+        frame = requestAnimationFrame(tick);
+      } else {
+        previousMinorRef.current = to;
+      }
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [money.minorUnits, money.currency, money.exponent, reducedMotion]);
+
+  return (
+    <p className="font-display text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
+      {formatMoney({ ...money, minorUnits: displayMinor }, locale)}
+    </p>
+  );
+}
+
 /**
  * The answer, given the prominence of one.
- *
- * Every figure the customer needs to act sits here without expanding anything: what they get, at
- * what rate, who charges what, how long it takes and how long the price holds. The alternatives
- * exist to justify this card, not to compete with it for attention.
  */
-export function BestRoute({ route }: { route: RouteDto }) {
+export function BestRoute({
+  route,
+  crownFlash = false,
+}: {
+  route: RouteDto;
+  crownFlash?: boolean;
+}) {
   const t = useTranslations('comparison');
   const tCommon = useTranslations('common');
   const tTime = useTranslations('time');
@@ -36,21 +106,27 @@ export function BestRoute({ route }: { route: RouteDto }) {
   return (
     <article
       aria-label={t('bestRouteLabel', { provider: route.provider.name })}
-      className="border-recommend/60 bg-recommend/10 rounded-xl border"
+      className={cn(
+        'marketing-surface relative overflow-hidden rounded-2xl transition-[box-shadow,ring-color] duration-700',
+        'shadow-[0_4px_28px_-6px] shadow-primary/30,0_24px_50px_-30px_rgba(0,0,0,0.75)',
+        crownFlash &&
+          'ring-accent/70 shadow-[0_0_0_1px] shadow-accent/40 ring-2 ring-accent/60',
+      )}
     >
-      <div className="p-4 sm:p-6">
+      <div className="from-primary/10 pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent opacity-80" />
+      <div className="relative p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
-            <p className="text-recommend text-xs font-semibold tracking-wide uppercase">
+            <p className="text-accent text-xs font-semibold tracking-widest uppercase">
               {t('bestRoute')}
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-semibold">{route.provider.name}</h2>
+              <h2 className="font-display text-xl font-semibold sm:text-2xl">{route.provider.name}</h2>
               <Badge variant="outline" className="text-xs">
                 {route.provider.railLabel}
               </Badge>
               <ProviderLicensingBadge licensing={route.provider.licensing} />
-              <Badge variant="recommend" className="text-xs">
+              <Badge variant="accent" className="text-xs">
                 <Sparkles className="size-3" aria-hidden />
                 {tCommon('recommended')}
               </Badge>
@@ -64,12 +140,12 @@ export function BestRoute({ route }: { route: RouteDto }) {
           <QuoteExpiryBadge expiresAt={route.quote.expiresAt} />
         </div>
 
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+        <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-muted-foreground text-xs">{t('beneficiaryReceives')}</p>
-            <p className="text-2xl font-semibold tabular-nums sm:text-3xl">
-              {formatMoney(route.deliveredAmount, locale)}
+            <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+              {t('beneficiaryReceives')}
             </p>
+            <AnimatedDeliveredAmount money={route.deliveredAmount} locale={locale} />
           </div>
           <div className="text-right">
             <p className="text-muted-foreground text-xs">{t('estimatedTotalCost')}</p>
@@ -138,17 +214,24 @@ export function BestRoute({ route }: { route: RouteDto }) {
             {showDetails ? t('hideDetails') : t('showDetails')}
             <ChevronDown
               aria-hidden
-              className={`size-3.5 transition-transform ${showDetails ? 'rotate-180' : ''}`}
+              className={`size-3.5 transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`}
             />
           </button>
         </div>
       </div>
 
-      {showDetails && (
-        <div className="border-border/60 border-t px-4 py-4 sm:px-6">
-          <CostBreakdown route={route} />
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
+          showDetails ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="border-border/60 border-t px-4 py-4 sm:px-6">
+            <CostBreakdown route={route} />
+          </div>
         </div>
-      )}
+      </div>
     </article>
   );
 }
@@ -159,7 +242,7 @@ function Field({
   value,
   hint,
 }: {
-  icon?: React.ReactNode;
+  icon?: ReactNode;
   label: string;
   value: string;
   hint?: string;
@@ -178,12 +261,6 @@ function Field({
   );
 }
 
-/**
- * Provider charges as one figure, in the destination currency.
- *
- * Source-side and destination-side fees arrive in different currencies; the breakdown values both at
- * the mid-market rate, so their sum is the honest single number for "what does the provider charge".
- */
 function sumInTarget(sourceFeeCost: MoneyJson, destinationFeeCost: MoneyJson): MoneyJson {
   const total = BigInt(sourceFeeCost.minorUnits) + BigInt(destinationFeeCost.minorUnits);
   return { ...sourceFeeCost, minorUnits: total.toString(), decimal: '' };

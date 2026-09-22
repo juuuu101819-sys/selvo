@@ -142,6 +142,7 @@ export function ComparisonForm({
                 type="button"
                 size="sm"
                 variant={selected ? 'default' : 'outline'}
+                className={selected ? 'bg-primary text-primary-foreground ring-accent/40 ring-1' : undefined}
                 aria-pressed={selected}
                 onClick={() => onChange({ ...value, priority: preset.id })}
               >

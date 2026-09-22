@@ -24,24 +24,28 @@ export function ResultsSkeleton() {
   const t = useTranslations('states');
 
   return (
-    <div className="space-y-6" aria-busy="true" aria-label={t('comparingRoutes')}>
-      <Skeleton className="h-64 w-full rounded-xl" />
+    <div
+      className="space-y-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:duration-300"
+      aria-busy="true"
+      aria-label={t('comparingRoutes')}
+    >
       <div className="space-y-3">
+        <Skeleton className="h-4 w-28 rounded-md" />
+        <Skeleton className="h-72 w-full rounded-2xl" />
+      </div>
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-40 rounded-md" />
         {[0, 1, 2].map((index) => (
-          <Skeleton key={index} className="h-36 w-full rounded-xl" />
+          <Skeleton key={index} className="h-44 w-full rounded-xl" />
         ))}
       </div>
-      <Skeleton className="h-40 w-full rounded-xl" />
+      <Skeleton className="h-36 w-full rounded-xl" />
     </div>
   );
 }
 
 /**
  * Failure display.
- *
- * An unreachable API and a rejected request are different problems with different fixes, so they
- * get different messages: one tells you to start the server, the other tells you what was wrong
- * with the input. The API `code` and `message` body are shown verbatim.
  */
 export function ErrorState({ failure }: { failure: ApiFailure }) {
   const t = useTranslations('errors');

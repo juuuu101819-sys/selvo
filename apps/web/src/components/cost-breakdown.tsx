@@ -47,7 +47,7 @@ export function CostBreakdown({ route }: { route: RouteDto }) {
   ];
 
   return (
-    <div className="space-y-4 text-sm">
+    <div className="space-y-4 text-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-300">
       <div>
         <table className="w-full">
           <caption className="text-muted-foreground mb-2 text-left text-xs">

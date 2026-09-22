@@ -29,6 +29,7 @@ export function RouteFinder({ meta, embedded = false }: { meta: MetaDto; embedde
   const [state, setState] = useState<ViewState>({ kind: 'idle' });
   const [isPending, startTransition] = useTransition();
   const prefillDone = useRef(false);
+  const priorityRef = useRef(form.priority);
 
   const runComparison = (values: FormValue): void => {
     startTransition(async () => {
@@ -60,6 +61,21 @@ export function RouteFinder({ meta, embedded = false }: { meta: MetaDto; embedde
     runComparison(INITIAL_FORM);
   }, [embedded]);
 
+  useEffect(() => {
+    if (state.kind !== 'success') {
+      priorityRef.current = form.priority;
+      return;
+    }
+    if (priorityRef.current === form.priority) {
+      return;
+    }
+    priorityRef.current = form.priority;
+    runComparison(form);
+  }, [form.priority, state.kind]);
+
+  const showInitialSkeleton =
+    (isPending || (embedded && state.kind === 'idle')) && state.kind !== 'success';
+
   return (
     <div className="space-y-6">
       <Card className={embedded ? 'marketing-surface ring-0' : undefined}>
@@ -79,9 +95,7 @@ export function RouteFinder({ meta, embedded = false }: { meta: MetaDto; embedde
         </CardContent>
       </Card>
 
-      {(isPending || (embedded && state.kind === 'idle')) && state.kind !== 'success' && (
-        <ResultsSkeleton />
-      )}
+      {showInitialSkeleton && <ResultsSkeleton />}
 
       {!embedded && !isPending && state.kind === 'idle' && <EmptyState />}
       {!isPending && state.kind === 'error' && <ErrorState failure={state.failure} />}
