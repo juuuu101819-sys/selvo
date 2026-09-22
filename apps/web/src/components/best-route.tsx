@@ -160,7 +160,7 @@ export function BestRoute({
 
         <Separator className="my-4" />
 
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm sm:grid-cols-3 lg:grid-cols-6">
+        <dl className="grid grid-cols-[repeat(auto-fit,minmax(8.75rem,1fr))] gap-x-4 gap-y-4 text-sm">
           <Field
             label={t('exchangeRate')}
             value={`${formatRate(route.offeredRate.value)} ${route.offeredRate.pair}`}
@@ -248,15 +248,15 @@ function Field({
   hint?: string;
 }) {
   return (
-    <div className="min-w-0">
-      <dt className="text-muted-foreground flex items-center gap-1 text-xs">
+    <div className="min-w-[8.75rem]">
+      <dt className="text-muted-foreground flex flex-wrap items-center gap-1 text-xs leading-snug">
         {icon}
         {label}
       </dt>
-      <dd className="truncate font-medium tabular-nums" title={value}>
-        {value}
-      </dd>
-      {hint !== undefined && <dd className="text-muted-foreground truncate text-xs">{hint}</dd>}
+      <dd className="mt-0.5 font-medium break-words leading-snug tabular-nums">{value}</dd>
+      {hint !== undefined && (
+        <dd className="text-muted-foreground mt-0.5 break-words text-xs leading-snug">{hint}</dd>
+      )}
     </div>
   );
 }

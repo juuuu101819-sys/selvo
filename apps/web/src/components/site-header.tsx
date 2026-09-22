@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 export async function SiteHeader({
   mode,
   engineVersion,
-  organizationName,
+  organizationName: _organizationName,
   authLinks = 'default',
   showMegaMenu = true,
 }: {
@@ -30,16 +30,19 @@ export async function SiteHeader({
     <header className="border-border/60 bg-background/95 sticky top-0 isolate z-[50] border-b backdrop-blur-md">
       <div
         className={cn(
-          'relative z-[51] mx-auto flex w-full max-w-7xl items-center gap-x-2 px-4 py-3 sm:gap-x-3 sm:px-6',
+          'relative z-[51] mx-auto flex w-full max-w-7xl items-center gap-x-3 px-4 py-2.5 sm:gap-x-4 sm:px-6 sm:py-3',
           showMegaMenu ? 'lg:gap-x-2' : 'justify-between',
         )}
       >
-        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-          <Link href="/" className="min-w-0 max-w-[11rem] leading-tight xl:max-w-[13rem]">
-            <p className="text-sm font-semibold tracking-tight">Meridian</p>
-            <p className="text-muted-foreground truncate text-xs">
-              {organizationName ?? t('tagline')}
-            </p>
+        <div className="flex shrink-0 items-center">
+          <Link
+            href="/"
+            className="font-display block leading-none tracking-tight"
+            aria-label="Meridian home"
+          >
+            <span className="bg-gradient-to-br from-foreground from-40% to-primary bg-clip-text text-2xl font-semibold text-transparent sm:text-[1.75rem] lg:text-3xl">
+              Meridian
+            </span>
           </Link>
         </div>
 
