@@ -65,24 +65,24 @@
     'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Noto Sans JP', 'Noto Sans KR', 'PingFang SC',
     'Microsoft YaHei', 'Noto Sans SC', sans-serif;
   --font-sans-stack:
-    var(--font-inter), system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple SD Gothic Neo',
+    var(--font-space-grotesk), system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple SD Gothic Neo',
     'Malgun Gothic', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'PingFang SC', 'Microsoft YaHei',
     sans-serif;
   --font-mono-stack: var(--font-geist-mono), ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
-  /* Deep-violet surfaces, darkest to lightest. */
-  --background: oklch(0.158 0.0508 286.594);
+  /* Deep-violet surfaces tuned to #0b0716 base, lightest to darkest. */
+  --background: oklch(0.118 0.048 286.6);
   --foreground: oklch(0.9618 0.0202 295.191);
-  --card: oklch(0.225 0.0835 285.497);
+  --card: oklch(0.205 0.078 286.2);
   --card-foreground: oklch(0.9618 0.0202 295.191);
-  --popover: oklch(0.225 0.0835 285.497);
+  --popover: oklch(0.205 0.078 286.2);
   --popover-foreground: oklch(0.9618 0.0202 295.191);
-  --secondary: oklch(0.1979 0.0699 285.496);
+  --secondary: oklch(0.165 0.058 286.2);
   --secondary-foreground: oklch(0.9618 0.0202 295.191);
-  --muted: oklch(0.259 0.0963 285.873);
+  --muted: oklch(0.245 0.092 286.2);
   --muted-foreground: oklch(0.668 0.0824 290.532);
-  --border: oklch(0.3068 0.1038 286.884);
-  --input: oklch(0.3068 0.1038 286.884);
+  --border: oklch(0.285 0.102 286.2);
+  --input: oklch(0.285 0.102 286.2);
 
   /*
    * Lifted-panel tokens. Every marketing card mixes `--surface` down to 82% so the fixed
@@ -92,14 +92,14 @@
   --surface: var(--card);
   --line: color-mix(in oklch, var(--border) 65%, transparent);
 
-  /* Brand violet. */
-  --primary: oklch(0.599 0.2299 286.205);
+  /* Electric indigo (#6d4aff). */
+  --primary: oklch(0.548 0.238 286.2);
   --primary-foreground: oklch(1 0 0);
-  --ring: oklch(0.599 0.2299 286.205);
+  --ring: oklch(0.548 0.238 286.2);
 
-  /* Brand amber. Accent is brand-only — it never marks a caution state. */
-  --accent: oklch(0.8419 0.1684 90.43);
-  --accent-foreground: oklch(0.3006 0.0614 89.775);
+  /* Signal yellow (#ffce45) — reserved for eyebrow, key figures, and selection accents. */
+  --accent: oklch(0.868 0.168 90.5);
+  --accent-foreground: oklch(0.28 0.06 90);
 
   /* Recommended route / best execution / positive delta. */
   --recommend: oklch(0.7842 0.1457 168.708);
@@ -128,7 +128,10 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground tabular-nums;
+    background-image:
+      radial-gradient(ellipse 90% 55% at 50% -8%, oklch(0.548 0.238 286.2 / 0.14), transparent 58%),
+      radial-gradient(ellipse 70% 45% at 50% 108%, oklch(0.868 0.168 90.5 / 0.06), transparent 52%);
   }
   html {
     @apply font-sans;
@@ -172,7 +175,7 @@
   background: radial-gradient(
     circle at 35% 30%,
     rgba(180, 160, 255, 0.9),
-    rgba(124, 92, 255, 0.15) 60%,
+    rgba(109, 74, 255, 0.15) 60%,
     transparent 72%
   );
   filter: blur(2px);

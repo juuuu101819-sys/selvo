@@ -2,9 +2,7 @@
  * Fixed marketing backdrop: gradient base, four radial glows, perspective grid, drifting orbs,
  * film grain, top vignette. Sits at z-0; page content wraps above it.
  *
- * The layer values are the literal approved design tokens rather than theme `var()` references —
- * the backdrop is a single fixed composition tuned against these exact rgba stops, and resolving
- * them through the oklch palette shifts the glow falloff.
+ * Palette anchors: deep violet #0b0716, electric indigo #6d4aff, signal yellow #ffce45 (subtle).
  */
 
 const GRAIN_URL =
@@ -24,10 +22,10 @@ export function DimensionalBg() {
       aria-hidden
       className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, #0E0A24 0%, #0A0620 40%, #080418 100%)',
+        background: 'linear-gradient(180deg, #10091f 0%, #0b0716 45%, #07040f 100%)',
       }}
     >
-      {/* Radial glows */}
+      {/* Radial glows — indigo crown, subtle yellow floor */}
       <div
         className="absolute"
         style={{
@@ -35,7 +33,7 @@ export function DimensionalBg() {
           height: 640,
           top: -260,
           right: -160,
-          background: 'radial-gradient(circle, rgba(124,92,255,.55), transparent 68%)',
+          background: 'radial-gradient(circle, rgba(109,74,255,.5), transparent 68%)',
           filter: 'blur(60px)',
           opacity: 0.55,
         }}
@@ -43,23 +41,23 @@ export function DimensionalBg() {
       <div
         className="absolute"
         style={{
-          width: 620,
-          height: 620,
-          top: '32%',
-          left: -220,
-          background: 'radial-gradient(circle, rgba(245,197,24,.14), transparent 66%)',
-          filter: 'blur(80px)',
+          width: 760,
+          height: 520,
+          bottom: -200,
+          left: '28%',
+          background: 'radial-gradient(circle, rgba(255,206,69,.09), transparent 66%)',
+          filter: 'blur(90px)',
         }}
       />
       <div
         className="absolute"
         style={{
-          width: 760,
+          width: 720,
           height: 560,
-          bottom: -220,
-          left: '34%',
-          background: 'radial-gradient(circle, rgba(91,61,245,.4), transparent 66%)',
-          filter: 'blur(90px)',
+          top: '8%',
+          left: -200,
+          background: 'radial-gradient(circle, rgba(109,74,255,.22), transparent 66%)',
+          filter: 'blur(80px)',
         }}
       />
       <div
@@ -69,7 +67,7 @@ export function DimensionalBg() {
           height: 520,
           top: '64%',
           right: -160,
-          background: 'radial-gradient(circle, rgba(52,214,168,.10), transparent 66%)',
+          background: 'radial-gradient(circle, rgba(52,214,168,.08), transparent 66%)',
           filter: 'blur(80px)',
         }}
       />
@@ -79,7 +77,7 @@ export function DimensionalBg() {
         className="absolute inset-0"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(124,92,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(124,92,255,.045) 1px, transparent 1px)',
+            'linear-gradient(rgba(109,74,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(109,74,255,.04) 1px, transparent 1px)',
           backgroundSize: '54px 54px',
           opacity: 0.5,
           maskImage: 'radial-gradient(120% 90% at 50% 0%, #000 0%, transparent 72%)',
@@ -117,7 +115,7 @@ export function DimensionalBg() {
         className="absolute inset-0"
         style={{
           background:
-            'radial-gradient(140% 100% at 50% 0%, transparent 55%, rgba(8,5,26,.6) 100%)',
+            'radial-gradient(140% 100% at 50% 0%, transparent 55%, rgba(11,7,22,.65) 100%)',
         }}
       />
     </div>
