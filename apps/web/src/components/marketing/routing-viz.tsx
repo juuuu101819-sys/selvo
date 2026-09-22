@@ -1,13 +1,10 @@
 'use client';
 
 import type { MetaDto } from '@/lib/api/types';
-import { RouteFinder } from '@/components/route-finder';
+import { LandingRouteComparison } from '@/components/marketing/landing-route-comparison';
+import type { ReactNode } from 'react';
 
-/** Hero route-search card — wraps the live comparison form. */
-export function RoutingViz({ meta }: { meta: MetaDto }) {
-  return (
-    <div className="overflow-hidden">
-      <RouteFinder meta={meta} embedded />
-    </div>
-  );
+/** Hero route-search — form in grid, results full-width below. */
+export function RoutingViz({ meta, hero }: { meta: MetaDto; hero: ReactNode }) {
+  return <LandingRouteComparison meta={meta}>{hero}</LandingRouteComparison>;
 }

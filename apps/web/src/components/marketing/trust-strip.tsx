@@ -18,10 +18,11 @@ function pillClass(label: (typeof TRUST_PILLS)[number]): string {
 
 export function TrustStrip() {
   return (
-    <div
-      className="flex flex-wrap items-center justify-center gap-x-2 gap-y-2 md:flex-nowrap md:gap-x-3"
-      aria-label="Meridian regulatory posture"
-    >
+    <div className="w-full">
+      <div
+        className="mx-auto flex w-full max-w-7xl flex-wrap items-center justify-center gap-x-2 gap-y-2 md:flex-nowrap md:gap-x-3"
+        aria-label="Meridian regulatory posture"
+      >
       {TRUST_PILLS.map((label, index) => (
         <span key={label} className="inline-flex shrink-0 items-center gap-x-2 md:gap-x-3">
           {index > 0 ? (
@@ -32,6 +33,7 @@ export function TrustStrip() {
           <span className={pillClass(label)}>{label}</span>
         </span>
       ))}
+      </div>
     </div>
   );
 }

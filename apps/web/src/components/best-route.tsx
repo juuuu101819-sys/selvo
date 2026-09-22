@@ -160,7 +160,7 @@ export function BestRoute({
 
         <Separator className="my-4" />
 
-        <dl className="grid grid-cols-[repeat(auto-fit,minmax(8.75rem,1fr))] gap-x-4 gap-y-4 text-sm">
+        <dl className="grid grid-cols-1 gap-x-4 gap-y-4 text-sm sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
           <Field
             label={t('exchangeRate')}
             value={`${formatRate(route.offeredRate.value)} ${route.offeredRate.pair}`}

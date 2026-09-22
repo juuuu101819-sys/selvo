@@ -38,10 +38,14 @@ export default async function HomePage() {
       />
 
       <main className="mx-auto w-full max-w-6xl flex-1 space-y-20 px-4 py-10 sm:px-6 sm:py-14">
-        <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-12">
-          <Hero />
-          {meta.ok ? <RoutingViz meta={meta.data} /> : <ErrorState failure={meta.failure} />}
-        </div>
+        {meta.ok ? (
+          <RoutingViz meta={meta.data} hero={<Hero />} />
+        ) : (
+          <div className="grid items-start gap-10 lg:grid-cols-2 lg:gap-12">
+            <Hero />
+            <ErrorState failure={meta.failure} />
+          </div>
+        )}
 
         <TrustStrip />
 

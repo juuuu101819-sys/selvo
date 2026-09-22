@@ -43,23 +43,24 @@ export function CostComparison({ comparison }: { comparison: ComparisonDto }) {
           const width = displayBarPercentFromDecimal(route.totalCostBps, maxCostBps);
 
           return (
-            <li key={route.routeId}>
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span className="inline-flex min-w-0 items-center gap-2 truncate">
-                  {route.provider.name}
-                  <ProviderLicensingBadge licensing={route.provider.licensing} />
-                  {route.recommended && (
-                    <span className="text-accent text-xs font-semibold uppercase tracking-wide">
-                      {tCommon('best')}
-                    </span>
-                  )}
-                </span>
-                <span className="shrink-0 font-mono text-xs tabular-nums">
-                  {formatPercent(route.totalCostPercent, 2, locale)} ·{' '}
-                  {formatMoney(route.totalCost, locale)}
-                </span>
-              </div>
-              <div className="bg-muted/80 relative mt-1 h-1.5 overflow-hidden rounded-full">
+            <li
+              key={route.routeId}
+              className="grid grid-cols-1 gap-2 lg:grid-cols-[minmax(10rem,14rem)_1fr_auto] lg:items-center lg:gap-x-4"
+            >
+              <span className="inline-flex min-w-0 flex-wrap items-center gap-2 text-sm lg:col-start-1 lg:row-start-1">
+                {route.provider.name}
+                <ProviderLicensingBadge licensing={route.provider.licensing} />
+                {route.recommended && (
+                  <span className="text-accent text-xs font-semibold uppercase tracking-wide">
+                    {tCommon('best')}
+                  </span>
+                )}
+              </span>
+              <span className="shrink-0 font-mono text-xs whitespace-nowrap tabular-nums lg:col-start-3 lg:row-start-1 lg:text-right">
+                {formatPercent(route.totalCostPercent, 2, locale)} ·{' '}
+                {formatMoney(route.totalCost, locale)}
+              </span>
+              <div className="bg-muted/80 relative h-2 overflow-hidden rounded-full lg:col-start-2 lg:row-start-1">
                 <div
                   className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ease-out motion-reduce:transition-none ${
                     route.recommended ? 'bg-accent' : 'bg-primary/65'
