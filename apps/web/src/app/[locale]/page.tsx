@@ -1,23 +1,27 @@
 import { getTranslations } from 'next-intl/server';
-import { CustomerGrid } from '@/components/marketing/customer-grid';
-import { DeveloperSection } from '@/components/marketing/developer-section';
-import { FeaturesSection } from '@/components/marketing/features-section';
-import { GradientCta } from '@/components/marketing/gradient-cta';
+import { ClosingCta } from '@/components/marketing/closing-cta';
+import { CorridorMap } from '@/components/marketing/corridor-map';
+import { DemoRequestForm } from '@/components/marketing/demo-request-form';
+import { DevelopersSectionExpanded } from '@/components/marketing/developers-section-expanded';
+import { GettingStartedDocs } from '@/components/marketing/getting-started-docs';
 import { Hero } from '@/components/marketing/hero';
 import { HowItWorksFlow } from '@/components/marketing/how-it-works-flow';
-import { HowItWorks } from '@/components/marketing/how-it-works';
+import { LandingFaq } from '@/components/marketing/landing-faq';
+import { LandingPricing } from '@/components/marketing/landing-pricing';
 import { LandingRailsWall } from '@/components/marketing/landing-rails-wall';
 import { LandingStatsBand } from '@/components/marketing/landing-stats-band';
+import { MarketingFooter } from '@/components/marketing/marketing-footer';
+import { MarketingShell } from '@/components/marketing/marketing-shell';
 import { ProductDashboardMockup } from '@/components/marketing/product-dashboard-mockup';
 import { SavingsHighlight } from '@/components/marketing/savings-highlight';
+import { SecuritySection } from '@/components/marketing/security-section';
+import { SpreadVsFeeDiagram } from '@/components/marketing/spread-vs-fee-diagram';
+import { StatusBand } from '@/components/marketing/status-band';
 import { TrustStrip } from '@/components/marketing/trust-strip';
 import { UseCasesSection } from '@/components/marketing/use-cases-section';
 import { WhyNeverTouchMoney } from '@/components/marketing/why-never-touch-money';
-import { MarketingFooter } from '@/components/marketing/marketing-footer';
-import { MarketingShell } from '@/components/marketing/marketing-shell';
-import { ModelSection } from '@/components/marketing/model-section';
+import { WhyNowSection } from '@/components/marketing/why-now-section';
 import { RoutingViz } from '@/components/marketing/routing-viz';
-import { SectionShell } from '@/components/marketing/section-shell';
 import { SiteHeader } from '@/components/site-header';
 import { ErrorState } from '@/components/states';
 import { fetchMeta } from '@/lib/api/client';
@@ -25,8 +29,6 @@ import { fetchMeta } from '@/lib/api/client';
 export default async function HomePage() {
   const meta = await fetchMeta();
   const t = await getTranslations();
-  const tHow = await getTranslations('landing.how');
-  const tCustomers = await getTranslations('landing.customers');
 
   return (
     <MarketingShell>
@@ -57,19 +59,27 @@ export default async function HomePage() {
 
         <LandingRailsWall />
 
-        <ModelSection />
-        <FeaturesSection />
+        <WhyNowSection />
 
-        <SectionShell heading={tHow('heading')}>
-          <HowItWorks />
-        </SectionShell>
+        <SpreadVsFeeDiagram />
 
-        <SectionShell heading={tCustomers('heading')}>
-          <CustomerGrid />
-        </SectionShell>
+        <DevelopersSectionExpanded />
 
-        <DeveloperSection />
-        <GradientCta />
+        <GettingStartedDocs />
+
+        <CorridorMap />
+
+        <LandingPricing />
+
+        <SecuritySection />
+
+        <LandingFaq />
+
+        <DemoRequestForm />
+
+        <StatusBand />
+
+        <ClosingCta />
       </main>
 
       <MarketingFooter
