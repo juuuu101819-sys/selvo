@@ -232,3 +232,16 @@ export function minorToMajorUnits(minorUnits: string, exponent: number): string 
   const fraction = digits.slice(digits.length - exponent).replace(/0+$/, '');
   return fraction === '' ? whole : `${whole}.${fraction}`;
 }
+
+/** Presentation-only floor for very low engine scores so "0.00 / 100" is not read as broken. */
+export function routeScoreForDisplay(score: string): {
+  readonly display: string;
+  readonly exact: string;
+  readonly floored: boolean;
+} {
+  const numeric = Number(score);
+  if (Number.isFinite(numeric) && numeric >= 0 && numeric < 1) {
+    return { display: '<1', exact: score, floored: true };
+  }
+  return { display: score, exact: score, floored: false };
+}

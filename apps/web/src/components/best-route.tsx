@@ -8,6 +8,7 @@ import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
 import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
 import { QuoteExpiryBadge } from '@/components/quote-expiry';
+import { RouteScoreHint } from '@/components/route-card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -199,7 +200,7 @@ export function BestRoute({
             icon={<ShieldCheck className="size-3.5" aria-hidden />}
             label={t('reliability')}
             value={formatReliability(route.reliabilityScore, locale)}
-            hint={t('routeScore', { score: route.score })}
+            hint={<RouteScoreHint score={route.score} />}
           />
         </dl>
 
@@ -245,7 +246,7 @@ function Field({
   icon?: ReactNode;
   label: string;
   value: string;
-  hint?: string;
+  hint?: ReactNode;
 }) {
   return (
     <div className="min-w-[8.75rem]">

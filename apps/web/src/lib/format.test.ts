@@ -10,6 +10,7 @@ import {
   formatTakeRate,
   majorToMinorUnits,
   minorToMajorUnits,
+  routeScoreForDisplay,
   sharePercent,
 } from './format';
 
@@ -139,5 +140,33 @@ describe('majorToMinorUnits and minorToMajorUnits', () => {
     expect(minorToMajorUnits('100000', 2)).toBe('1000');
     expect(minorToMajorUnits('100050', 2)).toBe('1000.5');
     expect(minorToMajorUnits('50', 2)).toBe('0.5');
+  });
+});
+
+describe('routeScoreForDisplay', () => {
+  it('floors sub-1 scores for display while keeping the exact value', () => {
+    expect(routeScoreForDisplay('0.00')).toEqual({
+      display: '<1',
+      exact: '0.00',
+      floored: true,
+    });
+    expect(routeScoreForDisplay('0.42')).toEqual({
+      display: '<1',
+      exact: '0.42',
+      floored: true,
+    });
+  });
+
+  it('passes through scores at or above 1 unchanged', () => {
+    expect(routeScoreForDisplay('1')).toEqual({
+      display: '1',
+      exact: '1',
+      floored: false,
+    });
+    expect(routeScoreForDisplay('87.50')).toEqual({
+      display: '87.50',
+      exact: '87.50',
+      floored: false,
+    });
   });
 });

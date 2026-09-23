@@ -13,7 +13,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 import { displayBarPercentFromDecimal } from '@/lib/chart-display';
 import type { RouteDto } from '@/lib/api/types';
-import { formatBps, formatMoney, formatPercent, formatRate, formatReliability } from '@/lib/format';
+import {
+  formatBps,
+  formatMoney,
+  formatPercent,
+  formatRate,
+  formatReliability,
+  routeScoreForDisplay,
+} from '@/lib/format';
 import { formatSettlementMessage } from '@/lib/format-i18n';
 
 export type RouteDimensionLeaders = {
@@ -134,7 +141,7 @@ export function RouteCard({
             icon={<ShieldCheck className="size-3.5" aria-hidden />}
             label={t('reliability')}
             value={formatReliability(route.reliabilityScore, locale)}
-            hint={t('routeScore', { score: route.score })}
+            hint={<RouteScoreHint score={route.score} />}
           />
         </dl>
 
@@ -195,6 +202,30 @@ export function RouteCard({
   );
 }
 
+export function RouteScoreHint({ score }: { score: string }) {
+  const t = useTranslations('comparison');
+  const { display, exact, floored } = routeScoreForDisplay(score);
+  const label = t('routeScore', { score: display });
+  if (!floored) {
+    return label;
+  }
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <span
+            className="cursor-help underline decoration-dotted underline-offset-2"
+            aria-label={t('routeScore', { score: exact })}
+          />
+        }
+      >
+        {label}
+      </TooltipTrigger>
+      <TooltipContent>{t('routeScore', { score: exact })}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function Metric({
   icon,
   label,
@@ -205,7 +236,7 @@ function Metric({
   icon?: React.ReactNode;
   label: string;
   value: string;
-  hint?: string;
+  hint?: React.ReactNode;
   emphasise?: boolean;
 }) {
   return (
