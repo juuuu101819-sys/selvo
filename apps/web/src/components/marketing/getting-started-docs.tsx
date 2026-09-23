@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { resolveApiBaseUrl } from '@/lib/api-base-url';
 import { cn } from '@/lib/utils';
 import { BrowserFrame } from './browser-frame';
 import { CodeCopyButton } from './code-copy-button';
@@ -24,7 +25,7 @@ const WORKFLOW = [
   'Continue with your licensed partner to settle.',
 ] as const;
 
-const CODE_SAMPLE = `curl -X POST https://api.meridian.dev/api/v1/comparisons \\
+const CODE_SAMPLE = `curl -X POST ${resolveApiBaseUrl()}/api/v1/comparisons \\
   -H "Authorization: Bearer mk_sandbox_demo" \\
   -H "Content-Type: application/json" \\
   -d '{"sourceCurrency":"USD","targetCurrency":"KRW","amount":"100000.00"}'`;

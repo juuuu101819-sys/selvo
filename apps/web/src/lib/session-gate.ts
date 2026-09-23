@@ -1,4 +1,5 @@
 import { isDashboardPath, loginPathFor } from '@/i18n/pathname';
+import { resolveApiBaseUrl } from '@/lib/api-base-url';
 import { SESSION_COOKIE } from './session-cookie';
 
 export { SESSION_COOKIE };
@@ -12,7 +13,6 @@ export const SESSION_UNAUTHENTICATED_CODE = 'UNAUTHENTICATED';
  */
 export const SESSION_UNAUTHENTICATED_MESSAGE = 'Sign in to continue.';
 
-const DEFAULT_API_BASE_URL = 'http://127.0.0.1:47311';
 const SESSION_VERIFY_TIMEOUT_MS = 8_000;
 
 /** Session tokens are `mds_` + base64url (A-Za-z0-9-_). */
@@ -74,10 +74,7 @@ async function verifySessionWithApi(
   input: EvaluateSessionInput,
 ): Promise<boolean> {
   const fetchImpl = input.fetchImpl ?? fetch;
-  const base = (input.apiBaseUrl ?? process.env.API_BASE_URL ?? DEFAULT_API_BASE_URL).replace(
-    /\/$/,
-    '',
-  );
+  const base = input.apiBaseUrl ?? resolveApiBaseUrl();
   const timeoutMs = input.timeoutMs ?? SESSION_VERIFY_TIMEOUT_MS;
   const controller = new AbortController();
   const timer = setTimeout(() => {

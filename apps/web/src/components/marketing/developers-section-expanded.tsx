@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Link } from '@/i18n/navigation';
+import { resolveApiBaseUrl } from '@/lib/api-base-url';
 import { cn } from '@/lib/utils';
 import { CodeCopyButton } from './code-copy-button';
 import { SectionShell } from './section-shell';
@@ -17,8 +18,10 @@ const QUICKSTART = [
 type RequestTab = 'curl' | 'node' | 'python';
 type ResponseTab = 'response' | 'error' | 'webhook';
 
-const REQUEST_SAMPLES: Record<RequestTab, string> = {
-  curl: `curl -X POST https://api.meridian.dev/api/v1/comparisons \\
+function buildRequestSamples(baseUrl: string): Record<RequestTab, string> {
+  const endpoint = `${baseUrl}/api/v1/comparisons`;
+  return {
+    curl: `curl -X POST ${endpoint} \\
   -H "Authorization: Bearer mk_sandbox_demo" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -26,8 +29,8 @@ const REQUEST_SAMPLES: Record<RequestTab, string> = {
     "targetCurrency": "EUR",
     "amount": "50000.00"
   }'`,
-  node: `const res = await fetch(
-  'https://api.meridian.dev/api/v1/comparisons',
+    node: `const res = await fetch(
+  '${endpoint}',
   {
     method: 'POST',
     headers: {
@@ -42,10 +45,10 @@ const REQUEST_SAMPLES: Record<RequestTab, string> = {
   },
 );
 const comparison = await res.json();`,
-  python: `import requests
+    python: `import requests
 
 comparison = requests.post(
-    "https://api.meridian.dev/api/v1/comparisons",
+    "${endpoint}",
     headers={
         "Authorization": "Bearer mk_sandbox_demo",
         "Content-Type": "application/json",
@@ -56,7 +59,10 @@ comparison = requests.post(
         "amount": "50000.00",
     },
 ).json()`,
-};
+  };
+}
+
+const REQUEST_SAMPLES = buildRequestSamples(resolveApiBaseUrl());
 
 const RESPONSE_SAMPLES: Record<ResponseTab, string> = {
   response: `{

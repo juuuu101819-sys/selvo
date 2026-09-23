@@ -1,10 +1,18 @@
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
+import { DEFAULT_API_BASE_URL } from './src/lib/api-base-url';
 import { HSTS_HEADER_VALUE, shouldAttachHsts } from './src/lib/transport-security';
 
 const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
+  // Expose API_BASE_URL to client bundles (code samples) when NEXT_PUBLIC_* is unset.
+  env: {
+    NEXT_PUBLIC_API_BASE_URL:
+      process.env.NEXT_PUBLIC_API_BASE_URL ??
+      process.env.API_BASE_URL ??
+      DEFAULT_API_BASE_URL,
+  },
   // Repository documentation lives in docs/ and README.md; the generated agent rule files would
   // duplicate it and drift.
   agentRules: false,

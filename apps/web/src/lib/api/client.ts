@@ -48,6 +48,7 @@ import type {
   AgentPaymentHistoryDto,
   AgentPolicyControlsDto,
 } from './types';
+import { resolveApiBaseUrl } from '@/lib/api-base-url';
 
 /**
  * Server-side client for the Meridian API.
@@ -61,11 +62,10 @@ import type {
  * app and API sit on different ports, so the httpOnly cookie is never sent to the API directly.
  */
 
-const DEFAULT_BASE_URL = 'http://127.0.0.1:47311';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 function baseUrl(): string {
-  return (process.env.API_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, '');
+  return resolveApiBaseUrl();
 }
 
 interface RequestOptions {
