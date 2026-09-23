@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 import { ContinueWithPartner } from '@/components/continue-with-partner';
 import { CostBreakdown } from '@/components/cost-breakdown';
 import { ProviderLicensingBadge } from '@/components/provider-licensing-badge';
-import { QuoteExpiryBadge } from '@/components/quote-expiry';
+import { QuoteExpiryBadge, SHORT_VALIDITY_HINT_THRESHOLD_MS } from '@/components/quote-expiry';
 import { RouteScoreHint } from '@/components/route-card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -138,7 +138,10 @@ export function BestRoute({
               </p>
             )}
           </div>
-          <QuoteExpiryBadge expiresAt={route.quote.expiresAt} />
+          <QuoteExpiryBadge
+            expiresAt={route.quote.expiresAt}
+            shortValidityThresholdMs={SHORT_VALIDITY_HINT_THRESHOLD_MS}
+          />
         </div>
 
         <div className="mt-5 flex flex-wrap items-end justify-between gap-4">

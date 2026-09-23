@@ -28,6 +28,9 @@ export function useQuoteExpiry(expiresAt: string | null): QuoteExpiryState {
   return classifyQuoteExpiry(expiresAt, now);
 }
 
+/** Best-route hint when remaining validity is shorter than a comfortable refresh window. */
+export const SHORT_VALIDITY_HINT_THRESHOLD_MS = 60_000;
+
 /**
  * The expiration state of one quote, as a live badge.
  *
@@ -35,9 +38,34 @@ export function useQuoteExpiry(expiresAt: string | null): QuoteExpiryState {
  * and an unmissable expired marker. A static timestamp would make the customer do the arithmetic
  * themselves, at exactly the moment it matters.
  */
-export function QuoteExpiryBadge({ expiresAt }: { expiresAt: string | null }) {
+export function QuoteExpiryBadge({
+  expiresAt,
+  shortValidityThresholdMs,
+}: {
+  expiresAt: string | null;
+  /** When set, live/expiring quotes below this remaining ms show a neutral short-validity hint. */
+  shortValidityThresholdMs?: number;
+}) {
   const t = useTranslations('comparison');
   const expiry = useQuoteExpiry(expiresAt);
+
+  if (
+    shortValidityThresholdMs !== undefined &&
+    (expiry.state === 'live' || expiry.state === 'expiring') &&
+    expiry.remainingMs < shortValidityThresholdMs
+  ) {
+    return (
+      <Badge variant="secondary" className="gap-1 text-xs font-normal">
+        <Clock3 className="size-3 shrink-0" aria-hidden />
+        {t('shortValidityHint')}
+        <span className="sr-only">
+          {expiry.state === 'expiring'
+            ? t('expiresIn', { remaining: formatRemaining(expiry.remainingMs) })
+            : t('quoteValid', { remaining: formatRemaining(expiry.remainingMs) })}
+        </span>
+      </Badge>
+    );
+  }
 
   switch (expiry.state) {
     case 'no_expiry':

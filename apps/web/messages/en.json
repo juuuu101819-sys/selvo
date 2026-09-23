@@ -306,6 +306,7 @@
     "pricingVersion": "Pricing version",
     "breakdownCaption": "All figures in {currency}, measured against a mid-market benchmark of {amount}.",
     "quoteValid": "Quote valid {remaining}",
+    "shortValidityHint": "Short validity — refresh for a live quote",
     "expiresIn": "Expires in {remaining}",
     "quoteExpired": "Quote expired",
     "priority": {
