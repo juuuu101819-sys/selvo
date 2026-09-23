@@ -104,6 +104,7 @@ export function ComparisonForm({
             type="button"
             variant="ghost"
             size="icon"
+            className="min-h-11 min-w-11 sm:min-h-8 sm:min-w-8"
             aria-label={t('swapCurrencies')}
             onClick={() =>
               onChange({
@@ -142,7 +143,11 @@ export function ComparisonForm({
                 type="button"
                 size="sm"
                 variant={selected ? 'default' : 'outline'}
-                className={selected ? 'bg-primary text-primary-foreground ring-accent/40 ring-1' : undefined}
+                className={
+                  selected
+                    ? 'bg-primary text-primary-foreground ring-accent/40 min-h-11 ring-1 sm:min-h-7'
+                    : 'min-h-11 sm:min-h-7'
+                }
                 aria-pressed={selected}
                 onClick={() => onChange({ ...value, priority: preset.id })}
               >
@@ -174,7 +179,7 @@ export function ComparisonForm({
                 type="button"
                 aria-pressed={selected}
                 onClick={() => toggleRail(rail.type)}
-                className={`rounded-full border px-3 py-1 text-xs transition-colors ${
+                className={`min-h-11 rounded-full border px-3 py-2.5 text-xs transition-colors sm:min-h-0 sm:py-1 ${
                   selected
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border text-muted-foreground hover:border-foreground/40 hover:text-foreground'
@@ -197,7 +202,7 @@ export function ComparisonForm({
       <Button
         type="submit"
         disabled={isPending || value.amount === ''}
-        className="w-full sm:w-auto"
+        className="min-h-11 w-full sm:min-h-8 sm:w-auto"
       >
         {isPending ? (
           <>

@@ -26,7 +26,7 @@ export function LandingRouteComparison({
         </div>
       </div>
 
-      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 sm:px-6">
+      <div className="w-full max-w-full overflow-x-clip lg:relative lg:left-1/2 lg:w-screen lg:-translate-x-1/2 lg:px-6">
         <div className="mx-auto w-full max-w-7xl">
           <RouteFinderResultsPanel controller={controller} embedded />
         </div>

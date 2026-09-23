@@ -101,7 +101,7 @@ export function ProductDashboardMockup() {
                     }
                   }}
                   className={cn(
-                    'flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors',
+                    'flex min-h-11 w-full items-center justify-between rounded-lg px-2.5 py-2.5 text-left text-xs font-medium transition-colors sm:min-h-0 sm:py-2',
                     active
                       ? 'bg-primary text-primary-foreground'
                       : item.interactive
