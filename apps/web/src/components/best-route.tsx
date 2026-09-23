@@ -12,7 +12,12 @@ import { RouteScoreHint } from '@/components/route-card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
-import type { MoneyJson, RouteDto } from '@/lib/api/types';
+import type { ComparisonDto, MoneyJson, RouteDto } from '@/lib/api/types';
+import {
+  explainRouteFacts,
+  formatRouteExplanation,
+  type ExplanationFactor,
+} from '@/lib/explainRoute';
 import { formatMoney, formatPercent, formatRate, formatReliability } from '@/lib/format';
 import { formatSettlementMessage } from '@/lib/format-i18n';
 
@@ -87,9 +92,13 @@ function AnimatedDeliveredAmount({ money, locale }: { money: MoneyJson; locale: 
  */
 export function BestRoute({
   route,
+  scoringWeights,
+  insights,
   crownFlash = false,
 }: {
   route: RouteDto;
+  scoringWeights: ComparisonDto['scoringWeights'];
+  insights: ComparisonDto['insights'];
   crownFlash?: boolean;
 }) {
   const t = useTranslations('comparison');
@@ -103,6 +112,46 @@ export function BestRoute({
   );
   const settlement = (seconds: number) =>
     formatSettlementMessage(tTime, seconds, route.settlement.businessDaysOnly);
+
+  const whyThisRoute = formatRouteExplanation(
+    explainRouteFacts({ route, scoringWeights, insights }),
+    {
+      cost: formatPercent(route.totalCostPercent, 2, locale),
+      settlement: settlement(route.settlement.p50Seconds),
+      reliability: formatReliability(route.reliabilityScore, locale),
+    },
+    {
+      rankLead: t('whyThisRoute.rankLead', { rank: route.rank }),
+      cheapestLeader: t('whyThisRoute.cheapestLeader', {
+        cost: formatPercent(route.totalCostPercent, 2, locale),
+      }),
+      fastestLeader: t('whyThisRoute.fastestLeader'),
+      and: t('whyThisRoute.and'),
+      droveResult: t('whyThisRoute.droveResult'),
+      factorLabel: (factor: ExplanationFactor) => {
+        const key = {
+          cost: 'factorCost',
+          speed: 'factorSpeed',
+          settlementConfidence: 'factorSettlementConfidence',
+          slippage: 'factorSlippage',
+          liquidity: 'factorLiquidity',
+          risk: 'factorRisk',
+        }[factor] as
+          | 'factorCost'
+          | 'factorSpeed'
+          | 'factorSettlementConfidence'
+          | 'factorSlippage'
+          | 'factorLiquidity'
+          | 'factorRisk';
+        return t(`whyThisRoute.${key}`);
+      },
+      carriesMostWeight: (factor) => t('whyThisRoute.carriesMostWeight', { factor }),
+      carriesWeightWith: (first, second) =>
+        t('whyThisRoute.carriesWeightWith', { first, second }),
+      footer: (settlementLabel, reliability) =>
+        t('whyThisRoute.footer', { settlement: settlementLabel, reliability }),
+    },
+  );
 
   return (
     <article
@@ -206,6 +255,13 @@ export function BestRoute({
             hint={<RouteScoreHint score={route.score} />}
           />
         </dl>
+
+        <div className="mt-4 space-y-1">
+          <p className="text-muted-foreground text-xs font-medium tracking-wide uppercase">
+            {t('whyThisRoute.heading')}
+          </p>
+          <p className="text-muted-foreground text-sm leading-relaxed">{whyThisRoute}</p>
+        </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <ContinueWithPartner providerName={route.provider.name} />

@@ -245,7 +245,12 @@ export function ComparisonResult({
               </h2>
             ) : null}
             {index === 0 ? (
-              <BestRoute route={route} crownFlash={crownFlash && !reducedMotion} />
+              <BestRoute
+                route={route}
+                scoringWeights={comparison.scoringWeights}
+                insights={comparison.insights}
+                crownFlash={crownFlash && !reducedMotion}
+              />
             ) : (
               <RouteCard
                 route={route}
