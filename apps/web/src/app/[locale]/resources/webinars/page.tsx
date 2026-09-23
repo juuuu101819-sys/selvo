@@ -9,10 +9,8 @@ export default async function WebinarsPage() {
   return (
     <MarketingPageShell noticeKey="resourcesNotice">
       <PageHero title={t('heroTitle')} lede={t('heroLede')} />
-      <MarketingCard className="space-y-2">
-        <p className="text-muted-foreground font-mono text-[11px] uppercase">{t('placeholderDate')}</p>
-        <h2 className="text-base font-semibold">{t('placeholderTitle')}</h2>
-        <p className="text-muted-foreground text-sm leading-relaxed">{t('placeholderBody')}</p>
+      <MarketingCard>
+        <p className="text-muted-foreground text-sm leading-relaxed">This section is coming soon.</p>
       </MarketingCard>
     </MarketingPageShell>
   );

@@ -120,7 +120,7 @@ export function buildMegaMenuPanels(openapiHref: string): readonly MegaMenuPanel
           headingKey: 'developers.toolkitHeading',
           items: [
             { id: 'sdks', href: '/developers/sdks', tag: 'LIVE' },
-            { id: 'changelog', href: '/developers/changelog', tag: 'LIVE' },
+            { id: 'changelog', href: '/developers/changelog', tag: 'SOON' },
             { id: 'status', href: '/developers/status', tag: 'LIVE' },
           ],
         },
@@ -139,9 +139,9 @@ export function buildMegaMenuPanels(openapiHref: string): readonly MegaMenuPanel
         {
           headingKey: 'resources.learnHeading',
           items: [
-            { id: 'blog', href: '/resources/blog', tag: 'LIVE' },
+            { id: 'blog', href: '/resources/blog', tag: 'SOON' },
             { id: 'playbook', href: '/resources/playbook', tag: 'LIVE' },
-            { id: 'webinars', href: '/resources/webinars', tag: 'LIVE' },
+            { id: 'webinars', href: '/resources/webinars', tag: 'SOON' },
           ],
         },
         {

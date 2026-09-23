@@ -9,8 +9,8 @@ export default async function ChangelogPage() {
   return (
     <MarketingPageShell noticeKey="devDocsNotice">
       <PageHero title={t('heroTitle')} lede={t('heroLede')} />
-      <MarketingCard className="space-y-2">
-        <p className="text-muted-foreground text-sm leading-relaxed">{t('emptyBody')}</p>
+      <MarketingCard>
+        <p className="text-muted-foreground text-sm leading-relaxed">This section is coming soon.</p>
       </MarketingCard>
     </MarketingPageShell>
   );
