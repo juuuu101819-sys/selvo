@@ -25,7 +25,6 @@ export async function MarketingFooter({
           <ShieldCheck className="text-recommend mt-0.5 size-3.5 shrink-0" aria-hidden />
           <span>{notice}</span>
         </p>
-        <p className="leading-relaxed">{t('disclosure')}</p>
         <FooterColumns />
         {extra}
         <nav aria-label={t('legalNav')} className="flex flex-wrap gap-x-4 gap-y-1 pt-2">
