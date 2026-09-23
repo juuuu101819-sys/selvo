@@ -77,8 +77,8 @@ export const DEFAULT_SUBSCRIPTION_TIERS: SubscriptionTierCatalog = {
   enterprise: {
     tier: 'enterprise',
     currency: 'USD',
-    monthlyBaseMinorUnits: '249900',
-    includedCalls: '1000000',
+    monthlyBaseMinorUnits: '99900',
+    includedCalls: '500000',
     overagePerCallMinorUnits: '1',
     flatDecisionFeeMinorUnits: '10',
   },
@@ -152,3 +152,4 @@ export function flatDecisionFeeMinorUnitsFor(
     'flatDecisionFeeMinorUnits',
   );
 }
+
