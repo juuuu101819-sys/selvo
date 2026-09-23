@@ -5,7 +5,7 @@ import { useRouteFinder } from '@/components/use-route-finder';
 import type { MetaDto } from '@/lib/api/types';
 
 export function RouteFinder({ meta, embedded = false }: { meta: MetaDto; embedded?: boolean }) {
-  const controller = useRouteFinder({ meta, embedded, autoRun: embedded });
+  const controller = useRouteFinder({ meta, embedded, autoRun: false });
 
   return (
     <div className="space-y-6">

@@ -15,7 +15,7 @@ export function LandingRouteComparison({
   meta: MetaDto;
   children: ReactNode;
 }) {
-  const controller = useRouteFinder({ meta, embedded: true, autoRun: true });
+  const controller = useRouteFinder({ meta, embedded: true, autoRun: false });
 
   return (
     <section className="space-y-8">
@@ -26,13 +26,11 @@ export function LandingRouteComparison({
         </div>
       </div>
 
-      {controller.showResultsPanel ? (
-        <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 sm:px-6">
-          <div className="mx-auto w-full max-w-7xl">
-            <RouteFinderResultsPanel controller={controller} embedded />
-          </div>
+      <div className="relative left-1/2 w-screen -translate-x-1/2 px-4 sm:px-6">
+        <div className="mx-auto w-full max-w-7xl">
+          <RouteFinderResultsPanel controller={controller} embedded />
         </div>
-      ) : null}
+      </div>
     </section>
   );
 }

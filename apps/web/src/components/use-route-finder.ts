@@ -30,6 +30,7 @@ export function useRouteFinder({
 }) {
   const [form, setForm] = useState<FormValue>(ROUTE_FINDER_INITIAL_FORM);
   const [state, setState] = useState<RouteFinderViewState>({ kind: 'idle' });
+  const [hasUserCompared, setHasUserCompared] = useState(() => !embedded);
   const [isPending, startTransition] = useTransition();
   const prefillDone = useRef(false);
   const priorityRef = useRef(form.priority);
@@ -53,6 +54,7 @@ export function useRouteFinder({
   };
 
   const submit = (): void => {
+    setHasUserCompared(true);
     runComparison(form);
   };
 
@@ -76,11 +78,11 @@ export function useRouteFinder({
     runComparison(form);
   }, [form.priority, state.kind]);
 
-  const showInitialSkeleton =
-    (isPending || (embedded && state.kind === 'idle' && autoRun)) && state.kind !== 'success';
+  const showInitialSkeleton = hasUserCompared && isPending && state.kind !== 'success';
 
   const showResultsPanel =
-    showInitialSkeleton || state.kind === 'success' || state.kind === 'error';
+    hasUserCompared &&
+    (showInitialSkeleton || state.kind === 'success' || state.kind === 'error');
 
   return {
     meta,
@@ -90,6 +92,7 @@ export function useRouteFinder({
     isPending,
     submit,
     embedded,
+    hasUserCompared,
     showInitialSkeleton,
     showResultsPanel,
   };

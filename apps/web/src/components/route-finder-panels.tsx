@@ -46,7 +46,11 @@ export function RouteFinderResultsPanel({
   controller: RouteFinderController;
   embedded?: boolean;
 }) {
-  const { showInitialSkeleton, isPending, state, submit, embedded: isEmbedded } = controller;
+  const { showInitialSkeleton, isPending, state, submit, hasUserCompared } = controller;
+
+  if (embedded && !hasUserCompared) {
+    return <EmptyState />;
+  }
 
   if (showInitialSkeleton) {
     return <ResultsSkeleton />;
@@ -71,5 +75,5 @@ export function RouteFinderResultsPanel({
     );
   }
 
-  return isEmbedded ? null : <EmptyState />;
+  return embedded ? null : <EmptyState />;
 }
