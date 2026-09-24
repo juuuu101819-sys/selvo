@@ -5,6 +5,8 @@ import {
   FixedClock,
   ForbiddenError,
   NotFoundError,
+  ValidationError,
+  WireManualPlatformFeeCollector,
   RepositoryAuditLogger,
   SequentialIdGenerator,
   buildMonetizationEvent,
@@ -447,5 +449,100 @@ describe('only a confirmed processor success realizes revenue', () => {
     );
     expect(invoices).toHaveLength(1);
     expect(invoices[0]?.collectionStatus).toBe('collected');
+  });
+});
+
+describe('confirmWireInvoice', () => {
+  const WIRE = 'wire:treasury-20260405-abc';
+
+  it('promotes an uncollected invoice to collected with operator_manual', async () => {
+    const ctx = await fixture({
+      mode: 'LIVE',
+      determination: true,
+      collector: new WireManualPlatformFeeCollector(),
+    });
+
+    const result = await ctx.service.confirmWireInvoice({
+      invoiceId: 'inv_1',
+      wireReference: WIRE,
+      ...COMMAND,
+    });
+    expect(result.collected).toBe(true);
+    expect(result.replayed).toBe(false);
+    expect(result.attempt.status).toBe('succeeded');
+    expect(result.attempt.processorReference).toBe(WIRE);
+    expect(result.attempt.confirmationSource).toBe('operator_manual');
+
+    const invoice = await ctx.persistence.billing.getInvoice('inv_1');
+    expect(invoice?.collectionStatus).toBe('collected');
+    expect(invoice?.collectionMode).toBe('LIVE');
+    expect(invoice?.collectionReference).toBe(WIRE);
+  });
+
+  it('refuses wire confirmation while the process is in RECORD_ONLY mode', async () => {
+    const ctx = await fixture({
+      mode: 'RECORD_ONLY',
+      collector: new WireManualPlatformFeeCollector(),
+    });
+    await expect(
+      ctx.service.confirmWireInvoice({ invoiceId: 'inv_1', wireReference: WIRE, ...COMMAND }),
+    ).rejects.toThrow(ForbiddenError);
+
+    const invoice = await ctx.persistence.billing.getInvoice('inv_1');
+    expect(invoice?.collectionStatus).toBe('uncollected');
+  });
+
+  it('is idempotent when the same invoice is confirmed twice', async () => {
+    const ctx = await fixture({
+      mode: 'LIVE',
+      determination: true,
+      collector: new WireManualPlatformFeeCollector(),
+    });
+    const first = await ctx.service.confirmWireInvoice({
+      invoiceId: 'inv_1',
+      wireReference: WIRE,
+      ...COMMAND,
+    });
+    const second = await ctx.service.confirmWireInvoice({
+      invoiceId: 'inv_1',
+      wireReference: WIRE,
+      ...COMMAND,
+    });
+    expect(first.replayed).toBe(false);
+    expect(second.replayed).toBe(true);
+    expect(second.attempt.id).toBe(first.attempt.id);
+    expect(await ctx.persistence.collections.listAttemptsForInvoice('inv_1')).toHaveLength(1);
+  });
+
+  it('rejects IBAN-shaped wire references before touching persistence', async () => {
+    const ctx = await fixture({
+      mode: 'LIVE',
+      determination: true,
+      collector: new WireManualPlatformFeeCollector(),
+    });
+    await expect(
+      ctx.service.confirmWireInvoice({
+        invoiceId: 'inv_1',
+        wireReference: 'wire:GB82WEST12345698765432',
+        ...COMMAND,
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+
+  it('audits recognized revenue without claiming settlement funds moved', async () => {
+    const ctx = await fixture({
+      mode: 'LIVE',
+      determination: true,
+      collector: new WireManualPlatformFeeCollector(),
+    });
+    await ctx.service.confirmWireInvoice({ invoiceId: 'inv_1', wireReference: WIRE, ...COMMAND });
+    const events = await ctx.persistence.auditLog.list({ limit: 50 });
+    const recognized = events.find((event) => event.type === 'billing.revenue.recognized');
+    expect(recognized?.payload).toMatchObject({
+      collected: true,
+      fundsMoved: false,
+      customerSettlementFundsMoved: false,
+      confirmationKind: 'operator_manual_wire',
+    });
   });
 });

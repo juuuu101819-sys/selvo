@@ -15,6 +15,7 @@ import {
   ConfigurationError,
   ComparisonRoutingService,
   DeferredPlatformFeeCollector,
+  WireManualPlatformFeeCollector,
   DEFI_ROUTING_ENGINE_VERSION,
   DefiRouter,
   ENGINE_VERSION,
@@ -396,16 +397,16 @@ export function createContainer(options: ContainerOptions): AppContainer {
     logger,
   });
 
-  // No processor is contracted, so the deferred collector is the only implementation registered.
-  // It reports `collectionEnabled: false`, which keeps the live-billing gate closed regardless of
-  // how BILLING_LIVE_ENABLED is set: a flag cannot conjure a payments relationship.
+  const platformFeeCollector = config.wireManualCollectionEnabled
+    ? new WireManualPlatformFeeCollector()
+    : new DeferredPlatformFeeCollector();
   const collections = new CollectionService({
     mode: config.billingCollectionMode,
     billingLiveEnabled: config.billingLiveEnabled,
     billing: persistence.billing,
     collections: persistence.collections,
     liveEnablement: persistence.liveEnablement,
-    collector: new DeferredPlatformFeeCollector(),
+    collector: platformFeeCollector,
     clock,
     ids: uuidIdGenerator,
     auditLogger,

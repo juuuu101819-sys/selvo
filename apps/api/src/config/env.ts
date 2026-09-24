@@ -119,6 +119,12 @@ const envSchema = z
      */
     BILLING_LIVE_ENABLED: booleanFlag,
 
+    /**
+     * Register {@link WireManualPlatformFeeCollector} for operator-confirmed wire deposits.
+     * Default false — {@link DeferredPlatformFeeCollector} remains the process default.
+     */
+    WIRE_MANUAL_COLLECTION_ENABLED: booleanFlag,
+
     // -----------------------------------------------------------------------
     // Pricing-shape flags (§18.3). One flag per shape, split by regulatory risk:
     // enabling the shape that is cheap to justify must not enable the expensive one.
@@ -461,6 +467,8 @@ export interface AppConfig {
    * See GO_LIVE_CHECKLIST.md#billing-collection.
    */
   readonly billingLiveEnabled: boolean;
+  /** When true, registers WireManualPlatformFeeCollector instead of the deferred stub. */
+  readonly wireManualCollectionEnabled: boolean;
   /**
    * Which collection mode the process runs in (§18.5).
    *
@@ -605,6 +613,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     partnerLiveEnabled: env.PARTNER_LIVE_ENABLED,
     executionEnabled: env.EXECUTION_ENABLED,
     billingLiveEnabled: env.BILLING_LIVE_ENABLED,
+    wireManualCollectionEnabled: env.WIRE_MANUAL_COLLECTION_ENABLED,
     billingCollectionMode: env.BILLING_LIVE_ENABLED ? 'LIVE' : 'RECORD_ONLY',
     pricingShapeFlags: {
       flat_txn: env.FLAT_TXN_PRICING_ENABLED,

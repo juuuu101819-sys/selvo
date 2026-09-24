@@ -4,6 +4,7 @@ import {
   SUBSCRIPTION_TIERS,
   SUBSCRIPTION_TIER_LABELS,
   invoiceCollectionRollup,
+  parseWireReference,
   reconcilePeriod,
   runMonthlyBilling,
   serializeBillingRunResult,
@@ -59,6 +60,13 @@ const collectBody = z
   .object({
     /** Processor-side token for the org's stored payment method. Never a raw credential. */
     paymentMethodToken: z.string().trim().min(1).max(256).optional(),
+  })
+  .strict();
+
+const confirmWireBody = z
+  .object({
+    wireReference: z.string().trim().min(8).max(256),
+    notes: z.string().trim().max(2000).optional(),
   })
   .strict();
 
@@ -169,6 +177,30 @@ export function registerBillingRoutes(app: FastifyInstance, container: AppContai
       // invoice, and invoices are recorded rather than collected until the §18.5 gate opens.
       collectionMode: container.config.billingCollectionMode,
       pricesAreProvisional: true,
+    });
+  });
+
+  app.post('/ops/billing/invoices/:id/confirm-wire', async (request) => {
+    requireOnboardingOperator(presentedOperatorKey(request), operatorSecret());
+    const { id } = parseOrThrow(idParams, request.params, 'params');
+    const body = parseOrThrow(confirmWireBody, request.body ?? {}, 'body');
+    const wireReference = parseWireReference(body.wireReference);
+    const result = await container.collections.confirmWireInvoice({
+      invoiceId: id,
+      wireReference,
+      actor: 'onboarding_operator',
+      requestId: request.id,
+      ...(body.notes === undefined ? {} : { notes: body.notes }),
+    });
+    return envelope(request, {
+      invoiceId: result.invoiceId,
+      mode: result.mode,
+      collected: result.collected,
+      replayed: result.replayed,
+      attempt: result.attempt,
+      gate: result.gate,
+      fundsMoved: false,
+      customerSettlementFundsMoved: false,
     });
   });
 

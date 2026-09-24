@@ -208,6 +208,7 @@ export {
   CollectionService,
   type CollectInvoiceCommand,
   type CollectInvoiceResult,
+  type ConfirmWireInvoiceCommand,
   type CollectionServiceDependencies,
 } from './collection-service.js';
 export {

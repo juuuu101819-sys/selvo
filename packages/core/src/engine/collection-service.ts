@@ -16,6 +16,7 @@ import type { Clock } from '../ports/clock.js';
 import type { IdGenerator } from '../ports/id-generator.js';
 import type { LiveEnablementStore } from '../ports/live-enablement.js';
 import type { PlatformFeeCollector } from '../ports/payment-collector.js';
+import { parseWireReference } from '../ports/wire-manual-collector.js';
 
 /**
  * Invoice collection in both modes (§18.5).
@@ -66,6 +67,14 @@ export interface CollectInvoiceResult {
   readonly replayed: boolean;
   readonly attempt: CollectionAttempt;
   readonly gate: LiveBillingEvaluation;
+}
+
+export interface ConfirmWireInvoiceCommand {
+  readonly invoiceId: string;
+  readonly wireReference: string;
+  readonly actor: string;
+  readonly requestId: string | null;
+  readonly notes?: string | undefined;
 }
 
 export class CollectionService {
@@ -228,9 +237,130 @@ export class CollectionService {
     };
   }
 
+  /**
+   * Operator-confirmed wire deposit for one invoice (§18.5).
+   *
+   * Skips processor tokens and {@link PlatformFeeCollector.collect}; writes through
+   * {@link CollectionStore.confirmAttempt} only, with `confirmationSource: operator_manual`.
+   */
+  async confirmWireInvoice(command: ConfirmWireInvoiceCommand): Promise<CollectInvoiceResult> {
+    const processorReference = parseWireReference(command.wireReference);
+    const invoice = await this.deps.billing.getInvoice(command.invoiceId);
+    if (invoice === null) {
+      throw new NotFoundError('Invoice', command.invoiceId);
+    }
+    const gate = await this.gate();
+    const idempotencyKey = collectionIdempotencyKey(invoice.id);
+
+    const existing = await this.deps.collections.findAttemptByKey(idempotencyKey);
+    if (existing !== null && existing.status === 'succeeded') {
+      return {
+        invoiceId: invoice.id,
+        mode: existing.mode,
+        collected: true,
+        replayed: true,
+        attempt: existing,
+        gate,
+      };
+    }
+
+    const mode = this.deps.mode;
+    if (mode === 'RECORD_ONLY') {
+      throw new ForbiddenError(
+        'Wire confirmation requires live billing mode. The invoice remains recorded and uncollected.',
+        {
+          flag: 'BILLING_LIVE_ENABLED',
+          collected: false,
+          reasons: ['collection_mode_record_only'],
+          checklistRef: 'GO_LIVE_CHECKLIST.md#billing-collection',
+        },
+      );
+    }
+
+    const now = this.deps.clock.nowIso();
+    const auditCommand = {
+      invoiceId: command.invoiceId,
+      actor: command.actor,
+      requestId: command.requestId,
+    };
+
+    if (!gate.collectionActive) {
+      await this.recordAudit('billing.collection.refused', auditCommand, invoice, {
+        mode,
+        collected: false,
+        fundsMoved: false,
+        customerSettlementFundsMoved: false,
+        idempotencyKey,
+        reasons: [...gate.blockingReasons],
+        confirmationKind: 'operator_manual_wire',
+      });
+      throw new ForbiddenError(
+        'Live collection is not active. The invoice remains recorded and uncollected.',
+        {
+          flag: 'BILLING_LIVE_ENABLED',
+          collected: false,
+          reasons: gate.blockingReasons,
+          checklistRef: 'GO_LIVE_CHECKLIST.md#billing-collection',
+        },
+      );
+    }
+
+    const { attempt, created } = await this.deps.collections.beginAttempt({
+      id: this.deps.ids.generate('col'),
+      invoiceId: invoice.id,
+      organizationId: invoice.organizationId,
+      idempotencyKey,
+      mode: 'LIVE',
+      status: 'pending',
+      currency: invoice.currency,
+      amountMinorUnits: invoice.totalMinorUnits,
+      processorKind: this.deps.collector.kind,
+      createdAt: now,
+    });
+
+    if (attempt.mode !== 'LIVE') {
+      throw new ForbiddenError(
+        'A prior record-only collection attempt prevents wire confirmation for this invoice.',
+        { invoiceId: invoice.id, collected: false },
+      );
+    }
+
+    const confirmed = await this.deps.collections.confirmAttempt({
+      idempotencyKey,
+      processorReference,
+      processorKind: this.deps.collector.kind,
+      confirmationSource: 'operator_manual',
+      confirmedAt: now,
+    });
+
+    await this.recordAudit('billing.revenue.recognized', auditCommand, invoice, {
+      mode: 'LIVE',
+      collected: true,
+      fundsMoved: false,
+      platformFeeCollected: true,
+      customerSettlementFundsMoved: false,
+      idempotencyKey,
+      from: 'invoiced',
+      to: 'collected',
+      processorKind: this.deps.collector.kind,
+      confirmationSource: confirmed.confirmationSource,
+      confirmationKind: 'operator_manual_wire',
+      ...(command.notes === undefined ? {} : { notes: command.notes }),
+    });
+
+    return {
+      invoiceId: invoice.id,
+      mode: 'LIVE',
+      collected: true,
+      replayed: !created,
+      attempt: confirmed,
+      gate,
+    };
+  }
+
   private async recordAudit(
     type: 'billing.collection.recorded' | 'billing.collection.refused' | 'billing.revenue.recognized',
-    command: CollectInvoiceCommand,
+    command: Pick<CollectInvoiceCommand, 'actor' | 'requestId' | 'invoiceId'>,
     invoice: Invoice,
     payload: Record<string, unknown>,
   ): Promise<void> {

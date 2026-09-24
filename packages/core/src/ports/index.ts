@@ -177,6 +177,11 @@ export {
   type CollectionRequest,
   type PlatformFeeCollector,
 } from './payment-collector.js';
+export {
+  WIRE_REFERENCE_PREFIX,
+  WireManualPlatformFeeCollector,
+  parseWireReference,
+} from './wire-manual-collector.js';
 export type {
   ExecutionIntent,
   ExecutionIntentRepository,
