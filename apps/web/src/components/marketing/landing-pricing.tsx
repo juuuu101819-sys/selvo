@@ -7,7 +7,7 @@ const TIERS = [
   {
     id: 'api',
     name: 'API',
-    price: '$0.02',
+    price: '$0.01',
     unit: 'per comparison',
     body: 'Pay as you go for route decisions. Priced on usage — never a spread markup.',
     highlight: false,
